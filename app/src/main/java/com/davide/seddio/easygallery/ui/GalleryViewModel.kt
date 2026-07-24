@@ -27,10 +27,26 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isSearchActive = MutableStateFlow(false)
     val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
 
-    val filteredFolders: StateFlow<GalleryUiState> = combine(_uiState, _searchQuery) { state, query ->
-        if (state is GalleryUiState.Success && query.isNotEmpty()) {
-            val filtered = state.folders.filter { it.name.contains(query, ignoreCase = true) }
-            GalleryUiState.Success(filtered)
+    private val _pinnedFolders = MutableStateFlow<Set<String>>(emptySet())
+    private val _selectedFolders = MutableStateFlow<Set<String>>(emptySet())
+    val selectedFolders: StateFlow<Set<String>> = _selectedFolders.asStateFlow()
+
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
+
+    val filteredFolders: StateFlow<GalleryUiState> = combine(
+        _uiState, _searchQuery, _pinnedFolders
+    ) { state, query, pinned ->
+        if (state is GalleryUiState.Success) {
+            val foldersWithPinned = state.folders.map { 
+                it.copy(isPinned = pinned.contains(it.name)) 
+            }.sortedWith(compareByDescending<Folder> { it.isPinned }.thenBy { it.name })
+
+            if (query.isNotEmpty()) {
+                GalleryUiState.Success(foldersWithPinned.filter { it.name.contains(query, ignoreCase = true) })
+            } else {
+                GalleryUiState.Success(foldersWithPinned)
+            }
         } else {
             state
         }
@@ -81,9 +97,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectFolder(folder: Folder) {
-        _selectedFolder.value = folder
-        viewModelScope.launch {
-            _photosInFolder.value = dataSource.getPhotosInFolder(folder.name)
+        if (_isSelectionMode.value) {
+            toggleSelection(folder.name)
+        } else {
+            _selectedFolder.value = folder
+            viewModelScope.launch {
+                _photosInFolder.value = dataSource.getPhotosInFolder(folder.name)
+            }
         }
     }
 
@@ -106,6 +126,59 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         if (!active) {
             _searchQuery.value = ""
         }
+    }
+
+    fun toggleSelection(folderName: String) {
+        val current = _selectedFolders.value.toMutableSet()
+        if (current.contains(folderName)) {
+            current.remove(folderName)
+        } else {
+            current.add(folderName)
+        }
+        _selectedFolders.value = current
+        if (current.isEmpty()) {
+            _isSelectionMode.value = false
+        }
+    }
+
+    fun enterSelectionMode(folderName: String) {
+        _isSelectionMode.value = true
+        _selectedFolders.value = setOf(folderName)
+        setSearchActive(false)
+    }
+
+    fun exitSelectionMode() {
+        _isSelectionMode.value = false
+        _selectedFolders.value = emptySet()
+    }
+
+    fun deleteSelected() {
+        // In a real app, this would delete files from MediaStore
+        // For now, we simulate by removing from the current state
+        val toDelete = _selectedFolders.value
+        val currentState = _uiState.value
+        if (currentState is GalleryUiState.Success) {
+            val remaining = currentState.folders.filter { !toDelete.contains(it.name) }
+            _uiState.value = GalleryUiState.Success(remaining)
+        }
+        exitSelectionMode()
+    }
+
+    fun pinSelected() {
+        val selected = _selectedFolders.value
+        val currentPinned = _pinnedFolders.value.toMutableSet()
+        
+        // If all selected are already pinned, unpin them. Otherwise, pin all.
+        val allSelectedPinned = selected.all { currentPinned.contains(it) }
+        
+        if (allSelectedPinned) {
+            currentPinned.removeAll(selected)
+        } else {
+            currentPinned.addAll(selected)
+        }
+        
+        _pinnedFolders.value = currentPinned
+        exitSelectionMode()
     }
 }
 

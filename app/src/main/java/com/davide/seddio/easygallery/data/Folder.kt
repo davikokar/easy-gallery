@@ -5,5 +5,6 @@ import android.net.Uri
 data class Folder(
     val name: String,
     val imageCount: Int,
-    val thumbnailUri: Uri
+    val thumbnailUri: Uri,
+    val isPinned: Boolean = false
 )

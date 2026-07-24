@@ -1,5 +1,14 @@
-- [x] Update `GalleryViewModel` with search state and filtering logic
-- [x] Implement Search UI in `FolderListScreen` TopBar
-- [x] Implement Search UI in `FolderDetailScreen` TopBar
-- [x] Verify search functionality in both screens
-- [x] Final build and cleanup
+- [x] Setup Configuration & Dependencies
+- [x] Implement Data Layer (Initial)
+- [x] Implement UI Layer (Initial Grid)
+- [x] Implementation of Pinch-to-Zoom
+- [x] Implement Folder Detail View
+- [x] Implement Search Functionality
+- [x] Implement Multiselection, Pinning, and Deletion
+    - [x] Add `isPinned` to `Folder` data class
+    - [x] Update `GalleryViewModel` with selection/pinning logic and state
+    - [x] Create `SelectionTopBar` component
+    - [x] Update `FolderListScreen` with long-press and selection UI
+    - [x] Implement delete confirmation dialog
+- [x] Verification
+    - [x] Build and verify

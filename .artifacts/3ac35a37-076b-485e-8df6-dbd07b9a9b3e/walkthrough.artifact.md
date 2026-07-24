@@ -1,21 +1,29 @@
-# Walkthrough - Search Functionality
+# Walkthrough - Multiselection, Pinning, and Deletion
 
-I have added a powerful search feature that allows you to quickly find folders and photos across the entire app.
+I have implemented a comprehensive set of management tools for your gallery, allowing you to organize, pin, and remove folders with ease.
 
 ## Changes Made
 
-### Search Logic & State
+### Data Layer
+- **Folder Metadata**: Updated [Folder.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/Folder.kt) to include an `isPinned` flag.
+
+### Logic & State Management
 - **GalleryViewModel**:
-    - Added `searchQuery` and `isSearchActive` state.
-    - Implemented `filteredFolders` and `filteredPhotos` using Kotlin Coroutines `combine` operator for real-time, case-insensitive filtering.
-    - Search is automatically cleared when exiting search mode.
+    - **Selection State**: Added `isSelectionMode` and `selectedFolders` to track user interaction.
+    - **Pinning Logic**: Implemented `pinnedFolders` state. Pinned folders are automatically sorted to the top of the list.
+    - **Deletion**: Added logic to simulate folder deletion (removing them from the current view).
+    - **Navigation Integration**: Selection mode automatically deactivates search and prevents accidental navigation into a folder detail view.
 
 ### UI Components
-- **SearchTopBar**: A new reusable component that handles the transition between the normal app bar and the search interface.
-    - **Normal Mode**: Shows the title (left-aligned) and a search icon.
-    - **Search Mode**: Shows a back arrow (to cancel) and a text field for searching.
-- **FolderListScreen**: Updated to use `SearchTopBar` and observe `filteredFolders`.
-- **FolderDetailScreen**: Updated to use `SearchTopBar` (showing the folder name as title) and observe `filteredPhotos`. The "Info" button remains accessible in the normal top bar view.
+- **Selection Mode**:
+    - **Trigger**: Long-pressing any folder tile activates multiselection mode.
+    - **Visual Feedback**: Selected tiles feature a dimmed overlay and a prominent checkmark icon in the top-right corner.
+    - **Pinned Indicator**: Pinned folders display a semi-transparent push-pin icon in the top-left corner of the tile for easy identification.
+- **SelectionTopBar**: A new specialized toolbar that appears during selection mode, featuring:
+    - **Counter**: Displays how many folders are selected out of the total available (e.g., "3 / 10").
+    - **Pin Action**: Bulk pin or unpin selected folders.
+    - **Delete Action**: Removes selected folders from the gallery.
+- **Confirmation Dialog**: Added an `AlertDialog` to prevent accidental deletions, requiring user confirmation before proceeding.
 
 ## Verification Results
 
@@ -23,13 +31,10 @@ I have added a powerful search feature that allows you to quickly find folders a
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Left Alignment**: The "Easy Gallery" title is now correctly aligned to the left.
-- **Search Activation**: Clicking the lens icon successfully replaces the title with a search field and back arrow.
-- **Real-time Filtering**:
-    - Typing in the folder list filters folders by name.
-    - Typing in a folder detail view filters photos by filename.
-- **Search Cancellation**: Clicking the back arrow in search mode restores the normal title and clears the results.
-- **Case Insensitivity**: Searching for "camera" matches "Camera", "CAMERA", etc.
+- **Multiselection**: Long-press successfully enters the mode. Single taps then toggle selection for other items.
+- **Pinning**: Selected folders move to the top of the list when pinned. Unpinning them restores their alphabetical position.
+- **Deletion**: The bin icon triggers a confirmation dialog. Confirming successfully removes the folders from the display.
+- **Back Handling**: The system back button and the toolbar "X" button correctly exit selection mode and clear the selection.
 
-> [!TIP]
-> The search persists even if you zoom in/out of the grid, allowing you to find items while maintaining your preferred view density.
+> [!IMPORTANT]
+> For this implementation, pinning is stored in memory and deletion is simulated by removing items from the current session's UI state. In a production app, these would be persisted to a local database or the file system.

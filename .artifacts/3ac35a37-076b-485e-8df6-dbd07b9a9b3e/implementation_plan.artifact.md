@@ -1,39 +1,50 @@
-# Implementation Plan - Search Functionality
+# Implementation Plan - Multiselection, Deletion, and Pinning
 
-This plan outlines the steps to add search functionality to the Easy Gallery app. Users will be able to search for folders in the main view and photos within a folder detail view.
+This plan outlines the steps to add multiselection capabilities to the gallery, allowing users to select multiple folders to delete or pin them to the top of the list.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - The TopBar title "Easy Gallery" will be left-aligned.
-> - Search is case-insensitive and matches if the name contains the search string.
-> - When search is active, the title is replaced by a back arrow and a text field.
+> - **Deletion**: Deleting folders from the device is a destructive action. I will implement a confirmation dialog. Note that on Android 10+, deleting files through `MediaStore` may trigger an additional system-level confirmation dialog.
+> - **Pinning**: Pinned folders will always appear at the top of the list, regardless of the alphabetical sorting.
+> - **Multiselection Mode**: Triggered by a long-press. While active, the normal search and title are replaced by a selection toolbar.
 
 ## Proposed Changes
+
+### Data Layer
+
+#### [MODIFY] [Folder.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/Folder.kt)
+- Add `isPinned: Boolean = false` to the data class.
+
+---
 
 ### UI Layer
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- Add state for `searchQuery` (String) and `isSearchActive` (Boolean).
-- Update `uiState` to provide filtered folders based on `searchQuery`.
-- Update `photosInFolder` to be filtered based on `searchQuery`.
-- Add functions:
-    - `setSearchQuery(query: String)`
-    - `setSearchActive(active: Boolean)` - which also clears the query when deactivated.
-
-#### [NEW] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt)
-- Create a reusable Composable for the TopBar that handles:
-    - Default state: Left-aligned title + Search icon on the right.
-    - Search state: Back arrow + `TextField` for entering search query.
-    - Info icon (for detail screen) should still be visible or handled appropriately.
+- **State**:
+    - `isSelectionMode: StateFlow<Boolean>`
+    - `selectedFolders: StateFlow<Set<String>>` (storing folder names)
+    - `pinnedFolders: StateFlow<Set<String>>` (for persistent pinning logic)
+- **Logic**:
+    - Update `loadFolders` to apply pinning status.
+    - Update `filteredFolders` to sort: `isPinned` DESC, then `name` ASC.
+    - Add `toggleSelection(folderName: String)`.
+    - Add `enterSelectionMode(initialFolder: String)`.
+    - Add `exitSelectionMode()`.
+    - Add `deleteSelected()` and `pinSelected()`.
 
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Use `TopAppBar` instead of `CenterAlignedTopAppBar` for left alignment.
-- Implement the search UI logic in the TopBar.
+- **TopBar**:
+    - Add a conditional TopBar for selection mode.
+    - Display: Back arrow (exit), "X / Y selected" counter, Bin icon, Pin icon.
+- **Grid Interaction**:
+    - Update `FolderItem` to support `onLongClick`.
+    - Show a tick icon in the top-right corner of selected items.
+- **Confirmation Dialog**:
+    - Implement a `DeleteConfirmationDialog` that appears when the bin icon is clicked.
 
-#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
-- Use `TopAppBar` instead of `CenterAlignedTopAppBar`.
-- Implement the search UI logic in the TopBar, preserving the "Info" and "Back" functionality.
+#### [NEW] [SelectionTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SelectionTopBar.kt)
+- Create a reusable component for the multiselection toolbar.
 
 ## Verification Plan
 
@@ -41,13 +52,13 @@ This plan outlines the steps to add search functionality to the Easy Gallery app
 - Verify build success.
 
 ### Manual Verification
-1.  **Folder List**:
-    - Verify "Easy Gallery" is left-aligned.
-    - Click search icon -> Title disappears, TextField + Back arrow appear.
-    - Type text -> Folders are filtered by name (case-insensitive).
-    - Click back arrow -> Search is cancelled, query cleared, normal view restored.
-2.  **Folder Detail**:
-    - Click search icon -> Title (folder name) disappears, TextField + Back arrow appear.
-    - Type text -> Photos are filtered by filename.
-    - Click back arrow -> Search cancelled.
-    - Verify "Info" toggle still works in both normal and search modes (if applicable/desired).
+1.  **Selection Mode**:
+    - Long-press a folder -> Selection mode starts, UI updates.
+    - Tap other folders -> Selection count updates, ticks appear/disappear.
+    - Tap back arrow -> Mode exits, selection cleared.
+2.  **Pinning**:
+    - Select folders -> Tap Pin -> Folders move to the top and stay there.
+    - Select pinned folders -> Tap Pin -> Folders are unpinned.
+3.  **Deletion**:
+    - Select folders -> Tap Bin -> Confirmation dialog appears.
+    - Confirm -> Folders (and their content) are removed from the list.

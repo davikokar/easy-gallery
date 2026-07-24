@@ -60,12 +60,18 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
+                    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
 
                     if (selectedFolder != null) {
                         BackHandler {
                             viewModel.backToFolders()
                         }
                         FolderDetailScreen(viewModel)
+                    } else if (isSelectionMode) {
+                        BackHandler {
+                            viewModel.exitSelectionMode()
+                        }
+                        FolderListScreen(viewModel)
                     } else if (hasPermission) {
                         FolderListScreen(viewModel)
                     } else {
