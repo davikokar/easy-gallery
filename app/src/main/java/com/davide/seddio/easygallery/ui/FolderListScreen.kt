@@ -22,18 +22,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Folder
+import com.davide.seddio.easygallery.ui.components.SearchTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderListScreen(viewModel: GalleryViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.filteredFolders.collectAsState()
     val columnsCount by viewModel.columnsCount.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val isSearchActive by viewModel.isSearchActive.collectAsState()
     var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Easy Gallery") }
+            SearchTopBar(
+                title = "Easy Gallery",
+                searchQuery = searchQuery,
+                isSearchActive = isSearchActive,
+                onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                onSearchActiveChange = { viewModel.setSearchActive(it) }
             )
         }
     ) { padding ->

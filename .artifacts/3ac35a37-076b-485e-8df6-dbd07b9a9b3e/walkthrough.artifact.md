@@ -1,26 +1,21 @@
-# Walkthrough - Folder Detail View & Image Explorer
+# Walkthrough - Search Functionality
 
-I have implemented the detailed view for folders, allowing users to browse individual pictures within a selected gallery.
+I have added a powerful search feature that allows you to quickly find folders and photos across the entire app.
 
 ## Changes Made
 
-### Navigation & State
-- **State-based Navigation**: Updated `MainActivity` and `GalleryViewModel` to manage navigation between the Folder List and the new Folder Detail View.
-- **Back Handling**: Integrated `BackHandler` to support returning to the gallery list via the system back button or the top bar arrow.
+### Search Logic & State
+- **GalleryViewModel**:
+    - Added `searchQuery` and `isSearchActive` state.
+    - Implemented `filteredFolders` and `filteredPhotos` using Kotlin Coroutines `combine` operator for real-time, case-insensitive filtering.
+    - Search is automatically cleared when exiting search mode.
 
-### Data Layer
-- [Photo.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/Photo.kt): New data class for image metadata.
-- [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt): Added `getPhotosInFolder` to fetch all images and their filenames for a specific directory.
-
-### UI Layer
-- [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt):
-    - **Dynamic Grid**: Displays images in a grid that supports pinch-to-zoom (syncing with the main gallery's zoom level).
-    - **Enhanced TopBar**:
-        - Back arrow for navigation.
-        - Gallery name as the title.
-        - Info button to toggle filename overlays.
-    - **PhotoItem**: Displays the image with an optional filename overlay and a subtle gradient for readability.
-- [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt): Enabled click listeners on folder tiles to trigger navigation.
+### UI Components
+- **SearchTopBar**: A new reusable component that handles the transition between the normal app bar and the search interface.
+    - **Normal Mode**: Shows the title (left-aligned) and a search icon.
+    - **Search Mode**: Shows a back arrow (to cancel) and a text field for searching.
+- **FolderListScreen**: Updated to use `SearchTopBar` and observe `filteredFolders`.
+- **FolderDetailScreen**: Updated to use `SearchTopBar` (showing the folder name as title) and observe `filteredPhotos`. The "Info" button remains accessible in the normal top bar view.
 
 ## Verification Results
 
@@ -28,11 +23,13 @@ I have implemented the detailed view for folders, allowing users to browse indiv
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Tapping a folder**: Successfully opens the image grid for that folder.
-- **Top Bar**: Correct name is shown, and the back button returns to the main list.
-- **Info Toggle**: Tapping the Info icon shows/hides the filename on each photo tile.
-- **Zoom**: Pinching in the photo grid successfully changes the number of columns.
-- **System Back**: Pressing the device back button correctly navigates back to the folder list.
+- **Left Alignment**: The "Easy Gallery" title is now correctly aligned to the left.
+- **Search Activation**: Clicking the lens icon successfully replaces the title with a search field and back arrow.
+- **Real-time Filtering**:
+    - Typing in the folder list filters folders by name.
+    - Typing in a folder detail view filters photos by filename.
+- **Search Cancellation**: Clicking the back arrow in search mode restores the normal title and clears the results.
+- **Case Insensitivity**: Searching for "camera" matches "Camera", "CAMERA", etc.
 
 > [!TIP]
-> The pinch-to-zoom column count is shared between both views, providing a consistent browsing experience as you navigate in and out of folders.
+> The search persists even if you zoom in/out of the grid, allowing you to find items while maintaining your preferred view density.

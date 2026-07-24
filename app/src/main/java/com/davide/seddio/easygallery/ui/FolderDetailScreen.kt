@@ -26,20 +26,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Photo
+import com.davide.seddio.easygallery.ui.components.SearchTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderDetailScreen(viewModel: GalleryViewModel) {
-    val photos by viewModel.photosInFolder.collectAsState()
+    val photos by viewModel.filteredPhotos.collectAsState()
     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
     val columnsCount by viewModel.columnsCount.collectAsState()
     val showInfo by viewModel.showInfo.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val isSearchActive by viewModel.isSearchActive.collectAsState()
     var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(selectedFolder?.name ?: "Photos") },
+            SearchTopBar(
+                title = selectedFolder?.name ?: "Photos",
+                searchQuery = searchQuery,
+                isSearchActive = isSearchActive,
+                onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                onSearchActiveChange = { viewModel.setSearchActive(it) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.backToFolders() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

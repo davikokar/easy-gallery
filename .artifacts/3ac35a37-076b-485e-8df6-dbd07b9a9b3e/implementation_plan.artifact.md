@@ -1,52 +1,39 @@
-# Implementation Plan - Folder Detail View
+# Implementation Plan - Search Functionality
 
-This plan outlines the steps to implement a detail view that shows images within a selected folder, complete with pinch-to-zoom, a back button, and an "Info" toggle to show filenames.
+This plan outlines the steps to add search functionality to the Easy Gallery app. Users will be able to search for folders in the main view and photos within a folder detail view.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - I will use a simple state-based navigation within the `GalleryViewModel` to switch between the folder list and the folder detail view.
-> - The "Info" button in the top bar will toggle the visibility of the filename for all photos in the current grid.
-> - The pinch-to-zoom column count will be shared between the folder list and the folder detail view for consistency.
+> - The TopBar title "Easy Gallery" will be left-aligned.
+> - Search is case-insensitive and matches if the name contains the search string.
+> - When search is active, the title is replaced by a back arrow and a text field.
 
 ## Proposed Changes
-
-### Data Layer
-
-#### [NEW] [Photo.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/Photo.kt)
-- Define a data class to represent a photo:
-    - `uri: Uri`
-    - `name: String`
-
-#### [MODIFY] [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt)
-- Add `getPhotosInFolder(bucketName: String): List<Photo>` to fetch images for a specific folder.
-
----
 
 ### UI Layer
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- Add `selectedFolder` StateFlow.
-- Add `photosInFolder` StateFlow.
-- Add `showInfo` StateFlow (Boolean) to toggle filename overlays.
-- Add `selectFolder(folder: Folder)` and `backToFolders()` functions.
-- Add `toggleInfo()` function.
+- Add state for `searchQuery` (String) and `isSearchActive` (Boolean).
+- Update `uiState` to provide filtered folders based on `searchQuery`.
+- Update `photosInFolder` to be filtered based on `searchQuery`.
+- Add functions:
+    - `setSearchQuery(query: String)`
+    - `setSearchActive(active: Boolean)` - which also clears the query when deactivated.
 
-#### [NEW] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
-- Implement a screen showing a grid of photos using `LazyVerticalGrid`.
-- Support pinch-to-zoom (reusing logic or sharing `columnsCount`).
-- Add TopBar with:
-    - Back arrow button.
-    - Folder name title.
-    - Info (eye or info icon) button.
-- Create `PhotoItem` composable that conditionally shows the filename overlay.
+#### [NEW] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt)
+- Create a reusable Composable for the TopBar that handles:
+    - Default state: Left-aligned title + Search icon on the right.
+    - Search state: Back arrow + `TextField` for entering search query.
+    - Info icon (for detail screen) should still be visible or handled appropriately.
 
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Add click listener to `FolderItem` to call `viewModel.selectFolder(folder)`.
+- Use `TopAppBar` instead of `CenterAlignedTopAppBar` for left alignment.
+- Implement the search UI logic in the TopBar.
 
-#### [MODIFY] [MainActivity.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt)
-- Update the UI to observe the `selectedFolder` and switch between `FolderListScreen` and `FolderDetailScreen`.
-- Handle the system back button to return to the folder list if a folder is selected.
+#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
+- Use `TopAppBar` instead of `CenterAlignedTopAppBar`.
+- Implement the search UI logic in the TopBar, preserving the "Info" and "Back" functionality.
 
 ## Verification Plan
 
@@ -54,8 +41,13 @@ This plan outlines the steps to implement a detail view that shows images within
 - Verify build success.
 
 ### Manual Verification
-- Tap on a folder and verify it opens the detail view.
-- Verify the top bar shows the folder name, back button, and info button.
-- Tap "Info" and verify filenames appear/disappear on the photos.
-- Pinch-to-zoom in the photo grid.
-- Press the back button (top bar or system back) and verify it returns to the gallery view.
+1.  **Folder List**:
+    - Verify "Easy Gallery" is left-aligned.
+    - Click search icon -> Title disappears, TextField + Back arrow appear.
+    - Type text -> Folders are filtered by name (case-insensitive).
+    - Click back arrow -> Search is cancelled, query cleared, normal view restored.
+2.  **Folder Detail**:
+    - Click search icon -> Title (folder name) disappears, TextField + Back arrow appear.
+    - Type text -> Photos are filtered by filename.
+    - Click back arrow -> Search cancelled.
+    - Verify "Info" toggle still works in both normal and search modes (if applicable/desired).

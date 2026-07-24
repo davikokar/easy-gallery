@@ -1,13 +1,5 @@
-- [x] Setup Configuration & Dependencies
-- [x] Implement Data Layer (Initial)
-- [x] Implement UI Layer (Initial Grid)
-- [x] Implementation of Pinch-to-Zoom
-- [x] Implement Folder Detail View
-    - [x] Create `Photo` data class
-    - [x] Update `MediaStoreDataSource` with `getPhotosInFolder`
-    - [x] Update `GalleryViewModel` for navigation and info toggle
-    - [x] Implement `FolderDetailScreen`
-    - [x] Update `FolderListScreen` with click handling
-    - [x] Update `MainActivity` for screen switching and back handling
-- [x] Verification
-    - [x] Build and verify
+- [x] Update `GalleryViewModel` with search state and filtering logic
+- [x] Implement Search UI in `FolderListScreen` TopBar
+- [x] Implement Search UI in `FolderDetailScreen` TopBar
+- [x] Verify search functionality in both screens
+- [x] Final build and cleanup
