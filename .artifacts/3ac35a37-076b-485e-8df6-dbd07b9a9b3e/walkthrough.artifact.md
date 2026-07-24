@@ -1,26 +1,24 @@
-# Walkthrough - Calendar Mode & Chronological Explorer
+# Walkthrough - Sorting and Overflow Menu
 
-I have implemented a new "Calendar Mode" that allows you to browse all your photos organized by date, from the most recent to the oldest.
+I have implemented an overflow menu in the gallery top bar and added powerful sorting capabilities for your folders.
 
 ## Changes Made
 
 ### Data Layer
-- **Unified Photo Fetching**: Added `getAllPhotos()` to [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt) to retrieve every image across all folders on the device.
-- **Date Metadata**: Updated the `Photo` data class to include `dateAdded`, enabling precise chronological sorting.
+- **Expanded Folder Metadata**: Updated the `Folder` data class and `MediaStoreDataSource` to fetch and store additional fields:
+    - **Path**: The physical location of the folder.
+    - **Size**: The total size of all images in the folder.
+    - **Timestamps**: Last modified date and date taken (creation) for precise chronological sorting.
 
 ### Logic & State
-- **Display Modes**: Introduced a `DisplayMode` state (`GALLERY` vs `CALENDAR`) in the `GalleryViewModel`.
-- **Smart Grouping**: Implemented a grouping algorithm that categorizes photos into "Today", "Yesterday", or specific dates (e.g., "July 24, 2026").
-- **Integrated Search**: Search now works in both modes:
-    - **Gallery Mode**: Filters folders by name.
-    - **Calendar Mode**: Filters all photos by filename across the entire timeline.
+- **Sort Logic**: Introduced a `SortType` enum and updated the `GalleryViewModel` to handle 6 different sorting methods.
+- **Pinned Priority**: Enhanced the filtering logic to ensure **pinned folders always remain at the very top**, regardless of the selected sort order.
+- **Random Shuffle**: Implemented a "Random" sort that re-scrambles your folders on demand.
 
 ### UI Enhancements
-- **Mode Toggle**: Added a dynamic icon in the top bar:
-    - **Calendar Icon**: Appears in Gallery mode to switch to the timeline.
-    - **Gallery Icon**: Appears in Calendar mode to switch back to folder view.
-- **CalendarGrid**: A new chronological layout using `LazyVerticalGrid` with sticky-like headers for each date group.
-- **Reusable PhotoItem**: Extracted the photo tile logic into a standalone component used by both the folder detail and the calendar views.
+- **Overflow Menu**: Added a 3-dotted menu icon on the right side of the top bar.
+- **Menu Options**: The menu includes placeholders for advanced features (Column count, Show excluded, etc.) and a functional "Sort by" action.
+- **Sort Dialog**: A new dialog window allows you to select your preferred sorting criteria using a clean radio-button interface.
 
 ## Verification Results
 
@@ -28,10 +26,13 @@ I have implemented a new "Calendar Mode" that allows you to browse all your phot
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Toggle View**: Tapping the icon successfully swaps between folder-based squares and the date-based timeline.
-- **Grouping**: Photos are correctly grouped. Today's photos appear first, followed by previous days.
-- **Consistency**: Pinch-to-zoom works perfectly in the calendar timeline, just like in the gallery view.
-- **Search**: Typing in calendar mode instantly filters photos by name across all date groups.
+- **Menu Visibility**: The 3-dotted menu appears correctly in the top bar.
+- **Sorting Accuracy**:
+    - Selecting "Name" sorts folders alphabetically.
+    - Selecting "Size" puts folders with the most data at the top.
+    - Selecting "Date Taken" shows folders with the newest photos first.
+- **Pinned Folders**: Pinned folders stay fixed at the top even when switching between different sort types.
+- **Persistence**: Sorting persists while searching and zooming.
 
 > [!TIP]
-> Use the "Info" toggle (available in Folder Detail view) to see filenames, helping you find specific images while browsing.
+> Use the "Random" sort whenever you want a fresh perspective on your photo collection!

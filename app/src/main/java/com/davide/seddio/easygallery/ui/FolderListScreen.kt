@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,6 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,9 +46,11 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val displayMode by viewModel.displayMode.collectAsState()
     val groupedPhotos by viewModel.groupedPhotosByDate.collectAsState()
     val showInfo by viewModel.showInfo.collectAsState()
+    val sortType by viewModel.sortType.collectAsState()
     
     var cumulativeScale by remember { mutableFloatStateOf(1f) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSortDialog by remember { mutableStateOf(false) }
 
     val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
 
@@ -67,7 +72,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     displayMode = displayMode,
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
                     onSearchActiveChange = { viewModel.setSearchActive(it) },
-                    onToggleDisplayMode = { viewModel.toggleDisplayMode() }
+                    onToggleDisplayMode = { viewModel.toggleDisplayMode() },
+                    onSortClick = { showSortDialog = true }
                 )
             }
         }
@@ -90,6 +96,17 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                         Text("Cancel")
                     }
                 }
+            )
+        }
+
+        if (showSortDialog) {
+            SortDialog(
+                currentSort = sortType,
+                onSortSelected = {
+                    viewModel.setSortType(it)
+                    showSortDialog = false
+                },
+                onDismiss = { showSortDialog = false }
             )
         }
 
@@ -139,6 +156,60 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SortDialog(
+    currentSort: SortType,
+    onSortSelected: (SortType) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Sort by") },
+        text = {
+            Column(Modifier.selectableGroup()) {
+                SortOption("Name", SortType.NAME, currentSort == SortType.NAME, onSortSelected)
+                SortOption("Path", SortType.PATH, currentSort == SortType.PATH, onSortSelected)
+                SortOption("Size", SortType.SIZE, currentSort == SortType.SIZE, onSortSelected)
+                SortOption("Last Modified", SortType.LAST_MODIFIED, currentSort == SortType.LAST_MODIFIED, onSortSelected)
+                SortOption("Date Taken", SortType.DATE_TAKEN, currentSort == SortType.DATE_TAKEN, onSortSelected)
+                SortOption("Random", SortType.RANDOM, currentSort == SortType.RANDOM, onSortSelected)
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun SortOption(
+    label: String,
+    type: SortType,
+    selected: Boolean,
+    onSortSelected: (SortType) -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .selectable(
+                selected = selected,
+                onClick = { onSortSelected(type) },
+                role = Role.RadioButton
+            )
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 16.dp)
+        )
     }
 }
 

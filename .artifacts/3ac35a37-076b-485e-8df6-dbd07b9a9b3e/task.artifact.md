@@ -5,11 +5,12 @@
 - [x] Implement Folder Detail View
 - [x] Implement Search Functionality
 - [x] Implement Multiselection, Pinning, and Deletion
-- [ ] Implement Calendar View Mode
-    - [ ] Update `MediaStoreDataSource` with `getAllPhotos`
-    - [ ] Update `GalleryViewModel` with `DisplayMode` and date-grouping logic
-    - [ ] Add toggle icons to `SearchTopBar`
-    - [ ] Implement `CalendarGrid` UI
-    - [ ] Update `FolderListScreen` to handle mode switching
-- [ ] Verification
+- [x] Implement Calendar View Mode
+- [x] Implement Sorting and Overflow Menu
+    - [x] Update `Folder` data class with sorting fields
+    - [x] Update `MediaStoreDataSource` to fetch additional metadata
+    - [x] Update `GalleryViewModel` with `SortType` and sorting logic
+    - [x] Add overflow menu to `SearchTopBar`
+    - [x] Implement `SortDialog` in `FolderListScreen`
+- [/] Verification
     - [ ] Build and verify

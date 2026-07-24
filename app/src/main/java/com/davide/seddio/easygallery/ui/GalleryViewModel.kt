@@ -41,18 +41,30 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isSelectionMode = MutableStateFlow(false)
     val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
 
+    private val _sortType = MutableStateFlow(SortType.NAME)
+    val sortType: StateFlow<SortType> = _sortType.asStateFlow()
+
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _uiState, _searchQuery, _pinnedFolders
-    ) { state, query, pinned ->
+        _uiState, _searchQuery, _pinnedFolders, _sortType
+    ) { state, query, pinned, sort ->
         if (state is GalleryUiState.Success) {
             val foldersWithPinned = state.folders.map { 
                 it.copy(isPinned = pinned.contains(it.name)) 
-            }.sortedWith(compareByDescending<Folder> { it.isPinned }.thenBy { it.name })
+            }
+
+            val sortedFolders = when (sort) {
+                SortType.NAME -> foldersWithPinned.sortedBy { it.name }
+                SortType.PATH -> foldersWithPinned.sortedBy { it.path }
+                SortType.SIZE -> foldersWithPinned.sortedByDescending { it.size }
+                SortType.LAST_MODIFIED -> foldersWithPinned.sortedByDescending { it.dateModified }
+                SortType.DATE_TAKEN -> foldersWithPinned.sortedByDescending { it.dateTaken }
+                SortType.RANDOM -> foldersWithPinned.shuffled()
+            }.sortedByDescending { it.isPinned }
 
             if (query.isNotEmpty()) {
-                GalleryUiState.Success(foldersWithPinned.filter { it.name.contains(query, ignoreCase = true) })
+                GalleryUiState.Success(sortedFolders.filter { it.name.contains(query, ignoreCase = true) })
             } else {
-                GalleryUiState.Success(foldersWithPinned)
+                GalleryUiState.Success(sortedFolders)
             }
         } else {
             state
@@ -140,6 +152,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _displayMode.value = if (_displayMode.value == DisplayMode.GALLERY) DisplayMode.CALENDAR else DisplayMode.GALLERY
     }
 
+    fun setSortType(sortType: SortType) {
+        _sortType.value = sortType
+    }
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -209,7 +225,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 today -> "Today"
                 yesterday -> "Yesterday"
                 else -> {
-                    // Prettier date format for older groups
                     val prettySdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
                     prettySdf.format(Date(it.dateAdded * 1000))
                 }
@@ -220,6 +235,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
 enum class DisplayMode {
     GALLERY, CALENDAR
+}
+
+enum class SortType {
+    NAME, PATH, SIZE, LAST_MODIFIED, DATE_TAKEN, RANDOM
 }
 
 sealed class GalleryUiState {
