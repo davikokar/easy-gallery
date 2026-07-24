@@ -1,24 +1,38 @@
-# Walkthrough - Zoomable Gallery Grid
+# Walkthrough - Folder Detail View & Image Explorer
 
-I have implemented the pinch-to-zoom functionality for the gallery grid. Users can now adjust the grid's column count by pinching on the screen.
+I have implemented the detailed view for folders, allowing users to browse individual pictures within a selected gallery.
 
 ## Changes Made
 
-### ViewModel Enhancements
-- Added `columnsCount` state to `GalleryViewModel` to track the current number of grid columns.
-- Added `increaseColumns()` and `decreaseColumns()` functions to safely update the column count (range: 1 to 5).
+### Navigation & State
+- **State-based Navigation**: Updated `MainActivity` and `GalleryViewModel` to manage navigation between the Folder List and the new Folder Detail View.
+- **Back Handling**: Integrated `BackHandler` to support returning to the gallery list via the system back button or the top bar arrow.
 
-### UI Enhancements
-- Integrated `detectTransformGestures` in `FolderListScreen` to capture pinch movements.
-- Zooming **in** (pinch apart) triggers a decrease in columns, making the folder squares larger.
-- Zooming **out** (pinch together) triggers an increase in columns, making the squares smaller.
-- Updated `FolderGrid` to dynamically react to changes in the column count.
+### Data Layer
+- [Photo.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/Photo.kt): New data class for image metadata.
+- [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt): Added `getPhotosInFolder` to fetch all images and their filenames for a specific directory.
+
+### UI Layer
+- [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt):
+    - **Dynamic Grid**: Displays images in a grid that supports pinch-to-zoom (syncing with the main gallery's zoom level).
+    - **Enhanced TopBar**:
+        - Back arrow for navigation.
+        - Gallery name as the title.
+        - Info button to toggle filename overlays.
+    - **PhotoItem**: Displays the image with an optional filename overlay and a subtle gradient for readability.
+- [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt): Enabled click listeners on folder tiles to trigger navigation.
 
 ## Verification Results
 
 ### Automated Tests
-- Ran `:app:assembleDebug` and the build passed successfully.
+- Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- The grid correctly re-flows when pinch gestures are detected.
-- The minimum (1) and maximum (5) column constraints are respected.
+- **Tapping a folder**: Successfully opens the image grid for that folder.
+- **Top Bar**: Correct name is shown, and the back button returns to the main list.
+- **Info Toggle**: Tapping the Info icon shows/hides the filename on each photo tile.
+- **Zoom**: Pinching in the photo grid successfully changes the number of columns.
+- **System Back**: Pressing the device back button correctly navigates back to the folder list.
+
+> [!TIP]
+> The pinch-to-zoom column count is shared between both views, providing a consistent browsing experience as you navigate in and out of folders.

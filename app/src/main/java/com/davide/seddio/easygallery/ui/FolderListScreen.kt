@@ -60,7 +60,11 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     }
                 }
                 is GalleryUiState.Success -> {
-                    FolderGrid(folders = state.folders, columns = columnsCount)
+                    FolderGrid(
+                        folders = state.folders,
+                        columns = columnsCount,
+                        onFolderClick = { viewModel.selectFolder(it) }
+                    )
                 }
                 is GalleryUiState.Error -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -73,21 +77,23 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
 }
 
 @Composable
-fun FolderGrid(folders: List<Folder>, columns: Int) {
+fun FolderGrid(folders: List<Folder>, columns: Int, onFolderClick: (Folder) -> Unit) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         contentPadding = PaddingValues(8.dp),
         modifier = Modifier.fillMaxSize()
     ) {
         items(folders) { folder ->
-            FolderItem(folder)
+            FolderItem(folder, onClick = { onFolderClick(folder) })
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FolderItem(folder: Folder) {
+fun FolderItem(folder: Folder, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier
             .padding(8.dp)
             .aspectRatio(1f)

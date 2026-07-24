@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
+import com.davide.seddio.easygallery.data.Photo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +20,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _columnsCount = MutableStateFlow(2)
     val columnsCount: StateFlow<Int> = _columnsCount.asStateFlow()
+
+    private val _selectedFolder = MutableStateFlow<Folder?>(null)
+    val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
+
+    private val _photosInFolder = MutableStateFlow<List<Photo>>(emptyList())
+    val photosInFolder: StateFlow<List<Photo>> = _photosInFolder.asStateFlow()
+
+    private val _showInfo = MutableStateFlow(false)
+    val showInfo: StateFlow<Boolean> = _showInfo.asStateFlow()
 
     fun loadFolders() {
         viewModelScope.launch {
@@ -42,6 +52,22 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         if (_columnsCount.value > 1) {
             _columnsCount.value -= 1
         }
+    }
+
+    fun selectFolder(folder: Folder) {
+        _selectedFolder.value = folder
+        viewModelScope.launch {
+            _photosInFolder.value = dataSource.getPhotosInFolder(folder.name)
+        }
+    }
+
+    fun backToFolders() {
+        _selectedFolder.value = null
+        _photosInFolder.value = emptyList()
+    }
+
+    fun toggleInfo() {
+        _showInfo.value = !_showInfo.value
     }
 }
 

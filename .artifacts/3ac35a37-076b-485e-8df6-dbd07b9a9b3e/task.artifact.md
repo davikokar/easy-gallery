@@ -1,4 +1,13 @@
-- [x] Update `GalleryViewModel` with column count state
-- [x] Implement pinch gesture detection in `FolderListScreen`
-- [x] Connect gesture detection to ViewModel actions
-- [x] Verify build and functionality
+- [x] Setup Configuration & Dependencies
+- [x] Implement Data Layer (Initial)
+- [x] Implement UI Layer (Initial Grid)
+- [x] Implementation of Pinch-to-Zoom
+- [x] Implement Folder Detail View
+    - [x] Create `Photo` data class
+    - [x] Update `MediaStoreDataSource` with `getPhotosInFolder`
+    - [x] Update `GalleryViewModel` for navigation and info toggle
+    - [x] Implement `FolderDetailScreen`
+    - [x] Update `FolderListScreen` with click handling
+    - [x] Update `MainActivity` for screen switching and back handling
+- [x] Verification
+    - [x] Build and verify
