@@ -7,10 +7,9 @@
 - [x] Implement Multiselection, Pinning, and Deletion
 - [x] Implement Calendar View Mode
 - [x] Implement Sorting and Overflow Menu
-    - [x] Update `Folder` data class with sorting fields
-    - [x] Update `MediaStoreDataSource` to fetch additional metadata
-    - [x] Update `GalleryViewModel` with `SortType` and sorting logic
-    - [x] Add overflow menu to `SearchTopBar`
-    - [x] Implement `SortDialog` in `FolderListScreen`
+- [x] Implement Column Count Selector
+    - [x] Update `GalleryViewModel` (range 1-20, `setColumnsCount`)
+    - [x] Update `SearchTopBar` with `onColumnCountClick`
+    - [x] Implement `ColumnCountDialog` in `FolderListScreen`
 - [/] Verification
     - [ ] Build and verify

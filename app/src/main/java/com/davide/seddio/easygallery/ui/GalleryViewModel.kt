@@ -116,7 +116,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun increaseColumns() {
-        if (_columnsCount.value < 5) {
+        if (_columnsCount.value < 20) {
             _columnsCount.value += 1
         }
     }
@@ -125,6 +125,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         if (_columnsCount.value > 1) {
             _columnsCount.value -= 1
         }
+    }
+
+    fun setColumnsCount(count: Int) {
+        _columnsCount.value = count.coerceIn(1, 20)
     }
 
     fun selectFolder(folder: Folder) {

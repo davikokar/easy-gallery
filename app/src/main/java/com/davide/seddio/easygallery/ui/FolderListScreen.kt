@@ -51,6 +51,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     var cumulativeScale by remember { mutableFloatStateOf(1f) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
+    var showColumnCountDialog by remember { mutableStateOf(false) }
 
     val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
 
@@ -73,7 +74,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
                     onSearchActiveChange = { viewModel.setSearchActive(it) },
                     onToggleDisplayMode = { viewModel.toggleDisplayMode() },
-                    onSortClick = { showSortDialog = true }
+                    onSortClick = { showSortDialog = true },
+                    onColumnCountClick = { showColumnCountDialog = true }
                 )
             }
         }
@@ -107,6 +109,17 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     showSortDialog = false
                 },
                 onDismiss = { showSortDialog = false }
+            )
+        }
+
+        if (showColumnCountDialog) {
+            ColumnCountDialog(
+                currentCount = columnsCount,
+                onCountSelected = {
+                    viewModel.setColumnsCount(it)
+                    showColumnCountDialog = false
+                },
+                onDismiss = { showColumnCountDialog = false }
             )
         }
 
@@ -211,6 +224,50 @@ fun SortOption(
             modifier = Modifier.padding(start = 16.dp)
         )
     }
+}
+
+@Composable
+fun ColumnCountDialog(
+    currentCount: Int,
+    onCountSelected: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Column count") },
+        text = {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(5),
+                modifier = Modifier.height(250.dp)
+            ) {
+                items(20) { index ->
+                    val count = index + 1
+                    val isSelected = count == currentCount
+                    Box(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .combinedClickable(
+                                onClick = { onCountSelected(count) }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = count.toString(),
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

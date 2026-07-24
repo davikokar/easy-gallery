@@ -1,51 +1,40 @@
-# Implementation Plan - Sorting and Overflow Menu
+# Implementation Plan - Change View Type (Grid/List)
 
-This plan outlines the steps to add an overflow menu to the gallery top bar and implement folder sorting functionality.
+This plan outlines the steps to add a "View Type" selection, allowing users to switch between the existing square grid and a new informative list view for their folders.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - Pinned folders will always remain at the top of the list, regardless of the chosen sort order.
-> - The "Random" sort will reshuffle the list each time it is selected or when the data refreshes.
-> - The menu will include placeholders for: column count, temporarily show excluded, filter media, change view type, and settings. Only "Sort by" will be functional for now.
+> - **View Type Persistence**: For now, the view type will be stored in the ViewModel (memory).
+> - **List Layout**:
+>   - Left side: A square thumbnail (tile).
+>   - Right side (Top line): Folder Name and Image Count.
+>   - Right side (Bottom line): Full folder path.
+> - This feature specifically applies to the **Folder List** view.
 
 ## Proposed Changes
-
-### Data Layer
-
-#### [MODIFY] [Folder.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/Folder.kt)
-- Expand the `Folder` data class to include fields needed for sorting:
-    - `path: String`
-    - `totalSize: Long`
-    - `lastModified: Long`
-    - `dateTaken: Long`
-
-#### [MODIFY] [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt)
-- Update the projection in `getFolders()` to fetch:
-    - `DATA` (for path)
-    - `SIZE`
-    - `DATE_MODIFIED`
-    - `DATE_TAKEN`
-- Aggregate these values when grouping images into folders (e.g., sum sizes, find max date).
-
----
 
 ### UI Layer
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- Add `SortType` enum: `NAME`, `PATH`, `SIZE`, `LAST_MODIFIED`, `DATE_TAKEN`, `RANDOM`.
-- Add `currentSortType` StateFlow.
-- Update `filteredFolders` Flow to apply sorting based on `currentSortType`, keeping `isPinned` folders at the top.
-- Add `setSortType(sortType: SortType)` function.
+- Add `ViewType` enum: `GRID`, `LIST`.
+- Add `viewType: StateFlow<ViewType>` state.
+- Add `setViewType(viewType: ViewType)` function.
 
 #### [MODIFY] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt)
-- Add an overflow menu (3 dots) to the `actions` section.
-- Implement the menu items: Sort by, Column count, etc.
-- Only "Sort by" will trigger an action (callback to show the dialog).
+- Add `onViewTypeClick: (() -> Unit)?` callback.
+- Connect the "Change view type" menu item to this callback.
 
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Add state to show/hide the `SortDialog`.
-- Implement `SortDialog` composable to let the user select a `SortType`.
+- Add `showViewTypeDialog` state.
+- Implement `ViewTypeDialog` composable to let users pick between Grid and List.
+- Create `FolderList` composable (using `LazyColumn`).
+- Create `FolderListItem` composable:
+    - `Row` with `AsyncImage` (fixed size square) on the left.
+    - `Column` on the right containing:
+        - `Row` with Folder Name (Bold) and Count.
+        - Folder Path (smaller, secondary text).
+- Update the main `FolderListScreen` logic to switch between `FolderGrid` and `FolderList` based on the ViewModel state.
 
 ## Verification Plan
 
@@ -53,13 +42,17 @@ This plan outlines the steps to add an overflow menu to the gallery top bar and 
 - Verify build success.
 
 ### Manual Verification
-1.  **Overflow Menu**:
-    - Tap the 3 dots in the top bar.
-    - Verify the menu appears with all requested options.
-2.  **Sorting**:
-    - Tap "Sort by".
-    - Select different options (Name, Size, Date, etc.).
-    - Verify the folder grid reorders correctly.
-    - Verify pinned folders stay at the top during any sort.
-3.  **Persistence**:
-    - Ensure sorting works even after searching or zooming.
+1.  **Menu Integration**:
+    - Tap the 3 dots -> "Change view type".
+    - Verify the dialog appears.
+2.  **Switch to List**:
+    - Select "List" -> The folder display should change from squares to a vertical list.
+    - Verify thumbnail on the left, details on the right.
+3.  **Details in List**:
+    - Verify the name, image count, and path are correctly displayed.
+4.  **Switch to Grid**:
+    - Select "Grid" -> Return to the original square grid layout.
+5.  **Functionality**:
+    - Verify search and sorting still work correctly in List mode.
+    - Verify clicking a list item opens the folder detail.
+    - Verify long-pressing enters selection mode.
