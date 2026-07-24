@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Photo
+import com.davide.seddio.easygallery.ui.components.PhotoItem
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,50 +89,6 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 items(photos) { photo ->
                     PhotoItem(photo, showInfo)
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun PhotoItem(photo: Photo, showInfo: Boolean) {
-    Card(
-        modifier = Modifier
-            .padding(4.dp)
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = photo.uri,
-                contentDescription = photo.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            if (showInfo) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                                startY = 100f
-                            )
-                        )
-                )
-                Text(
-                    text = photo.name,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(4.dp)
-                )
             }
         }
     }

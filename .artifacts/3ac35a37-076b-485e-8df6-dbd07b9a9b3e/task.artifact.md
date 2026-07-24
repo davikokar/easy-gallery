@@ -5,10 +5,11 @@
 - [x] Implement Folder Detail View
 - [x] Implement Search Functionality
 - [x] Implement Multiselection, Pinning, and Deletion
-    - [x] Add `isPinned` to `Folder` data class
-    - [x] Update `GalleryViewModel` with selection/pinning logic and state
-    - [x] Create `SelectionTopBar` component
-    - [x] Update `FolderListScreen` with long-press and selection UI
-    - [x] Implement delete confirmation dialog
-- [x] Verification
-    - [x] Build and verify
+- [ ] Implement Calendar View Mode
+    - [ ] Update `MediaStoreDataSource` with `getAllPhotos`
+    - [ ] Update `GalleryViewModel` with `DisplayMode` and date-grouping logic
+    - [ ] Add toggle icons to `SearchTopBar`
+    - [ ] Implement `CalendarGrid` UI
+    - [ ] Update `FolderListScreen` to handle mode switching
+- [ ] Verification
+    - [ ] Build and verify

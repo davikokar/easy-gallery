@@ -40,6 +40,10 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val isSearchActive by viewModel.isSearchActive.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedFolders by viewModel.selectedFolders.collectAsState()
+    val displayMode by viewModel.displayMode.collectAsState()
+    val groupedPhotos by viewModel.groupedPhotosByDate.collectAsState()
+    val showInfo by viewModel.showInfo.collectAsState()
+    
     var cumulativeScale by remember { mutableFloatStateOf(1f) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -57,11 +61,13 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 )
             } else {
                 SearchTopBar(
-                    title = "Easy Gallery",
+                    title = if (displayMode == DisplayMode.GALLERY) "Easy Gallery" else "Timeline",
                     searchQuery = searchQuery,
                     isSearchActive = isSearchActive,
+                    displayMode = displayMode,
                     onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                    onSearchActiveChange = { viewModel.setSearchActive(it) }
+                    onSearchActiveChange = { viewModel.setSearchActive(it) },
+                    onToggleDisplayMode = { viewModel.toggleDisplayMode() }
                 )
             }
         }
@@ -103,24 +109,32 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     }
                 }
         ) {
-            when (val state = uiState) {
-                is GalleryUiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+            if (displayMode == DisplayMode.CALENDAR) {
+                CalendarGrid(
+                    groupedPhotos = groupedPhotos,
+                    columns = columnsCount,
+                    showInfo = showInfo
+                )
+            } else {
+                when (val state = uiState) {
+                    is GalleryUiState.Loading -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
                     }
-                }
-                is GalleryUiState.Success -> {
-                    FolderGrid(
-                        folders = state.folders,
-                        columns = columnsCount,
-                        selectedFolders = selectedFolders,
-                        onFolderClick = { viewModel.selectFolder(it) },
-                        onFolderLongClick = { viewModel.enterSelectionMode(it.name) }
-                    )
-                }
-                is GalleryUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = "Error: ${state.message}", color = MaterialTheme.colorScheme.error)
+                    is GalleryUiState.Success -> {
+                        FolderGrid(
+                            folders = state.folders,
+                            columns = columnsCount,
+                            selectedFolders = selectedFolders,
+                            onFolderClick = { viewModel.selectFolder(it) },
+                            onFolderLongClick = { viewModel.enterSelectionMode(it.name) }
+                        )
+                    }
+                    is GalleryUiState.Error -> {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(text = "Error: ${state.message}", color = MaterialTheme.colorScheme.error)
+                        }
                     }
                 }
             }

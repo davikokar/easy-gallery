@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 class GalleryViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -20,6 +22,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
+
+    private val _displayMode = MutableStateFlow(DisplayMode.GALLERY)
+    val displayMode: StateFlow<DisplayMode> = _displayMode.asStateFlow()
+
+    private val _allPhotos = MutableStateFlow<List<Photo>>(emptyList())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -52,6 +59,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
+    val groupedPhotosByDate: StateFlow<Map<String, List<Photo>>> = combine(
+        _allPhotos, _searchQuery
+    ) { photos, query ->
+        val filtered = if (query.isNotEmpty()) {
+            photos.filter { it.name.contains(query, ignoreCase = true) }
+        } else {
+            photos
+        }
+        groupPhotosByDate(filtered)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
     private val _columnsCount = MutableStateFlow(2)
     val columnsCount: StateFlow<Int> = _columnsCount.asStateFlow()
 
@@ -78,6 +96,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val folders = dataSource.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
+                _allPhotos.value = dataSource.getAllPhotos()
             } catch (e: Exception) {
                 _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
             }
@@ -117,6 +136,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _showInfo.value = !_showInfo.value
     }
 
+    fun toggleDisplayMode() {
+        _displayMode.value = if (_displayMode.value == DisplayMode.GALLERY) DisplayMode.CALENDAR else DisplayMode.GALLERY
+    }
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -153,8 +176,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun deleteSelected() {
-        // In a real app, this would delete files from MediaStore
-        // For now, we simulate by removing from the current state
         val toDelete = _selectedFolders.value
         val currentState = _uiState.value
         if (currentState is GalleryUiState.Success) {
@@ -167,19 +188,38 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     fun pinSelected() {
         val selected = _selectedFolders.value
         val currentPinned = _pinnedFolders.value.toMutableSet()
-        
-        // If all selected are already pinned, unpin them. Otherwise, pin all.
         val allSelectedPinned = selected.all { currentPinned.contains(it) }
-        
         if (allSelectedPinned) {
             currentPinned.removeAll(selected)
         } else {
             currentPinned.addAll(selected)
         }
-        
         _pinnedFolders.value = currentPinned
         exitSelectionMode()
     }
+
+    private fun groupPhotosByDate(photos: List<Photo>): Map<String, List<Photo>> {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val today = sdf.format(Date())
+        val yesterday = sdf.format(Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000))
+
+        return photos.groupBy {
+            val dateStr = sdf.format(Date(it.dateAdded * 1000))
+            when (dateStr) {
+                today -> "Today"
+                yesterday -> "Yesterday"
+                else -> {
+                    // Prettier date format for older groups
+                    val prettySdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
+                    prettySdf.format(Date(it.dateAdded * 1000))
+                }
+            }
+        }
+    }
+}
+
+enum class DisplayMode {
+    GALLERY, CALENDAR
 }
 
 sealed class GalleryUiState {

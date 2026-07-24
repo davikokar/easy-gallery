@@ -1,50 +1,45 @@
-# Implementation Plan - Multiselection, Deletion, and Pinning
+# Implementation Plan - Calendar View Mode
 
-This plan outlines the steps to add multiselection capabilities to the gallery, allowing users to select multiple folders to delete or pin them to the top of the list.
+This plan outlines the steps to add a "Calendar Mode" to the main gallery view, allowing users to see all their photos grouped by date (e.g., Today, Yesterday, July 24, etc.).
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Deletion**: Deleting folders from the device is a destructive action. I will implement a confirmation dialog. Note that on Android 10+, deleting files through `MediaStore` may trigger an additional system-level confirmation dialog.
-> - **Pinning**: Pinned folders will always appear at the top of the list, regardless of the alphabetical sorting.
-> - **Multiselection Mode**: Triggered by a long-press. While active, the normal search and title are replaced by a selection toolbar.
+> - A new toggle icon will be added to the TopBar.
+> - The calendar view will display all photos in chronological order, grouped by date.
+> - Zooming (pinch-to-zoom) will still be available in the calendar grid.
+> - Search will still work in calendar mode, filtering photos by filename across all dates.
 
 ## Proposed Changes
 
 ### Data Layer
 
-#### [MODIFY] [Folder.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/Folder.kt)
-- Add `isPinned: Boolean = false` to the data class.
+#### [MODIFY] [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt)
+- Add `getAllPhotos(): List<Photo>` to fetch every image on the device.
 
 ---
 
 ### UI Layer
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- **State**:
-    - `isSelectionMode: StateFlow<Boolean>`
-    - `selectedFolders: StateFlow<Set<String>>` (storing folder names)
-    - `pinnedFolders: StateFlow<Set<String>>` (for persistent pinning logic)
-- **Logic**:
-    - Update `loadFolders` to apply pinning status.
-    - Update `filteredFolders` to sort: `isPinned` DESC, then `name` ASC.
-    - Add `toggleSelection(folderName: String)`.
-    - Add `enterSelectionMode(initialFolder: String)`.
-    - Add `exitSelectionMode()`.
-    - Add `deleteSelected()` and `pinSelected()`.
+- Add `DisplayMode` enum: `GALLERY` (Folder-based) and `CALENDAR` (Date-based).
+- Add `displayMode` StateFlow.
+- Add `allPhotos` StateFlow.
+- Add `groupedPhotosByDate` StateFlow:
+    - This will compute the chronological grouping (Latest first).
+    - It will also respect the search query.
+- Add `toggleDisplayMode()` function.
+
+#### [NEW] [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
+- Implement a screen/component showing a scrollable list of date-grouped photo grids.
+- Use `LazyVerticalGrid` or a nested `LazyColumn` + `LazyVerticalGrid` (or just `LazyColumn` with multiple rows) to display the grouped photos.
+
+#### [MODIFY] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt)
+- Add an optional `extraActions` slot or specifically add the toggle button logic.
 
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- **TopBar**:
-    - Add a conditional TopBar for selection mode.
-    - Display: Back arrow (exit), "X / Y selected" counter, Bin icon, Pin icon.
-- **Grid Interaction**:
-    - Update `FolderItem` to support `onLongClick`.
-    - Show a tick icon in the top-right corner of selected items.
-- **Confirmation Dialog**:
-    - Implement a `DeleteConfirmationDialog` that appears when the bin icon is clicked.
-
-#### [NEW] [SelectionTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SelectionTopBar.kt)
-- Create a reusable component for the multiselection toolbar.
+- Add the toggle icon to the `SearchTopBar`.
+- Conditionally display either the `FolderGrid` or the new `CalendarGrid` based on the current `displayMode`.
 
 ## Verification Plan
 
@@ -52,13 +47,12 @@ This plan outlines the steps to add multiselection capabilities to the gallery, 
 - Verify build success.
 
 ### Manual Verification
-1.  **Selection Mode**:
-    - Long-press a folder -> Selection mode starts, UI updates.
-    - Tap other folders -> Selection count updates, ticks appear/disappear.
-    - Tap back arrow -> Mode exits, selection cleared.
-2.  **Pinning**:
-    - Select folders -> Tap Pin -> Folders move to the top and stay there.
-    - Select pinned folders -> Tap Pin -> Folders are unpinned.
-3.  **Deletion**:
-    - Select folders -> Tap Bin -> Confirmation dialog appears.
-    - Confirm -> Folders (and their content) are removed from the list.
+1.  **Toggle Mode**:
+    - Tap the calendar icon in Gallery mode -> View switches to chronological grouping.
+    - Tap the gallery icon in Calendar mode -> View switches back to folder-based squares.
+2.  **Calendar View**:
+    - Verify photos are grouped by date (Today, Yesterday, etc.).
+    - Verify most recent photos are at the top.
+    - Verify pinch-to-zoom works in calendar mode.
+3.  **Search**:
+    - Enter search mode while in calendar view -> Photos should be filtered across all dates.
