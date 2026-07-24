@@ -1,20 +1,20 @@
 package com.davide.seddio.easygallery.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,6 +27,8 @@ import com.davide.seddio.easygallery.data.Folder
 @Composable
 fun FolderListScreen(viewModel: GalleryViewModel) {
     val uiState by viewModel.uiState.collectAsState()
+    val columnsCount by viewModel.columnsCount.collectAsState()
+    var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
     Scaffold(
         topBar = {
@@ -35,7 +37,22 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, _, zoom, _ ->
+                        cumulativeScale *= zoom
+                        if (cumulativeScale > 1.2f) {
+                            viewModel.decreaseColumns()
+                            cumulativeScale = 1f
+                        } else if (cumulativeScale < 0.8f) {
+                            viewModel.increaseColumns()
+                            cumulativeScale = 1f
+                        }
+                    }
+                }
+        ) {
             when (val state = uiState) {
                 is GalleryUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -43,7 +60,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     }
                 }
                 is GalleryUiState.Success -> {
-                    FolderGrid(folders = state.folders)
+                    FolderGrid(folders = state.folders, columns = columnsCount)
                 }
                 is GalleryUiState.Error -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -56,9 +73,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
 }
 
 @Composable
-fun FolderGrid(folders: List<Folder>) {
+fun FolderGrid(folders: List<Folder>, columns: Int) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Fixed(columns),
         contentPadding = PaddingValues(8.dp),
         modifier = Modifier.fillMaxSize()
     ) {

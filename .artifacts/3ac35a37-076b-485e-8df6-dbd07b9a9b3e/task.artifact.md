@@ -1,17 +1,4 @@
-- [x] Setup Configuration & Dependencies
-    - [x] Add permissions to `AndroidManifest.xml`
-    - [x] Add Coil to `libs.versions.toml`
-    - [x] Add Coil to `build.gradle.kts`
-    - [x] Sync Gradle
-- [x] Implement Data Layer
-    - [x] Create `Folder` data class
-    - [x] Implement `MediaStoreDataSource`
-- [x] Implement UI Layer
-    - [x] Create `GalleryViewModel`
-    - [x] Create `FolderItem` composable
-    - [x] Create `FolderListScreen` composable
-- [x] Finalize Integration
-    - [x] Update `MainActivity` with permission handling
-    - [x] Connect `MainActivity` to `FolderListScreen`
-- [x] Verification
-    - [x] Build and verify
+- [x] Update `GalleryViewModel` with column count state
+- [x] Implement pinch gesture detection in `FolderListScreen`
+- [x] Connect gesture detection to ViewModel actions
+- [x] Verify build and functionality

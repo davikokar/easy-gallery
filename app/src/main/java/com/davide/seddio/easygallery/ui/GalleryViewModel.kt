@@ -17,6 +17,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
 
+    private val _columnsCount = MutableStateFlow(2)
+    val columnsCount: StateFlow<Int> = _columnsCount.asStateFlow()
+
     fun loadFolders() {
         viewModelScope.launch {
             _uiState.value = GalleryUiState.Loading
@@ -26,6 +29,18 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
             }
+        }
+    }
+
+    fun increaseColumns() {
+        if (_columnsCount.value < 5) {
+            _columnsCount.value += 1
+        }
+    }
+
+    fun decreaseColumns() {
+        if (_columnsCount.value > 1) {
+            _columnsCount.value -= 1
         }
     }
 }
