@@ -29,6 +29,7 @@ import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Photo
 import com.davide.seddio.easygallery.ui.components.PhotoItem
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
+import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 onSearchActiveChange = { viewModel.setSearchActive(it) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.backToFolders() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 actions = {
@@ -58,12 +59,13 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                         Icon(
                             Icons.Default.Info,
                             contentDescription = "Toggle Info",
-                            tint = if (showInfo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            tint = if (showInfo) MaterialTheme.colorScheme.primary else Color.White
                         )
                     }
                 }
             )
-        }
+        },
+        containerColor = BottomGrey
     ) { padding ->
         var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
@@ -71,6 +73,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
+                .background(BottomGrey)
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columnsCount),
@@ -84,10 +87,10 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                                 val zoom = event.calculateZoom()
                                 if (zoom != 1f) {
                                     cumulativeScale *= zoom
-                                    if (cumulativeScale > 1.2f) {
+                                    if (cumulativeScale > 1.25f) {
                                         viewModel.decreaseColumns()
                                         cumulativeScale = 1f
-                                    } else if (cumulativeScale < 0.8f) {
+                                    } else if (cumulativeScale < 0.75f) {
                                         viewModel.increaseColumns()
                                         cumulativeScale = 1f
                                     }

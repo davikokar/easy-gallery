@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.ui.components.ZoomableImage
+import com.davide.seddio.easygallery.ui.theme.BottomGrey
+import com.davide.seddio.easygallery.ui.theme.TopBarBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,8 +121,10 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Black.copy(alpha = 0.5f),
-                            titleContentColor = Color.White
+                            containerColor = TopBarBlue,
+                            titleContentColor = Color.White,
+                            navigationIconContentColor = Color.White,
+                            actionIconContentColor = Color.White
                         )
                     )
                 }
@@ -133,7 +137,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     Surface(
-                        color = Color.Black.copy(alpha = 0.5f),
+                        color = BottomGrey,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(

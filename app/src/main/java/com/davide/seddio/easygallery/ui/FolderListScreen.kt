@@ -36,6 +36,7 @@ import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 import com.davide.seddio.easygallery.ui.components.SelectionTopBar
+import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +84,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onViewTypeClick = { showViewTypeDialog = true }
                 )
             }
-        }
+        },
+        containerColor = BottomGrey
     ) { padding ->
         if (showDeleteDialog) {
             AlertDialog(
@@ -139,7 +141,12 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
 
-        Box(modifier = Modifier.padding(padding)) {
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(BottomGrey)
+        ) {
             if (displayMode == DisplayMode.CALENDAR) {
                 CalendarGrid(
                     viewModel = viewModel,
@@ -357,15 +364,13 @@ fun FolderGrid(
                         val zoom = event.calculateZoom()
                         if (zoom != 1f) {
                             cumulativeScale *= zoom
-                            if (cumulativeScale > 1.2f) {
+                            if (cumulativeScale > 1.25f) {
                                 onZoomIn()
                                 cumulativeScale = 1f
-                            } else if (cumulativeScale < 0.8f) {
+                            } else if (cumulativeScale < 0.75f) {
                                 onZoomOut()
                                 cumulativeScale = 1f
                             }
-                            // Don't fully consume if we want scrolling to potentially work, 
-                            // but for zoom it's usually okay to consume.
                             event.changes.forEach { it.consume() }
                         }
                     } while (event.changes.any { it.pressed })
@@ -401,7 +406,8 @@ fun FolderGridItem(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = BottomGrey)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
@@ -485,7 +491,7 @@ fun FolderList(
     onFolderLongClick: (Folder) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().background(BottomGrey),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(folders) { folder ->
@@ -514,8 +520,8 @@ fun FolderListItem(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else BottomGrey
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -577,18 +583,19 @@ fun FolderListItem(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        color = Color.White
                     )
                     Text(
                         text = "${folder.imageCount} items",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
                 Text(
                     text = folder.path,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.White.copy(alpha = 0.5f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

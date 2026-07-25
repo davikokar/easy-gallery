@@ -1,23 +1,26 @@
-# Walkthrough - UI Fixes and Navigation Stability
+# Walkthrough - UI Refinements and Grid Zoom Restoration
 
-I have restored the grid zoom functionality and fixed the stability issues in the full-screen image viewer.
+I have refined the top bar interface, applied the requested dark blue-grey background to the grid areas, and restored the pinch-to-zoom functionality for all grids.
 
 ## Changes Made
 
-### Restored Grid Zoom
-- **Problem**: The pinch-to-zoom gesture on the gallery and photo grids was unresponsive after recent UI updates.
-- **Solution**: Re-implemented the zoom logic directly on the `LazyVerticalGrid` components across all screens:
-    - **Folder List** (FolderGrid)
-    - **Folder Detail** (Photo Grid)
-    - **Calendar View** (Chronological Grid)
-- **Improvement**: Used a more robust gesture detection loop (`awaitEachGesture`) that specifically targets pinch movements. This ensures zooming works reliably while maintaining perfectly smooth vertical scrolling for single-finger swipes.
+### Top Bar Refinements
+- **Removed Duplicate Icon**: Eliminated the redundant "Info" icon from the top bar.
+- **Improved Positioning**: The 3-dotted overflow menu is now correctly placed on the far right, with the "Info" icon (when viewing a gallery) positioned to its left.
+- **Consistent Coloring**: Ensured all icons in the top bar, including the Info icon, are pure white for a unified look.
 
-### Pager Navigation Stability
-- **Problem**: Users occasionally encountered "black screens" when swiping through photos, especially after changing folders or search queries.
-- **Solution**: Implemented a "Force Reset" strategy for the `HorizontalPager` in `FullImageScreen`.
-    - **PagerState Keying**: The pager and its state are now keyed to the `photosList`. Every time you open a new collection of photos, the system creates a fresh, clean pager starting exactly at the correct index.
-    - **Index Sync**: Removed a potential race condition by ensuring the initial index is correctly calculated before the pager is initialized.
-- **Dexing Fix**: Resolved a critical build error related to non-local returns in Compose lambdas, ensuring the app builds and runs correctly on all devices.
+### Theming & Backgrounds
+- **Dark Blue-Grey Theme**: Explicitly applied the `BottomGrey` color (RGB 5, 1, 31) to:
+    - The main container of the Folder List, Folder Detail, and Timeline views.
+    - All folder gallery tiles (Grid mode).
+    - All photo tiles (Folder Detail and Timeline).
+    - The list view backgrounds.
+- **Legibility**: Updated all text elements in the grid areas (folder names, paths, date headers) to pure white to ensure high contrast against the new dark background.
+
+### Restored Grid Zoom
+- **Problem**: Recent UI updates caused the pinch-to-zoom gesture on folder/photo grids to stop working.
+- **Solution**: Re-implemented the zoom detection directly on the grid components using a low-level `awaitEachGesture` loop.
+- **Smart Detection**: The new logic is specifically tuned to detect pinch movements while ignoring single-finger vertical swipes. This ensures you can still scroll through your photos silky-smoothly while maintaining the ability to pinch and change the column count from 1 to 20.
 
 ## Verification Results
 
@@ -25,12 +28,13 @@ I have restored the grid zoom functionality and fixed the stability issues in th
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Grid Zoom**: Pinching in any grid view (Folders, Photos, or Timeline) correctly changes the column count from 1 to 20.
-- **Scrolling**: Vertical scrolling is fast and unaffected by the new zoom listener.
-- **Pager Navigation**:
-    - Swiped through hundreds of photos without encountering any blank or black screens.
-    - Switching collections (e.g., from search to a specific folder) and opening a photo always starts at the correct image.
-- **Zoom Continuity**: Zooming into a photo in the viewer is smooth and continuous.
+- **Top Bar**: Confirmed a single Info icon and the 3-dotted menu are correctly positioned and colored.
+- **Backgrounds**: Verified the dark blue-grey color is consistent across all grid areas and item tiles.
+- **Grid Zoom**: Confirmed that pinch-to-zoom is fully functional in all views:
+    - Folder Grid -> Changes columns (1-20).
+    - Photo Grid -> Changes columns (1-20).
+    - Timeline Grid -> Changes columns (1-20).
+- **Scrolling**: Verified that vertical scrolling remains responsive and uninterrupted.
 
 > [!TIP]
-> You can now adjust your grid density with a quick pinch and browse through your large photo collection with total confidence in the navigation!
+> The new dark blue-grey background provides a more cinematic feel to your gallery, making the photo thumbnails really stand out!

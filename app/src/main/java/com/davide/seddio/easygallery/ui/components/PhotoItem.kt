@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Photo
+import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @Composable
 fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
@@ -27,7 +28,8 @@ fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
             .aspectRatio(1f)
             .clip(RoundedCornerShape(4.dp))
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = BottomGrey)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(

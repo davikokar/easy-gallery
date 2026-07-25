@@ -12,10 +12,9 @@
 - [x] Implement Full-Screen Image Viewer
 - [x] Fix Rotation Resizing and Swipe Navigation
 - [x] Improve Image Viewer Reliability (Navigation & Zoom)
-- [x] Fix Grid Zoom and Pager Index Sync
-    - [x] Update `FolderListScreen` grid zoom logic
-    - [x] Update `FolderDetailScreen` grid zoom logic
-    - [x] Update `CalendarGrid` zoom logic
-    - [x] Fix Pager re-initialization in `FullImageScreen`
+- [x] UI Refinements and Grid Zoom Restoration
+    - [x] Remove duplicate Info icon in `SearchTopBar`
+    - [x] Apply `BottomGrey` background to all grid areas and tiles
+    - [x] Re-implement pinch-to-zoom logic for grids
 - [x] Verification
     - [x] Build and verify

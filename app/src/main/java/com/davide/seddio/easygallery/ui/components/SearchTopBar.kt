@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.davide.seddio.easygallery.ui.DisplayMode
+import com.davide.seddio.easygallery.ui.theme.TopBarBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,45 +40,60 @@ fun SearchTopBar(
                 TextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Search...") },
+                    placeholder = { Text("Search...", color = Color.White.copy(alpha = 0.7f)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(color = Color.White),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
                         disabledContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Color.White
                     )
                 )
             },
             navigationIcon = {
                 IconButton(onClick = { onSearchActiveChange(false) }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancel Search")
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Cancel Search",
+                        tint = Color.White
+                    )
                 }
-            }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = TopBarBlue,
+                titleContentColor = Color.White,
+                navigationIconContentColor = Color.White,
+                actionIconContentColor = Color.White
+            )
         )
     } else {
         TopAppBar(
-            title = { Text(title) },
+            title = { Text(title, color = Color.White) },
             navigationIcon = navigationIcon ?: {},
             actions = {
                 if (onToggleDisplayMode != null && displayMode != null) {
                     IconButton(onClick = onToggleDisplayMode) {
                         Icon(
                             imageVector = if (displayMode == DisplayMode.GALLERY) Icons.Default.CalendarMonth else Icons.Default.Image,
-                            contentDescription = "Toggle Display Mode"
+                            contentDescription = "Toggle Display Mode",
+                            tint = Color.White
                         )
                     }
                 }
                 IconButton(onClick = { onSearchActiveChange(true) }) {
-                    Icon(Icons.Default.Search, contentDescription = "Search")
+                    Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
                 }
                 
+                actions?.invoke(this)
+
                 // Overflow Menu
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = Color.White)
                     }
                     DropdownMenu(
                         expanded = showMenu,
@@ -109,8 +125,13 @@ fun SearchTopBar(
                         DropdownMenuItem(text = { Text("Settings") }, onClick = { showMenu = false })
                     }
                 }
-                actions?.invoke(this)
-            }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = TopBarBlue,
+                titleContentColor = Color.White,
+                navigationIconContentColor = Color.White,
+                actionIconContentColor = Color.White
+            )
         )
     }
 }

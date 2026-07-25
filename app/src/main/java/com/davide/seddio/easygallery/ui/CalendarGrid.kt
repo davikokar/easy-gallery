@@ -16,9 +16,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.davide.seddio.easygallery.data.Photo
 import com.davide.seddio.easygallery.ui.components.PhotoItem
+import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @Composable
 fun CalendarGrid(
@@ -34,6 +34,7 @@ fun CalendarGrid(
         contentPadding = PaddingValues(8.dp),
         modifier = Modifier
             .fillMaxSize()
+            .background(BottomGrey)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     do {
@@ -41,10 +42,10 @@ fun CalendarGrid(
                         val zoom = event.calculateZoom()
                         if (zoom != 1f) {
                             cumulativeScale *= zoom
-                            if (cumulativeScale > 1.2f) {
+                            if (cumulativeScale > 1.25f) {
                                 viewModel.decreaseColumns()
                                 cumulativeScale = 1f
-                            } else if (cumulativeScale < 0.8f) {
+                            } else if (cumulativeScale < 0.75f) {
                                 viewModel.increaseColumns()
                                 cumulativeScale = 1f
                             }
@@ -61,6 +62,7 @@ fun CalendarGrid(
                     text = date,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     modifier = Modifier
                         .padding(vertical = 12.dp, horizontal = 4.dp)
                         .fillMaxWidth()
