@@ -87,6 +87,7 @@ class MediaStoreDataSource(private val context: Context) {
         val projection = mutableListOf(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
             MediaStore.MediaColumns.DATE_ADDED,
             MediaStore.MediaColumns.MIME_TYPE
         ).apply {
@@ -96,6 +97,7 @@ class MediaStoreDataSource(private val context: Context) {
         context.contentResolver.query(uri, projection, selection, selectionArgs, "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { cursor ->
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
             val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+            val bucketCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
             val addedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
             val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
             val durCol = if (isVideo) cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
@@ -103,6 +105,7 @@ class MediaStoreDataSource(private val context: Context) {
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
                 val name = cursor.getString(nameCol) ?: "Unknown"
+                val bucket = cursor.getString(bucketCol) ?: "Unknown"
                 val added = cursor.getLong(addedCol)
                 val mime = cursor.getString(mimeCol) ?: ""
                 val duration = if (isVideo) cursor.getLong(durCol) else null
@@ -114,7 +117,7 @@ class MediaStoreDataSource(private val context: Context) {
                     else -> MediaType.IMAGE
                 }
 
-                onItem(MediaItem(itemUri, name, added, type, duration))
+                onItem(MediaItem(itemUri, name, added, type, bucket, duration))
             }
         }
     }

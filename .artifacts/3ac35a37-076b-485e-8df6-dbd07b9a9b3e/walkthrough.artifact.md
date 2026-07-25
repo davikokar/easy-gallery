@@ -1,20 +1,29 @@
-# Walkthrough - UI Refinements and Full-Screen Experience
+# Walkthrough - Folder Exclusion and Enhanced Selection
 
-I have refined the full-screen image viewer by removing the top bar, allowing for a more immersive viewing experience where navigation back is handled via the system back button.
+I have implemented the "Exclude" functionality and finalized the multiselection toolbar, providing advanced tools for managing your gallery.
 
 ## Changes Made
 
-### Full-Screen Viewer Enhancements
-- **Removed Top Bar**: The top app bar (displaying the photo name and back arrow) has been removed from the `FullImageScreen`.
-- **Immersive Navigation**: Users can now return to the grid view using the system's bottom back button (<), ensuring the image occupies more vertical space.
-- **Persistent Bottom Bar**: The bottom action bar (Delete, Share, Rotate) remains togglable via a single tap, while the top area remains clear.
+### Folder Exclusion
+- **Exclude Functionality**: Users can now select one or more folders and "Exclude" them from the gallery.
+- **Educational Dialog**: Tapping "Exclude" triggers a confirmation request explaining that the folders will be hidden and pointing users to "Settings > Manage Excluded" for restoration.
+- **Unified Hiding**: When a folder is excluded, its content is automatically hidden from both the **Folder List** and the **Chronological Timeline**.
+- **Data Integration**: Added `bucketName` to the `MediaItem` data class to ensure precise filtering across all view modes.
 
-### Theming & Backgrounds
-- **Dark Blue-Grey Theme**: Explicitly applied the `BottomGrey` color (RGB 5, 1, 31) to:
-    - The main container of the Folder List, Folder Detail, and Timeline views.
-    - All folder gallery tiles (Grid mode).
-    - All photo tiles (Folder Detail and Timeline).
-- **Consistent Icons**: Ensured all management icons in the top bars are white and correctly positioned.
+### Enhanced Multiselection Toolbar
+- **SelectionTopBar Overhaul**:
+    - **Properties (Info icon)**: Tapping this icon opens a window showing:
+        - Total items selected.
+        - Cumulative content size (in MB).
+        - Total file count.
+        - (If single folder) Folder Name and Physical Path.
+    - **Optimized Order**: Re-arranged icons for better flow: Back, Counter, Properties, Pin, Delete, and the 3-dot Menu.
+    - **Complete Menu**: The 3-dotted menu now includes: Rename, Copy to, Move to, Exclude, and Select all.
+
+### Visual & Logic Consistency
+- **Search Integration**: Activating selection mode automatically clears and closes any active search.
+- **Sorting & Pinning**: Exclusion logic respects pinned folders and custom sorting criteria.
+- **Unified Colors**: All selection icons and text use high-contrast white against the theme's deep blue bar.
 
 ## Verification Results
 
@@ -22,9 +31,10 @@ I have refined the full-screen image viewer by removing the top bar, allowing fo
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Full-Screen Viewer**: Confirmed that images and videos now open without a top bar.
-- **Back Navigation**: Verified that the system back button correctly returns the user to the previous gallery or timeline view.
-- **Toggling UI**: Confirmed that tapping the image still hides/shows the bottom action bar.
+- **Exclusion Flow**: Selected a folder -> Menu -> Exclude -> Confirmed via dialog -> Folder disappeared from list.
+- **Timeline Sync**: Verified that photos from an excluded folder no longer appear in the timeline.
+- **Properties Viewer**: Verified that the MB totals and file counts aggregate correctly for multiple folders.
+- **Select All**: Confirmed that "Select all" works instantly across the entire list.
 
-> [!TIP]
-> With the top bar removed, your photos and videos have even more room to shine!
+> [!IMPORTANT]
+> Excluded folders are currently managed in memory for this session. The full "Manage Excluded" settings screen will be implemented in a future update to allow persistent restoration.

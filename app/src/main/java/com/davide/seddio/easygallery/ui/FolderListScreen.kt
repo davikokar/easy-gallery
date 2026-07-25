@@ -57,6 +57,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     var showColumnCountDialog by remember { mutableStateOf(false) }
     var showViewTypeDialog by remember { mutableStateOf(false) }
     var showPropertiesDialog by remember { mutableStateOf(false) }
+    var showExcludeDialog by remember { mutableStateOf(false) }
 
     val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
 
@@ -71,10 +72,10 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onPin = { viewModel.pinSelected() },
                     onInfoClick = { showPropertiesDialog = true },
                     onSelectAll = { viewModel.selectAll() },
+                    onExclude = { showExcludeDialog = true },
                     onRename = { /* Placeholder */ },
                     onCopyTo = { /* Placeholder */ },
-                    onMoveTo = { /* Placeholder */ },
-                    onExclude = { /* Placeholder */ }
+                    onMoveTo = { /* Placeholder */ }
                 )
             } else {
                 SearchTopBar(
@@ -108,6 +109,27 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showExcludeDialog) {
+            AlertDialog(
+                onDismissRequest = { showExcludeDialog = false },
+                title = { Text("Exclude Folders") },
+                text = { Text("The selected folders will be excluded from the gallery. If you want to include them again, you must visit Settings > Manage Excluded.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.excludeSelected()
+                        showExcludeDialog = false
+                    }) {
+                        Text("Exclude")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showExcludeDialog = false }) {
                         Text("Cancel")
                     }
                 }

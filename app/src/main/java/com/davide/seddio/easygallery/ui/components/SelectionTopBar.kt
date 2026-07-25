@@ -22,10 +22,10 @@ fun SelectionTopBar(
     onPin: () -> Unit,
     onInfoClick: () -> Unit,
     onSelectAll: () -> Unit,
+    onExclude: () -> Unit,
     onRename: () -> Unit,
     onCopyTo: () -> Unit,
-    onMoveTo: () -> Unit,
-    onExclude: () -> Unit
+    onMoveTo: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 

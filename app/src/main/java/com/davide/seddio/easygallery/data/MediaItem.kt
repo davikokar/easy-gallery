@@ -7,6 +7,7 @@ data class MediaItem(
     val name: String,
     val dateAdded: Long,
     val type: MediaType,
+    val bucketName: String,
     val duration: Long? = null
 )
 

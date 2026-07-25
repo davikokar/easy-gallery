@@ -1,36 +1,42 @@
-# Implementation Plan - Enhanced Multiselection Tools
+# Implementation Plan - Exclude Folders and Selection Menu Cleanup
 
-This plan outlines the enhancements to the gallery's multiselection mode, including detailed folder properties and an expanded action menu.
+This plan outlines the steps to implement the "Exclude" functionality for gallery folders and cleanup the multiselection menu as requested.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Properties Calculation**: The app will calculate the total size and file count for all selected folders. For a single folder, it will also display its specific name and path.
-> - **Action Menu**: New actions (Rename, Copy to, Move to, Exclude, Select all) will be added to the selection toolbar's overflow menu. Note that for this implementation, these will mostly be UI placeholders or simulate state changes.
-> - **Select All**: This will select all folders currently visible in the list (including respect for the current search filter).
+> - **Exclusion**: Excluded folders will be hidden from all gallery views (Folder List, Timeline).
+> - **Management**: Users can restore excluded folders via a new "Manage Excluded" screen (to be added in a later step, for now they are hidden permanently for the session).
+> - **Confirmation**: A specific dialog will explain how to re-include folders before the user confirms the exclusion.
 
 ## Proposed Changes
 
 ### UI Layer
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- Add `getSelectedFoldersData()`: A helper to retrieve the full `Folder` objects for the currently selected names.
-- Add `selectAll()`: Selects all folders in the current `filteredFolders` list.
-- Add placeholders for `renameSelected()`, `copySelected()`, `moveSelected()`, and `excludeSelected()`.
-
-#### [MODIFY] [SelectionTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SelectionTopBar.kt)
-- Add an "Info" icon button.
-- Add a 3-dot overflow menu containing: Rename, Copy to, Move to, Exclude, and Select all.
-- Add callbacks for these new actions.
+- **State**:
+    - Add `excludedFolders: StateFlow<Set<String>>` to track hidden folder names.
+- **Logic**:
+    - Update `filteredFolders` to exclude any folder whose name is in the `excludedFolders` set.
+    - Update `groupedPhotosByDate` (filteredAllMedia) to exclude photos belonging to excluded folders (requires passing folder name/bucket to `MediaItem`).
+    - Add `excludeSelected()` function to add selected folders to the excluded set.
 
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Add `showPropertiesDialog` state.
-- Implement `PropertiesDialog` composable:
-    - Displays "Items selected".
-    - Displays "Content size" (sum of folder sizes in MB).
-    - Displays "Total files" (sum of image counts).
-    - If single selection: Displays "Name" and "Path".
-- Connect `SelectionTopBar` to these new states and functions.
+- **Selection Mode**:
+    - Pass `onExclude` callback to `SelectionTopBar`.
+- **Confirmation Dialog**:
+    - Add `showExcludeDialog` state.
+    - Implement `ExcludeConfirmationDialog`:
+        - Explain that folders will be hidden.
+        - Mention "Settings > Manage Excluded" for restoration.
+
+#### [MODIFY] [SelectionTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SelectionTopBar.kt)
+- Add "Info" icon to the left of the Pin icon.
+- Ensure the 3-dotted menu is on the far right.
+- Fully wire the menu items: Rename, Copy to, Move to, Exclude, Select all.
+
+#### [MODIFY] [MediaItem.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaItem.kt)
+- Add `bucketName: String` to the data class so we can filter them out in Timeline mode if their parent folder is excluded.
 
 ## Verification Plan
 
@@ -38,12 +44,11 @@ This plan outlines the enhancements to the gallery's multiselection mode, includ
 - Verify build success.
 
 ### Manual Verification
-1.  **Selection Mode**:
-    - Long-press to enter selection.
-    - Verify new Info icon and 3-dot menu appear.
-2.  **Properties Dialog**:
-    - Select multiple folders -> Tap Info -> Verify correct aggregate totals.
-    - Select one folder -> Tap Info -> Verify name and path are shown.
-3.  **Action Menu**:
-    - Tap 3-dots -> Select "Select all" -> Verify all items become selected.
-    - Verify other menu items (Rename, etc.) appear in the list.
+1.  **Exclusion**:
+    - Select folders -> Tap 3-dots -> Exclude.
+    - Verify the confirmation dialog explains how to restore.
+    - Confirm -> Verify folders disappear from the main list.
+2.  **Timeline Sync**:
+    - Verify that after excluding a folder, its photos also disappear from the chronological Timeline view.
+3.  **Menu Position**:
+    - Verify Selection Bar has: Back, Counter, Info, Pin, Delete, 3-dots (in that order or similar).

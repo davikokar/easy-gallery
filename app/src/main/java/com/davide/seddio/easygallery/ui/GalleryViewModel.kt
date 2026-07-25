@@ -34,11 +34,17 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isSearchActive = MutableStateFlow(false)
     val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
 
-    val filteredAllMedia: StateFlow<List<MediaItem>> = combine(_allMedia, _searchQuery) { media, query ->
+    private val _excludedFolders = MutableStateFlow<Set<String>>(emptySet())
+    val excludedFolders: StateFlow<Set<String>> = _excludedFolders.asStateFlow()
+
+    val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
+        _allMedia, _searchQuery, _excludedFolders
+    ) { media, query, excluded ->
+        val nonExcluded = media.filter { !excluded.contains(it.bucketName) }
         if (query.isNotEmpty()) {
-            media.filter { it.name.contains(query, ignoreCase = true) }
+            nonExcluded.filter { it.name.contains(query, ignoreCase = true) }
         } else {
-            media
+            nonExcluded
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -56,10 +62,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val viewType: StateFlow<ViewType> = _viewType.asStateFlow()
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _uiState, _searchQuery, _pinnedFolders, _sortType
-    ) { state, query, pinned, sort ->
+        _uiState, _searchQuery, _pinnedFolders, _sortType, _excludedFolders
+    ) { state, query, pinned, sort, excluded ->
         if (state is GalleryUiState.Success) {
-            val foldersWithPinned = state.folders.map { 
+            val nonExcludedFolders = state.folders.filter { !excluded.contains(it.name) }
+            
+            val foldersWithPinned = nonExcludedFolders.map { 
                 it.copy(isPinned = pinned.contains(it.name)) 
             }
 
@@ -291,6 +299,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             currentPinned.addAll(selected)
         }
         _pinnedFolders.value = currentPinned
+        exitSelectionMode()
+    }
+
+    fun excludeSelected() {
+        val selected = _selectedFolders.value
+        val currentExcluded = _excludedFolders.value.toMutableSet()
+        currentExcluded.addAll(selected)
+        _excludedFolders.value = currentExcluded
         exitSelectionMode()
     }
 

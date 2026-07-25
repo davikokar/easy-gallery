@@ -1,24 +1,6 @@
-- [x] Setup Configuration & Dependencies
-- [x] Implement Data Layer (Initial)
-- [x] Implement UI Layer (Initial Grid)
-- [x] Implementation of Pinch-to-Zoom
-- [x] Implement Folder Detail View
-- [x] Implement Search Functionality
-- [x] Implement Multiselection, Pinning, and Deletion
-- [x] Implement Calendar View Mode
-- [x] Implement Sorting and Overflow Menu
-- [x] Implement Column Count Selector
-- [x] Implement View Type (Grid/List) Switcher
-- [x] Implement Full-Screen Image Viewer
-- [x] Fix Rotation Resizing and Swipe Navigation
-- [x] Improve Image Viewer Reliability (Navigation & Zoom)
-- [x] UI Refinements and Grid Zoom Restoration
-- [x] UI Redesign: Squared Tiles and 1-Pixel Grid
-- [x] GIF and Video Support
-- [x] Video Thumbnails and Enhanced Decoding
-- [x] Enhanced Multiselection Tools
-    - [x] Update `GalleryViewModel` with `selectAll` and data helpers
-    - [x] Update `SelectionTopBar` with Info and overflow menu
-    - [x] Implement `PropertiesDialog` in `FolderListScreen`
-- [ ] Verification
-    - [ ] Build and verify
+- [ ] Data Layer: Add `bucketName` to `MediaItem`
+- [ ] Data Source: Populate `bucketName` in `MediaStoreDataSource`
+- [ ] ViewModel: Implement exclusion state and logic
+- [ ] UI: Implement `ExcludeConfirmationDialog` in `FolderListScreen`
+- [ ] UI: Update `SelectionTopBar` layout and wiring
+- [ ] Verification: Build and verify folder exclusion
