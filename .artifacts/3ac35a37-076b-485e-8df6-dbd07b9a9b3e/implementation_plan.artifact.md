@@ -1,21 +1,38 @@
-# Implementation Plan - UI Refinements and Gesture Fixes
+# Implementation Plan - Squared Tiles and 1-Pixel Grid
 
-This plan addresses the duplicate info icon, the grid background color requirements, and restores the broken pinch-to-zoom functionality in the grids.
+This plan outlines the steps to change the visual appearance of folder tiles and image thumbnails to be squared (no rounded corners) and separated by a minimal 1-pixel grid.
 
 ## Proposed Changes
 
 ### UI Components
 
-#### [MODIFY] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt)
-- **Remove Duplicate**: Remove the second `actions?.invoke(this)` call that was causing the redundant info icon.
+#### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
+- **FolderGrid**:
+    - Set `horizontalArrangement = Arrangement.spacedBy(1.dp)`.
+    - Set `verticalArrangement = Arrangement.spacedBy(1.dp)`.
+    - Remove `contentPadding` (or set to `0.dp`).
+- **FolderGridItem**:
+    - Remove `padding(8.dp)`.
+    - Remove `clip(RoundedCornerShape(8.dp))`.
+    - Use `RectangleShape` for the card.
 
-#### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt), [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt), [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
-- **Background Color**:
-    - Explicitly set `Modifier.background(BottomGrey)` on the `Box` containing the grids.
-    - Set `colors = CardDefaults.cardColors(containerColor = BottomGrey)` for all folder and photo tiles to ensure they match the requested dark blue-grey color (rgb 5, 1, 31).
-- **Restore Zoom**:
-    - Re-implement the pinch-to-zoom logic using `detectTransformGestures` on the container `Box` instead of the `LazyVerticalGrid`.
-    - To prevent scrolling interference, the gesture listener will only update the column count when a significant zoom change is detected.
+#### [MODIFY] [PhotoItem.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/PhotoItem.kt)
+- **PhotoItem**:
+    - Remove `padding(4.dp)`.
+    - Remove `clip(RoundedCornerShape(4.dp))`.
+    - Use `RectangleShape` for the card.
+
+#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
+- **LazyVerticalGrid**:
+    - Set `horizontalArrangement = Arrangement.spacedBy(1.dp)`.
+    - Set `verticalArrangement = Arrangement.spacedBy(1.dp)`.
+    - Remove `contentPadding`.
+
+#### [MODIFY] [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
+- **LazyVerticalGrid**:
+    - Set `horizontalArrangement = Arrangement.spacedBy(1.dp)`.
+    - Set `verticalArrangement = Arrangement.spacedBy(1.dp)`.
+    - Remove `contentPadding`.
 
 ## Verification Plan
 
@@ -23,6 +40,11 @@ This plan addresses the duplicate info icon, the grid background color requireme
 - Verify build success.
 
 ### Manual Verification
-1.  **Top Bar**: Verify only one "Info" icon appears when inside a gallery, and the 3-dotted menu is on the far right.
-2.  **Background**: Verify the entire grid area and the tiles themselves have the dark blue-grey color (rgb 5, 1, 31).
-3.  **Grid Zoom**: Verify pinch-to-zoom works in Folder List, Folder Detail, and Timeline views, while vertical scrolling remains functional.
+1.  **Gallery Tiles**:
+    - Verify they are perfectly squared (no rounded corners).
+    - Verify they touch each other with only a 1-pixel gap.
+2.  **Image Thumbnails**:
+    - Verify they are perfectly squared.
+    - Verify they are separated by a 1-pixel gap.
+3.  **Background**:
+    - Verify the background (and gap color) is the dark blue-grey (RGB 5, 1, 31).

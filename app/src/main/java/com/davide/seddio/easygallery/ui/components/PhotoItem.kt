@@ -24,11 +24,10 @@ import com.davide.seddio.easygallery.ui.theme.BottomGrey
 fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
     Card(
         modifier = Modifier
-            .padding(4.dp)
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp))
             .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = androidx.compose.ui.graphics.RectangleShape,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = BottomGrey)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

@@ -77,7 +77,8 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columnsCount),
-                contentPadding = PaddingValues(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(1.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(Unit) {

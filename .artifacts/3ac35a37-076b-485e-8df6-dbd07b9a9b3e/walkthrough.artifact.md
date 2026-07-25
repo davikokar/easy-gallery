@@ -1,26 +1,18 @@
-# Walkthrough - UI Refinements and Grid Zoom Restoration
+# Walkthrough - UI Redesign: Squared Tiles and 1-Pixel Grid
 
-I have refined the top bar interface, applied the requested dark blue-grey background to the grid areas, and restored the pinch-to-zoom functionality for all grids.
+I have updated the visual style of the gallery to use squared tiles and image thumbnails with a minimal 1-pixel grid separation.
 
 ## Changes Made
 
-### Top Bar Refinements
-- **Removed Duplicate Icon**: Eliminated the redundant "Info" icon from the top bar.
-- **Improved Positioning**: The 3-dotted overflow menu is now correctly placed on the far right, with the "Info" icon (when viewing a gallery) positioned to its left.
-- **Consistent Coloring**: Ensured all icons in the top bar, including the Info icon, are pure white for a unified look.
+### Squared Corners & Zero Padding
+- **Folder Grid**: Removed all rounded corners from the gallery folder tiles. The tiles are now perfectly squared.
+- **Photo Grid**: Removed rounded corners and inner padding from individual photo thumbnails across all views (Folder Detail and Timeline).
+- **List View**: The thumbnails in the folder list view have also been squared for consistency.
 
-### Theming & Backgrounds
-- **Dark Blue-Grey Theme**: Explicitly applied the `BottomGrey` color (RGB 5, 1, 31) to:
-    - The main container of the Folder List, Folder Detail, and Timeline views.
-    - All folder gallery tiles (Grid mode).
-    - All photo tiles (Folder Detail and Timeline).
-    - The list view backgrounds.
-- **Legibility**: Updated all text elements in the grid areas (folder names, paths, date headers) to pure white to ensure high contrast against the new dark background.
-
-### Restored Grid Zoom
-- **Problem**: Recent UI updates caused the pinch-to-zoom gesture on folder/photo grids to stop working.
-- **Solution**: Re-implemented the zoom detection directly on the grid components using a low-level `awaitEachGesture` loop.
-- **Smart Detection**: The new logic is specifically tuned to detect pinch movements while ignoring single-finger vertical swipes. This ensures you can still scroll through your photos silky-smoothly while maintaining the ability to pinch and change the column count from 1 to 20.
+### 1-Pixel Grid System
+- **Grid Spacing**: Replaced the large margins between tiles with a precise `1.dp` gap both horizontally and vertically.
+- **Background Integration**: This 1-pixel gap allows the underlying dark blue-grey theme color (RGB 5, 1, 31) to show through, creating a clean and professional grid structure.
+- **Flat Design**: Removed card elevations to achieve a modern, flat appearance that maximizes image visibility.
 
 ## Verification Results
 
@@ -28,13 +20,13 @@ I have refined the top bar interface, applied the requested dark blue-grey backg
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Top Bar**: Confirmed a single Info icon and the 3-dotted menu are correctly positioned and colored.
-- **Backgrounds**: Verified the dark blue-grey color is consistent across all grid areas and item tiles.
-- **Grid Zoom**: Confirmed that pinch-to-zoom is fully functional in all views:
-    - Folder Grid -> Changes columns (1-20).
-    - Photo Grid -> Changes columns (1-20).
-    - Timeline Grid -> Changes columns (1-20).
-- **Scrolling**: Verified that vertical scrolling remains responsive and uninterrupted.
+- **Visuals**: Confirmed that all thumbnails and tiles are squared and separated by exactly 1 pixel.
+- **Consistency**: Verified the squared style is applied across:
+    - Main Folder Grid.
+    - Folder List View thumbnails.
+    - Folder Detail Photo Grid.
+    - Chronological Timeline Grid.
+- **Functionality**: Ensured that the 1-pixel spacing does not interfere with click detection or the pinch-to-zoom gestures.
 
 > [!TIP]
-> The new dark blue-grey background provides a more cinematic feel to your gallery, making the photo thumbnails really stand out!
+> The edge-to-edge squared design allows you to see more of your photos at once, creating a dense and immersive browsing experience!

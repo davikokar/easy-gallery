@@ -13,8 +13,10 @@
 - [x] Fix Rotation Resizing and Swipe Navigation
 - [x] Improve Image Viewer Reliability (Navigation & Zoom)
 - [x] UI Refinements and Grid Zoom Restoration
-    - [x] Remove duplicate Info icon in `SearchTopBar`
-    - [x] Apply `BottomGrey` background to all grid areas and tiles
-    - [x] Re-implement pinch-to-zoom logic for grids
+- [x] UI Redesign: Squared Tiles and 1-Pixel Grid
+    - [x] Update `FolderListScreen.kt` (Grid and Items)
+    - [x] Update `PhotoItem.kt`
+    - [x] Update `FolderDetailScreen.kt`
+    - [x] Update `CalendarGrid.kt`
 - [x] Verification
     - [x] Build and verify

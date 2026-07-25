@@ -354,7 +354,8 @@ fun FolderGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
-        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
@@ -399,14 +400,13 @@ fun FolderGridItem(
 ) {
     Card(
         modifier = Modifier
-            .padding(8.dp)
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        shape = androidx.compose.ui.graphics.RectangleShape,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(containerColor = BottomGrey)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -530,7 +530,7 @@ fun FolderListItem(
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(androidx.compose.ui.graphics.RectangleShape)
             ) {
                 AsyncImage(
                     model = folder.thumbnailUri,

@@ -31,7 +31,8 @@ fun CalendarGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
-        contentPadding = PaddingValues(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier
             .fillMaxSize()
             .background(BottomGrey)
