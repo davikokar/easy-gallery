@@ -1,51 +1,28 @@
-# Implementation Plan - Full-Screen Image Viewer
+# Implementation Plan - Image Viewer Reliability Fixes
 
-This plan outlines the steps to implement a full-screen image viewer with interactive controls (delete, share, rotate) and an immersive mode.
+This plan fixes the navigation issues (black screens) and restores the broken zoom functionality in the full-screen image viewer.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Immersive Mode**: Toggled by tapping the image while in full-screen view. It hides all UI elements (buttons and top bars).
-> - **Rotation**: The rotation will be visual-only in this implementation (not saved to the file).
-> - **Deletion**: Following the pattern used for folders, deletion will be simulated by removing the image from the current UI state.
-> - **Sharing**: Will use the standard Android Share Sheet.
+> - **Navigation Fix**: The `HorizontalPager` will now correctly reset its state whenever you open a new collection of photos, preventing "black screen" or index out-of-sync issues.
+> - **Zoom Fix**: The gesture detection logic will be decoupled from the scale state to ensure smooth, uninterrupted zooming and panning.
+> - **State Reset**: When swiping between photos, the zoom level and position will automatically reset to normal for the next image.
 
 ## Proposed Changes
 
 ### UI Layer
 
-#### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- **State**:
-    - `selectedPhoto: StateFlow<Photo?>`
-    - `isImmersiveMode: StateFlow<Boolean>`
-    - `currentRotation: StateFlow<Float>`
-- **Functions**:
-    - `selectPhoto(photo: Photo)`: Sets the photo and resets immersive mode/rotation.
-    - `closePhoto()`: Clears the selected photo.
-    - `toggleImmersiveMode()`: Toggles UI visibility.
-    - `rotatePhoto()`: Increments rotation by 90 degrees.
-    - `deletePhoto(photo: Photo)`: Removes the photo from the current folder/all-photos list.
-    - `sharePhoto(photo: Photo)`: (Triggers an event or handled in UI).
+#### [MODIFY] [ZoomableImage.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/ZoomableImage.kt)
+- **Fix Zoom**: Move `scale` and `offset` logic into a single `pointerInput` block that does **not** use `scale` as a key. This prevents the gesture loop from being cancelled during a zoom operation.
+- **Gesture Synchronization**: Maintain the logic to only consume horizontal swipes when zoomed in, allowing them to pass to the Pager when at 1x scale.
+- **State Persistence**: Ensure the component resets its internal scale/offset if the `uri` changes (to prevent a new image from appearing zoomed in).
 
-#### [NEW] [FullImageScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FullImageScreen.kt)
-- Displays the image using `AsyncImage` with dynamic rotation.
-- Toggles immersive mode on tap.
-- Shows a bottom action bar when not immersive:
-    - **Bin Icon**: Triggers delete (with confirmation).
-    - **Share Icon**: Triggers share.
-    - **Rotate Icon**: Triggers 90° rotation.
-
-#### [MODIFY] [PhotoItem.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/PhotoItem.kt)
-- Add an `onClick: () -> Unit` parameter to the `PhotoItem` composable.
-- Wrap the content in a `clickable` modifier.
-
-#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt) & [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
-- Pass `viewModel::selectPhoto` to the `PhotoItem` click listener.
-
-#### [MODIFY] [MainActivity.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt)
-- Observe `selectedPhoto`.
-- Display `FullImageScreen` if a photo is selected.
-- Update `BackHandler` to call `viewModel.closePhoto()` when viewing an image.
+#### [MODIFY] [FullImageScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FullImageScreen.kt)
+- **Fix Navigation**:
+    - Use `key(photosList) { ... }` around the pager or properly handle `pagerState` re-initialization.
+    - Alternatively, use `LaunchedEffect(photo)` to call `pagerState.scrollToPage()` when the initial photo is set, ensuring the pager starts at the correct position.
+- **Sync State**: Ensure the ViewModel is notified of the current photo as the user swipes.
 
 ## Verification Plan
 
@@ -53,9 +30,11 @@ This plan outlines the steps to implement a full-screen image viewer with intera
 - Verify build success.
 
 ### Manual Verification
-1.  **Open Image**: Tap any photo thumbnail in folder detail or timeline -> Image opens full-screen.
-2.  **Controls**: Verify Bin, Share, and Rotate icons are visible at the bottom.
-3.  **Rotation**: Tap rotate -> Image rotates by 90°.
-4.  **Immersive Mode**: Tap the image -> Buttons disappear. Tap again -> Buttons reappear.
-5.  **Back Navigation**: Press system back or top-left back (if added) -> Returns to the previous grid view.
-6.  **Deletion**: Tap Bin -> Confirm -> Returns to grid and the photo is gone.
+1.  **Zooming**:
+    - Open an image -> Pinch to zoom -> Verify it works smoothly and doesn't get "stuck".
+    - Double-tap -> Verify it zooms in/out reliably.
+2.  **Navigation**:
+    - Swipe left/right -> Verify you can browse all photos without seeing black screens.
+    - Delete a photo -> Verify the viewer moves to the next photo or closes correctly without error.
+3.  **Rotation & Fit**:
+    - Rotate image -> Verify it still fits the screen perfectly after the gesture fixes.

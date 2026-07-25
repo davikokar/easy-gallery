@@ -34,6 +34,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isSearchActive = MutableStateFlow(false)
     val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
 
+    val filteredAllPhotos: StateFlow<List<Photo>> = combine(_allPhotos, _searchQuery) { photos, query ->
+        if (query.isNotEmpty()) {
+            photos.filter { it.name.contains(query, ignoreCase = true) }
+        } else {
+            photos
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private val _pinnedFolders = MutableStateFlow<Set<String>>(emptySet())
     private val _selectedFolders = MutableStateFlow<Set<String>>(emptySet())
     val selectedFolders: StateFlow<Set<String>> = _selectedFolders.asStateFlow()
@@ -75,14 +83,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
     val groupedPhotosByDate: StateFlow<Map<String, List<Photo>>> = combine(
-        _allPhotos, _searchQuery
-    ) { photos, query ->
-        val filtered = if (query.isNotEmpty()) {
-            photos.filter { it.name.contains(query, ignoreCase = true) }
-        } else {
-            photos
-        }
-        groupPhotosByDate(filtered)
+        filteredAllPhotos, _searchQuery
+    ) { photos, _ ->
+        // query is already handled by filteredAllPhotos
+        groupPhotosByDate(photos)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     private val _columnsCount = MutableStateFlow(2)
@@ -113,6 +117,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _currentRotation = MutableStateFlow(0f)
     val currentRotation: StateFlow<Float> = _currentRotation.asStateFlow()
+
+    private val _currentPhotosList = MutableStateFlow<List<Photo>>(emptySet<Photo>().toList())
+    val currentPhotosList: StateFlow<List<Photo>> = _currentPhotosList.asStateFlow()
 
     fun loadFolders() {
         viewModelScope.launch {
@@ -165,8 +172,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectPhoto(photo: Photo) {
+        val list = if (_selectedFolder.value != null) {
+            filteredPhotos.value
+        } else {
+            filteredAllPhotos.value
+        }
+        _currentPhotosList.value = list
         _selectedPhoto.value = photo
         _isImmersiveMode.value = false
+        _currentRotation.value = 0f
+    }
+
+    fun setCurrentPhoto(photo: Photo) {
+        _selectedPhoto.value = photo
         _currentRotation.value = 0f
     }
 

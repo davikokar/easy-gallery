@@ -7,9 +7,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
@@ -20,21 +20,41 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
-import com.davide.seddio.easygallery.data.Photo
+import com.davide.seddio.easygallery.ui.components.ZoomableImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullImageScreen(viewModel: GalleryViewModel) {
     val photo by viewModel.selectedPhoto.collectAsState()
+    val photosList by viewModel.currentPhotosList.collectAsState()
     val isImmersive by viewModel.isImmersiveMode.collectAsState()
     val rotation by viewModel.currentRotation.collectAsState()
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var isZoomed by remember { mutableStateOf(false) }
+
+    if (photosList.isEmpty()) {
+        viewModel.closePhoto()
+        return
+    }
+
+    val initialIndex = remember(photosList) {
+        val index = photosList.indexOf(photo)
+        if (index >= 0) index else 0
+    }
+
+    val pagerState = rememberPagerState(initialPage = initialIndex) {
+        photosList.size
+    }
+
+    // Update current photo in ViewModel when swiping
+    LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage in photosList.indices) {
+            viewModel.setCurrentPhoto(photosList[pagerState.currentPage])
+        }
+    }
 
     val currentPhoto = photo ?: return
 
@@ -63,21 +83,25 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                viewModel.toggleImmersiveMode()
-            }
     ) {
-        AsyncImage(
-            model = currentPhoto.uri,
-            contentDescription = currentPhoto.name,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { rotationZ = rotation },
-            contentScale = ContentScale.Fit
-        )
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            pageSpacing = 16.dp,
+            userScrollEnabled = !isZoomed,
+            key = { index -> if (index < photosList.size) photosList[index].uri.toString() else index }
+        ) { page ->
+            if (page in photosList.indices) {
+                val p = photosList[page]
+                ZoomableImage(
+                    uri = p.uri,
+                    contentDescription = p.name,
+                    rotationZ = if (p == currentPhoto) rotation else 0f,
+                    onTap = { viewModel.toggleImmersiveMode() },
+                    onScaleChanged = { isZoomed = it > 1f }
+                )
+            }
+        }
 
         // Top Bar
         AnimatedVisibility(

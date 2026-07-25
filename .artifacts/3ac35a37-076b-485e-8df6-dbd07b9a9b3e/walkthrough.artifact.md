@@ -1,23 +1,18 @@
-# Walkthrough - Full-Screen Image Viewer
+# Walkthrough - Image Viewer Reliability Improvements
 
-I have implemented a full-screen image viewer that allows you to view your photos in detail, perform basic edits, and toggle an immersive mode.
+I have fixed the navigation and zoom issues in the full-screen image viewer, ensuring a more stable and fluid user experience.
 
 ## Changes Made
 
-### Logic & State
-- **Photo Selection**: Added `selectedPhoto` state to `GalleryViewModel` to track which image is currently being viewed.
-- **Immersive Mode**: Implemented `isImmersiveMode` to toggle UI visibility (top and bottom bars).
-- **Rotation State**: Added `currentRotation` to allow 90° visual rotation of the displayed image.
-- **Deletion Logic**: Added a `deletePhoto` function that removes the photo from the current UI state.
+### Robust Zoom and Pan
+- **Continuous Gestures**: Completely rewritten the gesture handling in `ZoomableImage`. The new implementation uses a unified touch listener that doesn't restart when the zoom level changes. This fixes the issue where zooming would frequently "get stuck" or stop working.
+- **Smart Panning**: Panning is now more responsive and is correctly prioritized over swipe navigation whenever the image is zoomed in.
+- **Automatic Reset**: Zoom and position are now automatically reset to 1x whenever a new image is swiped into view or the viewer is reopened.
 
-### UI Components
-- **FullImageScreen**: A new immersive screen for viewing a single photo.
-    - **Top Bar**: Displays the photo name and a back button.
-    - **Bottom Action Bar**: Contains buttons for **Delete**, **Share**, and **Rotate**.
-    - **Immersive Toggle**: Tapping the image hides or shows the bars for an unobstructed view.
-    - **Smooth Transitions**: Used animations (`fadeIn`/`fadeOut` and `slideIn`/`slideOut`) for the top and bottom bars.
-- **PhotoItem Integration**: Updated all photo thumbnails (in both folder and calendar views) to be clickable, launching the full-screen viewer.
-- **Back Button Handling**: Integrated with the system back button to seamlessly return from full-screen to the previous grid view.
+### Stable Swipe Navigation
+- **Pager Synchronization**: Fixed the "black screen" issue by ensuring the `HorizontalPager` is perfectly synchronized with the current photo collection.
+- **Dynamic Keying**: Added unique keys to the pager pages based on image URIs, preventing the pager from showing incorrect cached content when switching between different folders or search results.
+- **Improved Initial State**: The viewer now accurately calculates the starting index for the pager, ensuring you always see the specific photo you tapped on in the grid.
 
 ## Verification Results
 
@@ -25,13 +20,10 @@ I have implemented a full-screen image viewer that allows you to view your photo
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Launching Viewer**: Tapping a photo thumbnail in any grid successfully opens it full-screen.
-- **Immersive Mode**: Tapping the image successfully toggles the UI bars.
-- **Actions**:
-    - **Rotate**: Tapping the rotate icon spins the image by 90°.
-    - **Share**: Tapping share opens the standard Android share sheet.
-    - **Delete**: Tapping the bin icon opens a confirmation dialog. Confirming removes the photo and returns to the grid.
-- **Navigation**: The back arrow and system back button correctly close the viewer.
+- **Zooming**: Verified that pinch-to-zoom is now smooth and continuous.
+- **Double-Tap**: Confirmed double-tap reliably toggles between fit-to-screen and 3x zoom.
+- **Navigation**: Swiped through several large folders and search results without encountering any black screens or layout glitches.
+- **State Reset**: Confirmed that swiping to the next photo correctly resets the zoom level to 1x.
 
 > [!TIP]
-> Tapping the photo again when in full screen will hide all the buttons, letting you enjoy the photo without any distractions!
+> The viewer is now more resilient to rapid interactions. You can quickly swipe, pinch, and double-tap through your photos without fear of the UI becoming unresponsive!

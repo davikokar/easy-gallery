@@ -9,10 +9,11 @@
 - [x] Implement Sorting and Overflow Menu
 - [x] Implement Column Count Selector
 - [x] Implement View Type (Grid/List) Switcher
-- [ ] Implement Full-Screen Image Viewer
-    - [ ] Update `GalleryViewModel` with photo viewing state and logic
-    - [ ] Update `PhotoItem` to support click events
-    - [ ] Create `FullImageScreen` with bottom action bar and immersive toggle
-    - [ ] Update `MainActivity` to host the full-screen viewer
-- [ ] Verification
-    - [ ] Build and verify
+- [x] Implement Full-Screen Image Viewer
+- [x] Fix Rotation Resizing and Swipe Navigation
+- [x] Improve Image Viewer Reliability (Navigation & Zoom)
+    - [x] Rewrite `ZoomableImage` gesture detection for continuity
+    - [x] Update `FullImageScreen` pager synchronization and initial state
+    - [x] Implement auto-reset of zoom on swipe
+- [x] Verification
+    - [x] Build and verify
