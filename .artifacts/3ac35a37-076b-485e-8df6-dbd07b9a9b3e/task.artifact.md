@@ -1,22 +1,11 @@
-- [x] Setup Configuration & Dependencies
-- [x] Implement Data Layer (Initial)
-- [x] Implement UI Layer (Initial Grid)
-- [x] Implementation of Pinch-to-Zoom
-- [x] Implement Folder Detail View
-- [x] Implement Search Functionality
-- [x] Implement Multiselection, Pinning, and Deletion
-- [x] Implement Calendar View Mode
-- [x] Implement Sorting and Overflow Menu
-- [x] Implement Column Count Selector
-- [x] Implement View Type (Grid/List) Switcher
-- [x] Implement Full-Screen Image Viewer
-- [x] Fix Rotation Resizing and Swipe Navigation
-- [x] Improve Image Viewer Reliability (Navigation & Zoom)
-- [x] UI Refinements and Grid Zoom Restoration
-- [x] UI Redesign: Squared Tiles and 1-Pixel Grid
-    - [x] Update `FolderListScreen.kt` (Grid and Items)
-    - [x] Update `PhotoItem.kt`
-    - [x] Update `FolderDetailScreen.kt`
-    - [x] Update `CalendarGrid.kt`
+- [x] Configuration & Dependencies
+    - [x] Add `coil-video` to `libs.versions.toml`
+    - [x] Add dependency to `build.gradle.kts`
+    - [x] Update `AndroidManifest.xml` with `EasyGalleryApp`
+    - [x] Sync Gradle
+- [x] Application Logic
+    - [x] Create `EasyGalleryApp.kt` with singleton `ImageLoader`
+- [x] UI Layer Updates
+    - [x] Update `MediaGridItem.kt` to use singleton `ImageLoader`
 - [x] Verification
-    - [x] Build and verify
+    - [x] Build and verify video thumbnails

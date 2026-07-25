@@ -16,14 +16,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.davide.seddio.easygallery.data.Photo
-import com.davide.seddio.easygallery.ui.components.PhotoItem
+import com.davide.seddio.easygallery.data.MediaItem
+import com.davide.seddio.easygallery.ui.components.MediaGridItem
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @Composable
 fun CalendarGrid(
     viewModel: GalleryViewModel,
-    groupedPhotos: Map<String, List<Photo>>,
+    groupedPhotos: Map<String, List<MediaItem>>,
     columns: Int,
     showInfo: Boolean
 ) {
@@ -57,7 +57,7 @@ fun CalendarGrid(
                 }
             }
     ) {
-        groupedPhotos.forEach { (date, photos) ->
+        groupedPhotos.forEach { (date, items) ->
             item(span = { GridItemSpan(columns) }) {
                 Text(
                     text = date,
@@ -69,11 +69,11 @@ fun CalendarGrid(
                         .fillMaxWidth()
                 )
             }
-            items(photos) { photo ->
-                PhotoItem(
-                    photo = photo,
+            items(items) { item ->
+                MediaGridItem(
+                    item = item,
                     showInfo = showInfo,
-                    onClick = { viewModel.selectPhoto(photo) }
+                    onClick = { viewModel.selectMedia(item) }
                 )
             }
         }

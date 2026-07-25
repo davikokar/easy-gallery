@@ -41,11 +41,12 @@ class MainActivity : ComponentActivity() {
     private val viewModel: GalleryViewModel by viewModels()
     private var hasPermission by mutableStateOf(false)
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasPermission = isGranted
-        if (isGranted) {
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        hasPermission = allGranted
+        if (allGranted) {
             viewModel.loadFolders()
         }
     }
@@ -57,7 +58,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.BLACK)
         )
 
-        checkPermission()
+        checkPermissions()
 
         setContent {
             EasyGalleryTheme {
@@ -66,12 +67,12 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
-                    val selectedPhoto: com.davide.seddio.easygallery.data.Photo? by viewModel.selectedPhoto.collectAsState()
+                    val selectedMedia: com.davide.seddio.easygallery.data.MediaItem? by viewModel.selectedMedia.collectAsState()
                     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
 
-                    if (selectedPhoto != null) {
+                    if (selectedMedia != null) {
                         BackHandler {
-                            viewModel.closePhoto()
+                            viewModel.closeMedia()
                         }
                         FullImageScreen(viewModel)
                     } else if (selectedFolder != null) {
@@ -88,7 +89,7 @@ class MainActivity : ComponentActivity() {
                         FolderListScreen(viewModel)
                     } else {
                         PermissionDeniedScreen {
-                            checkPermission()
+                            checkPermissions()
                         }
                     }
                 }
@@ -96,21 +97,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun checkPermission() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_IMAGES
+    private fun checkPermissions() {
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
         } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
 
-        when {
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> {
-                hasPermission = true
-                viewModel.loadFolders()
-            }
-            else -> {
-                requestPermissionLauncher.launch(permission)
-            }
+        val allGranted = permissions.all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+
+        if (allGranted) {
+            hasPermission = true
+            viewModel.loadFolders()
+        } else {
+            requestPermissionsLauncher.launch(permissions)
         }
     }
 }
@@ -119,7 +124,7 @@ class MainActivity : ComponentActivity() {
 fun PermissionDeniedScreen(onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Please grant storage permission to view gallery.")
+            Text(text = "Please grant storage permissions to view gallery.", color = androidx.compose.ui.graphics.Color.White)
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onRetry) {
                 Text("Retry")

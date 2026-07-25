@@ -1,18 +1,18 @@
-# Walkthrough - UI Redesign: Squared Tiles and 1-Pixel Grid
+# Walkthrough - Video Thumbnails and Enhanced Decoding
 
-I have updated the visual style of the gallery to use squared tiles and image thumbnails with a minimal 1-pixel grid separation.
+I have enabled video frame decoding, ensuring that all your videos and video-only folders now feature high-quality thumbnails.
 
 ## Changes Made
 
-### Squared Corners & Zero Padding
-- **Folder Grid**: Removed all rounded corners from the gallery folder tiles. The tiles are now perfectly squared.
-- **Photo Grid**: Removed rounded corners and inner padding from individual photo thumbnails across all views (Folder Detail and Timeline).
-- **List View**: The thumbnails in the folder list view have also been squared for consistency.
+### Multimedia Support
+- **Video Thumbnails**: Integrated the `coil-video` extension. The app now automatically extracts the first frame of every video to use as its thumbnail. This fixes the issue where videos and certain folders appeared empty.
+- **Unified Decoding**: Created a custom `Application` class ([EasyGalleryApp.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/EasyGalleryApp.kt)) to configure a global `ImageLoader`. This shared loader handles:
+    - **Video frames** for thumbnails.
+    - **GIF animations** for a dynamic grid experience.
 
-### 1-Pixel Grid System
-- **Grid Spacing**: Replaced the large margins between tiles with a precise `1.dp` gap both horizontally and vertically.
-- **Background Integration**: This 1-pixel gap allows the underlying dark blue-grey theme color (RGB 5, 1, 31) to show through, creating a clean and professional grid structure.
-- **Flat Design**: Removed card elevations to achieve a modern, flat appearance that maximizes image visibility.
+### UI Improvements
+- **Optimized Loading**: Refactored [MediaGridItem.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/MediaGridItem.kt) to use the global singleton `ImageLoader`, reducing memory overhead and ensuring consistent decoding across the app.
+- **Format Labeling**: Videos in the grid continue to show their duration and a play icon, now overlayed on a clear video-frame thumbnail.
 
 ## Verification Results
 
@@ -20,13 +20,9 @@ I have updated the visual style of the gallery to use squared tiles and image th
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Visuals**: Confirmed that all thumbnails and tiles are squared and separated by exactly 1 pixel.
-- **Consistency**: Verified the squared style is applied across:
-    - Main Folder Grid.
-    - Folder List View thumbnails.
-    - Folder Detail Photo Grid.
-    - Chronological Timeline Grid.
-- **Functionality**: Ensured that the 1-pixel spacing does not interfere with click detection or the pinch-to-zoom gestures.
+- **Video Folders**: Confirmed that folders containing only videos now correctly display a video frame as their cover image.
+- **Video Items**: Verified that every video in the grid now shows its first frame instead of a blank box.
+- **GIFs**: Confirmed that animated GIFs still play correctly in the grid and full-screen view.
 
 > [!TIP]
-> The edge-to-edge squared design allows you to see more of your photos at once, creating a dense and immersive browsing experience!
+> The app now uses a centralized image loading system, which makes it much faster and more efficient when scrolling through large collections of mixed media!

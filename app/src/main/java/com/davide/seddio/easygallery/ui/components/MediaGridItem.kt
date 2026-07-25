@@ -3,12 +3,12 @@ package com.davide.seddio.easygallery.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -17,11 +17,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.davide.seddio.easygallery.data.Photo
+import com.davide.seddio.easygallery.data.MediaItem
+import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @Composable
-fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
+fun MediaGridItem(item: MediaItem, showInfo: Boolean, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .aspectRatio(1f)
@@ -32,11 +33,36 @@ fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = photo.uri,
-                contentDescription = photo.name,
+                model = item.uri,
+                contentDescription = item.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
+
+            if (item.type == MediaType.VIDEO) {
+                Icon(
+                    imageVector = Icons.Default.PlayCircle,
+                    contentDescription = "Video",
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(32.dp)
+                )
+                
+                item.duration?.let {
+                    val durationText = formatDuration(it)
+                    Text(
+                        text = durationText,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(4.dp)
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .padding(horizontal = 4.dp)
+                    )
+                }
+            }
 
             if (showInfo) {
                 Box(
@@ -50,7 +76,7 @@ fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
                         )
                 )
                 Text(
-                    text = photo.name,
+                    text = item.name,
                     color = Color.White,
                     fontSize = 10.sp,
                     maxLines = 2,
@@ -62,5 +88,16 @@ fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
                 )
             }
         }
+    }
+}
+
+private fun formatDuration(durationMs: Long): String {
+    val seconds = (durationMs / 1000) % 60
+    val minutes = (durationMs / (1000 * 60)) % 60
+    val hours = (durationMs / (1000 * 60 * 60))
+    return if (hours > 0) {
+        java.util.Formatter().format("%d:%02d:%02d", hours, minutes, seconds).toString()
+    } else {
+        java.util.Formatter().format("%d:%02d", minutes, seconds).toString()
     }
 }

@@ -5,7 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
-import com.davide.seddio.easygallery.data.Photo
+import com.davide.seddio.easygallery.data.MediaItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +26,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _displayMode = MutableStateFlow(DisplayMode.GALLERY)
     val displayMode: StateFlow<DisplayMode> = _displayMode.asStateFlow()
 
-    private val _allPhotos = MutableStateFlow<List<Photo>>(emptyList())
+    private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -34,11 +34,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isSearchActive = MutableStateFlow(false)
     val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
 
-    val filteredAllPhotos: StateFlow<List<Photo>> = combine(_allPhotos, _searchQuery) { photos, query ->
+    val filteredAllMedia: StateFlow<List<MediaItem>> = combine(_allMedia, _searchQuery) { media, query ->
         if (query.isNotEmpty()) {
-            photos.filter { it.name.contains(query, ignoreCase = true) }
+            media.filter { it.name.contains(query, ignoreCase = true) }
         } else {
-            photos
+            media
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -82,11 +82,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
-    val groupedPhotosByDate: StateFlow<Map<String, List<Photo>>> = combine(
-        filteredAllPhotos, _searchQuery
-    ) { photos, _ ->
-        // query is already handled by filteredAllPhotos
-        groupPhotosByDate(photos)
+    val groupedPhotosByDate: StateFlow<Map<String, List<MediaItem>>> = combine(
+        filteredAllMedia, _searchQuery
+    ) { media, _ ->
+        groupMediaByDate(media)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     private val _columnsCount = MutableStateFlow(2)
@@ -95,22 +94,22 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedFolder = MutableStateFlow<Folder?>(null)
     val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
 
-    private val _photosInFolder = MutableStateFlow<List<Photo>>(emptyList())
-    val photosInFolder: StateFlow<List<Photo>> = _photosInFolder.asStateFlow()
+    private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
+    val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
-    val filteredPhotos: StateFlow<List<Photo>> = combine(_photosInFolder, _searchQuery) { photos, query ->
+    val filteredMedia: StateFlow<List<MediaItem>> = combine(_mediaInFolder, _searchQuery) { media, query ->
         if (query.isNotEmpty()) {
-            photos.filter { it.name.contains(query, ignoreCase = true) }
+            media.filter { it.name.contains(query, ignoreCase = true) }
         } else {
-            photos
+            media
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _showInfo = MutableStateFlow(false)
     val showInfo: StateFlow<Boolean> = _showInfo.asStateFlow()
 
-    private val _selectedPhoto = MutableStateFlow<Photo?>(null)
-    val selectedPhoto: StateFlow<Photo?> = _selectedPhoto.asStateFlow()
+    private val _selectedMedia = MutableStateFlow<MediaItem?>(null)
+    val selectedMedia: StateFlow<MediaItem?> = _selectedMedia.asStateFlow()
 
     private val _isImmersiveMode = MutableStateFlow(false)
     val isImmersiveMode: StateFlow<Boolean> = _isImmersiveMode.asStateFlow()
@@ -118,8 +117,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _currentRotation = MutableStateFlow(0f)
     val currentRotation: StateFlow<Float> = _currentRotation.asStateFlow()
 
-    private val _currentPhotosList = MutableStateFlow<List<Photo>>(emptySet<Photo>().toList())
-    val currentPhotosList: StateFlow<List<Photo>> = _currentPhotosList.asStateFlow()
+    private val _currentMediaList = MutableStateFlow<List<MediaItem>>(emptyList())
+    val currentMediaList: StateFlow<List<MediaItem>> = _currentMediaList.asStateFlow()
 
     fun loadFolders() {
         viewModelScope.launch {
@@ -127,7 +126,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val folders = dataSource.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
-                _allPhotos.value = dataSource.getAllPhotos()
+                _allMedia.value = dataSource.getAllMedia()
             } catch (e: Exception) {
                 _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
             }
@@ -156,14 +155,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             _selectedFolder.value = folder
             viewModelScope.launch {
-                _photosInFolder.value = dataSource.getPhotosInFolder(folder.name)
+                _mediaInFolder.value = dataSource.getMediaInFolder(folder.name)
             }
         }
     }
 
     fun backToFolders() {
         _selectedFolder.value = null
-        _photosInFolder.value = emptyList()
+        _mediaInFolder.value = emptyList()
         setSearchActive(false)
     }
 
@@ -171,25 +170,25 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _showInfo.value = !_showInfo.value
     }
 
-    fun selectPhoto(photo: Photo) {
+    fun selectMedia(item: MediaItem) {
         val list = if (_selectedFolder.value != null) {
-            filteredPhotos.value
+            filteredMedia.value
         } else {
-            filteredAllPhotos.value
+            filteredAllMedia.value
         }
-        _currentPhotosList.value = list
-        _selectedPhoto.value = photo
+        _currentMediaList.value = list
+        _selectedMedia.value = item
         _isImmersiveMode.value = false
         _currentRotation.value = 0f
     }
 
-    fun setCurrentPhoto(photo: Photo) {
-        _selectedPhoto.value = photo
+    fun setCurrentMedia(item: MediaItem) {
+        _selectedMedia.value = item
         _currentRotation.value = 0f
     }
 
-    fun closePhoto() {
-        _selectedPhoto.value = null
+    fun closeMedia() {
+        _selectedMedia.value = null
     }
 
     fun toggleImmersiveMode() {
@@ -200,12 +199,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _currentRotation.value = (_currentRotation.value + 90f) % 360f
     }
 
-    fun deletePhoto(photo: Photo) {
+    fun deleteMedia(item: MediaItem) {
         viewModelScope.launch {
-            // Simulate deletion in UI state
-            _photosInFolder.value = _photosInFolder.value.filter { it != photo }
-            _allPhotos.value = _allPhotos.value.filter { it != photo }
-            closePhoto()
+            _mediaInFolder.value = _mediaInFolder.value.filter { it != item }
+            _allMedia.value = _allMedia.value.filter { it != item }
+            closeMedia()
         }
     }
 
@@ -279,12 +277,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         exitSelectionMode()
     }
 
-    private fun groupPhotosByDate(photos: List<Photo>): Map<String, List<Photo>> {
+    private fun groupMediaByDate(items: List<MediaItem>): Map<String, List<MediaItem>> {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val today = sdf.format(Date())
         val yesterday = sdf.format(Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000))
 
-        return photos.groupBy {
+        return items.groupBy {
             val dateStr = sdf.format(Date(it.dateAdded * 1000))
             when (dateStr) {
                 today -> "Today"
