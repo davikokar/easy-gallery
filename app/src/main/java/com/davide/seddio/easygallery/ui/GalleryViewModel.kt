@@ -61,6 +61,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _viewType = MutableStateFlow(ViewType.GRID)
     val viewType: StateFlow<ViewType> = _viewType.asStateFlow()
 
+    private val _isManageExcludedMode = MutableStateFlow(false)
+    val isManageExcludedMode: StateFlow<Boolean> = _isManageExcludedMode.asStateFlow()
+
+    private val _isSettingsMode = MutableStateFlow(false)
+    val isSettingsMode: StateFlow<Boolean> = _isSettingsMode.asStateFlow()
+
     val filteredFolders: StateFlow<GalleryUiState> = combine(
         _uiState, _searchQuery, _pinnedFolders, _sortType, _excludedFolders
     ) { state, query, pinned, sort, excluded ->
@@ -217,6 +223,36 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun toggleDisplayMode() {
         _displayMode.value = if (_displayMode.value == DisplayMode.GALLERY) DisplayMode.CALENDAR else DisplayMode.GALLERY
+    }
+
+    fun setSettingsMode(active: Boolean) {
+        _isSettingsMode.value = active
+    }
+
+    fun setManageExcludedMode(active: Boolean) {
+        _isManageExcludedMode.value = active
+    }
+
+    fun unexcludeFolder(folderName: String) {
+        val current = _excludedFolders.value.toMutableSet()
+        current.remove(folderName)
+        _excludedFolders.value = current
+    }
+
+    fun excludeFolder(folderName: String) {
+        val current = _excludedFolders.value.toMutableSet()
+        current.add(folderName)
+        _excludedFolders.value = current
+    }
+
+    fun getNonExcludedFolders(): List<Folder> {
+        val currentState = _uiState.value
+        val excluded = _excludedFolders.value
+        return if (currentState is GalleryUiState.Success) {
+            currentState.folders.filter { !excluded.contains(it.name) }
+        } else {
+            emptyList()
+        }
     }
 
     fun setSortType(sortType: SortType) {

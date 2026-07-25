@@ -30,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.davide.seddio.easygallery.ui.FullImageScreen
+import com.davide.seddio.easygallery.ui.ManageExcludedScreen
+import com.davide.seddio.easygallery.ui.SettingsScreen
 import com.davide.seddio.easygallery.ui.FolderDetailScreen
 import com.davide.seddio.easygallery.ui.FolderListScreen
 import com.davide.seddio.easygallery.ui.GalleryViewModel
@@ -69,12 +71,24 @@ class MainActivity : ComponentActivity() {
                     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
                     val selectedMedia: com.davide.seddio.easygallery.data.MediaItem? by viewModel.selectedMedia.collectAsState()
                     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+                    val isManageExcludedMode by viewModel.isManageExcludedMode.collectAsState()
+                    val isSettingsMode by viewModel.isSettingsMode.collectAsState()
 
                     if (selectedMedia != null) {
                         BackHandler {
                             viewModel.closeMedia()
                         }
                         FullImageScreen(viewModel)
+                    } else if (isManageExcludedMode) {
+                        BackHandler {
+                            viewModel.setManageExcludedMode(false)
+                        }
+                        ManageExcludedScreen(viewModel)
+                    } else if (isSettingsMode) {
+                        BackHandler {
+                            viewModel.setSettingsMode(false)
+                        }
+                        SettingsScreen(viewModel)
                     } else if (selectedFolder != null) {
                         BackHandler {
                             viewModel.backToFolders()

@@ -1,13 +1,6 @@
-# Implementation Plan - Exclude Folders and Selection Menu Cleanup
+# Implementation Plan - Independent Grid Densities
 
-This plan outlines the steps to implement the "Exclude" functionality for gallery folders and cleanup the multiselection menu as requested.
-
-## User Review Required
-
-> [!IMPORTANT]
-> - **Exclusion**: Excluded folders will be hidden from all gallery views (Folder List, Timeline).
-> - **Management**: Users can restore excluded folders via a new "Manage Excluded" screen (to be added in a later step, for now they are hidden permanently for the session).
-> - **Confirmation**: A specific dialog will explain how to re-include folders before the user confirms the exclusion.
+This plan outlines the steps to decouple the column counts for the folder grid and the picture grids (Folder Detail and Timeline), allowing users to set independent densities for each.
 
 ## Proposed Changes
 
@@ -15,28 +8,25 @@ This plan outlines the steps to implement the "Exclude" functionality for galler
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
 - **State**:
-    - Add `excludedFolders: StateFlow<Set<String>>` to track hidden folder names.
-- **Logic**:
-    - Update `filteredFolders` to exclude any folder whose name is in the `excludedFolders` set.
-    - Update `groupedPhotosByDate` (filteredAllMedia) to exclude photos belonging to excluded folders (requires passing folder name/bucket to `MediaItem`).
-    - Add `excludeSelected()` function to add selected folders to the excluded set.
+    - Rename `_columnsCount` to `_folderColumns` (default: 2).
+    - Add `_pictureColumns` (default: 3 or 2).
+- **Functions**:
+    - Update `increaseColumns()`, `decreaseColumns()`, and `setColumnsCount(count)` to accept a `forPictures: Boolean` parameter.
+    - Logic: Update the corresponding state based on the flag.
 
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- **Selection Mode**:
-    - Pass `onExclude` callback to `SelectionTopBar`.
-- **Confirmation Dialog**:
-    - Add `showExcludeDialog` state.
-    - Implement `ExcludeConfirmationDialog`:
-        - Explain that folders will be hidden.
-        - Mention "Settings > Manage Excluded" for restoration.
+- Observe both `folderColumns` and `pictureColumns`.
+- Main Grid logic:
+    - If in `GALLERY` mode: Use `folderColumns` and update `folderColumns` on pinch/dialog.
+    - If in `CALENDAR` mode: Use `pictureColumns` and update `pictureColumns` on pinch/dialog.
+- Pass appropriate state to `CalendarGrid` and `FolderGrid`.
 
-#### [MODIFY] [SelectionTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SelectionTopBar.kt)
-- Add "Info" icon to the left of the Pin icon.
-- Ensure the 3-dotted menu is on the far right.
-- Fully wire the menu items: Rename, Copy to, Move to, Exclude, Select all.
+#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
+- Observe `pictureColumns`.
+- Update the grid and TopBar actions to use/update `pictureColumns`.
 
-#### [MODIFY] [MediaItem.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaItem.kt)
-- Add `bucketName: String` to the data class so we can filter them out in Timeline mode if their parent folder is excluded.
+#### [MODIFY] [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
+- Update pinch-to-zoom callbacks to specifically target the `pictureColumns` state in the ViewModel.
 
 ## Verification Plan
 
@@ -44,11 +34,13 @@ This plan outlines the steps to implement the "Exclude" functionality for galler
 - Verify build success.
 
 ### Manual Verification
-1.  **Exclusion**:
-    - Select folders -> Tap 3-dots -> Exclude.
-    - Verify the confirmation dialog explains how to restore.
-    - Confirm -> Verify folders disappear from the main list.
-2.  **Timeline Sync**:
-    - Verify that after excluding a folder, its photos also disappear from the chronological Timeline view.
-3.  **Menu Position**:
-    - Verify Selection Bar has: Back, Counter, Info, Pin, Delete, 3-dots (in that order or similar).
+1.  **Independent Adjustment**:
+    - Set Folder Grid to **2 columns**.
+    - Open a folder -> Set Picture Grid to **4 columns**.
+    - Go back to Folder Grid -> Verify it is still **2 columns**.
+    - Enter Timeline mode -> Verify it uses **4 columns** (same as folder content).
+2.  **Pinch-to-Zoom**:
+    - Verify pinching in the main gallery only affects folder tiles.
+    - Verify pinching inside a folder only affects thumbnails.
+3.  **Dialog Selection**:
+    - Use the "Column count" menu in both views and verify they only update the current context.

@@ -29,6 +29,7 @@ fun SearchTopBar(
     onSortClick: (() -> Unit)? = null,
     onColumnCountClick: (() -> Unit)? = null,
     onViewTypeClick: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null
 ) {
@@ -122,7 +123,13 @@ fun SearchTopBar(
                                 onViewTypeClick?.invoke()
                             }
                         )
-                        DropdownMenuItem(text = { Text("Settings") }, onClick = { showMenu = false })
+                        DropdownMenuItem(
+                            text = { Text("Settings") },
+                            onClick = {
+                                showMenu = false
+                                onSettingsClick?.invoke()
+                            }
+                        )
                     }
                 }
             },

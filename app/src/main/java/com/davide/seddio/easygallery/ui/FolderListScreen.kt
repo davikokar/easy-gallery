@@ -88,7 +88,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                     onSortClick = { showSortDialog = true },
                     onColumnCountClick = { showColumnCountDialog = true },
-                    onViewTypeClick = { showViewTypeDialog = true }
+                    onViewTypeClick = { showViewTypeDialog = true },
+                    onSettingsClick = { viewModel.setSettingsMode(true) }
                 )
             }
         },
@@ -538,7 +539,7 @@ fun FolderGridItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${folder.imageCount} images",
+                    text = "${folder.imageCount}",
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 12.sp
                 )
@@ -651,7 +652,7 @@ fun FolderListItem(
                         color = Color.White
                     )
                     Text(
-                        text = "${folder.imageCount} items",
+                        text = "${folder.imageCount}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f)
                     )

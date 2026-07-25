@@ -1,6 +1,5 @@
-- [ ] Data Layer: Add `bucketName` to `MediaItem`
-- [ ] Data Source: Populate `bucketName` in `MediaStoreDataSource`
-- [ ] ViewModel: Implement exclusion state and logic
-- [ ] UI: Implement `ExcludeConfirmationDialog` in `FolderListScreen`
-- [ ] UI: Update `SelectionTopBar` layout and wiring
-- [ ] Verification: Build and verify folder exclusion
+- [x] Update `GalleryViewModel` with `isSettingsMode`
+- [x] Restore "Settings" to `SearchTopBar`
+- [x] Create `SettingsScreen` UI
+- [x] Update `MainActivity` to host `SettingsScreen` and fix back logic
+- [x] Verify hierarchical navigation

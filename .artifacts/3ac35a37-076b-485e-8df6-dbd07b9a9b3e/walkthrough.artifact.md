@@ -1,29 +1,19 @@
-# Walkthrough - Folder Exclusion and Enhanced Selection
+# Walkthrough - Settings and Manage Excluded Restructuring
 
-I have implemented the "Exclude" functionality and finalized the multiselection toolbar, providing advanced tools for managing your gallery.
+I have restructured the application's settings by introducing a dedicated Settings screen and placing the "Manage excluded" feature within it, creating a more logical and scalable hierarchy.
 
 ## Changes Made
 
-### Folder Exclusion
-- **Exclude Functionality**: Users can now select one or more folders and "Exclude" them from the gallery.
-- **Educational Dialog**: Tapping "Exclude" triggers a confirmation request explaining that the folders will be hidden and pointing users to "Settings > Manage Excluded" for restoration.
-- **Unified Hiding**: When a folder is excluded, its content is automatically hidden from both the **Folder List** and the **Chronological Timeline**.
-- **Data Integration**: Added `bucketName` to the `MediaItem` data class to ensure precise filtering across all view modes.
+### Hierarchical Navigation
+- **Dedicated Settings Screen**: Created [SettingsScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/SettingsScreen.kt) as a central hub for all app configurations.
+- **Nested Management**: Moved the "Manage excluded" functionality inside the Settings screen. It now appears as a clear, interactive list item.
+- **Improved Back Handling**: Refined the `BackHandler` logic in `MainActivity` to support multi-level navigation:
+    - Pressing back while in "Manage Excluded" now takes you back to "Settings".
+    - Pressing back while in "Settings" returns you to your Gallery.
 
-### Enhanced Multiselection Toolbar
-- **SelectionTopBar Overhaul**:
-    - **Properties (Info icon)**: Tapping this icon opens a window showing:
-        - Total items selected.
-        - Cumulative content size (in MB).
-        - Total file count.
-        - (If single folder) Folder Name and Physical Path.
-    - **Optimized Order**: Re-arranged icons for better flow: Back, Counter, Properties, Pin, Delete, and the 3-dot Menu.
-    - **Complete Menu**: The 3-dotted menu now includes: Rename, Copy to, Move to, Exclude, and Select all.
-
-### Visual & Logic Consistency
-- **Search Integration**: Activating selection mode automatically clears and closes any active search.
-- **Sorting & Pinning**: Exclusion logic respects pinned folders and custom sorting criteria.
-- **Unified Colors**: All selection icons and text use high-contrast white against the theme's deep blue bar.
+### UI Consistency
+- **Restored Menu Item**: Changed the overflow menu item back to "Settings" (replacing the direct "Manage excluded" link).
+- **Themed Settings**: The new Settings screen fully adopts the application's high-contrast theme, featuring the dark blue top bar and dark grey background.
 
 ## Verification Results
 
@@ -31,10 +21,13 @@ I have implemented the "Exclude" functionality and finalized the multiselection 
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Exclusion Flow**: Selected a folder -> Menu -> Exclude -> Confirmed via dialog -> Folder disappeared from list.
-- **Timeline Sync**: Verified that photos from an excluded folder no longer appear in the timeline.
-- **Properties Viewer**: Verified that the MB totals and file counts aggregate correctly for multiple folders.
-- **Select All**: Confirmed that "Select all" works instantly across the entire list.
+- **Settings Hub**: Verified that tapping "Settings" in the main menu opens the correct screen.
+- **Navigation Flow**:
+    - Tap "Settings" -> Hub opens.
+    - Tap "Manage excluded" -> Management screen opens.
+    - Tap back arrow -> Returns to Hub.
+    - Tap back arrow again -> Returns to Gallery.
+- **Functionality**: Confirmed that you can still unexclude folders correctly from within the nested view.
 
-> [!IMPORTANT]
-> Excluded folders are currently managed in memory for this session. The full "Manage Excluded" settings screen will be implemented in a future update to allow persistent restoration.
+> [!TIP]
+> This new structure allows us to easily add more configuration options (like theme selection or library scan settings) in the future without cluttering your main menu!
