@@ -105,6 +105,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _showInfo = MutableStateFlow(false)
     val showInfo: StateFlow<Boolean> = _showInfo.asStateFlow()
 
+    private val _selectedPhoto = MutableStateFlow<Photo?>(null)
+    val selectedPhoto: StateFlow<Photo?> = _selectedPhoto.asStateFlow()
+
+    private val _isImmersiveMode = MutableStateFlow(false)
+    val isImmersiveMode: StateFlow<Boolean> = _isImmersiveMode.asStateFlow()
+
+    private val _currentRotation = MutableStateFlow(0f)
+    val currentRotation: StateFlow<Float> = _currentRotation.asStateFlow()
+
     fun loadFolders() {
         viewModelScope.launch {
             _uiState.value = GalleryUiState.Loading
@@ -153,6 +162,33 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun toggleInfo() {
         _showInfo.value = !_showInfo.value
+    }
+
+    fun selectPhoto(photo: Photo) {
+        _selectedPhoto.value = photo
+        _isImmersiveMode.value = false
+        _currentRotation.value = 0f
+    }
+
+    fun closePhoto() {
+        _selectedPhoto.value = null
+    }
+
+    fun toggleImmersiveMode() {
+        _isImmersiveMode.value = !_isImmersiveMode.value
+    }
+
+    fun rotatePhoto() {
+        _currentRotation.value = (_currentRotation.value + 90f) % 360f
+    }
+
+    fun deletePhoto(photo: Photo) {
+        viewModelScope.launch {
+            // Simulate deletion in UI state
+            _photosInFolder.value = _photosInFolder.value.filter { it != photo }
+            _allPhotos.value = _allPhotos.value.filter { it != photo }
+            closePhoto()
+        }
     }
 
     fun toggleDisplayMode() {

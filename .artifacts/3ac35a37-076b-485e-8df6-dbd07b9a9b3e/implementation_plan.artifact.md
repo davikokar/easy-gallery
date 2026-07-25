@@ -1,40 +1,51 @@
-# Implementation Plan - Change View Type (Grid/List)
+# Implementation Plan - Full-Screen Image Viewer
 
-This plan outlines the steps to add a "View Type" selection, allowing users to switch between the existing square grid and a new informative list view for their folders.
+This plan outlines the steps to implement a full-screen image viewer with interactive controls (delete, share, rotate) and an immersive mode.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **View Type Persistence**: For now, the view type will be stored in the ViewModel (memory).
-> - **List Layout**:
->   - Left side: A square thumbnail (tile).
->   - Right side (Top line): Folder Name and Image Count.
->   - Right side (Bottom line): Full folder path.
-> - This feature specifically applies to the **Folder List** view.
+> - **Immersive Mode**: Toggled by tapping the image while in full-screen view. It hides all UI elements (buttons and top bars).
+> - **Rotation**: The rotation will be visual-only in this implementation (not saved to the file).
+> - **Deletion**: Following the pattern used for folders, deletion will be simulated by removing the image from the current UI state.
+> - **Sharing**: Will use the standard Android Share Sheet.
 
 ## Proposed Changes
 
 ### UI Layer
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- Add `ViewType` enum: `GRID`, `LIST`.
-- Add `viewType: StateFlow<ViewType>` state.
-- Add `setViewType(viewType: ViewType)` function.
+- **State**:
+    - `selectedPhoto: StateFlow<Photo?>`
+    - `isImmersiveMode: StateFlow<Boolean>`
+    - `currentRotation: StateFlow<Float>`
+- **Functions**:
+    - `selectPhoto(photo: Photo)`: Sets the photo and resets immersive mode/rotation.
+    - `closePhoto()`: Clears the selected photo.
+    - `toggleImmersiveMode()`: Toggles UI visibility.
+    - `rotatePhoto()`: Increments rotation by 90 degrees.
+    - `deletePhoto(photo: Photo)`: Removes the photo from the current folder/all-photos list.
+    - `sharePhoto(photo: Photo)`: (Triggers an event or handled in UI).
 
-#### [MODIFY] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt)
-- Add `onViewTypeClick: (() -> Unit)?` callback.
-- Connect the "Change view type" menu item to this callback.
+#### [NEW] [FullImageScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FullImageScreen.kt)
+- Displays the image using `AsyncImage` with dynamic rotation.
+- Toggles immersive mode on tap.
+- Shows a bottom action bar when not immersive:
+    - **Bin Icon**: Triggers delete (with confirmation).
+    - **Share Icon**: Triggers share.
+    - **Rotate Icon**: Triggers 90° rotation.
 
-#### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Add `showViewTypeDialog` state.
-- Implement `ViewTypeDialog` composable to let users pick between Grid and List.
-- Create `FolderList` composable (using `LazyColumn`).
-- Create `FolderListItem` composable:
-    - `Row` with `AsyncImage` (fixed size square) on the left.
-    - `Column` on the right containing:
-        - `Row` with Folder Name (Bold) and Count.
-        - Folder Path (smaller, secondary text).
-- Update the main `FolderListScreen` logic to switch between `FolderGrid` and `FolderList` based on the ViewModel state.
+#### [MODIFY] [PhotoItem.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/PhotoItem.kt)
+- Add an `onClick: () -> Unit` parameter to the `PhotoItem` composable.
+- Wrap the content in a `clickable` modifier.
+
+#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt) & [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
+- Pass `viewModel::selectPhoto` to the `PhotoItem` click listener.
+
+#### [MODIFY] [MainActivity.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt)
+- Observe `selectedPhoto`.
+- Display `FullImageScreen` if a photo is selected.
+- Update `BackHandler` to call `viewModel.closePhoto()` when viewing an image.
 
 ## Verification Plan
 
@@ -42,17 +53,9 @@ This plan outlines the steps to add a "View Type" selection, allowing users to s
 - Verify build success.
 
 ### Manual Verification
-1.  **Menu Integration**:
-    - Tap the 3 dots -> "Change view type".
-    - Verify the dialog appears.
-2.  **Switch to List**:
-    - Select "List" -> The folder display should change from squares to a vertical list.
-    - Verify thumbnail on the left, details on the right.
-3.  **Details in List**:
-    - Verify the name, image count, and path are correctly displayed.
-4.  **Switch to Grid**:
-    - Select "Grid" -> Return to the original square grid layout.
-5.  **Functionality**:
-    - Verify search and sorting still work correctly in List mode.
-    - Verify clicking a list item opens the folder detail.
-    - Verify long-pressing enters selection mode.
+1.  **Open Image**: Tap any photo thumbnail in folder detail or timeline -> Image opens full-screen.
+2.  **Controls**: Verify Bin, Share, and Rotate icons are visible at the bottom.
+3.  **Rotation**: Tap rotate -> Image rotates by 90°.
+4.  **Immersive Mode**: Tap the image -> Buttons disappear. Tap again -> Buttons reappear.
+5.  **Back Navigation**: Press system back or top-left back (if added) -> Returns to the previous grid view.
+6.  **Deletion**: Tap Bin -> Confirm -> Returns to grid and the photo is gone.

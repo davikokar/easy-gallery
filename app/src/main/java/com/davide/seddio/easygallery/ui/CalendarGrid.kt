@@ -19,6 +19,7 @@ import com.davide.seddio.easygallery.ui.components.PhotoItem
 
 @Composable
 fun CalendarGrid(
+    viewModel: GalleryViewModel,
     groupedPhotos: Map<String, List<Photo>>,
     columns: Int,
     showInfo: Boolean
@@ -40,7 +41,11 @@ fun CalendarGrid(
                 )
             }
             items(photos) { photo ->
-                PhotoItem(photo = photo, showInfo = showInfo)
+                PhotoItem(
+                    photo = photo,
+                    showInfo = showInfo,
+                    onClick = { viewModel.selectPhoto(photo) }
+                )
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.davide.seddio.easygallery.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -19,12 +20,13 @@ import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Photo
 
 @Composable
-fun PhotoItem(photo: Photo, showInfo: Boolean) {
+fun PhotoItem(photo: Photo, showInfo: Boolean, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .padding(4.dp)
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp)),
+            .clip(RoundedCornerShape(4.dp))
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

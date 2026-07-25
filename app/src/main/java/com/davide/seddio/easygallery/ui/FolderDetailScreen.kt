@@ -87,7 +87,11 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 modifier = Modifier.fillMaxSize()
             ) {
                 items(photos) { photo ->
-                    PhotoItem(photo, showInfo)
+                    PhotoItem(
+                        photo = photo,
+                        showInfo = showInfo,
+                        onClick = { viewModel.selectPhoto(photo) }
+                    )
                 }
             }
         }

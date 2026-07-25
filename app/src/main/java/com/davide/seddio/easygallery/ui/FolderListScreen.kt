@@ -157,6 +157,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         ) {
             if (displayMode == DisplayMode.CALENDAR) {
                 CalendarGrid(
+                    viewModel = viewModel,
                     groupedPhotos = groupedPhotos,
                     columns = columnsCount,
                     showInfo = showInfo

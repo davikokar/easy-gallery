@@ -1,21 +1,23 @@
-# Walkthrough - View Type Switcher (Grid & List)
+# Walkthrough - Full-Screen Image Viewer
 
-I have verified the implementation of the new view mode switcher. You can now choose between the classic square grid and a detailed list view for your gallery folders.
+I have implemented a full-screen image viewer that allows you to view your photos in detail, perform basic edits, and toggle an immersive mode.
 
-## Features Implemented
+## Changes Made
 
 ### Logic & State
-- **ViewType State**: Added `ViewType` enum (`GRID` and `LIST`) in `GalleryViewModel` to manage user preference.
-- **Dynamic Switching**: The gallery automatically updates its layout when the view type is changed.
+- **Photo Selection**: Added `selectedPhoto` state to `GalleryViewModel` to track which image is currently being viewed.
+- **Immersive Mode**: Implemented `isImmersiveMode` to toggle UI visibility (top and bottom bars).
+- **Rotation State**: Added `currentRotation` to allow 90° visual rotation of the displayed image.
+- **Deletion Logic**: Added a `deletePhoto` function that removes the photo from the current UI state.
 
 ### UI Components
-- **Menu Integration**: The "Change view type" option in the overflow menu is fully functional.
-- **ViewTypeDialog**: A selection dialog that allows switching between **Grid** and **List** modes.
-- **Detailed List View**:
-    - **Thumbnail**: A square tile on the left of each item.
-    - **Metadata**: Displays Folder Name and Image Count on the first line.
-    - **Directory Path**: Shows the full physical path on a second line.
-    - **Pinned/Selected Indicators**: Subtly integrated within the list item thumbnail.
+- **FullImageScreen**: A new immersive screen for viewing a single photo.
+    - **Top Bar**: Displays the photo name and a back button.
+    - **Bottom Action Bar**: Contains buttons for **Delete**, **Share**, and **Rotate**.
+    - **Immersive Toggle**: Tapping the image hides or shows the bars for an unobstructed view.
+    - **Smooth Transitions**: Used animations (`fadeIn`/`fadeOut` and `slideIn`/`slideOut`) for the top and bottom bars.
+- **PhotoItem Integration**: Updated all photo thumbnails (in both folder and calendar views) to be clickable, launching the full-screen viewer.
+- **Back Button Handling**: Integrated with the system back button to seamlessly return from full-screen to the previous grid view.
 
 ## Verification Results
 
@@ -23,11 +25,13 @@ I have verified the implementation of the new view mode switcher. You can now ch
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Menu Access**: Tapping "Change view type" in the 3-dotted menu successfully opens the selection window.
-- **List Layout**:
-    - Verified that thumbnails appear on the left.
-    - Verified that Name, Count, and Path are correctly displayed.
-- **Compatibility**: Verified that Search, Sorting, and Multiselection work perfectly in the new List mode.
+- **Launching Viewer**: Tapping a photo thumbnail in any grid successfully opens it full-screen.
+- **Immersive Mode**: Tapping the image successfully toggles the UI bars.
+- **Actions**:
+    - **Rotate**: Tapping the rotate icon spins the image by 90°.
+    - **Share**: Tapping share opens the standard Android share sheet.
+    - **Delete**: Tapping the bin icon opens a confirmation dialog. Confirming removes the photo and returns to the grid.
+- **Navigation**: The back arrow and system back button correctly close the viewer.
 
 > [!TIP]
-> The **List View** is particularly useful for distinguishing between folders with the same name that are stored in different locations on your device!
+> Tapping the photo again when in full screen will hide all the buttons, letting you enjoy the photo without any distractions!

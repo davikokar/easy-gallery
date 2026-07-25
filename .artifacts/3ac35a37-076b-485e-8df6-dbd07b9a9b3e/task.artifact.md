@@ -9,9 +9,10 @@
 - [x] Implement Sorting and Overflow Menu
 - [x] Implement Column Count Selector
 - [x] Implement View Type (Grid/List) Switcher
-    - [x] Update `GalleryViewModel` with `ViewType` state
-    - [x] Update `SearchTopBar` with `onViewTypeClick`
-    - [x] Implement `ViewTypeDialog` in `FolderListScreen`
-    - [x] Implement `FolderList` and `FolderListItem` in `FolderListScreen`
-- [/] Verification
+- [ ] Implement Full-Screen Image Viewer
+    - [ ] Update `GalleryViewModel` with photo viewing state and logic
+    - [ ] Update `PhotoItem` to support click events
+    - [ ] Create `FullImageScreen` with bottom action bar and immersive toggle
+    - [ ] Update `MainActivity` to host the full-screen viewer
+- [ ] Verification
     - [ ] Build and verify

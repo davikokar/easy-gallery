@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.davide.seddio.easygallery.ui.FullImageScreen
 import com.davide.seddio.easygallery.ui.FolderDetailScreen
 import com.davide.seddio.easygallery.ui.FolderListScreen
 import com.davide.seddio.easygallery.ui.GalleryViewModel
@@ -60,9 +61,15 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
+                    val selectedPhoto: com.davide.seddio.easygallery.data.Photo? by viewModel.selectedPhoto.collectAsState()
                     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
 
-                    if (selectedFolder != null) {
+                    if (selectedPhoto != null) {
+                        BackHandler {
+                            viewModel.closePhoto()
+                        }
+                        FullImageScreen(viewModel)
+                    } else if (selectedFolder != null) {
                         BackHandler {
                             viewModel.backToFolders()
                         }
