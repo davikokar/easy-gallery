@@ -1,23 +1,20 @@
-# Walkthrough - Enhanced Multiselection Tools
+# Walkthrough - UI Refinements and Full-Screen Experience
 
-I have upgraded the gallery's multiselection mode with a detailed properties viewer and an expanded action menu.
+I have refined the full-screen image viewer by removing the top bar, allowing for a more immersive viewing experience where navigation back is handled via the system back button.
 
 ## Changes Made
 
-### Management Tools & Actions
-- **Properties Window**: Added a new "Info" action to the selection bar. Pressing it opens a "Properties" dialog that provides:
-    - **Selection Stats**: The number of folders selected.
-    - **Storage Info**: The total size of all media within the selected folders (calculated in MB).
-    - **File Inventory**: The total count of all images and videos across the selection.
-    - **Single-Folder Context**: If exactly one folder is selected, the dialog also displays its specific **Name** and **Physical Path** for precise identification.
-- **Expanded Action Menu**: Integrated a 3-dot overflow menu on the far right of the selection bar with the following items:
-    - **Rename**, **Copy to**, **Move to**, **Exclude** (UI Placeholders).
-    - **Select all**: A functional action that instantly selects every visible folder in the current list or search result.
+### Full-Screen Viewer Enhancements
+- **Removed Top Bar**: The top app bar (displaying the photo name and back arrow) has been removed from the `FullImageScreen`.
+- **Immersive Navigation**: Users can now return to the grid view using the system's bottom back button (<), ensuring the image occupies more vertical space.
+- **Persistent Bottom Bar**: The bottom action bar (Delete, Share, Rotate) remains togglable via a single tap, while the top area remains clear.
 
-### UI & UX Enhancements
-- **SelectionTopBar**: Redesigned the selection toolbar to accommodate the new Info and Menu icons while maintaining a consistent deep-blue and white high-contrast look.
-- **Consistent Layout**: Ensured the new management tools perfectly replace the search bar when selection mode is active, preventing UI clutter.
-- **Improved Dialogs**: Used standard Material 3 dialog components for the properties viewer, ensuring a clean and familiar user experience.
+### Theming & Backgrounds
+- **Dark Blue-Grey Theme**: Explicitly applied the `BottomGrey` color (RGB 5, 1, 31) to:
+    - The main container of the Folder List, Folder Detail, and Timeline views.
+    - All folder gallery tiles (Grid mode).
+    - All photo tiles (Folder Detail and Timeline).
+- **Consistent Icons**: Ensured all management icons in the top bars are white and correctly positioned.
 
 ## Verification Results
 
@@ -25,14 +22,9 @@ I have upgraded the gallery's multiselection mode with a detailed properties vie
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Info Icon**: Correctly appears in the top bar during multiselection.
-- **Properties Dialog**:
-    - Verified that Selecting 1 folder shows Name and Path.
-    - Verified that Selecting 5 folders shows the aggregate MB and file counts.
-- **Overflow Menu**:
-    - Verified the menu items appear in the correct order.
-    - **Select All**: Confirmed that tapping it selects every folder in the list.
-- **Visuals**: Verified all new icons are pure white and correctly aligned.
+- **Full-Screen Viewer**: Confirmed that images and videos now open without a top bar.
+- **Back Navigation**: Verified that the system back button correctly returns the user to the previous gallery or timeline view.
+- **Toggling UI**: Confirmed that tapping the image still hides/shows the bottom action bar.
 
 > [!TIP]
-> Use the **Select all** feature combined with the **Info** button to quickly calculate the total size of your entire gallery!
+> With the top bar removed, your photos and videos have even more room to shine!

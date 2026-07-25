@@ -118,28 +118,6 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                     }
                 }
 
-                // Top Bar
-                AnimatedVisibility(
-                    visible = !isImmersive,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    TopAppBar(
-                        title = { Text(item.name, color = Color.White) },
-                        navigationIcon = {
-                            IconButton(onClick = { viewModel.closeMedia() }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = TopBarBlue,
-                            titleContentColor = Color.White,
-                            navigationIconContentColor = Color.White,
-                            actionIconContentColor = Color.White
-                        )
-                    )
-                }
-
                 // Bottom Bar
                 AnimatedVisibility(
                     visible = !isImmersive,
