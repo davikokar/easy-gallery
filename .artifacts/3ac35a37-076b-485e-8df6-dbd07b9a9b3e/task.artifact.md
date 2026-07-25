@@ -12,8 +12,10 @@
 - [x] Implement Full-Screen Image Viewer
 - [x] Fix Rotation Resizing and Swipe Navigation
 - [x] Improve Image Viewer Reliability (Navigation & Zoom)
-    - [x] Rewrite `ZoomableImage` gesture detection for continuity
-    - [x] Update `FullImageScreen` pager synchronization and initial state
-    - [x] Implement auto-reset of zoom on swipe
+- [x] Fix Grid Zoom and Pager Index Sync
+    - [x] Update `FolderListScreen` grid zoom logic
+    - [x] Update `FolderDetailScreen` grid zoom logic
+    - [x] Update `CalendarGrid` zoom logic
+    - [x] Fix Pager re-initialization in `FullImageScreen`
 - [x] Verification
     - [x] Build and verify

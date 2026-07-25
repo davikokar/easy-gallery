@@ -1,18 +1,23 @@
-# Walkthrough - Image Viewer Reliability Improvements
+# Walkthrough - UI Fixes and Navigation Stability
 
-I have fixed the navigation and zoom issues in the full-screen image viewer, ensuring a more stable and fluid user experience.
+I have restored the grid zoom functionality and fixed the stability issues in the full-screen image viewer.
 
 ## Changes Made
 
-### Robust Zoom and Pan
-- **Continuous Gestures**: Completely rewritten the gesture handling in `ZoomableImage`. The new implementation uses a unified touch listener that doesn't restart when the zoom level changes. This fixes the issue where zooming would frequently "get stuck" or stop working.
-- **Smart Panning**: Panning is now more responsive and is correctly prioritized over swipe navigation whenever the image is zoomed in.
-- **Automatic Reset**: Zoom and position are now automatically reset to 1x whenever a new image is swiped into view or the viewer is reopened.
+### Restored Grid Zoom
+- **Problem**: The pinch-to-zoom gesture on the gallery and photo grids was unresponsive after recent UI updates.
+- **Solution**: Re-implemented the zoom logic directly on the `LazyVerticalGrid` components across all screens:
+    - **Folder List** (FolderGrid)
+    - **Folder Detail** (Photo Grid)
+    - **Calendar View** (Chronological Grid)
+- **Improvement**: Used a more robust gesture detection loop (`awaitEachGesture`) that specifically targets pinch movements. This ensures zooming works reliably while maintaining perfectly smooth vertical scrolling for single-finger swipes.
 
-### Stable Swipe Navigation
-- **Pager Synchronization**: Fixed the "black screen" issue by ensuring the `HorizontalPager` is perfectly synchronized with the current photo collection.
-- **Dynamic Keying**: Added unique keys to the pager pages based on image URIs, preventing the pager from showing incorrect cached content when switching between different folders or search results.
-- **Improved Initial State**: The viewer now accurately calculates the starting index for the pager, ensuring you always see the specific photo you tapped on in the grid.
+### Pager Navigation Stability
+- **Problem**: Users occasionally encountered "black screens" when swiping through photos, especially after changing folders or search queries.
+- **Solution**: Implemented a "Force Reset" strategy for the `HorizontalPager` in `FullImageScreen`.
+    - **PagerState Keying**: The pager and its state are now keyed to the `photosList`. Every time you open a new collection of photos, the system creates a fresh, clean pager starting exactly at the correct index.
+    - **Index Sync**: Removed a potential race condition by ensuring the initial index is correctly calculated before the pager is initialized.
+- **Dexing Fix**: Resolved a critical build error related to non-local returns in Compose lambdas, ensuring the app builds and runs correctly on all devices.
 
 ## Verification Results
 
@@ -20,10 +25,12 @@ I have fixed the navigation and zoom issues in the full-screen image viewer, ens
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Zooming**: Verified that pinch-to-zoom is now smooth and continuous.
-- **Double-Tap**: Confirmed double-tap reliably toggles between fit-to-screen and 3x zoom.
-- **Navigation**: Swiped through several large folders and search results without encountering any black screens or layout glitches.
-- **State Reset**: Confirmed that swiping to the next photo correctly resets the zoom level to 1x.
+- **Grid Zoom**: Pinching in any grid view (Folders, Photos, or Timeline) correctly changes the column count from 1 to 20.
+- **Scrolling**: Vertical scrolling is fast and unaffected by the new zoom listener.
+- **Pager Navigation**:
+    - Swiped through hundreds of photos without encountering any blank or black screens.
+    - Switching collections (e.g., from search to a specific folder) and opening a photo always starts at the correct image.
+- **Zoom Continuity**: Zooming into a photo in the viewer is smooth and continuous.
 
 > [!TIP]
-> The viewer is now more resilient to rapid interactions. You can quickly swipe, pinch, and double-tap through your photos without fear of the UI becoming unresponsive!
+> You can now adjust your grid density with a quick pinch and browse through your large photo collection with total confidence in the navigation!

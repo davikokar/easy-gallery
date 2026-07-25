@@ -1,7 +1,8 @@
 package com.davide.seddio.easygallery.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -38,7 +39,6 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val showInfo by viewModel.showInfo.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchActive by viewModel.isSearchActive.collectAsState()
-    var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
     Scaffold(
         topBar = {
@@ -65,26 +65,38 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             )
         }
     ) { padding ->
+        var cumulativeScale by remember { mutableFloatStateOf(1f) }
+
         Box(
             modifier = Modifier
                 .padding(padding)
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, _, zoom, _ ->
-                        cumulativeScale *= zoom
-                        if (cumulativeScale > 1.2f) {
-                            viewModel.decreaseColumns()
-                            cumulativeScale = 1f
-                        } else if (cumulativeScale < 0.8f) {
-                            viewModel.increaseColumns()
-                            cumulativeScale = 1f
-                        }
-                    }
-                }
+                .fillMaxSize()
         ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(columnsCount),
                 contentPadding = PaddingValues(8.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            do {
+                                val event = awaitPointerEvent()
+                                val zoom = event.calculateZoom()
+                                if (zoom != 1f) {
+                                    cumulativeScale *= zoom
+                                    if (cumulativeScale > 1.2f) {
+                                        viewModel.decreaseColumns()
+                                        cumulativeScale = 1f
+                                    } else if (cumulativeScale < 0.8f) {
+                                        viewModel.increaseColumns()
+                                        cumulativeScale = 1f
+                                    }
+                                    event.changes.forEach { it.consume() }
+                                }
+                            } while (event.changes.any { it.pressed })
+                            cumulativeScale = 1f
+                        }
+                    }
             ) {
                 items(photos) { photo ->
                     PhotoItem(

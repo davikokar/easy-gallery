@@ -1,28 +1,27 @@
-# Implementation Plan - Image Viewer Reliability Fixes
+# Implementation Plan - Grid Zoom and Pager Reliability Fixes
 
-This plan fixes the navigation issues (black screens) and restores the broken zoom functionality in the full-screen image viewer.
+This plan addresses the broken pinch-to-zoom functionality in the gallery/photo grids and further improves the stability of the full-screen image navigation.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Navigation Fix**: The `HorizontalPager` will now correctly reset its state whenever you open a new collection of photos, preventing "black screen" or index out-of-sync issues.
-> - **Zoom Fix**: The gesture detection logic will be decoupled from the scale state to ensure smooth, uninterrupted zooming and panning.
-> - **State Reset**: When swiping between photos, the zoom level and position will automatically reset to normal for the next image.
+> - **Grid Zoom**: I will move the gesture detection directly onto the grid components and use a more robust detection method that won't conflict with scrolling.
+> - **Pager Stability**: I will ensure the `HorizontalPager` state is properly reset when the underlying photo collection changes (e.g., due to search or folder switching), preventing the "black screen" issue.
 
 ## Proposed Changes
 
 ### UI Layer
 
-#### [MODIFY] [ZoomableImage.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/ZoomableImage.kt)
-- **Fix Zoom**: Move `scale` and `offset` logic into a single `pointerInput` block that does **not** use `scale` as a key. This prevents the gesture loop from being cancelled during a zoom operation.
-- **Gesture Synchronization**: Maintain the logic to only consume horizontal swipes when zoomed in, allowing them to pass to the Pager when at 1x scale.
-- **State Persistence**: Ensure the component resets its internal scale/offset if the `uri` changes (to prevent a new image from appearing zoomed in).
+#### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt) & [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
+- **Gesture Refactor**:
+    - Move the `detectTransformGestures` logic into a reusable `Modifier` extension or directly onto the `LazyVerticalGrid`.
+    - Use `detectTransformGestures(passThrough = true)` logic (simulated via `awaitPointerEventScope`) if possible, or ensure it doesn't consume all events so scrolling remains smooth.
+    - Specifically, only consume events when two or more pointers are active (multi-touch).
 
 #### [MODIFY] [FullImageScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FullImageScreen.kt)
-- **Fix Navigation**:
-    - Use `key(photosList) { ... }` around the pager or properly handle `pagerState` re-initialization.
-    - Alternatively, use `LaunchedEffect(photo)` to call `pagerState.scrollToPage()` when the initial photo is set, ensuring the pager starts at the correct position.
-- **Sync State**: Ensure the ViewModel is notified of the current photo as the user swipes.
+- **Pager Fix**:
+    - Use `key(photosList)` to force a complete re-initialization of the pager state when the photo collection changes. This is the most reliable way to prevent index mismatches that lead to black screens.
+    - Double-check the `initialPage` logic to ensure it always lands on the correct photo even after a collection update.
 
 ## Verification Plan
 
@@ -30,11 +29,10 @@ This plan fixes the navigation issues (black screens) and restores the broken zo
 - Verify build success.
 
 ### Manual Verification
-1.  **Zooming**:
-    - Open an image -> Pinch to zoom -> Verify it works smoothly and doesn't get "stuck".
-    - Double-tap -> Verify it zooms in/out reliably.
-2.  **Navigation**:
-    - Swipe left/right -> Verify you can browse all photos without seeing black screens.
-    - Delete a photo -> Verify the viewer moves to the next photo or closes correctly without error.
-3.  **Rotation & Fit**:
-    - Rotate image -> Verify it still fits the screen perfectly after the gesture fixes.
+1.  **Grid Zoom**:
+    - Pinch-to-zoom in Folder Grid -> Columns should change (1-20).
+    - Pinch-to-zoom in Photo Grid -> Columns should change.
+    - Verify that vertical scrolling still works perfectly.
+2.  **Pager Navigation**:
+    - Open photo -> Swipe left/right multiple times.
+    - Change search query or folder -> Open photo -> Verify it starts on the right image and swiping works without showing black screens.

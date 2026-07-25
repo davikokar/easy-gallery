@@ -45,117 +45,121 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
         if (index >= 0) index else 0
     }
 
-    val pagerState = rememberPagerState(initialPage = initialIndex) {
-        photosList.size
-    }
-
-    // Update current photo in ViewModel when swiping
-    LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage in photosList.indices) {
-            viewModel.setCurrentPhoto(photosList[pagerState.currentPage])
+    // Wrap in key to force new PagerState when the list context changes (e.g. new search/folder)
+    key(photosList) {
+        val pagerState = rememberPagerState(initialPage = initialIndex) {
+            photosList.size
         }
-    }
 
-    val currentPhoto = photo ?: return
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Photo") },
-            text = { Text("Are you sure you want to delete this photo?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deletePhoto(currentPhoto)
-                    showDeleteDialog = false
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-    ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            pageSpacing = 16.dp,
-            userScrollEnabled = !isZoomed,
-            key = { index -> if (index < photosList.size) photosList[index].uri.toString() else index }
-        ) { page ->
-            if (page in photosList.indices) {
-                val p = photosList[page]
-                ZoomableImage(
-                    uri = p.uri,
-                    contentDescription = p.name,
-                    rotationZ = if (p == currentPhoto) rotation else 0f,
-                    onTap = { viewModel.toggleImmersiveMode() },
-                    onScaleChanged = { isZoomed = it > 1f }
-                )
+        // Update current photo in ViewModel when swiping
+        LaunchedEffect(pagerState.currentPage) {
+            if (pagerState.currentPage in photosList.indices) {
+                viewModel.setCurrentPhoto(photosList[pagerState.currentPage])
             }
         }
 
-        // Top Bar
-        AnimatedVisibility(
-            visible = !isImmersive,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            TopAppBar(
-                title = { Text(currentPhoto.name, color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.closePhoto() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black.copy(alpha = 0.5f),
-                    titleContentColor = Color.White
-                )
-            )
-        }
-
-        // Bottom Bar
-        AnimatedVisibility(
-            visible = !isImmersive,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            Surface(
-                color = Color.Black.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .navigationBarsPadding(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
-                    }
-                    IconButton(onClick = {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "image/*"
-                            putExtra(Intent.EXTRA_STREAM, currentPhoto.uri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val currentPhoto = photo
+        if (currentPhoto != null) {
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("Delete Photo") },
+                    text = { Text("Are you sure you want to delete this photo?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            viewModel.deletePhoto(currentPhoto)
+                            showDeleteDialog = false
+                        }) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
                         }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share Image"))
-                    }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancel")
+                        }
                     }
-                    IconButton(onClick = { viewModel.rotatePhoto() }) {
-                        Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = "Rotate", tint = Color.White)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    pageSpacing = 16.dp,
+                    userScrollEnabled = !isZoomed,
+                    key = { index -> if (index < photosList.size) photosList[index].uri.toString() else index }
+                ) { page ->
+                    if (page in photosList.indices) {
+                        val p = photosList[page]
+                        ZoomableImage(
+                            uri = p.uri,
+                            contentDescription = p.name,
+                            rotationZ = if (p == currentPhoto) rotation else 0f,
+                            onTap = { viewModel.toggleImmersiveMode() },
+                            onScaleChanged = { isZoomed = it > 1f }
+                        )
+                    }
+                }
+
+                // Top Bar
+                AnimatedVisibility(
+                    visible = !isImmersive,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    TopAppBar(
+                        title = { Text(currentPhoto.name, color = Color.White) },
+                        navigationIcon = {
+                            IconButton(onClick = { viewModel.closePhoto() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Color.Black.copy(alpha = 0.5f),
+                            titleContentColor = Color.White
+                        )
+                    )
+                }
+
+                // Bottom Bar
+                AnimatedVisibility(
+                    visible = !isImmersive,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .navigationBarsPadding(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            IconButton(onClick = { showDeleteDialog = true }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                            }
+                            IconButton(onClick = {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "image/*"
+                                    putExtra(Intent.EXTRA_STREAM, currentPhoto.uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Share Image"))
+                            }) {
+                                Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                            }
+                            IconButton(onClick = { viewModel.rotatePhoto() }) {
+                                Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = "Rotate", tint = Color.White)
+                            }
+                        }
                     }
                 }
             }

@@ -3,7 +3,8 @@ package com.davide.seddio.easygallery.ui
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -51,7 +52,6 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val sortType by viewModel.sortType.collectAsState()
     val viewType by viewModel.viewType.collectAsState()
     
-    var cumulativeScale by remember { mutableFloatStateOf(1f) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
     var showColumnCountDialog by remember { mutableStateOf(false) }
@@ -139,22 +139,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
 
-        Box(
-            modifier = Modifier
-                .padding(padding)
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, _, zoom, _ ->
-                        cumulativeScale *= zoom
-                        if (cumulativeScale > 1.2f) {
-                            viewModel.decreaseColumns()
-                            cumulativeScale = 1f
-                        } else if (cumulativeScale < 0.8f) {
-                            viewModel.increaseColumns()
-                            cumulativeScale = 1f
-                        }
-                    }
-                }
-        ) {
+        Box(modifier = Modifier.padding(padding)) {
             if (displayMode == DisplayMode.CALENDAR) {
                 CalendarGrid(
                     viewModel = viewModel,
@@ -176,7 +161,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                                 columns = columnsCount,
                                 selectedFolders = selectedFolders,
                                 onFolderClick = { viewModel.selectFolder(it) },
-                                onFolderLongClick = { viewModel.enterSelectionMode(it.name) }
+                                onFolderLongClick = { viewModel.enterSelectionMode(it.name) },
+                                onZoomIn = { viewModel.decreaseColumns() },
+                                onZoomOut = { viewModel.increaseColumns() }
                             )
                         } else {
                             FolderList(
@@ -352,12 +339,39 @@ fun FolderGrid(
     columns: Int,
     selectedFolders: Set<String>,
     onFolderClick: (Folder) -> Unit,
-    onFolderLongClick: (Folder) -> Unit
+    onFolderLongClick: (Folder) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit
 ) {
+    var cumulativeScale by remember { mutableFloatStateOf(1f) }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         contentPadding = PaddingValues(8.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    do {
+                        val event = awaitPointerEvent()
+                        val zoom = event.calculateZoom()
+                        if (zoom != 1f) {
+                            cumulativeScale *= zoom
+                            if (cumulativeScale > 1.2f) {
+                                onZoomIn()
+                                cumulativeScale = 1f
+                            } else if (cumulativeScale < 0.8f) {
+                                onZoomOut()
+                                cumulativeScale = 1f
+                            }
+                            // Don't fully consume if we want scrolling to potentially work, 
+                            // but for zoom it's usually okay to consume.
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                    cumulativeScale = 1f
+                }
+            }
     ) {
         items(folders) { folder ->
             FolderGridItem(
