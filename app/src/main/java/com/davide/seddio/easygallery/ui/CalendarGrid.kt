@@ -44,10 +44,10 @@ fun CalendarGrid(
                         if (zoom != 1f) {
                             cumulativeScale *= zoom
                             if (cumulativeScale > 1.25f) {
-                                viewModel.decreaseColumns()
+                                viewModel.decreaseColumns(forPictures = true)
                                 cumulativeScale = 1f
                             } else if (cumulativeScale < 0.75f) {
-                                viewModel.increaseColumns()
+                                viewModel.increaseColumns(forPictures = true)
                                 cumulativeScale = 1f
                             }
                             event.changes.forEach { it.consume() }

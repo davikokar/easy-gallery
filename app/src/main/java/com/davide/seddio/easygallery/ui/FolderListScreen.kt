@@ -35,13 +35,15 @@ import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 import com.davide.seddio.easygallery.ui.components.SelectionTopBar
+import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderListScreen(viewModel: GalleryViewModel) {
     val uiState by viewModel.filteredFolders.collectAsState()
-    val columnsCount by viewModel.columnsCount.collectAsState()
+    val folderColumns by viewModel.folderColumns.collectAsState()
+    val pictureColumns by viewModel.pictureColumns.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchActive by viewModel.isSearchActive.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
@@ -150,9 +152,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
 
         if (showColumnCountDialog) {
             ColumnCountDialog(
-                currentCount = columnsCount,
+                currentCount = if (displayMode == DisplayMode.GALLERY) folderColumns else pictureColumns,
                 onCountSelected = {
-                    viewModel.setColumnsCount(it)
+                    viewModel.setColumnsCount(it, forPictures = displayMode != DisplayMode.GALLERY)
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
@@ -187,7 +189,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 CalendarGrid(
                     viewModel = viewModel,
                     groupedPhotos = groupedPhotos,
-                    columns = columnsCount,
+                    columns = pictureColumns,
                     showInfo = showInfo
                 )
             } else {
@@ -201,12 +203,12 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                         if (viewType == ViewType.GRID) {
                             FolderGrid(
                                 folders = state.folders,
-                                columns = columnsCount,
+                                columns = folderColumns,
                                 selectedFolders = selectedFolders,
                                 onFolderClick = { viewModel.selectFolder(it) },
                                 onFolderLongClick = { viewModel.enterSelectionMode(it.name) },
-                                onZoomIn = { viewModel.decreaseColumns() },
-                                onZoomOut = { viewModel.increaseColumns() }
+                                onZoomIn = { viewModel.decreaseColumns(forPictures = false) },
+                                onZoomOut = { viewModel.increaseColumns(forPictures = false) }
                             )
                         } else {
                             FolderList(
@@ -359,50 +361,6 @@ fun SortOption(
             modifier = Modifier.padding(start = 16.dp)
         )
     }
-}
-
-@Composable
-fun ColumnCountDialog(
-    currentCount: Int,
-    onCountSelected: (Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Column count") },
-        text = {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(5),
-                modifier = Modifier.height(250.dp)
-            ) {
-                items(20) { index ->
-                    val count = index + 1
-                    val isSelected = count == currentCount
-                    Box(
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .aspectRatio(1f)
-                            .clip(CircleShape)
-                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-                            .combinedClickable(
-                                onClick = { onCountSelected(count) }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = count.toString(),
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }
 
 @Composable

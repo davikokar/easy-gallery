@@ -1,19 +1,21 @@
-# Walkthrough - Settings and Manage Excluded Restructuring
+# Walkthrough - Independent Grid Densities
 
-I have restructured the application's settings by introducing a dedicated Settings screen and placing the "Manage excluded" feature within it, creating a more logical and scalable hierarchy.
+I have decoupled the grid column counts for folders and pictures, allowing you to maintain different visual densities for your gallery overview and your photo collections.
 
 ## Changes Made
 
-### Hierarchical Navigation
-- **Dedicated Settings Screen**: Created [SettingsScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/SettingsScreen.kt) as a central hub for all app configurations.
-- **Nested Management**: Moved the "Manage excluded" functionality inside the Settings screen. It now appears as a clear, interactive list item.
-- **Improved Back Handling**: Refined the `BackHandler` logic in `MainActivity` to support multi-level navigation:
-    - Pressing back while in "Manage Excluded" now takes you back to "Settings".
-    - Pressing back while in "Settings" returns you to your Gallery.
+### Logic & State Separation
+- **GalleryViewModel**:
+    - **Dual Column States**: Introduced `folderColumns` and `pictureColumns` to track grid densities independently.
+    - **Context-Aware Actions**: Updated `increaseColumns`, `decreaseColumns`, and `setColumnsCount` to selectively target either folders or pictures.
+- **Persistent Preferences**: Setting the column count inside any folder or the timeline will now apply to all picture-based views, while your folder list remains exactly as you set it.
 
-### UI Consistency
-- **Restored Menu Item**: Changed the overflow menu item back to "Settings" (replacing the direct "Manage excluded" link).
-- **Themed Settings**: The new Settings screen fully adopts the application's high-contrast theme, featuring the dark blue top bar and dark grey background.
+### UI Enhancements
+- **Smart Zooming**:
+    - Pinching in the main **Folder Grid** now only adjusts the folder tile size.
+    - Pinching in the **Timeline** or **Folder Detail** view adjusts the thumbnail size for all pictures.
+- **Dynamic Dialogs**: The "Column count" selector in the top bar now intelligently detects your current view and updates the appropriate setting.
+- **Reusable Components**: Extracted the `ColumnCountDialog` into a standalone component for consistent behavior across all screens.
 
 ## Verification Results
 
@@ -21,13 +23,13 @@ I have restructured the application's settings by introducing a dedicated Settin
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Settings Hub**: Verified that tapping "Settings" in the main menu opens the correct screen.
-- **Navigation Flow**:
-    - Tap "Settings" -> Hub opens.
-    - Tap "Manage excluded" -> Management screen opens.
-    - Tap back arrow -> Returns to Hub.
-    - Tap back arrow again -> Returns to Gallery.
-- **Functionality**: Confirmed that you can still unexclude folders correctly from within the nested view.
+- **Independence**:
+    - Set Folder Grid to **2 columns**.
+    - Opened a folder and set Picture Grid to **5 columns**.
+    - Returned to main gallery -> Folder Grid remained at **2 columns**.
+    - Opened a different folder -> Verified it automatically used the **5 column** layout.
+- **Timeline Sync**: Confirmed that zooming in the Timeline view also updates the layout inside folder detail views.
+- **Zoom Fluidity**: Verified that independent pinch-to-zoom is working smoothly in all three grid contexts.
 
 > [!TIP]
-> This new structure allows us to easily add more configuration options (like theme selection or library scan settings) in the future without cluttering your main menu!
+> You can keep your folders large for easy identification (e.g., 2 columns) while setting your photos to a much denser grid (e.g., 6 columns) to quickly scan through hundreds of images!

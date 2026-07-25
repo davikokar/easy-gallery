@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.MediaGridItem
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
+import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,10 +28,12 @@ import com.davide.seddio.easygallery.ui.theme.BottomGrey
 fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val media by viewModel.filteredMedia.collectAsState()
     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
-    val columnsCount by viewModel.columnsCount.collectAsState()
+    val columnsCount by viewModel.pictureColumns.collectAsState()
     val showInfo by viewModel.showInfo.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchActive by viewModel.isSearchActive.collectAsState()
+
+    var showColumnCountDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -40,6 +43,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 isSearchActive = isSearchActive,
                 onSearchQueryChange = { viewModel.setSearchQuery(it) },
                 onSearchActiveChange = { viewModel.setSearchActive(it) },
+                onColumnCountClick = { showColumnCountDialog = true },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.backToFolders() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -58,6 +62,17 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         },
         containerColor = BottomGrey
     ) { padding ->
+        if (showColumnCountDialog) {
+            ColumnCountDialog(
+                currentCount = columnsCount,
+                onCountSelected = {
+                    viewModel.setColumnsCount(it, forPictures = true)
+                    showColumnCountDialog = false
+                },
+                onDismiss = { showColumnCountDialog = false }
+            )
+        }
+
         var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
         Box(
@@ -80,10 +95,10 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                                 if (zoom != 1f) {
                                     cumulativeScale *= zoom
                                     if (cumulativeScale > 1.25f) {
-                                        viewModel.decreaseColumns()
+                                        viewModel.decreaseColumns(forPictures = true)
                                         cumulativeScale = 1f
                                     } else if (cumulativeScale < 0.75f) {
-                                        viewModel.increaseColumns()
+                                        viewModel.increaseColumns(forPictures = true)
                                         cumulativeScale = 1f
                                     }
                                     event.changes.forEach { it.consume() }

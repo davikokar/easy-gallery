@@ -1,5 +1,5 @@
-- [x] Update `GalleryViewModel` with `isSettingsMode`
-- [x] Restore "Settings" to `SearchTopBar`
-- [x] Create `SettingsScreen` UI
-- [x] Update `MainActivity` to host `SettingsScreen` and fix back logic
-- [x] Verify hierarchical navigation
+- [x] Update `GalleryViewModel` with separate column states for folders and pictures
+- [x] Update `FolderListScreen` to use context-aware column counts
+- [x] Update `FolderDetailScreen` to use picture-specific column counts
+- [x] Update `CalendarGrid` to use picture-specific column counts
+- [x] Verify independent grid behavior

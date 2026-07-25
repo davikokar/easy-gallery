@@ -102,8 +102,11 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         groupMediaByDate(media)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
-    private val _columnsCount = MutableStateFlow(2)
-    val columnsCount: StateFlow<Int> = _columnsCount.asStateFlow()
+    private val _folderColumns = MutableStateFlow(2)
+    val folderColumns: StateFlow<Int> = _folderColumns.asStateFlow()
+
+    private val _pictureColumns = MutableStateFlow(3)
+    val pictureColumns: StateFlow<Int> = _pictureColumns.asStateFlow()
 
     private val _selectedFolder = MutableStateFlow<Folder?>(null)
     val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
@@ -147,20 +150,29 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun increaseColumns() {
-        if (_columnsCount.value < 20) {
-            _columnsCount.value += 1
+    fun increaseColumns(forPictures: Boolean) {
+        if (forPictures) {
+            if (_pictureColumns.value < 20) _pictureColumns.value += 1
+        } else {
+            if (_folderColumns.value < 20) _folderColumns.value += 1
         }
     }
 
-    fun decreaseColumns() {
-        if (_columnsCount.value > 1) {
-            _columnsCount.value -= 1
+    fun decreaseColumns(forPictures: Boolean) {
+        if (forPictures) {
+            if (_pictureColumns.value > 1) _pictureColumns.value -= 1
+        } else {
+            if (_folderColumns.value > 1) _folderColumns.value -= 1
         }
     }
 
-    fun setColumnsCount(count: Int) {
-        _columnsCount.value = count.coerceIn(1, 20)
+    fun setColumnsCount(count: Int, forPictures: Boolean) {
+        val safeCount = count.coerceIn(1, 20)
+        if (forPictures) {
+            _pictureColumns.value = safeCount
+        } else {
+            _folderColumns.value = safeCount
+        }
     }
 
     fun selectFolder(folder: Folder) {
