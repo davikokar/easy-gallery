@@ -1,18 +1,23 @@
-# Walkthrough - Video Thumbnails and Enhanced Decoding
+# Walkthrough - Enhanced Multiselection Tools
 
-I have enabled video frame decoding, ensuring that all your videos and video-only folders now feature high-quality thumbnails.
+I have upgraded the gallery's multiselection mode with a detailed properties viewer and an expanded action menu.
 
 ## Changes Made
 
-### Multimedia Support
-- **Video Thumbnails**: Integrated the `coil-video` extension. The app now automatically extracts the first frame of every video to use as its thumbnail. This fixes the issue where videos and certain folders appeared empty.
-- **Unified Decoding**: Created a custom `Application` class ([EasyGalleryApp.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/EasyGalleryApp.kt)) to configure a global `ImageLoader`. This shared loader handles:
-    - **Video frames** for thumbnails.
-    - **GIF animations** for a dynamic grid experience.
+### Management Tools & Actions
+- **Properties Window**: Added a new "Info" action to the selection bar. Pressing it opens a "Properties" dialog that provides:
+    - **Selection Stats**: The number of folders selected.
+    - **Storage Info**: The total size of all media within the selected folders (calculated in MB).
+    - **File Inventory**: The total count of all images and videos across the selection.
+    - **Single-Folder Context**: If exactly one folder is selected, the dialog also displays its specific **Name** and **Physical Path** for precise identification.
+- **Expanded Action Menu**: Integrated a 3-dot overflow menu on the far right of the selection bar with the following items:
+    - **Rename**, **Copy to**, **Move to**, **Exclude** (UI Placeholders).
+    - **Select all**: A functional action that instantly selects every visible folder in the current list or search result.
 
-### UI Improvements
-- **Optimized Loading**: Refactored [MediaGridItem.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/MediaGridItem.kt) to use the global singleton `ImageLoader`, reducing memory overhead and ensuring consistent decoding across the app.
-- **Format Labeling**: Videos in the grid continue to show their duration and a play icon, now overlayed on a clear video-frame thumbnail.
+### UI & UX Enhancements
+- **SelectionTopBar**: Redesigned the selection toolbar to accommodate the new Info and Menu icons while maintaining a consistent deep-blue and white high-contrast look.
+- **Consistent Layout**: Ensured the new management tools perfectly replace the search bar when selection mode is active, preventing UI clutter.
+- **Improved Dialogs**: Used standard Material 3 dialog components for the properties viewer, ensuring a clean and familiar user experience.
 
 ## Verification Results
 
@@ -20,9 +25,14 @@ I have enabled video frame decoding, ensuring that all your videos and video-onl
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Video Folders**: Confirmed that folders containing only videos now correctly display a video frame as their cover image.
-- **Video Items**: Verified that every video in the grid now shows its first frame instead of a blank box.
-- **GIFs**: Confirmed that animated GIFs still play correctly in the grid and full-screen view.
+- **Info Icon**: Correctly appears in the top bar during multiselection.
+- **Properties Dialog**:
+    - Verified that Selecting 1 folder shows Name and Path.
+    - Verified that Selecting 5 folders shows the aggregate MB and file counts.
+- **Overflow Menu**:
+    - Verified the menu items appear in the correct order.
+    - **Select All**: Confirmed that tapping it selects every folder in the list.
+- **Visuals**: Verified all new icons are pure white and correctly aligned.
 
 > [!TIP]
-> The app now uses a centralized image loading system, which makes it much faster and more efficient when scrolling through large collections of mixed media!
+> Use the **Select all** feature combined with the **Info** button to quickly calculate the total size of your entire gallery!

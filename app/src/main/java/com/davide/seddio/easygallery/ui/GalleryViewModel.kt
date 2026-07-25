@@ -254,6 +254,23 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _selectedFolders.value = emptySet()
     }
 
+    fun selectAll() {
+        val currentState = filteredFolders.value
+        if (currentState is GalleryUiState.Success) {
+            _selectedFolders.value = currentState.folders.map { it.name }.toSet()
+        }
+    }
+
+    fun getSelectedFoldersData(): List<Folder> {
+        val selected = _selectedFolders.value
+        val currentState = _uiState.value
+        return if (currentState is GalleryUiState.Success) {
+            currentState.folders.filter { selected.contains(it.name) }
+        } else {
+            emptyList()
+        }
+    }
+
     fun deleteSelected() {
         val toDelete = _selectedFolders.value
         val currentState = _uiState.value

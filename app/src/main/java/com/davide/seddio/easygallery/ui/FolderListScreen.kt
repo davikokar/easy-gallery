@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PushPin
@@ -57,6 +56,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     var showSortDialog by remember { mutableStateOf(false) }
     var showColumnCountDialog by remember { mutableStateOf(false) }
     var showViewTypeDialog by remember { mutableStateOf(false) }
+    var showPropertiesDialog by remember { mutableStateOf(false) }
 
     val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
 
@@ -68,7 +68,13 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     totalCount = totalFolders,
                     onClose = { viewModel.exitSelectionMode() },
                     onDelete = { showDeleteDialog = true },
-                    onPin = { viewModel.pinSelected() }
+                    onPin = { viewModel.pinSelected() },
+                    onInfoClick = { showPropertiesDialog = true },
+                    onSelectAll = { viewModel.selectAll() },
+                    onRename = { /* Placeholder */ },
+                    onCopyTo = { /* Placeholder */ },
+                    onMoveTo = { /* Placeholder */ },
+                    onExclude = { /* Placeholder */ }
                 )
             } else {
                 SearchTopBar(
@@ -141,6 +147,13 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
 
+        if (showPropertiesDialog) {
+            PropertiesDialog(
+                folders = viewModel.getSelectedFoldersData(),
+                onDismiss = { showPropertiesDialog = false }
+            )
+        }
+
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -190,6 +203,35 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             }
         }
     }
+}
+
+@Composable
+fun PropertiesDialog(folders: List<Folder>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Properties") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Items selected: ${folders.size}")
+                val totalSizeMb = folders.sumOf { it.size } / (1024 * 1024)
+                Text("Content size: $totalSizeMb MB")
+                val totalFiles = folders.sumOf { it.imageCount }
+                Text("Total files count: $totalFiles")
+
+                if (folders.size == 1) {
+                    val folder = folders[0]
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    Text("Name: ${folder.name}", fontWeight = FontWeight.Bold)
+                    Text("Path: ${folder.path}", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
