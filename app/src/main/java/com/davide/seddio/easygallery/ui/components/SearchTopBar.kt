@@ -27,6 +27,7 @@ fun SearchTopBar(
     onToggleDisplayMode: (() -> Unit)? = null,
     onSortClick: (() -> Unit)? = null,
     onColumnCountClick: (() -> Unit)? = null,
+    onViewTypeClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null
 ) {
@@ -98,7 +99,13 @@ fun SearchTopBar(
                         )
                         DropdownMenuItem(text = { Text("Temporarily show excluded") }, onClick = { showMenu = false })
                         DropdownMenuItem(text = { Text("Filter media") }, onClick = { showMenu = false })
-                        DropdownMenuItem(text = { Text("Change view type") }, onClick = { showMenu = false })
+                        DropdownMenuItem(
+                            text = { Text("Change view type") },
+                            onClick = {
+                                showMenu = false
+                                onViewTypeClick?.invoke()
+                            }
+                        )
                         DropdownMenuItem(text = { Text("Settings") }, onClick = { showMenu = false })
                     }
                 }

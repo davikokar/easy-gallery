@@ -44,6 +44,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _sortType = MutableStateFlow(SortType.NAME)
     val sortType: StateFlow<SortType> = _sortType.asStateFlow()
 
+    private val _viewType = MutableStateFlow(ViewType.GRID)
+    val viewType: StateFlow<ViewType> = _viewType.asStateFlow()
+
     val filteredFolders: StateFlow<GalleryUiState> = combine(
         _uiState, _searchQuery, _pinnedFolders, _sortType
     ) { state, query, pinned, sort ->
@@ -160,6 +163,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _sortType.value = sortType
     }
 
+    fun setViewType(viewType: ViewType) {
+        _viewType.value = viewType
+    }
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -243,6 +250,10 @@ enum class DisplayMode {
 
 enum class SortType {
     NAME, PATH, SIZE, LAST_MODIFIED, DATE_TAKEN, RANDOM
+}
+
+enum class ViewType {
+    GRID, LIST
 }
 
 sealed class GalleryUiState {

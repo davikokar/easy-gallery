@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -47,11 +49,13 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val groupedPhotos by viewModel.groupedPhotosByDate.collectAsState()
     val showInfo by viewModel.showInfo.collectAsState()
     val sortType by viewModel.sortType.collectAsState()
+    val viewType by viewModel.viewType.collectAsState()
     
     var cumulativeScale by remember { mutableFloatStateOf(1f) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
     var showColumnCountDialog by remember { mutableStateOf(false) }
+    var showViewTypeDialog by remember { mutableStateOf(false) }
 
     val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
 
@@ -75,7 +79,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onSearchActiveChange = { viewModel.setSearchActive(it) },
                     onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                     onSortClick = { showSortDialog = true },
-                    onColumnCountClick = { showColumnCountDialog = true }
+                    onColumnCountClick = { showColumnCountDialog = true },
+                    onViewTypeClick = { showViewTypeDialog = true }
                 )
             }
         }
@@ -123,6 +128,17 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
 
+        if (showViewTypeDialog) {
+            ViewTypeDialog(
+                currentViewType = viewType,
+                onViewTypeSelected = {
+                    viewModel.setViewType(it)
+                    showViewTypeDialog = false
+                },
+                onDismiss = { showViewTypeDialog = false }
+            )
+        }
+
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -153,13 +169,22 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                         }
                     }
                     is GalleryUiState.Success -> {
-                        FolderGrid(
-                            folders = state.folders,
-                            columns = columnsCount,
-                            selectedFolders = selectedFolders,
-                            onFolderClick = { viewModel.selectFolder(it) },
-                            onFolderLongClick = { viewModel.enterSelectionMode(it.name) }
-                        )
+                        if (viewType == ViewType.GRID) {
+                            FolderGrid(
+                                folders = state.folders,
+                                columns = columnsCount,
+                                selectedFolders = selectedFolders,
+                                onFolderClick = { viewModel.selectFolder(it) },
+                                onFolderLongClick = { viewModel.enterSelectionMode(it.name) }
+                            )
+                        } else {
+                            FolderList(
+                                folders = state.folders,
+                                selectedFolders = selectedFolders,
+                                onFolderClick = { viewModel.selectFolder(it) },
+                                onFolderLongClick = { viewModel.enterSelectionMode(it.name) }
+                            )
+                        }
                     }
                     is GalleryUiState.Error -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -169,6 +194,56 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ViewTypeDialog(
+    currentViewType: ViewType,
+    onViewTypeSelected: (ViewType) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Change view type") },
+        text = {
+            Column(Modifier.selectableGroup()) {
+                ViewTypeOption("Grid", ViewType.GRID, currentViewType == ViewType.GRID, onViewTypeSelected)
+                ViewTypeOption("List", ViewType.LIST, currentViewType == ViewType.LIST, onViewTypeSelected)
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun ViewTypeOption(
+    label: String,
+    type: ViewType,
+    selected: Boolean,
+    onViewTypeSelected: (ViewType) -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .selectable(
+                selected = selected,
+                onClick = { onViewTypeSelected(type) },
+                role = Role.RadioButton
+            )
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 16.dp)
+        )
     }
 }
 
@@ -284,7 +359,7 @@ fun FolderGrid(
         modifier = Modifier.fillMaxSize()
     ) {
         items(folders) { folder ->
-            FolderItem(
+            FolderGridItem(
                 folder = folder,
                 isSelected = selectedFolders.contains(folder.name),
                 onClick = { onFolderClick(folder) },
@@ -296,7 +371,7 @@ fun FolderGrid(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FolderItem(
+fun FolderGridItem(
     folder: Folder,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -381,6 +456,126 @@ fun FolderItem(
                     text = "${folder.imageCount} images",
                     color = Color.White.copy(alpha = 0.8f),
                     fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FolderList(
+    folders: List<Folder>,
+    selectedFolders: Set<String>,
+    onFolderClick: (Folder) -> Unit,
+    onFolderLongClick: (Folder) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        items(folders) { folder ->
+            FolderListItem(
+                folder = folder,
+                isSelected = selectedFolders.contains(folder.name),
+                onClick = { onFolderClick(folder) },
+                onLongClick = { onFolderLongClick(folder) }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun FolderListItem(
+    folder: Folder,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.background(Color.Transparent)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(8.dp))
+            ) {
+                AsyncImage(
+                    model = folder.thumbnailUri,
+                    contentDescription = folder.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                if (folder.isPinned) {
+                    Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .size(16.dp)
+                    )
+                }
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.3f))
+                    )
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Selected",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(24.dp)
+                            .background(Color.White, CircleShape)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = folder.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "${folder.imageCount} items",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+                Text(
+                    text = folder.path,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

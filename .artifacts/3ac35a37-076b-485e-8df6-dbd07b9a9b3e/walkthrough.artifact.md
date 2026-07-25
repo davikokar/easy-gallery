@@ -1,19 +1,21 @@
-# Walkthrough - Column Count Selector
+# Walkthrough - View Type Switcher (Grid & List)
 
-I have added an explicit "Column count" selector, providing an alternative to pinch-to-zoom for adjusting the grid density.
+I have verified the implementation of the new view mode switcher. You can now choose between the classic square grid and a detailed list view for your gallery folders.
 
-## Changes Made
+## Features Implemented
 
 ### Logic & State
-- **Expanded Grid Density**: Increased the maximum column limit from 5 to 20 across the entire app.
-- **Explicit Control**: Added `setColumnsCount(count)` to the `GalleryViewModel`, allowing users to jump directly to a specific grid size.
+- **ViewType State**: Added `ViewType` enum (`GRID` and `LIST`) in `GalleryViewModel` to manage user preference.
+- **Dynamic Switching**: The gallery automatically updates its layout when the view type is changed.
 
-### UI Enhancements
-- **Menu Integration**: Activated the "Column count" item in the overflow menu.
-- **ColumnCountDialog**: A new selection dialog that displays a grid of numbers from 1 to 20.
-    - **Visual Feedback**: The current column count is highlighted with the primary theme color.
-    - **Instant Application**: Tapping any number immediately updates the grid and closes the dialog.
-- **Gesture Synchronization**: The new 1-20 range is fully integrated with the pinch-to-zoom functionality, ensuring a consistent experience regardless of how you adjust the grid.
+### UI Components
+- **Menu Integration**: The "Change view type" option in the overflow menu is fully functional.
+- **ViewTypeDialog**: A selection dialog that allows switching between **Grid** and **List** modes.
+- **Detailed List View**:
+    - **Thumbnail**: A square tile on the left of each item.
+    - **Metadata**: Displays Folder Name and Image Count on the first line.
+    - **Directory Path**: Shows the full physical path on a second line.
+    - **Pinned/Selected Indicators**: Subtly integrated within the list item thumbnail.
 
 ## Verification Results
 
@@ -21,12 +23,11 @@ I have added an explicit "Column count" selector, providing an alternative to pi
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Menu Access**: Tapping "Column count" in the 3-dotted menu successfully opens the selection window.
-- **Selection Logic**:
-    - Tapping "1" creates a single-column list view.
-    - Tapping "20" creates a very dense thumbnail view.
-    - The dialog dismisses instantly upon selection.
-- **Zoom Compatibility**: Pinching to zoom after using the dialog respects the newly set count and stays within the 1-20 boundaries.
+- **Menu Access**: Tapping "Change view type" in the 3-dotted menu successfully opens the selection window.
+- **List Layout**:
+    - Verified that thumbnails appear on the left.
+    - Verified that Name, Count, and Path are correctly displayed.
+- **Compatibility**: Verified that Search, Sorting, and Multiselection work perfectly in the new List mode.
 
 > [!TIP]
-> Use a high column count (like 10-15) when you're looking for a specific visual pattern across a large collection of photos!
+> The **List View** is particularly useful for distinguishing between folders with the same name that are stored in different locations on your device!

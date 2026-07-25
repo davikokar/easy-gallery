@@ -8,8 +8,10 @@
 - [x] Implement Calendar View Mode
 - [x] Implement Sorting and Overflow Menu
 - [x] Implement Column Count Selector
-    - [x] Update `GalleryViewModel` (range 1-20, `setColumnsCount`)
-    - [x] Update `SearchTopBar` with `onColumnCountClick`
-    - [x] Implement `ColumnCountDialog` in `FolderListScreen`
+- [x] Implement View Type (Grid/List) Switcher
+    - [x] Update `GalleryViewModel` with `ViewType` state
+    - [x] Update `SearchTopBar` with `onViewTypeClick`
+    - [x] Implement `ViewTypeDialog` in `FolderListScreen`
+    - [x] Implement `FolderList` and `FolderListItem` in `FolderListScreen`
 - [/] Verification
     - [ ] Build and verify
