@@ -78,7 +78,14 @@ fun MediaTypeFilterItem(label: String, type: MediaType, checked: Boolean, onTogg
             .clickable { onToggle(type) }
             .padding(vertical = 8.dp)
     ) {
-        Checkbox(checked = checked, onCheckedChange = { onToggle(type) })
-        Text(text = label, modifier = Modifier.padding(start = 8.dp))
+        Checkbox(
+            checked = checked, 
+            onCheckedChange = { onToggle(type) }
+        )
+        Text(
+            text = label, 
+            modifier = Modifier.padding(start = 8.dp),
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }

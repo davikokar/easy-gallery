@@ -1,9 +1,4 @@
-- [x] Rename "Select Current" to "OK" in `FolderListScreen`
-- [x] Implement `copyFolderContents` in `MediaStoreDataSource`
-- [x] Implement `moveFolderContents` in `MediaStoreDataSource`
-- [x] Update `GalleryViewModel` to iterate through selected folders and trigger operations
-- [x] Verify physical file operations and gallery refresh
-- [x] Refine Gallery List View (normal weight name, smaller path font)
-- [x] Align Picture List View style with Gallery style (rounded corners, padding, typography)
-- [x] Fix folder path data propagation (populate `MediaItem.folderPath` and `Folder.path`)
-- [x] Fix Content Size bug in Properties dialog (populate and accumulate `MediaItem.size`)
+- [x] Update `Theme.kt` with comprehensive surface mapping
+- [x] Verify `AlertDialog` backgrounds in `FolderListScreen`
+- [x] Verify `DropdownMenu` backgrounds in `SearchTopBar` and `SelectionTopBar`
+- [x] Final visual check for white-on-white text issues

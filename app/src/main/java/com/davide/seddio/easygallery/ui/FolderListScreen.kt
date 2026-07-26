@@ -357,7 +357,7 @@ fun Breadcrumb(path: String, onBreadcrumbClick: (String) -> Unit) {
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (index == segments.lastIndex) MaterialTheme.colorScheme.primary else Color.White,
+                color = if (index == segments.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.clickable { onBreadcrumbClick(fullPath) }
             )
             if (index < segments.lastIndex) {
@@ -365,7 +365,7 @@ fun Breadcrumb(path: String, onBreadcrumbClick: (String) -> Unit) {
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color.White.copy(alpha = 0.5f)
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
             }
         }
@@ -384,14 +384,14 @@ fun FolderPickerItem(folder: Folder, onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Default.Folder,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             modifier = Modifier.size(24.dp)
         )
         Text(
             text = folder.name,
             modifier = Modifier.padding(start = 12.dp),
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -403,17 +403,17 @@ fun PropertiesDialog(folders: List<Folder>, onDismiss: () -> Unit) {
         title = { Text("Properties") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Items selected: ${folders.size}")
+                Text("Items selected: ${folders.size}", color = MaterialTheme.colorScheme.onSurface)
                 val totalSizeMb = folders.sumOf { it.size } / (1024 * 1024)
-                Text("Content size: $totalSizeMb MB")
+                Text("Content size: $totalSizeMb MB", color = MaterialTheme.colorScheme.onSurface)
                 val totalFiles = folders.sumOf { it.imageCount }
-                Text("Total files count: $totalFiles")
+                Text("Total files count: $totalFiles", color = MaterialTheme.colorScheme.onSurface)
 
                 if (folders.size == 1) {
                     val folder = folders[0]
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    Text("Name: ${folder.name}", fontWeight = FontWeight.Bold)
-                    Text("Path: ${folder.path}", style = MaterialTheme.typography.bodySmall)
+                    Text("Name: ${folder.name}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Path: ${folder.path}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
@@ -470,7 +470,8 @@ fun ViewTypeOption(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp)
+            modifier = Modifier.padding(start = 16.dp),
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -544,7 +545,8 @@ fun SortOption(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp)
+            modifier = Modifier.padding(start = 16.dp),
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }

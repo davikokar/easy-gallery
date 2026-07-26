@@ -1,22 +1,17 @@
-# Walkthrough - Temporarily Show Excluded Folders
+# Walkthrough - Comprehensive Dark Mode for Menus and Dialogs
 
-I have implemented the "Temporarily show excluded" feature, which allows you to peek at your hidden folders without permanently changing your exclusion settings.
+I have fully unified the application's theme to ensure that all menus, dialogs, and popup windows use the signature dark blue-grey background, resolving the readability issues caused by inconsistent system surfaces.
 
 ## Changes Made
 
-### Temporary Visibility
-- **Peek at Hidden Content**: Tapping **"Temporarily show excluded"** in the main menu will instantly reveal all folders that you've previously hidden.
-- **Auto-Hide Logic**: To keep your gallery organized, the excluded folders are automatically hidden again as soon as you perform an "opening" operation. Specifically:
-    - Opening any gallery folder will reset the view.
-    - Toggling between **Gallery** and **Timeline** modes will reset the view.
-- **Visual Consistency**: The menu item is now functional and available both in the main gallery list and while browsing inside a folder.
+### Unified Surface Colors
+- **Thematic Force**: Updated [Theme.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/theme/Theme.kt) to map every Material 3 surface token (including `surfaceContainer`, `surfaceContainerHigh`, `surfaceContainerLow`, etc.) directly to your custom **BottomGrey** color.
+- **Fixed Readability**: This change ensures that windows like "Sort by", "Move to", and the 3-dotted overflow menu always have a dark background. This provides a high-contrast backdrop for the white and light-grey text, eliminating the "white on white" visibility problem.
+- **Light Mode Compatibility**: Refactored the theme logic to force these dark colors even if the Android system is set to "Light Mode." This guarantees that your gallery's premium dark aesthetic remains consistent across all user settings and devices.
 
-### Logic & State
-- **GalleryViewModel**:
-    - Added `showExcludedTemporarily` state to track the peeking mode.
-    - Integrated this state into the folder filtering engine to bypass the exclusion list when active.
-    - Implemented reset hooks in `selectFolder` and `toggleDisplayMode` to ensure the "temporary" behavior.
-- **SearchTopBar**: Fully wired the callback for the temporary visibility action.
+### Menu & Dialog Polishing
+- **Consistent Overlays**: All dropdown menus now correctly inherit the dark surface, making them feel like a natural part of the high-contrast top bar.
+- **Improved Hierarchy**: Ensured that primary text uses pure white while secondary technical info (like folder paths) uses a subtle 70% white, maintaining clear readability without visual clutter.
 
 ## Verification Results
 
@@ -24,10 +19,9 @@ I have implemented the "Temporarily show excluded" feature, which allows you to 
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Activation**: Confirmed that tapping the menu item shows hidden folders.
-- **Operation Reset**: Verified that opening a folder and then returning to the main list hides the excluded folders again.
-- **Mode Reset**: Verified that switching to the Timeline view and back to Gallery view resets the peeking mode.
-- **Menu Availability**: Confirmed the option works correctly from all top bars.
+- **Dialog Audit**: Confirmed that the backgrounds for "Filter media," "View Type," and "Properties" are now deep blue-grey.
+- **Dropdown Menu**: Verified that the overflow menu items are now perfectly legible with white text on a dark container.
+- **System Theme Check**: Switched between light and dark system themes and confirmed the app correctly maintains its dark identity in both states.
 
-> [!TIP]
-> Use this feature to quickly check a hidden folder or move items out of it without having to navigate into the "Manage Excluded" settings!
+> [!IMPORTANT]
+> The app is now fully "Dark Mode Only" by design, ensuring that your custom color palette is never overridden by system defaults.

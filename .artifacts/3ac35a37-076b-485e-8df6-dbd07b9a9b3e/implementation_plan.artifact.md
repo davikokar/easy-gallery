@@ -1,39 +1,27 @@
-# Implementation Plan - Functional Copy and Move Operations
+# Implementation Plan - Dark Background for Menus and Dialogs
 
-This plan outlines the steps to implement the actual file system operations for "Copy to" and "Move to" folders, replacing the placeholders with functional code and updating the UI as requested.
+This plan outlines the steps to ensure all menus and dialogs use the app's signature dark blue-grey background (`BottomGrey`), resolving the readability issue where white text was appearing on a white background.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **File Permissions**: Moving and copying files on modern Android (11+) requires proper storage permissions. This implementation assumes the app has necessary access to the targeted directories (e.g., standard media folders).
-> - **UI Change**: The "Select Current" button in the destination picker will be renamed to "OK" for clarity.
-> - **Operation Logic**: Selecting "Folder A" and choosing "Destination B" will result in a new folder "Destination B/Folder A" containing the media items.
+> - **Global Fix**: I will update the app's central `Theme.kt` to map all surface-related color tokens to `BottomGrey`. This will automatically fix all `AlertDialog` and `DropdownMenu` instances throughout the app without needing to edit each screen individually.
+> - **Text Contrast**: I'll ensure that `onSurface` and `onSurfaceVariant` are consistently mapped to `White` and `White(70%)` respectively to guarantee high legibility on the dark background.
 
 ## Proposed Changes
 
 ### UI Layer
 
-#### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Rename the `confirmButton` text in `DestinationFolderPickerDialog` from "Select Current" to "OK".
+#### [MODIFY] [Theme.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/theme/Theme.kt)
+- Update both `DarkColorScheme` and `LightColorScheme` to explicitly include:
+    - `surface = BottomGrey`
+    - `surfaceVariant = BottomGrey`
+    - `onSurface = Color.White`
+    - `onSurfaceVariant = Color.White.copy(alpha = 0.7f)`
+- This ensures that components like Dialogs (which often use `surfaceVariant` or newer container tokens) always pick up the dark color.
 
-### Logic Layer
-
-#### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- Update `performOperationWithPath(path: String)`:
-    - Iterate through `getSelectedFoldersData()` to get each folder's **name** and **physical path**.
-    - Call the corresponding `dataSource` method for each folder.
-    - Trigger a full gallery refresh (`loadFolders()`) after the operation completes.
-
-### Data Layer
-
-#### [MODIFY] [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt)
-- **Implement `copyFolderContents(sourcePath: String, targetParentPath: String)`**:
-    - Create the target subdirectory using the source folder's name.
-    - Copy all files from source to target using `FileStreams`.
-    - Use `MediaScannerConnection` to notify the system about new files.
-- **Implement `moveFolderContents(sourcePath: String, targetParentPath: String)`**:
-    - Similar to copy, but uses `File.renameTo()` or `copy + delete`.
-    - Notify MediaStore to remove old entries and scan new ones.
+#### [MODIFY] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt) and [SelectionTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SelectionTopBar.kt)
+- Verify that `DropdownMenu` items use the default theme colors and don't have hardcoded text colors that might conflict with the new dark surface. (I previously standardized these to use `onSurface`).
 
 ## Verification Plan
 
@@ -41,11 +29,11 @@ This plan outlines the steps to implement the actual file system operations for 
 - Verify build success.
 
 ### Manual Verification
-1.  **Move Operation**:
-    - Select a folder -> Choose "Move to" -> Pick a destination -> Tap "OK".
-    - Verify the folder is physically moved on the device (using a file manager or the gallery refresh).
-2.  **Copy Operation**:
-    - Select a folder -> Choose "Copy to" -> Pick a destination -> Tap "OK".
-    - Verify a duplicate folder appears in the new location.
-3.  **UI Check**:
-    - Confirm the button label is now "OK".
+1.  **Dialog Backgrounds**:
+    - Open "Sort by", "Change view type", "Filter media", and "Move to".
+    - Verify that all windows now have the `BottomGrey` (dark blue-grey) background.
+2.  **Menu Backgrounds**:
+    - Open the 3-dotted overflow menu.
+    - Verify the dropdown container is dark with white text.
+3.  **Readability**:
+    - Confirm that all text is clearly visible and high-contrast white.

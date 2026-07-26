@@ -18,27 +18,41 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = Pink80,
     background = BottomGrey,
     surface = BottomGrey,
+    surfaceVariant = BottomGrey,
+    surfaceContainer = BottomGrey,
+    surfaceContainerLow = BottomGrey,
+    surfaceContainerHigh = BottomGrey,
+    surfaceContainerLowest = BottomGrey,
+    surfaceContainerHighest = BottomGrey,
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color.White.copy(alpha = 0.7f)
+    onSurfaceVariant = Color.White.copy(alpha = 0.7f),
+    onPrimary = Color.White
 )
 
-private val LightColorScheme = lightColorScheme(
+private val LightColorScheme = darkColorScheme( // Force dark theme colors even in light mode
     primary = Purple40,
     secondary = PurpleGrey40,
     tertiary = Pink40,
     background = BottomGrey,
     surface = BottomGrey,
+    surfaceVariant = BottomGrey,
+    surfaceContainer = BottomGrey,
+    surfaceContainerLow = BottomGrey,
+    surfaceContainerHigh = BottomGrey,
+    surfaceContainerLowest = BottomGrey,
+    surfaceContainerHighest = BottomGrey,
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color.White.copy(alpha = 0.7f)
+    onSurfaceVariant = Color.White.copy(alpha = 0.7f),
+    onPrimary = Color.White
 )
 
 @Composable
 fun EasyGalleryTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Disable dynamic color by default to maintain consistent branding
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
