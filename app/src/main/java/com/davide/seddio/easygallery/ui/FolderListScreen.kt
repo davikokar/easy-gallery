@@ -6,17 +6,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,6 +45,7 @@ import com.davide.seddio.easygallery.ui.components.SelectionTopBar
 import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
 import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +75,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     var showPropertiesDialog by remember { mutableStateOf(false) }
     var showExcludeDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
+    
+    val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
+    val pendingOperation by viewModel.pendingOperation.collectAsState()
 
     val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
 
@@ -85,8 +94,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onSelectAll = { viewModel.selectAll() },
                     onExclude = { showExcludeDialog = true },
                     onRename = { /* Placeholder */ },
-                    onCopyTo = { /* Placeholder */ },
-                    onMoveTo = { /* Placeholder */ }
+                    onCopyTo = { viewModel.startOperation(OperationType.COPY) },
+                    onMoveTo = { viewModel.startOperation(OperationType.MOVE) }
                 )
             } else {
                 SearchTopBar(
@@ -203,6 +212,21 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
 
+        if (isDestinationPickerActive) {
+            val browsingPath by viewModel.browsingPath.collectAsState()
+            val browsingFolders by viewModel.browsingFolders.collectAsState()
+            
+            DestinationFolderPickerDialog(
+                title = if (pendingOperation == OperationType.MOVE) "Move to..." else "Copy to...",
+                currentPath = browsingPath,
+                folders = browsingFolders,
+                onFolderSelected = { viewModel.updateBrowsingPath(it.path) },
+                onBreadcrumbClick = { viewModel.updateBrowsingPath(it) },
+                onConfirm = { viewModel.performOperationWithPath(browsingPath) },
+                onDismiss = { viewModel.cancelOperation() }
+            )
+        }
+
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -251,6 +275,123 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun DestinationFolderPickerDialog(
+    title: String,
+    currentPath: String,
+    folders: List<Folder>,
+    onFolderSelected: (Folder) -> Unit,
+    onBreadcrumbClick: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Breadcrumb(
+                    path = currentPath,
+                    onBreadcrumbClick = onBreadcrumbClick
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (folders.isEmpty()) {
+                    Box(modifier = Modifier.height(200.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text("No subfolders here.", style = MaterialTheme.typography.bodySmall)
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                        items(folders) { folder ->
+                            FolderPickerItem(
+                                folder = folder,
+                                onClick = { onFolderSelected(folder) }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun Breadcrumb(path: String, onBreadcrumbClick: (String) -> Unit) {
+    val segments = remember(path) {
+        val root = android.os.Environment.getExternalStorageDirectory().absolutePath
+        val relative = path.removePrefix(root).trimStart('/')
+        val list = mutableListOf("Internal Storage" to root)
+        if (relative.isNotEmpty()) {
+            var current = root
+            relative.split('/').forEach { segment ->
+                current = "$current/$segment"
+                list.add(segment to current)
+            }
+        }
+        list
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        segments.forEachIndexed { index, (label, fullPath) ->
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (index == segments.lastIndex) MaterialTheme.colorScheme.primary else Color.White,
+                modifier = Modifier.clickable { onBreadcrumbClick(fullPath) }
+            )
+            if (index < segments.lastIndex) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = Color.White.copy(alpha = 0.5f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FolderPickerItem(folder: Folder, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Folder,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.7f),
+            modifier = Modifier.size(24.dp)
+        )
+        Text(
+            text = folder.name,
+            modifier = Modifier.padding(start = 12.dp),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White
+        )
     }
 }
 

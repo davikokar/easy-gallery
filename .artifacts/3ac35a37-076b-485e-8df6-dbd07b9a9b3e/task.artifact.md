@@ -1,5 +1,5 @@
-- [x] Add `SortOrder` enum and states to `GalleryViewModel`
-- [x] Implement `setSortOrder` and update sorting logic in `GalleryViewModel`
-- [x] Update `SortDialog` in `FolderListScreen` with order options and separator
-- [x] Disable order options when "Random" is selected
-- [x] Verify independent sorting and directional logic
+- [x] Rename "Select Current" to "OK" in `FolderListScreen`
+- [x] Implement `copyFolderContents` in `MediaStoreDataSource`
+- [x] Implement `moveFolderContents` in `MediaStoreDataSource`
+- [x] Update `GalleryViewModel` to iterate through selected folders and trigger operations
+- [x] Verify physical file operations and gallery refresh

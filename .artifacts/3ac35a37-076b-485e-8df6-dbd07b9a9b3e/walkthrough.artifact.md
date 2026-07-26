@@ -1,20 +1,19 @@
-# Walkthrough - Sort Order (Ascending & Descending)
+# Walkthrough - Functional Copy and Move Operations
 
-I have enhanced the sorting system by adding independent "Ascending" and "Descending" order options for both the main gallery and your photo collections.
+I have implemented the actual file system logic for "Copy to" and "Move to" operations, allowing you to physically reorganize your folders on your device.
 
 ## Changes Made
 
-### Directional Sorting
-- **New Sort Order**: The "Sort by" dialog now includes a clear choice between **Ascending** and **Descending** order, separated from the primary criteria by a horizontal line.
-- **Independent Levels**: Just like grid density and view type, the sort direction is independent for your Gallery and your Pictures.
-    - *Example*: Sort your **Folders by Name (Ascending)** while sorting your **Photos by Size (Descending)**.
-- **Smart Disabling**: When the "Random" sort type is selected, the Ascending and Descending options are automatically disabled and dimmed, as they are not applicable to a shuffled list.
+### Functional File Management
+- **Physical Relocation**: Replaced placeholders with functional `moveFolderContents` and `copyFolderContents` logic in [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt).
+    - **Move**: Uses fast `File.renameTo()` when possible, with a recursive copy-and-delete fallback for cross-partition moves.
+    - **Copy**: Recursively duplicates all files and subdirectories into the target destination.
+- **MediaStore Sync**: Integrated `MediaScannerConnection` to notify the Android system immediately after files are moved or copied. This ensures that the new files appear in all gallery apps (not just this one) and that old entries are cleaned up.
+- **Automatic Refresh**: The app now triggers a full gallery scan immediately after an operation completes, ensuring your view is always up to date.
 
-### Enhanced Logic
-- **GalleryViewModel**:
-    - **Dual Order States**: Introduced `folderSortOrder` and `pictureSortOrder`.
-    - **Refined Sorting Engine**: Updated the folder and media filtering logic to respect the selected direction while maintaining the "Pinned items first" rule for the folder list.
-- **UI Consistency**: The sort dialog now features an "OK" button for explicit confirmation, matching the behavior of your media filters.
+### UI Improvements
+- **Clarified Confirmation**: Renamed the "Select Current" button to **"OK"** in the destination picker, making it clear that clicking it will start the actual file operation.
+- **Contextual Execution**: Updated the `GalleryViewModel` to iterate through all your selected folders and perform the requested operation for each one.
 
 ## Verification Results
 
@@ -22,12 +21,9 @@ I have enhanced the sorting system by adding independent "Ascending" and "Descen
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Contextual Behavior**:
-    - Set Gallery to **Name Ascending**.
-    - Opened a folder and set Photos to **Date Taken Descending**.
-    - Returned to Gallery -> Verified alphabetical order was preserved.
-- **Random Logic**: Verified that picking "Random" makes the direction options unclickable and visually disabled.
-- **Visuals**: Confirmed that the separator line and radio buttons align perfectly with your dark theme.
+- **Renamed Button**: Verified the confirmation button is now labeled "OK".
+- **Operation Trigger**: Confirmed that tapping "OK" now executes the underlying logic and refreshes the gallery list.
+- **Multi-Selection**: Verified that selecting multiple folders and moving them to a new destination works correctly for each selected item.
 
-> [!TIP]
-> Combine **Descending Sort** with **Sort by Size** to instantly bring your largest folders or videos to the top of the list!
+> [!CAUTION]
+> Moving large folders with thousands of files might take a few seconds. The app uses background threads to ensure the UI remains responsive during these operations.

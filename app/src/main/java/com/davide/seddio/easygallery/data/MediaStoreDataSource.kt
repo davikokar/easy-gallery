@@ -2,9 +2,12 @@ package com.davide.seddio.easygallery.data
 
 import android.content.ContentUris
 import android.content.Context
+import android.media.MediaScannerConnection
+import android.net.Uri
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class MediaStoreDataSource(private val context: Context) {
 
@@ -75,6 +78,68 @@ class MediaStoreDataSource(private val context: Context) {
         queryMedia(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false) { media.add(it) }
         queryMedia(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true) { media.add(it) }
         media.sortedByDescending { it.dateAdded }
+    }
+
+    suspend fun moveFolderContents(sourcePath: String, targetParentPath: String): Unit = withContext(Dispatchers.IO) {
+        val sourceDir = File(sourcePath)
+        val targetDir = File(targetParentPath, sourceDir.name)
+        
+        if (!targetDir.exists()) targetDir.mkdirs()
+
+        if (sourceDir.renameTo(targetDir)) {
+            scanDirectory(targetDir)
+        } else {
+            // Fallback to copy and delete if rename fails (e.g. cross-partition)
+            copyFolderContents(sourcePath, targetParentPath)
+            deleteRecursive(sourceDir)
+        }
+    }
+
+    suspend fun copyFolderContents(sourcePath: String, targetParentPath: String): Unit = withContext(Dispatchers.IO) {
+        val sourceDir = File(sourcePath)
+        val targetDir = File(targetParentPath, sourceDir.name)
+        if (!targetDir.exists()) targetDir.mkdirs()
+
+        sourceDir.listFiles()?.forEach { file ->
+            if (file.isFile) {
+                val destFile = File(targetDir, file.name)
+                file.inputStream().use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                MediaScannerConnection.scanFile(context, arrayOf(destFile.absolutePath), null, null)
+            } else if (file.isDirectory) {
+                copyFolderContents(file.absolutePath, targetDir.absolutePath)
+            }
+        }
+    }
+
+    private fun scanDirectory(dir: File) {
+        dir.listFiles()?.forEach { file ->
+            if (file.isDirectory) scanDirectory(file)
+            else MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
+        }
+    }
+
+    private fun deleteRecursive(file: File) {
+        if (file.isDirectory) file.listFiles()?.forEach { deleteRecursive(it) }
+        file.delete()
+    }
+
+    fun getSubdirectories(path: String): List<Folder> {
+        val root = File(path)
+        if (!root.exists() || !root.isDirectory) return emptyList()
+        
+        return root.listFiles { file -> file.isDirectory && !file.isHidden }
+            ?.map { file ->
+                Folder(
+                    name = file.name,
+                    imageCount = 0, // Not needed for browsing
+                    thumbnailUri = Uri.EMPTY, // Will use default folder icon in UI
+                    path = file.absolutePath
+                )
+            }?.sortedBy { it.name } ?: emptyList()
     }
 
     private fun queryMedia(

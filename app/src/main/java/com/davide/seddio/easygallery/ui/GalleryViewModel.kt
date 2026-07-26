@@ -1,6 +1,7 @@
 package com.davide.seddio.easygallery.ui
 
 import android.app.Application
+import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.data.Folder
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -94,6 +96,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private val _isSettingsMode = MutableStateFlow(false)
     val isSettingsMode: StateFlow<Boolean> = _isSettingsMode.asStateFlow()
+
+    private val _isDestinationPickerActive = MutableStateFlow(false)
+    val isDestinationPickerActive: StateFlow<Boolean> = _isDestinationPickerActive.asStateFlow()
+
+    private val _pendingOperation = MutableStateFlow<OperationType?>(null)
+    val pendingOperation: StateFlow<OperationType?> = _pendingOperation.asStateFlow()
+
+    private val _browsingPath = MutableStateFlow(Environment.getExternalStorageDirectory().absolutePath)
+    val browsingPath: StateFlow<String> = _browsingPath.asStateFlow()
+
+    val browsingFolders: StateFlow<List<Folder>> = combine(_browsingPath, _selectedFolders) { path, selected ->
+        dataSource.getSubdirectories(path).filter { !selected.contains(it.name) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
         _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _excludedFolders, _selectedMediaTypes, _folderSortOrder
@@ -320,6 +335,52 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _isManageExcludedMode.value = active
     }
 
+    fun startOperation(type: OperationType) {
+        _pendingOperation.value = type
+        _isDestinationPickerActive.value = true
+    }
+
+    fun cancelOperation() {
+        _pendingOperation.value = null
+        _isDestinationPickerActive.value = false
+        _browsingPath.value = Environment.getExternalStorageDirectory().absolutePath
+    }
+
+    fun updateBrowsingPath(path: String) {
+        _browsingPath.value = path
+    }
+
+    fun navigateToParent() {
+        val current = File(_browsingPath.value)
+        val parent = current.parentFile
+        if (parent != null && parent.absolutePath.startsWith(Environment.getExternalStorageDirectory().absolutePath)) {
+            _browsingPath.value = parent.absolutePath
+        }
+    }
+
+    fun performOperation(destination: Folder) {
+        performOperationWithPath(destination.path)
+    }
+
+    fun performOperationWithPath(path: String) {
+        val selectedFoldersData = getSelectedFoldersData()
+        val operation = _pendingOperation.value ?: return
+        
+        viewModelScope.launch {
+            selectedFoldersData.forEach { folder ->
+                if (operation == OperationType.MOVE) {
+                    dataSource.moveFolderContents(folder.path, path)
+                } else {
+                    dataSource.copyFolderContents(folder.path, path)
+                }
+            }
+            
+            cancelOperation()
+            exitSelectionMode()
+            loadFolders()
+        }
+    }
+
     fun unexcludeFolder(folderName: String) {
         val current = _excludedFolders.value.toMutableSet()
         current.remove(folderName)
@@ -500,6 +561,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
 enum class DisplayMode {
     GALLERY, CALENDAR
+}
+
+enum class OperationType {
+    COPY, MOVE
 }
 
 enum class SortType {
