@@ -1,17 +1,25 @@
-# Walkthrough - Media Filtering Optimization
+# Walkthrough - Independent View and Sort Settings
 
-I have optimized the "Filter media" functionality to improve performance. Filters are now applied only when you explicitly confirm your selection.
+I have fully decoupled the visualization and organization settings for your folders and your photos. This allows you to tailor the experience for browsing collections versus individual media items.
 
 ## Changes Made
 
-### Improved Filtering Logic
-- **Deferred Application**: Updated the `FilterMediaDialog` to maintain a local, temporary state of your selections while the dialog is open.
-- **Performance Fix**: Previously, every checkbox click triggered a full recalculation of the gallery's folders and thumbnails, which could cause lag. Now, the gallery only updates once when you tap the **"OK"** button.
-- **Cancellation Support**: Added a **"Cancel"** button to the dialog. If you change your mind while adjusting checkboxes, you can simply tap Cancel or click outside the dialog to keep your original settings.
+### Visualization Independence
+- **Dual Display Settings**: You can now set independent **View Types** (Grid/List) for the main gallery and your photos.
+    - *Example*: You can keep your Folders in a detailed **List** (to see paths) while viewing Photos in a dense **Grid**.
+- **Dual Sort Settings**: Sorting criteria are now independent.
+    - *Example*: Sort your **Folders by Size** to find space-wasters, while sorting your **Photos by Date Taken** for chronological browsing.
+- **Synced Photo Preferences**: Any changes made to view type or sorting inside a folder are automatically applied to the Timeline and all other folders, but do not affect the main gallery list.
 
-### Technical Updates
-- **GalleryViewModel**: Added `setSelectedMediaTypes(Set<MediaType>)` to allow batch updating of active filters.
-- **FolderListScreen**: Refactored the `FilterMediaDialog` component to handle its own state and provide a more responsive checkbox interaction.
+### New Photo List View
+- **Media List Mode**: Implemented a dedicated "List" view for photos and videos.
+    - **Thumbnails**: High-quality previews on the left.
+    - **Details**: Filename and formatted Date/Time (when Info is toggled) on the right.
+- **Unified Components**: Extracted the `MediaListItem` component to ensure a consistent look between the folder content list and the chronological timeline list.
+
+### Dynamic Interaction
+- **Context-Aware Dialogs**: The "Sort by" and "Change view type" menus intelligently detect which screen you are on and update only the relevant level (Gallery or Pictures).
+- **Responsive Timeline**: The chronological timeline now supports both Grid and List modes, respecting your global photo visualization preferences.
 
 ## Verification Results
 
@@ -19,9 +27,15 @@ I have optimized the "Filter media" functionality to improve performance. Filter
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Responsive Checkboxes**: Toggling Images, Videos, or GIFs inside the dialog is now instantaneous and lag-free.
-- **Confirmation**: Verified that changes are only reflected in the gallery after tapping "OK".
-- **Dismissal**: Verified that tapping "Cancel" or dismissing the dialog discards any unsaved checkbox changes.
+- **Independence**:
+    - Set Gallery to **List**.
+    - Opened a folder -> Set to **Grid**.
+    - Returned to Gallery -> Verified it remained in **List** mode.
+- **Sorting Consistency**:
+    - Sorted Gallery by **Name**.
+    - Sorted Photos by **Random**.
+    - Verified that navigating between folders preserves the **Random** sort, while the main list stays **Alphabetical**.
+- **Timeline Integration**: Verified that switching to List view inside a folder also changes the Timeline to a clean vertical list with date headers.
 
 > [!TIP]
-> This optimization makes the app feel much snappier, especially on devices with large media libraries where recalculating folder groups can be intensive!
+> Try combining the **List view** with the **Sort by Size** option in the main gallery to quickly identify which folders are taking up the most space on your device!

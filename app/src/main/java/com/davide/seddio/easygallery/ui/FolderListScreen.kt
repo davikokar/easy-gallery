@@ -54,8 +54,10 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val displayMode by viewModel.displayMode.collectAsState()
     val groupedPhotos by viewModel.groupedPhotosByDate.collectAsState()
     val showInfo by viewModel.showInfo.collectAsState()
-    val sortType by viewModel.sortType.collectAsState()
-    val viewType by viewModel.viewType.collectAsState()
+    val folderSortType by viewModel.folderSortType.collectAsState()
+    val pictureSortType by viewModel.pictureSortType.collectAsState()
+    val folderViewType by viewModel.folderViewType.collectAsState()
+    val pictureViewType by viewModel.pictureViewType.collectAsState()
     val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
     
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -147,9 +149,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
 
         if (showSortDialog) {
             SortDialog(
-                currentSort = sortType,
+                currentSort = if (displayMode == DisplayMode.GALLERY) folderSortType else pictureSortType,
                 onSortSelected = {
-                    viewModel.setSortType(it)
+                    viewModel.setSortType(it, forPictures = displayMode != DisplayMode.GALLERY)
                     showSortDialog = false
                 },
                 onDismiss = { showSortDialog = false }
@@ -169,9 +171,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
 
         if (showViewTypeDialog) {
             ViewTypeDialog(
-                currentViewType = viewType,
+                currentViewType = if (displayMode == DisplayMode.GALLERY) folderViewType else pictureViewType,
                 onViewTypeSelected = {
-                    viewModel.setViewType(it)
+                    viewModel.setViewType(it, forPictures = displayMode != DisplayMode.GALLERY)
                     showViewTypeDialog = false
                 },
                 onDismiss = { showViewTypeDialog = false }
@@ -217,7 +219,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                         }
                     }
                     is GalleryUiState.Success -> {
-                        if (viewType == ViewType.GRID) {
+                        if (folderViewType == ViewType.GRID) {
                             FolderGrid(
                                 folders = state.folders,
                                 columns = folderColumns,

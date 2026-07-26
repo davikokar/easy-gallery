@@ -1,6 +1,6 @@
-- [ ] Update `GalleryViewModel` with separate sort and view type states
-- [ ] Refactor `filteredFolders` and `filteredMedia` logic to use independent settings
-- [ ] Update `FolderListScreen` to use folder-specific settings
-- [ ] Update `FolderDetailScreen` with sorting, list view, and independent settings
-- [ ] Implement `MediaList` and `MediaListItem` components
-- [ ] Verify independent behavior across all views
+- [x] Update `GalleryViewModel` with separate sort and view type states
+- [x] Refactor `filteredFolders` and `filteredMedia` logic to use independent settings
+- [x] Update `FolderListScreen` to use folder-specific settings
+- [x] Update `FolderDetailScreen` with sorting, list view, and independent settings
+- [x] Implement `MediaList` and `MediaListItem` components
+- [x] Verify independent behavior across all views
