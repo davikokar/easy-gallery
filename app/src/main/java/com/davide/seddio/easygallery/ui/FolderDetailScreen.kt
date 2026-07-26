@@ -66,6 +66,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 onFilterMediaClick = { showFilterDialog = true },
                 onSortClick = { showSortDialog = true },
                 onViewTypeClick = { showViewTypeDialog = true },
+                onShowExcludedClick = { viewModel.setShowExcludedTemporarily(true) },
                 onSettingsClick = { viewModel.setSettingsMode(true) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.backToFolders() }) {

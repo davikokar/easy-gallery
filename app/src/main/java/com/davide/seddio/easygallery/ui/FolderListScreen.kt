@@ -110,6 +110,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onColumnCountClick = { showColumnCountDialog = true },
                     onViewTypeClick = { showViewTypeDialog = true },
                     onFilterMediaClick = { showFilterDialog = true },
+                    onShowExcludedClick = { viewModel.setShowExcludedTemporarily(true) },
                     onSettingsClick = { viewModel.setSettingsMode(true) }
                 )
             }

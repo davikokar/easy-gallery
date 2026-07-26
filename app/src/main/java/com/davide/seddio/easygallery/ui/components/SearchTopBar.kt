@@ -30,6 +30,7 @@ fun SearchTopBar(
     onColumnCountClick: (() -> Unit)? = null,
     onViewTypeClick: (() -> Unit)? = null,
     onFilterMediaClick: (() -> Unit)? = null,
+    onShowExcludedClick: (() -> Unit)? = null,
     onSettingsClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null
@@ -115,7 +116,13 @@ fun SearchTopBar(
                                 onColumnCountClick?.invoke()
                             }
                         )
-                        DropdownMenuItem(text = { Text("Temporarily show excluded") }, onClick = { showMenu = false })
+                        DropdownMenuItem(
+                            text = { Text("Temporarily show excluded") },
+                            onClick = {
+                                showMenu = false
+                                onShowExcludedClick?.invoke()
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("Filter media") },
                             onClick = {

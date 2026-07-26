@@ -97,6 +97,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _isSettingsMode = MutableStateFlow(false)
     val isSettingsMode: StateFlow<Boolean> = _isSettingsMode.asStateFlow()
 
+    private val _showExcludedTemporarily = MutableStateFlow(false)
+    val showExcludedTemporarily: StateFlow<Boolean> = _showExcludedTemporarily.asStateFlow()
+
     private val _isDestinationPickerActive = MutableStateFlow(false)
     val isDestinationPickerActive: StateFlow<Boolean> = _isDestinationPickerActive.asStateFlow()
 
@@ -111,7 +114,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _excludedFolders, _selectedMediaTypes, _folderSortOrder
+        _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _excludedFolders, _selectedMediaTypes, _folderSortOrder, _showExcludedTemporarily
     ) { args ->
         val media = args[0] as List<MediaItem>
         val query = args[1] as String
@@ -120,13 +123,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val excluded = args[4] as Set<String>
         val types = args[5] as Set<MediaType>
         val order = args[6] as SortOrder
+        val showExcluded = args[7] as Boolean
 
         if (media.isEmpty() && _uiState.value is GalleryUiState.Loading) {
             GalleryUiState.Loading
         } else {
             val foldersMap = mutableMapOf<String, Folder>()
             media.forEach { item ->
-                if (!excluded.contains(item.bucketName) && types.contains(item.type)) {
+                val isExcluded = excluded.contains(item.bucketName)
+                if ((showExcluded || !isExcluded) && types.contains(item.type)) {
                     val existing = foldersMap[item.bucketName]
                     if (existing == null) {
                         foldersMap[item.bucketName] = Folder(
@@ -267,6 +272,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectFolder(folder: Folder) {
+        _showExcludedTemporarily.value = false
         if (_isSelectionMode.value) {
             toggleSelection(folder.name)
         } else {
@@ -325,7 +331,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun toggleDisplayMode() {
+        _showExcludedTemporarily.value = false
         _displayMode.value = if (_displayMode.value == DisplayMode.GALLERY) DisplayMode.CALENDAR else DisplayMode.GALLERY
+    }
+
+    fun setShowExcludedTemporarily(show: Boolean) {
+        _showExcludedTemporarily.value = show
     }
 
     fun setSettingsMode(active: Boolean) {
