@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
 import com.davide.seddio.easygallery.data.MediaItem
+import com.davide.seddio.easygallery.data.MediaType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,14 +38,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _excludedFolders = MutableStateFlow<Set<String>>(emptySet())
     val excludedFolders: StateFlow<Set<String>> = _excludedFolders.asStateFlow()
 
+    private val _selectedMediaTypes = MutableStateFlow(MediaType.entries.toSet())
+    val selectedMediaTypes: StateFlow<Set<MediaType>> = _selectedMediaTypes.asStateFlow()
+
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
-        _allMedia, _searchQuery, _excludedFolders
-    ) { media, query, excluded ->
-        val nonExcluded = media.filter { !excluded.contains(it.bucketName) }
+        _allMedia, _searchQuery, _excludedFolders, _selectedMediaTypes
+    ) { media, query, excluded, types ->
+        val filtered = media.filter { 
+            !excluded.contains(it.bucketName) && types.contains(it.type)
+        }
         if (query.isNotEmpty()) {
-            nonExcluded.filter { it.name.contains(query, ignoreCase = true) }
+            filtered.filter { it.name.contains(query, ignoreCase = true) }
         } else {
-            nonExcluded
+            filtered
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -68,31 +74,56 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val isSettingsMode: StateFlow<Boolean> = _isSettingsMode.asStateFlow()
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _uiState, _searchQuery, _pinnedFolders, _sortType, _excludedFolders
-    ) { state, query, pinned, sort, excluded ->
-        if (state is GalleryUiState.Success) {
-            val nonExcludedFolders = state.folders.filter { !excluded.contains(it.name) }
-            
-            val foldersWithPinned = nonExcludedFolders.map { 
-                it.copy(isPinned = pinned.contains(it.name)) 
+        _allMedia, _searchQuery, _pinnedFolders, _sortType, _excludedFolders, _selectedMediaTypes
+    ) { args ->
+        val media = args[0] as List<MediaItem>
+        val query = args[1] as String
+        val pinned = args[2] as Set<String>
+        val sort = args[3] as SortType
+        val excluded = args[4] as Set<String>
+        val types = args[5] as Set<MediaType>
+
+        if (media.isEmpty() && _uiState.value is GalleryUiState.Loading) {
+            GalleryUiState.Loading
+        } else {
+            val foldersMap = mutableMapOf<String, Folder>()
+            media.forEach { item ->
+                if (!excluded.contains(item.bucketName) && types.contains(item.type)) {
+                    val existing = foldersMap[item.bucketName]
+                    if (existing == null) {
+                        foldersMap[item.bucketName] = Folder(
+                            name = item.bucketName,
+                            imageCount = 1,
+                            thumbnailUri = item.uri,
+                            isPinned = pinned.contains(item.bucketName),
+                            path = "" 
+                        )
+                    } else {
+                        foldersMap[item.bucketName] = existing.copy(
+                            imageCount = existing.imageCount + 1
+                        )
+                    }
+                }
             }
+
+            val foldersList = foldersMap.values.toList()
 
             val sortedFolders = when (sort) {
-                SortType.NAME -> foldersWithPinned.sortedBy { it.name }
-                SortType.PATH -> foldersWithPinned.sortedBy { it.path }
-                SortType.SIZE -> foldersWithPinned.sortedByDescending { it.size }
-                SortType.LAST_MODIFIED -> foldersWithPinned.sortedByDescending { it.dateModified }
-                SortType.DATE_TAKEN -> foldersWithPinned.sortedByDescending { it.dateTaken }
-                SortType.RANDOM -> foldersWithPinned.shuffled()
+                SortType.NAME -> foldersList.sortedBy { it.name }
+                SortType.PATH -> foldersList.sortedBy { it.path }
+                SortType.SIZE -> foldersList.sortedByDescending { it.size }
+                SortType.LAST_MODIFIED -> foldersList.sortedByDescending { it.dateModified }
+                SortType.DATE_TAKEN -> foldersList.sortedByDescending { it.dateTaken }
+                SortType.RANDOM -> foldersList.shuffled()
             }.sortedByDescending { it.isPinned }
 
-            if (query.isNotEmpty()) {
-                GalleryUiState.Success(sortedFolders.filter { it.name.contains(query, ignoreCase = true) })
+            val filteredList = if (query.isNotEmpty()) {
+                sortedFolders.filter { it.name.contains(query, ignoreCase = true) }
             } else {
-                GalleryUiState.Success(sortedFolders)
+                sortedFolders
             }
-        } else {
-            state
+            
+            GalleryUiState.Success(filteredList)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
@@ -114,11 +145,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
     val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
-    val filteredMedia: StateFlow<List<MediaItem>> = combine(_mediaInFolder, _searchQuery) { media, query ->
+    val filteredMedia: StateFlow<List<MediaItem>> = combine(_mediaInFolder, _searchQuery, _selectedMediaTypes) { media, query, types ->
+        val typeFiltered = media.filter { types.contains(it.type) }
         if (query.isNotEmpty()) {
-            media.filter { it.name.contains(query, ignoreCase = true) }
+            typeFiltered.filter { it.name.contains(query, ignoreCase = true) }
         } else {
-            media
+            typeFiltered
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -275,6 +307,16 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _viewType.value = viewType
     }
 
+    fun toggleMediaType(type: MediaType) {
+        val current = _selectedMediaTypes.value.toMutableSet()
+        if (current.contains(type)) {
+            current.remove(type)
+        } else {
+            current.add(type)
+        }
+        _selectedMediaTypes.value = current
+    }
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -319,7 +361,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun getSelectedFoldersData(): List<Folder> {
         val selected = _selectedFolders.value
-        val currentState = _uiState.value
+        val currentState = filteredFolders.value // Use filteredFolders to get correct counts
         return if (currentState is GalleryUiState.Success) {
             currentState.folders.filter { selected.contains(it.name) }
         } else {

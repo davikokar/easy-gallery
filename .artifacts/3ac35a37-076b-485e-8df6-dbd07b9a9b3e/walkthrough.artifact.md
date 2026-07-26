@@ -1,21 +1,20 @@
-# Walkthrough - Independent Grid Densities
+# Walkthrough - Media Filtering and Enhanced Organization
 
-I have decoupled the grid column counts for folders and pictures, allowing you to maintain different visual densities for your gallery overview and your photo collections.
+I have implemented a comprehensive "Filter media" system that allows you to selectively show or hide specific types of content across your entire gallery.
 
 ## Changes Made
 
-### Logic & State Separation
-- **GalleryViewModel**:
-    - **Dual Column States**: Introduced `folderColumns` and `pictureColumns` to track grid densities independently.
-    - **Context-Aware Actions**: Updated `increaseColumns`, `decreaseColumns`, and `setColumnsCount` to selectively target either folders or pictures.
-- **Persistent Preferences**: Setting the column count inside any folder or the timeline will now apply to all picture-based views, while your folder list remains exactly as you set it.
+### Dynamic Media Filtering
+- **New Filter Dialog**: Integrated a "Filter media" option in the main overflow menu. It opens a checkbox-based dialog where you can toggle **Images**, **Videos**, and **GIFs**.
+- **Live Recalculation**:
+    - **Folder Counts**: Gallery tiles now update their numbers in real-time to reflect only the media types currently visible.
+    - **Auto-Hiding Folders**: Any folder that becomes empty due to your filter settings (e.g., a "Videos" folder when Videos are unchecked) is automatically hidden from the gallery view.
+- **Global Impact**: Your filters are applied consistently across the **Folder Grid/List**, the **Chronological Timeline**, and all **Search Results**.
 
-### UI Enhancements
-- **Smart Zooming**:
-    - Pinching in the main **Folder Grid** now only adjusts the folder tile size.
-    - Pinching in the **Timeline** or **Folder Detail** view adjusts the thumbnail size for all pictures.
-- **Dynamic Dialogs**: The "Column count" selector in the top bar now intelligently detects your current view and updates the appropriate setting.
-- **Reusable Components**: Extracted the `ColumnCountDialog` into a standalone component for consistent behavior across all screens.
+### UI Refinements
+- **Corrected Labels**: Cleaned up the folder tiles by removing the hardcoded "images" text. Tiles now show a single accurate number representing the total count of filtered media.
+- **Top Bar Consistency**: Repositioned icons to ensure a standard layout: Search and Mode Toggles first, then any context actions (like Info), with the 3-dotted system menu always at the far right.
+- **Dark Theme Perfection**: Verified that all new dialogs and text elements use high-contrast white against your custom dark blue-grey background.
 
 ## Verification Results
 
@@ -23,13 +22,12 @@ I have decoupled the grid column counts for folders and pictures, allowing you t
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Independence**:
-    - Set Folder Grid to **2 columns**.
-    - Opened a folder and set Picture Grid to **5 columns**.
-    - Returned to main gallery -> Folder Grid remained at **2 columns**.
-    - Opened a different folder -> Verified it automatically used the **5 column** layout.
-- **Timeline Sync**: Confirmed that zooming in the Timeline view also updates the layout inside folder detail views.
-- **Zoom Fluidity**: Verified that independent pinch-to-zoom is working smoothly in all three grid contexts.
+- **Filtering**:
+    - Unchecked "Videos" -> Confirmed all video tiles disappeared from the timeline.
+    - Verified folder counts decreased immediately.
+    - Verified that video-only folders were hidden from the main gallery.
+- **Search & Filter**: Confirmed that you can search for filenames while filters are active, and only matching items of the selected types are shown.
+- **Properties Viewer**: Verified that the aggregate size and file counts in the "Properties" window accurately respect your active media filters.
 
 > [!TIP]
-> You can keep your folders large for easy identification (e.g., 2 columns) while setting your photos to a much denser grid (e.g., 6 columns) to quickly scan through hundreds of images!
+> Use the **Filter media** tool when you're specifically looking for a video or GIF, or to hide screenshots while browsing your camera photos!

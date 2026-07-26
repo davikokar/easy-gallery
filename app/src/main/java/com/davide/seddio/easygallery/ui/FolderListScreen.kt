@@ -2,6 +2,7 @@ package com.davide.seddio.easygallery.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Folder
+import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 import com.davide.seddio.easygallery.ui.components.SelectionTopBar
 import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
@@ -53,6 +55,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val showInfo by viewModel.showInfo.collectAsState()
     val sortType by viewModel.sortType.collectAsState()
     val viewType by viewModel.viewType.collectAsState()
+    val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
     
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
@@ -60,6 +63,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     var showViewTypeDialog by remember { mutableStateOf(false) }
     var showPropertiesDialog by remember { mutableStateOf(false) }
     var showExcludeDialog by remember { mutableStateOf(false) }
+    var showFilterDialog by remember { mutableStateOf(false) }
 
     val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
 
@@ -91,6 +95,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onSortClick = { showSortDialog = true },
                     onColumnCountClick = { showColumnCountDialog = true },
                     onViewTypeClick = { showViewTypeDialog = true },
+                    onFilterMediaClick = { showFilterDialog = true },
                     onSettingsClick = { viewModel.setSettingsMode(true) }
                 )
             }
@@ -179,6 +184,14 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
 
+        if (showFilterDialog) {
+            FilterMediaDialog(
+                selectedTypes = selectedMediaTypes,
+                onToggleType = { viewModel.toggleMediaType(it) },
+                onDismiss = { showFilterDialog = false }
+            )
+        }
+
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -227,6 +240,42 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun FilterMediaDialog(
+    selectedTypes: Set<MediaType>,
+    onToggleType: (MediaType) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Filter media") },
+        text = {
+            Column {
+                MediaTypeFilterItem("Images", MediaType.IMAGE, selectedTypes.contains(MediaType.IMAGE), onToggleType)
+                MediaTypeFilterItem("Videos", MediaType.VIDEO, selectedTypes.contains(MediaType.VIDEO), onToggleType)
+                MediaTypeFilterItem("GIFs", MediaType.GIF, selectedTypes.contains(MediaType.GIF), onToggleType)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("OK") }
+        }
+    )
+}
+
+@Composable
+fun MediaTypeFilterItem(label: String, type: MediaType, checked: Boolean, onToggle: (MediaType) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle(type) }
+            .padding(vertical = 8.dp)
+    ) {
+        Checkbox(checked = checked, onCheckedChange = { onToggle(type) })
+        Text(text = label, modifier = Modifier.padding(start = 8.dp))
     }
 }
 

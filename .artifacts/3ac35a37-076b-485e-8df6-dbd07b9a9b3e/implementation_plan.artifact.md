@@ -1,6 +1,13 @@
-# Implementation Plan - Independent Grid Densities
+# Implementation Plan - Filter Media by Type
 
-This plan outlines the steps to decouple the column counts for the folder grid and the picture grids (Folder Detail and Timeline), allowing users to set independent densities for each.
+This plan outlines the steps to implement a "Filter media" functionality, allowing users to show or hide Images, Videos, and GIFs. The gallery will dynamically update folder counts and hide empty folders based on the selected filters.
+
+## User Review Required
+
+> [!IMPORTANT]
+> - **Dynamic Folder Counts**: Folder counts will now be recalculated in real-time based on the active media filters.
+> - **Automatic Hiding**: Folders that contain no media items of the selected types will be hidden from the gallery.
+> - **Unified Filtering**: These filters will apply to all views: Folder List, Timeline, and Folder Details.
 
 ## Proposed Changes
 
@@ -8,25 +15,23 @@ This plan outlines the steps to decouple the column counts for the folder grid a
 
 #### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
 - **State**:
-    - Rename `_columnsCount` to `_folderColumns` (default: 2).
-    - Add `_pictureColumns` (default: 3 or 2).
+    - Add `selectedMediaTypes: StateFlow<Set<MediaType>>` (default: all types).
+- **Logic**:
+    - Update `filteredAllMedia` to filter by `selectedMediaTypes`.
+    - Update `filteredMedia` to filter by `selectedMediaTypes`.
+    - **Refactor `filteredFolders`**: Instead of using the pre-fetched `_uiState.folders`, calculate the folder list dynamically from `_allMedia` and the active filters (Search, Pinned, Excluded, Media Type). This ensures folder counts are always accurate.
 - **Functions**:
-    - Update `increaseColumns()`, `decreaseColumns()`, and `setColumnsCount(count)` to accept a `forPictures: Boolean` parameter.
-    - Logic: Update the corresponding state based on the flag.
+    - `toggleMediaType(type: MediaType)`.
+
+#### [MODIFY] [SearchTopBar.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt)
+- Add `onFilterMediaClick: (() -> Unit)?` callback.
+- Connect the "Filter media" menu item to this callback.
 
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Observe both `folderColumns` and `pictureColumns`.
-- Main Grid logic:
-    - If in `GALLERY` mode: Use `folderColumns` and update `folderColumns` on pinch/dialog.
-    - If in `CALENDAR` mode: Use `pictureColumns` and update `pictureColumns` on pinch/dialog.
-- Pass appropriate state to `CalendarGrid` and `FolderGrid`.
-
-#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
-- Observe `pictureColumns`.
-- Update the grid and TopBar actions to use/update `pictureColumns`.
-
-#### [MODIFY] [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
-- Update pinch-to-zoom callbacks to specifically target the `pictureColumns` state in the ViewModel.
+- Add `showFilterDialog` state.
+- Implement `FilterMediaDialog` composable:
+    - Lists "Images", "Videos", and "GIFs" with checkboxes.
+    - Updates ViewModel state on change.
 
 ## Verification Plan
 
@@ -34,13 +39,11 @@ This plan outlines the steps to decouple the column counts for the folder grid a
 - Verify build success.
 
 ### Manual Verification
-1.  **Independent Adjustment**:
-    - Set Folder Grid to **2 columns**.
-    - Open a folder -> Set Picture Grid to **4 columns**.
-    - Go back to Folder Grid -> Verify it is still **2 columns**.
-    - Enter Timeline mode -> Verify it uses **4 columns** (same as folder content).
-2.  **Pinch-to-Zoom**:
-    - Verify pinching in the main gallery only affects folder tiles.
-    - Verify pinching inside a folder only affects thumbnails.
-3.  **Dialog Selection**:
-    - Use the "Column count" menu in both views and verify they only update the current context.
+1.  **Filter Application**:
+    - Open menu -> Filter media.
+    - Uncheck "Videos" -> Verify all video thumbnails disappear from the timeline and folder details.
+2.  **Folder Updates**:
+    - Verify that folder counts update when a type is filtered out.
+    - Verify that folders containing only "Videos" disappear if "Videos" is unchecked.
+3.  **Search & Zoom**:
+    - Verify that filtering works correctly in combination with search and pinch-to-zoom.

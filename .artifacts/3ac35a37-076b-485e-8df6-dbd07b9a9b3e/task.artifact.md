@@ -1,5 +1,5 @@
-- [x] Update `GalleryViewModel` with separate column states for folders and pictures
-- [x] Update `FolderListScreen` to use context-aware column counts
-- [x] Update `FolderDetailScreen` to use picture-specific column counts
-- [x] Update `CalendarGrid` to use picture-specific column counts
-- [x] Verify independent grid behavior
+- [ ] Update `GalleryViewModel` with media type filtering logic
+- [ ] Refactor `filteredFolders` to be derived from full media list for accuracy
+- [ ] Add `onFilterMediaClick` to `SearchTopBar`
+- [ ] Implement `FilterMediaDialog` in `FolderListScreen`
+- [ ] Verify dynamic folder hiding and count updates
