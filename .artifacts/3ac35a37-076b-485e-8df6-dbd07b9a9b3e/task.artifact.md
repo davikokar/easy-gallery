@@ -1,6 +1,5 @@
-- [x] Update `GalleryViewModel` with separate sort and view type states
-- [x] Refactor `filteredFolders` and `filteredMedia` logic to use independent settings
-- [x] Update `FolderListScreen` to use folder-specific settings
-- [x] Update `FolderDetailScreen` with sorting, list view, and independent settings
-- [x] Implement `MediaList` and `MediaListItem` components
-- [x] Verify independent behavior across all views
+- [x] Add `SortOrder` enum and states to `GalleryViewModel`
+- [x] Implement `setSortOrder` and update sorting logic in `GalleryViewModel`
+- [x] Update `SortDialog` in `FolderListScreen` with order options and separator
+- [x] Disable order options when "Random" is selected
+- [x] Verify independent sorting and directional logic

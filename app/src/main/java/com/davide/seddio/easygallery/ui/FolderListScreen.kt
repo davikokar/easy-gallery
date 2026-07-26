@@ -56,6 +56,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val showInfo by viewModel.showInfo.collectAsState()
     val folderSortType by viewModel.folderSortType.collectAsState()
     val pictureSortType by viewModel.pictureSortType.collectAsState()
+    val folderSortOrder by viewModel.folderSortOrder.collectAsState()
+    val pictureSortOrder by viewModel.pictureSortOrder.collectAsState()
     val folderViewType by viewModel.folderViewType.collectAsState()
     val pictureViewType by viewModel.pictureViewType.collectAsState()
     val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
@@ -150,9 +152,12 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         if (showSortDialog) {
             SortDialog(
                 currentSort = if (displayMode == DisplayMode.GALLERY) folderSortType else pictureSortType,
+                currentOrder = if (displayMode == DisplayMode.GALLERY) folderSortOrder else pictureSortOrder,
                 onSortSelected = {
                     viewModel.setSortType(it, forPictures = displayMode != DisplayMode.GALLERY)
-                    showSortDialog = false
+                },
+                onOrderSelected = {
+                    viewModel.setSortOrder(it, forPictures = displayMode != DisplayMode.GALLERY)
                 },
                 onDismiss = { showSortDialog = false }
             )
@@ -331,7 +336,9 @@ fun ViewTypeOption(
 @Composable
 fun SortDialog(
     currentSort: SortType,
+    currentOrder: SortOrder,
     onSortSelected: (SortType) -> Unit,
+    onOrderSelected: (SortOrder) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -345,11 +352,29 @@ fun SortDialog(
                 SortOption("Last Modified", SortType.LAST_MODIFIED, currentSort == SortType.LAST_MODIFIED, onSortSelected)
                 SortOption("Date Taken", SortType.DATE_TAKEN, currentSort == SortType.DATE_TAKEN, onSortSelected)
                 SortOption("Random", SortType.RANDOM, currentSort == SortType.RANDOM, onSortSelected)
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                val isOrderEnabled = currentSort != SortType.RANDOM
+                
+                OrderOption(
+                    label = "Ascending",
+                    order = SortOrder.ASCENDING,
+                    selected = currentOrder == SortOrder.ASCENDING,
+                    enabled = isOrderEnabled,
+                    onOrderSelected = onOrderSelected
+                )
+                OrderOption(
+                    label = "Descending",
+                    order = SortOrder.DESCENDING,
+                    selected = currentOrder == SortOrder.DESCENDING,
+                    enabled = isOrderEnabled,
+                    onOrderSelected = onOrderSelected
+                )
             }
         },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("OK") }
         }
     )
 }
@@ -364,7 +389,7 @@ fun SortOption(
     Row(
         Modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(48.dp)
             .selectable(
                 selected = selected,
                 onClick = { onSortSelected(type) },
@@ -378,6 +403,37 @@ fun SortOption(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(start = 16.dp)
+        )
+    }
+}
+
+@Composable
+fun OrderOption(
+    label: String,
+    order: SortOrder,
+    selected: Boolean,
+    enabled: Boolean,
+    onOrderSelected: (SortOrder) -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                onClick = { if (enabled) onOrderSelected(order) },
+                role = Role.RadioButton
+            )
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(start = 16.dp),
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         )
     }
 }

@@ -46,6 +46,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val isSearchActive by viewModel.isSearchActive.collectAsState()
     val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
     val pictureSortType by viewModel.pictureSortType.collectAsState()
+    val pictureSortOrder by viewModel.pictureSortOrder.collectAsState()
     val pictureViewType by viewModel.pictureViewType.collectAsState()
 
     var showColumnCountDialog by remember { mutableStateOf(false) }
@@ -109,9 +110,12 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         if (showSortDialog) {
             SortDialog(
                 currentSort = pictureSortType,
+                currentOrder = pictureSortOrder,
                 onSortSelected = {
                     viewModel.setSortType(it, forPictures = true)
-                    showSortDialog = false
+                },
+                onOrderSelected = {
+                    viewModel.setSortOrder(it, forPictures = true)
                 },
                 onDismiss = { showSortDialog = false }
             )

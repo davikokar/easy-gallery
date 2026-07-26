@@ -1,25 +1,20 @@
-# Walkthrough - Independent View and Sort Settings
+# Walkthrough - Sort Order (Ascending & Descending)
 
-I have fully decoupled the visualization and organization settings for your folders and your photos. This allows you to tailor the experience for browsing collections versus individual media items.
+I have enhanced the sorting system by adding independent "Ascending" and "Descending" order options for both the main gallery and your photo collections.
 
 ## Changes Made
 
-### Visualization Independence
-- **Dual Display Settings**: You can now set independent **View Types** (Grid/List) for the main gallery and your photos.
-    - *Example*: You can keep your Folders in a detailed **List** (to see paths) while viewing Photos in a dense **Grid**.
-- **Dual Sort Settings**: Sorting criteria are now independent.
-    - *Example*: Sort your **Folders by Size** to find space-wasters, while sorting your **Photos by Date Taken** for chronological browsing.
-- **Synced Photo Preferences**: Any changes made to view type or sorting inside a folder are automatically applied to the Timeline and all other folders, but do not affect the main gallery list.
+### Directional Sorting
+- **New Sort Order**: The "Sort by" dialog now includes a clear choice between **Ascending** and **Descending** order, separated from the primary criteria by a horizontal line.
+- **Independent Levels**: Just like grid density and view type, the sort direction is independent for your Gallery and your Pictures.
+    - *Example*: Sort your **Folders by Name (Ascending)** while sorting your **Photos by Size (Descending)**.
+- **Smart Disabling**: When the "Random" sort type is selected, the Ascending and Descending options are automatically disabled and dimmed, as they are not applicable to a shuffled list.
 
-### New Photo List View
-- **Media List Mode**: Implemented a dedicated "List" view for photos and videos.
-    - **Thumbnails**: High-quality previews on the left.
-    - **Details**: Filename and formatted Date/Time (when Info is toggled) on the right.
-- **Unified Components**: Extracted the `MediaListItem` component to ensure a consistent look between the folder content list and the chronological timeline list.
-
-### Dynamic Interaction
-- **Context-Aware Dialogs**: The "Sort by" and "Change view type" menus intelligently detect which screen you are on and update only the relevant level (Gallery or Pictures).
-- **Responsive Timeline**: The chronological timeline now supports both Grid and List modes, respecting your global photo visualization preferences.
+### Enhanced Logic
+- **GalleryViewModel**:
+    - **Dual Order States**: Introduced `folderSortOrder` and `pictureSortOrder`.
+    - **Refined Sorting Engine**: Updated the folder and media filtering logic to respect the selected direction while maintaining the "Pinned items first" rule for the folder list.
+- **UI Consistency**: The sort dialog now features an "OK" button for explicit confirmation, matching the behavior of your media filters.
 
 ## Verification Results
 
@@ -27,15 +22,12 @@ I have fully decoupled the visualization and organization settings for your fold
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Independence**:
-    - Set Gallery to **List**.
-    - Opened a folder -> Set to **Grid**.
-    - Returned to Gallery -> Verified it remained in **List** mode.
-- **Sorting Consistency**:
-    - Sorted Gallery by **Name**.
-    - Sorted Photos by **Random**.
-    - Verified that navigating between folders preserves the **Random** sort, while the main list stays **Alphabetical**.
-- **Timeline Integration**: Verified that switching to List view inside a folder also changes the Timeline to a clean vertical list with date headers.
+- **Contextual Behavior**:
+    - Set Gallery to **Name Ascending**.
+    - Opened a folder and set Photos to **Date Taken Descending**.
+    - Returned to Gallery -> Verified alphabetical order was preserved.
+- **Random Logic**: Verified that picking "Random" makes the direction options unclickable and visually disabled.
+- **Visuals**: Confirmed that the separator line and radio buttons align perfectly with your dark theme.
 
 > [!TIP]
-> Try combining the **List view** with the **Sort by Size** option in the main gallery to quickly identify which folders are taking up the most space on your device!
+> Combine **Descending Sort** with **Sort by Size** to instantly bring your largest folders or videos to the top of the list!

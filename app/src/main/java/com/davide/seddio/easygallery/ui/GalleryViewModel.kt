@@ -47,6 +47,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _pictureSortType = MutableStateFlow(SortType.DATE_TAKEN)
     val pictureSortType: StateFlow<SortType> = _pictureSortType.asStateFlow()
 
+    private val _folderSortOrder = MutableStateFlow(SortOrder.ASCENDING)
+    val folderSortOrder: StateFlow<SortOrder> = _folderSortOrder.asStateFlow()
+
+    private val _pictureSortOrder = MutableStateFlow(SortOrder.DESCENDING)
+    val pictureSortOrder: StateFlow<SortOrder> = _pictureSortOrder.asStateFlow()
+
     private val _folderViewType = MutableStateFlow(ViewType.GRID)
     val folderViewType: StateFlow<ViewType> = _folderViewType.asStateFlow()
 
@@ -54,13 +60,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val pictureViewType: StateFlow<ViewType> = _pictureViewType.asStateFlow()
 
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
-        _allMedia, _searchQuery, _excludedFolders, _selectedMediaTypes, _pictureSortType
+        _allMedia, _searchQuery, _excludedFolders, _selectedMediaTypes, _pictureSortType, _pictureSortOrder
     ) { args ->
         val media = args[0] as List<MediaItem>
         val query = args[1] as String
         val excluded = args[2] as Set<String>
         val types = args[3] as Set<MediaType>
         val sort = args[4] as SortType
+        val order = args[5] as SortOrder
 
         val filtered = media.filter { 
             !excluded.contains(it.bucketName) && types.contains(it.type)
@@ -72,7 +79,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             filtered
         }
 
-        sortMedia(searchFiltered, sort)
+        sortMedia(searchFiltered, sort, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _pinnedFolders = MutableStateFlow<Set<String>>(emptySet())
@@ -89,7 +96,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val isSettingsMode: StateFlow<Boolean> = _isSettingsMode.asStateFlow()
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _excludedFolders, _selectedMediaTypes
+        _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _excludedFolders, _selectedMediaTypes, _folderSortOrder
     ) { args ->
         val media = args[0] as List<MediaItem>
         val query = args[1] as String
@@ -97,6 +104,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val sort = args[3] as SortType
         val excluded = args[4] as Set<String>
         val types = args[5] as Set<MediaType>
+        val order = args[6] as SortOrder
 
         if (media.isEmpty() && _uiState.value is GalleryUiState.Loading) {
             GalleryUiState.Loading
@@ -112,7 +120,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                             thumbnailUri = item.uri,
                             isPinned = pinned.contains(item.bucketName),
                             path = "",
-                            size = item.duration ?: 0L, // Temporary use of size field if needed
+                            size = 0L,
                             dateModified = item.dateAdded,
                             dateTaken = item.dateAdded
                         )
@@ -128,19 +136,27 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
             val foldersList = foldersMap.values.toList()
 
-            val sortedFolders = when (sort) {
+            val baseSorted = when (sort) {
                 SortType.NAME -> foldersList.sortedBy { it.name }
                 SortType.PATH -> foldersList.sortedBy { it.path }
-                SortType.SIZE -> foldersList.sortedByDescending { it.size }
-                SortType.LAST_MODIFIED -> foldersList.sortedByDescending { it.dateModified }
-                SortType.DATE_TAKEN -> foldersList.sortedByDescending { it.dateTaken }
+                SortType.SIZE -> foldersList.sortedBy { it.size }
+                SortType.LAST_MODIFIED -> foldersList.sortedBy { it.dateModified }
+                SortType.DATE_TAKEN -> foldersList.sortedBy { it.dateTaken }
                 SortType.RANDOM -> foldersList.shuffled()
-            }.sortedByDescending { it.isPinned }
+            }
+
+            val orderedFolders = if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
+                baseSorted.reversed()
+            } else {
+                baseSorted
+            }
+
+            val finalSorted = orderedFolders.sortedByDescending { it.isPinned }
 
             val filteredList = if (query.isNotEmpty()) {
-                sortedFolders.filter { it.name.contains(query, ignoreCase = true) }
+                finalSorted.filter { it.name.contains(query, ignoreCase = true) }
             } else {
-                sortedFolders
+                finalSorted
             }
             
             GalleryUiState.Success(filteredList)
@@ -165,11 +181,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
     val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
-    val filteredMedia: StateFlow<List<MediaItem>> = combine(_mediaInFolder, _searchQuery, _selectedMediaTypes, _pictureSortType) { args ->
+    val filteredMedia: StateFlow<List<MediaItem>> = combine(_mediaInFolder, _searchQuery, _selectedMediaTypes, _pictureSortType, _pictureSortOrder) { args ->
         val media = args[0] as List<MediaItem>
         val query = args[1] as String
         val types = args[2] as Set<MediaType>
         val sort = args[3] as SortType
+        val order = args[4] as SortOrder
 
         val typeFiltered = media.filter { types.contains(it.type) }
         val searchFiltered = if (query.isNotEmpty()) {
@@ -177,7 +194,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             typeFiltered
         }
-        sortMedia(searchFiltered, sort)
+        sortMedia(searchFiltered, sort, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _showInfo = MutableStateFlow(false)
@@ -333,6 +350,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun setSortOrder(order: SortOrder, forPictures: Boolean) {
+        if (forPictures) {
+            _pictureSortOrder.value = order
+        } else {
+            _folderSortOrder.value = order
+        }
+    }
+
     fun setViewType(viewType: ViewType, forPictures: Boolean) {
         if (forPictures) {
             _pictureViewType.value = viewType
@@ -399,7 +424,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun getSelectedFoldersData(): List<Folder> {
         val selected = _selectedFolders.value
-        val currentState = filteredFolders.value
+        val currentState = filteredFolders.value // Use filteredFolders to get correct counts
         return if (currentState is GalleryUiState.Success) {
             currentState.folders.filter { selected.contains(it.name) }
         } else {
@@ -438,13 +463,19 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         exitSelectionMode()
     }
 
-    private fun sortMedia(media: List<MediaItem>, sort: SortType): List<MediaItem> {
-        return when (sort) {
+    private fun sortMedia(media: List<MediaItem>, sort: SortType, order: SortOrder): List<MediaItem> {
+        val baseSorted = when (sort) {
             SortType.NAME -> media.sortedBy { it.name }
-            SortType.LAST_MODIFIED -> media.sortedByDescending { it.dateAdded }
-            SortType.DATE_TAKEN -> media.sortedByDescending { it.dateAdded }
+            SortType.LAST_MODIFIED -> media.sortedBy { it.dateAdded }
+            SortType.DATE_TAKEN -> media.sortedBy { it.dateAdded }
             SortType.RANDOM -> media.shuffled()
-            else -> media.sortedByDescending { it.dateAdded } // Fallback for path/size if not applicable
+            else -> media.sortedBy { it.dateAdded }
+        }
+
+        return if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
+            baseSorted.reversed()
+        } else {
+            baseSorted
         }
     }
 
@@ -473,6 +504,10 @@ enum class DisplayMode {
 
 enum class SortType {
     NAME, PATH, SIZE, LAST_MODIFIED, DATE_TAKEN, RANDOM
+}
+
+enum class SortOrder {
+    ASCENDING, DESCENDING
 }
 
 enum class ViewType {
