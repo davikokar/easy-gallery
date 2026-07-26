@@ -134,14 +134,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                             imageCount = 1,
                             thumbnailUri = item.uri,
                             isPinned = pinned.contains(item.bucketName),
-                            path = "",
-                            size = 0L,
+                            path = item.folderPath,
+                            size = item.size,
                             dateModified = item.dateAdded,
                             dateTaken = item.dateAdded
                         )
                     } else {
                         foldersMap[item.bucketName] = existing.copy(
                             imageCount = existing.imageCount + 1,
+                            size = existing.size + item.size,
                             dateModified = maxOf(existing.dateModified, item.dateAdded),
                             dateTaken = maxOf(existing.dateTaken, item.dateAdded)
                         )

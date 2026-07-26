@@ -154,7 +154,9 @@ class MediaStoreDataSource(private val context: Context) {
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
             MediaStore.MediaColumns.DATE_ADDED,
-            MediaStore.MediaColumns.MIME_TYPE
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.DATA,
+            MediaStore.MediaColumns.SIZE
         ).apply {
             if (isVideo) add(MediaStore.Video.Media.DURATION)
         }.toTypedArray()
@@ -165,6 +167,8 @@ class MediaStoreDataSource(private val context: Context) {
             val bucketCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
             val addedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
             val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
             val durCol = if (isVideo) cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
 
             while (cursor.moveToNext()) {
@@ -173,6 +177,9 @@ class MediaStoreDataSource(private val context: Context) {
                 val bucket = cursor.getString(bucketCol) ?: "Unknown"
                 val added = cursor.getLong(addedCol)
                 val mime = cursor.getString(mimeCol) ?: ""
+                val path = cursor.getString(dataCol) ?: ""
+                val folderPath = path.substringBeforeLast("/")
+                val size = cursor.getLong(sizeCol)
                 val duration = if (isVideo) cursor.getLong(durCol) else null
                 val itemUri = ContentUris.withAppendedId(uri, id)
 
@@ -182,7 +189,7 @@ class MediaStoreDataSource(private val context: Context) {
                     else -> MediaType.IMAGE
                 }
 
-                onItem(MediaItem(itemUri, name, added, type, bucket, duration))
+                onItem(MediaItem(itemUri, name, added, size, type, bucket, folderPath, duration))
             }
         }
     }

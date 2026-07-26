@@ -79,11 +79,12 @@ fun MediaGridItem(item: MediaItem, showInfo: Boolean, onClick: () -> Unit) {
                     text = item.name,
                     color = Color.White,
                     fontSize = 10.sp,
+                    lineHeight = 12.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
+                    textAlign = TextAlign.Start,
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.BottomStart)
                         .padding(4.dp)
                 )
             }

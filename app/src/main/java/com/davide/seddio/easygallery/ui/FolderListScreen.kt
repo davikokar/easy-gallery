@@ -755,21 +755,22 @@ fun FolderListItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            )
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else BottomGrey
+            ),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.White.copy(alpha = 0.05f)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.background(Color.Transparent)
+            modifier = Modifier.padding(8.dp)
         ) {
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .clip(androidx.compose.ui.graphics.RectangleShape)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
             ) {
                 AsyncImage(
                     model = folder.thumbnailUri,
@@ -808,7 +809,7 @@ fun FolderListItem(
 
             Column(
                 modifier = Modifier
-                    .padding(start = 16.dp)
+                    .padding(start = 12.dp)
                     .weight(1f)
             ) {
                 Row(
@@ -819,21 +820,22 @@ fun FolderListItem(
                     Text(
                         text = folder.name,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f, fill = false),
                         color = Color.White
                     )
                     Text(
                         text = "${folder.imageCount}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f)
+                        color = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
                 Text(
                     text = folder.path,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = Color.White.copy(alpha = 0.5f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
