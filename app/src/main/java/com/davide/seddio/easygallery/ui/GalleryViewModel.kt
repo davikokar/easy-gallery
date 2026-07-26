@@ -317,6 +317,10 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         _selectedMediaTypes.value = current
     }
 
+    fun setSelectedMediaTypes(types: Set<MediaType>) {
+        _selectedMediaTypes.value = types
+    }
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }

@@ -38,6 +38,7 @@ import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 import com.davide.seddio.easygallery.ui.components.SelectionTopBar
 import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
+import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -186,8 +187,11 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
 
         if (showFilterDialog) {
             FilterMediaDialog(
-                selectedTypes = selectedMediaTypes,
-                onToggleType = { viewModel.toggleMediaType(it) },
+                initialSelectedTypes = selectedMediaTypes,
+                onConfirm = {
+                    viewModel.setSelectedMediaTypes(it)
+                    showFilterDialog = false
+                },
                 onDismiss = { showFilterDialog = false }
             )
         }
@@ -240,42 +244,6 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun FilterMediaDialog(
-    selectedTypes: Set<MediaType>,
-    onToggleType: (MediaType) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Filter media") },
-        text = {
-            Column {
-                MediaTypeFilterItem("Images", MediaType.IMAGE, selectedTypes.contains(MediaType.IMAGE), onToggleType)
-                MediaTypeFilterItem("Videos", MediaType.VIDEO, selectedTypes.contains(MediaType.VIDEO), onToggleType)
-                MediaTypeFilterItem("GIFs", MediaType.GIF, selectedTypes.contains(MediaType.GIF), onToggleType)
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("OK") }
-        }
-    )
-}
-
-@Composable
-fun MediaTypeFilterItem(label: String, type: MediaType, checked: Boolean, onToggle: (MediaType) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onToggle(type) }
-            .padding(vertical = 8.dp)
-    ) {
-        Checkbox(checked = checked, onCheckedChange = { onToggle(type) })
-        Text(text = label, modifier = Modifier.padding(start = 8.dp))
     }
 }
 

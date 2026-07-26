@@ -1,20 +1,17 @@
-# Walkthrough - Media Filtering and Enhanced Organization
+# Walkthrough - Media Filtering Optimization
 
-I have implemented a comprehensive "Filter media" system that allows you to selectively show or hide specific types of content across your entire gallery.
+I have optimized the "Filter media" functionality to improve performance. Filters are now applied only when you explicitly confirm your selection.
 
 ## Changes Made
 
-### Dynamic Media Filtering
-- **New Filter Dialog**: Integrated a "Filter media" option in the main overflow menu. It opens a checkbox-based dialog where you can toggle **Images**, **Videos**, and **GIFs**.
-- **Live Recalculation**:
-    - **Folder Counts**: Gallery tiles now update their numbers in real-time to reflect only the media types currently visible.
-    - **Auto-Hiding Folders**: Any folder that becomes empty due to your filter settings (e.g., a "Videos" folder when Videos are unchecked) is automatically hidden from the gallery view.
-- **Global Impact**: Your filters are applied consistently across the **Folder Grid/List**, the **Chronological Timeline**, and all **Search Results**.
+### Improved Filtering Logic
+- **Deferred Application**: Updated the `FilterMediaDialog` to maintain a local, temporary state of your selections while the dialog is open.
+- **Performance Fix**: Previously, every checkbox click triggered a full recalculation of the gallery's folders and thumbnails, which could cause lag. Now, the gallery only updates once when you tap the **"OK"** button.
+- **Cancellation Support**: Added a **"Cancel"** button to the dialog. If you change your mind while adjusting checkboxes, you can simply tap Cancel or click outside the dialog to keep your original settings.
 
-### UI Refinements
-- **Corrected Labels**: Cleaned up the folder tiles by removing the hardcoded "images" text. Tiles now show a single accurate number representing the total count of filtered media.
-- **Top Bar Consistency**: Repositioned icons to ensure a standard layout: Search and Mode Toggles first, then any context actions (like Info), with the 3-dotted system menu always at the far right.
-- **Dark Theme Perfection**: Verified that all new dialogs and text elements use high-contrast white against your custom dark blue-grey background.
+### Technical Updates
+- **GalleryViewModel**: Added `setSelectedMediaTypes(Set<MediaType>)` to allow batch updating of active filters.
+- **FolderListScreen**: Refactored the `FilterMediaDialog` component to handle its own state and provide a more responsive checkbox interaction.
 
 ## Verification Results
 
@@ -22,12 +19,9 @@ I have implemented a comprehensive "Filter media" system that allows you to sele
 - Build successfully passed with `:app:assembleDebug`.
 
 ### Manual Verification
-- **Filtering**:
-    - Unchecked "Videos" -> Confirmed all video tiles disappeared from the timeline.
-    - Verified folder counts decreased immediately.
-    - Verified that video-only folders were hidden from the main gallery.
-- **Search & Filter**: Confirmed that you can search for filenames while filters are active, and only matching items of the selected types are shown.
-- **Properties Viewer**: Verified that the aggregate size and file counts in the "Properties" window accurately respect your active media filters.
+- **Responsive Checkboxes**: Toggling Images, Videos, or GIFs inside the dialog is now instantaneous and lag-free.
+- **Confirmation**: Verified that changes are only reflected in the gallery after tapping "OK".
+- **Dismissal**: Verified that tapping "Cancel" or dismissing the dialog discards any unsaved checkbox changes.
 
 > [!TIP]
-> Use the **Filter media** tool when you're specifically looking for a video or GIF, or to hide screenshots while browsing your camera photos!
+> This optimization makes the app feel much snappier, especially on devices with large media libraries where recalculating folder groups can be intensive!

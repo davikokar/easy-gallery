@@ -21,6 +21,7 @@ import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.MediaGridItem
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
+import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,8 +33,10 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val showInfo by viewModel.showInfo.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchActive by viewModel.isSearchActive.collectAsState()
+    val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
 
     var showColumnCountDialog by remember { mutableStateOf(false) }
+    var showFilterDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -44,6 +47,8 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 onSearchQueryChange = { viewModel.setSearchQuery(it) },
                 onSearchActiveChange = { viewModel.setSearchActive(it) },
                 onColumnCountClick = { showColumnCountDialog = true },
+                onFilterMediaClick = { showFilterDialog = true },
+                onSettingsClick = { viewModel.setSettingsMode(true) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.backToFolders() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
@@ -70,6 +75,17 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
+            )
+        }
+
+        if (showFilterDialog) {
+            FilterMediaDialog(
+                initialSelectedTypes = selectedMediaTypes,
+                onConfirm = {
+                    viewModel.setSelectedMediaTypes(it)
+                    showFilterDialog = false
+                },
+                onDismiss = { showFilterDialog = false }
             )
         }
 

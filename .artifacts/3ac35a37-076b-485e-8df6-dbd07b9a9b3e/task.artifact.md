@@ -1,5 +1,6 @@
-- [ ] Update `GalleryViewModel` with media type filtering logic
-- [ ] Refactor `filteredFolders` to be derived from full media list for accuracy
-- [ ] Add `onFilterMediaClick` to `SearchTopBar`
-- [ ] Implement `FilterMediaDialog` in `FolderListScreen`
-- [ ] Verify dynamic folder hiding and count updates
+- [ ] Update `GalleryViewModel` with separate sort and view type states
+- [ ] Refactor `filteredFolders` and `filteredMedia` logic to use independent settings
+- [ ] Update `FolderListScreen` to use folder-specific settings
+- [ ] Update `FolderDetailScreen` with sorting, list view, and independent settings
+- [ ] Implement `MediaList` and `MediaListItem` components
+- [ ] Verify independent behavior across all views
