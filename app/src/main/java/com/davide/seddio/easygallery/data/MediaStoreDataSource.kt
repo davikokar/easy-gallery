@@ -177,6 +177,12 @@ class MediaStoreDataSource(private val context: Context) {
         file.delete()
     }
 
+    suspend fun deleteMediaItems(uris: List<Uri>) = withContext(Dispatchers.IO) {
+        uris.forEach { uri ->
+            context.contentResolver.delete(uri, null, null)
+        }
+    }
+
     fun getSubdirectories(path: String): List<Folder> {
         val root = File(path)
         if (!root.exists() || !root.isDirectory) return emptyList()

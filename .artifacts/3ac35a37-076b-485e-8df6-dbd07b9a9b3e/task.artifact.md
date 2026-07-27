@@ -1,6 +1,4 @@
-- [x] Add stable keys to `FolderGrid` items
-- [x] Add stable keys to `MediaGrid` items
-- [x] Implement `Modifier.animateItem()` in `FolderGridItem`
-- [x] Implement `Modifier.animateItem()` in `MediaGridItem`
-- [x] Update `CalendarGrid` with stable keys and item animations
-- [x] Verify smooth displacement movements on column changes
+- [x] Update `GalleryViewModel` (Paths for selection, unified deletion engine)
+- [x] Update `MainActivity` (IntentSender launcher and observer)
+- [x] Update `FolderListScreen` (Selection by path)
+- [x] Verify functional deletion across all views

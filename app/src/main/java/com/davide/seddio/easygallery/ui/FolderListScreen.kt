@@ -315,7 +315,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                                 columns = folderColumns,
                                 selectedFolders = selectedFolders,
                                 onFolderClick = { viewModel.selectFolder(it) },
-                                onFolderLongClick = { viewModel.enterSelectionMode(it.name) },
+                                onFolderLongClick = { viewModel.enterSelectionMode(it.path) },
                                 onZoomIn = { viewModel.decreaseColumns(forPictures = false) },
                                 onZoomOut = { viewModel.increaseColumns(forPictures = false) }
                             )
@@ -324,7 +324,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                                 folders = state.folders,
                                 selectedFolders = selectedFolders,
                                 onFolderClick = { viewModel.selectFolder(it) },
-                                onFolderLongClick = { viewModel.enterSelectionMode(it.name) }
+                                onFolderLongClick = { viewModel.enterSelectionMode(it.path) }
                             )
                         }
                     }
@@ -624,7 +624,7 @@ fun FolderGrid(
         items(folders, key = { it.path }) { folder ->
             FolderGridItem(
                 folder = folder,
-                isSelected = selectedFolders.contains(folder.name),
+                isSelected = selectedFolders.contains(folder.path),
                 onClick = { onFolderClick(folder) },
                 onLongClick = { onFolderLongClick(folder) }
             )
@@ -740,7 +740,7 @@ fun FolderList(
         items(folders) { folder ->
             FolderListItem(
                 folder = folder,
-                isSelected = selectedFolders.contains(folder.name),
+                isSelected = selectedFolders.contains(folder.path),
                 onClick = { onFolderClick(folder) },
                 onLongClick = { onFolderLongClick(folder) }
             )

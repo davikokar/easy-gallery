@@ -9,6 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +45,18 @@ class MainActivity : ComponentActivity() {
     private val viewModel: GalleryViewModel by viewModels()
     private var hasPermission by mutableStateOf(false)
 
+    private val intentSenderLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            viewModel.loadFolders()
+            viewModel.exitSelectionMode()
+            viewModel.exitMediaSelectionMode()
+            viewModel.closeMedia()
+        }
+        viewModel.clearPendingWriteRequest()
+    }
+
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -63,6 +77,14 @@ class MainActivity : ComponentActivity() {
         checkPermissions()
 
         setContent {
+            val pendingWriteRequest by viewModel.pendingWriteRequest.collectAsState()
+            
+            LaunchedEffect(pendingWriteRequest) {
+                pendingWriteRequest?.let {
+                    intentSenderLauncher.launch(IntentSenderRequest.Builder(it).build())
+                }
+            }
+
             EasyGalleryTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
