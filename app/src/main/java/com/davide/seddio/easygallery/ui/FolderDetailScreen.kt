@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -54,6 +55,15 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     
     val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
+
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    if (isMediaSelectionMode) {
+        BackHandler { viewModel.exitMediaSelectionMode() }
+    } else {
+        BackHandler { viewModel.backToFolders() }
+    }
 
     var showColumnCountDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
@@ -236,6 +246,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                     MediaGrid(
                         media = media,
                         columns = columnsCount,
+                        state = gridState,
                         showInfo = showInfo,
                         selectedItems = selectedMediaItems,
                         onItemClick = { viewModel.selectMedia(it) },
@@ -246,6 +257,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 } else {
                     MediaList(
                         media = media,
+                        state = listState,
                         showInfo = showInfo,
                         selectedItems = selectedMediaItems,
                         onItemClick = { viewModel.selectMedia(it) },
@@ -257,6 +269,8 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                     groupedMedia = groupedMedia,
                     viewType = pictureViewType,
                     columns = columnsCount,
+                    gridState = gridState,
+                    listState = listState,
                     showInfo = showInfo,
                     selectedItems = selectedMediaItems,
                     onItemClick = { viewModel.selectMedia(it) },
@@ -274,6 +288,8 @@ fun GroupedMediaContent(
     groupedMedia: Map<String, List<MediaItem>>,
     viewType: ViewType,
     columns: Int,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
     onItemClick: (MediaItem) -> Unit,
@@ -286,6 +302,7 @@ fun GroupedMediaContent(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
+            state = gridState,
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp),
             modifier = Modifier
@@ -333,7 +350,8 @@ fun GroupedMediaContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BottomGrey)
+                .background(BottomGrey),
+            state = listState
         ) {
             groupedMedia.forEach { (header, items) ->
                 if (header.isNotEmpty()) {
@@ -389,6 +407,7 @@ fun LazyItemScope.GroupHeaderList(title: String) {
 fun MediaGrid(
     media: List<MediaItem>,
     columns: Int,
+    state: androidx.compose.foundation.lazy.grid.LazyGridState,
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
     onItemClick: (MediaItem) -> Unit,
@@ -400,6 +419,7 @@ fun MediaGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
+        state = state,
         horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier
@@ -441,12 +461,14 @@ fun MediaGrid(
 fun MediaList(
     media: List<MediaItem>,
     showInfo: Boolean,
+    state: androidx.compose.foundation.lazy.LazyListState,
     selectedItems: Set<android.net.Uri>,
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(BottomGrey),
+        state = state,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(media, key = { it.uri.toString() }) { item ->

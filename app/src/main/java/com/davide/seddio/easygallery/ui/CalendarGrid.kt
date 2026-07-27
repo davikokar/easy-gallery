@@ -36,11 +36,15 @@ fun CalendarGrid(
     val pictureViewType by viewModel.pictureViewType.collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
 
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
     if (pictureViewType == ViewType.GRID) {
         var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
+            state = gridState,
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp),
             modifier = Modifier
@@ -88,7 +92,8 @@ fun CalendarGrid(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BottomGrey)
+                .background(BottomGrey),
+            state = listState
         ) {
             groupedPhotos.forEach { (header, items) ->
                 if (header.isNotEmpty()) {

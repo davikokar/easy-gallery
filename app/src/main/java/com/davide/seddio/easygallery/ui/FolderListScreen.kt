@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -69,6 +70,15 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val pictureViewType by viewModel.pictureViewType.collectAsState()
     val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
     
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    if (isMediaSelectionMode) {
+        BackHandler { viewModel.exitMediaSelectionMode() }
+    } else if (isSelectionMode) {
+        BackHandler { viewModel.exitSelectionMode() }
+    }
+
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
     var showGroupByDialog by remember { mutableStateOf(false) }
@@ -313,6 +323,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                             FolderGrid(
                                 folders = state.folders,
                                 columns = folderColumns,
+                                state = gridState,
                                 selectedFolders = selectedFolders,
                                 onFolderClick = { viewModel.selectFolder(it) },
                                 onFolderLongClick = { viewModel.enterSelectionMode(it.path) },
@@ -322,6 +333,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                         } else {
                             FolderList(
                                 folders = state.folders,
+                                state = listState,
                                 selectedFolders = selectedFolders,
                                 onFolderClick = { viewModel.selectFolder(it) },
                                 onFolderLongClick = { viewModel.enterSelectionMode(it.path) }
@@ -586,6 +598,7 @@ fun SortDialog(
 fun FolderGrid(
     folders: List<Folder>,
     columns: Int,
+    state: androidx.compose.foundation.lazy.grid.LazyGridState,
     selectedFolders: Set<String>,
     onFolderClick: (Folder) -> Unit,
     onFolderLongClick: (Folder) -> Unit,
@@ -596,6 +609,7 @@ fun FolderGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
+        state = state,
         horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier
@@ -729,12 +743,14 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
 @Composable
 fun FolderList(
     folders: List<Folder>,
+    state: androidx.compose.foundation.lazy.LazyListState,
     selectedFolders: Set<String>,
     onFolderClick: (Folder) -> Unit,
     onFolderLongClick: (Folder) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(BottomGrey),
+        state = state,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         items(folders) { folder ->

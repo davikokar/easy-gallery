@@ -1,4 +1,6 @@
-- [x] Update `GalleryViewModel` (Paths for selection, unified deletion engine)
-- [x] Update `MainActivity` (IntentSender launcher and observer)
-- [x] Update `FolderListScreen` (Selection by path)
-- [x] Verify functional deletion across all views
+- [x] Hoist scroll state in `FolderListScreen`
+- [x] Hoist scroll state in `FolderDetailScreen`
+- [x] Hoist scroll state in `CalendarGrid`
+- [x] Unify `MainActivity` branches to stabilize screen identity
+- [x] Move `BackHandler` logic into respective screens
+- [x] Verify scroll preservation in all views

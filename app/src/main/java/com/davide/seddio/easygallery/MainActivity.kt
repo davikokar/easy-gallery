@@ -112,15 +112,7 @@ class MainActivity : ComponentActivity() {
                         }
                         SettingsScreen(viewModel)
                     } else if (selectedFolder != null) {
-                        BackHandler {
-                            viewModel.backToFolders()
-                        }
                         FolderDetailScreen(viewModel)
-                    } else if (isSelectionMode) {
-                        BackHandler {
-                            viewModel.exitSelectionMode()
-                        }
-                        FolderListScreen(viewModel)
                     } else if (hasPermission) {
                         FolderListScreen(viewModel)
                     } else {

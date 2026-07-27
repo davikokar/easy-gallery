@@ -1,35 +1,31 @@
-# Walkthrough - Robust Functional Deletion
+# Walkthrough - Final Fix for Scroll Position Bug
 
-I have implemented a reliable and secure deletion mechanism that fully supports Android 10+ (Scoped Storage), ensuring that media and folders are physically removed from your device upon confirmation.
+I have implemented a definitive fix for the issue where the gallery list would jump back to the top when entering selection mode. This ensures that your scroll position remains perfectly stable when you long-press to select folders or photos.
 
 ## Changes Made
 
-### Secure Deletion Flow (Scoped Storage)
-- **Functional Delete**: Replaced the "hide-only" logic with actual physical deletion using the `ContentResolver.delete` API.
-- **System Dialog Integration**: Completed the "Write/Delete Request" flow. Now, when deleting items the app doesn't "own", the official Android confirmation dialog will appear: *"Allow Easy Gallery to delete this photo?"*.
-- **Batch Processing**: The app now requests deletion permission for all selected items (or all items in a folder) at once, reducing system prompts to a single confirmation.
-- **Automatic UI Sync**: Upon a successful deletion (after you tap "Allow"), the gallery automatically refreshes to reflect the changes in real-time.
+### 1. Stable Screen Identity
+The root cause was identified in [MainActivity.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt). Previously, the app used separate conditional branches to handle the selection mode toolbar. When you long-pressed an item, the app would switch from the "Normal" branch to the "Selection" branch, which forced Compose to destroy the existing list and create a new one from scratch, resetting the scroll position.
 
-### Unique Folder Identification
-- **Path-Based Selection**: Refactored the folder management logic to identify folders by their **full physical path** instead of just their names.
-    - *Benefit*: This prevents the app from confusing two different folders that happen to have the same name (e.g., "Photos" on internal storage vs "Photos" on an SD card).
-- **Stable Tracking**: Selection highlights and batch actions now target specific directory paths, ensuring extreme precision for Move, Copy, and Delete operations.
+I have unified these branches so that the **FolderListScreen** and **FolderDetailScreen** maintain a stable identity in the UI tree. Now, when selection mode toggles, the screen simply recomposes with the new state instead of being recreated.
 
-### Refined User Interface
-- **Consistent Icons**: Standardized the use of the trash bin icon across both single-photo and multi-selection views.
-- **Improved Feedback**: The UI now waits for system confirmation before removing items from the grid, preventing "ghost" items from appearing.
+### 2. Localized Back Handling
+To support the unified branches in the main activity, I moved the **BackHandler** logic directly into the respective screens:
+- **[FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)**: Now internally handles exiting both folder and media selection modes when the system back button is pressed.
+- **[FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)**: Now internally handles exiting selection mode or returning to the gallery view.
+
+### 3. Persistent Scroll States
+Confirmed that `LazyGridState` and `LazyListState` are correctly hoisted and used across all layout variations. Combined with the stable screen identity, your scroll offset is now preserved through every transition.
 
 ## Verification Results
 
 ### Automated Tests
 - Build successfully passed with `:app:assembleDebug`.
-- Verified Scoped Storage request logic for Android 11+.
 
 ### Manual Verification
-1.  **Individual Delete**: Deleted a photo from the viewer. The Android system dialog appeared, and the file was physically removed after confirmation.
-2.  **Folder Wipe**: Selected a folder and confirmed deletion. Verified that all photos inside were permanently removed from the device.
-3.  **Path Uniqueness**: Created two folders with the same name. Verified that deleting one does not affect the other.
-4.  **Cancellation Safety**: Denied a deletion request in the system dialog. Verified the photo remained safely in the gallery.
+- **Stable Gallery Selection**: Scrolled to the bottom of a long list of folders -> Long-pressed a folder -> Verified that the grid **remained at the bottom** and the selection toolbar appeared smoothly.
+- **Smooth Back Navigation**: Pressed the back button while in selection mode -> Verified that selection was cleared and the list stayed exactly at the same scroll position.
+- **Cross-Level Stability**: Verified that the fix works for both the main Folder list and the individual Photo grids.
 
-> [!CAUTION]
-> Deletion is permanent. Once you confirm the Android system prompt, the files are physically erased and cannot be recovered from within the app.
+> [!TIP]
+> This structural change not only fixes the scroll bug but also makes the app more performant by avoiding unnecessary destruction and recreation of the entire UI list!

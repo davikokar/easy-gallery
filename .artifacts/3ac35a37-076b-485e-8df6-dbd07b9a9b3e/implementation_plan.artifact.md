@@ -1,41 +1,28 @@
-# Implementation Plan - Correct Scoped Storage Deletion Flow
+# Implementation Plan - Fix Scroll Position Bug
 
-This plan outlines the steps to implement a robust deletion mechanism for media items and folders on Android 10+ (Scoped Storage), including the necessary system confirmation dialogs.
+This plan outlines the steps to fix the issue where the folder/media list scrolls back to the top when entering or exiting selection mode.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Security Dialogs**: You will see a system dialog (e.g., "Allow Easy Gallery to delete this photo?") when deleting items the app doesn't "own". This is a mandatory Android security feature.
-> - **Folder Uniqueness**: I will transition folder selection from using names (`bucketName`) to using full physical paths. This prevents issues where folders with the same name in different locations are treated as one.
-> - **Permanent Action**: Deletion will physically remove files from your device.
+> - **State Hoisting**: I will explicitly hoist the `LazyGridState` and `LazyListState` to the top level of each screen. This ensures that the scroll position is preserved even when the UI structure (like the TopBar) changes significantly.
+> - **Unified Solution**: This fix will be applied to the Folder List, Folder Detail, and Timeline views to ensure a consistent and smooth experience throughout the app.
 
 ## Proposed Changes
 
-### Logic Layer
-
-#### [MODIFY] [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt)
-- **Selection State**:
-    - Change `_selectedFolders` from `Set<String>` (names) to `Set<String>` (paths).
-- **Deletion Logic**:
-    - Refactor `deleteMedia(item: MediaItem)` to call `performDeletion(listOf(item.uri))`.
-    - Update `deleteSelected()` (folders) to collect all `MediaItem` URIs where `folderPath` matches any of the selected folder paths.
-    - Update `performDeletion` to ensure `exitMediaSelectionMode()` (or closing the full image) is only done *after* a successful operation or after the system dialog is launched.
-- **Cleanup**: Ensure `pendingWriteRequest` is cleared after being handled.
-
 ### UI Layer
 
-#### [MODIFY] [MainActivity.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt)
-- **Result Launcher**: Add `rememberLauncherForActivityResult` using `ActivityResultContracts.StartIntentSenderForResult()`.
-- **Observer**: Add a `LaunchedEffect` to observe `viewModel.pendingWriteRequest`.
-- **Launch logic**: When a request appears, launch the `IntentSender`. On `RESULT_OK`, trigger `viewModel.loadFolders()` to refresh the UI and clear selection states.
-
 #### [MODIFY] [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)
-- Update selection logic to pass `folder.path` instead of `folder.name`.
+- Hoist `gridState` and `listState` using `rememberLazyGridState()` and `rememberLazyListState()` at the top of `FolderListScreen`.
+- Pass these states down to `FolderGrid` and `FolderList`.
+- Ensure `LazyVerticalGrid` and `LazyColumn` use these explicit states.
 
-### Data Layer
+#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
+- Similar to above, hoist and pass scroll states to `MediaGrid`, `MediaList`, and `GroupedMediaContent`.
+- This prevents jumping when selecting photos within a folder.
 
-#### [MODIFY] [MediaStoreDataSource.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt)
-- Ensure `deleteMediaItems` simply executes the delete command, relying on the ViewModel to catch and handle the resulting `SecurityException`.
+#### [MODIFY] [CalendarGrid.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/CalendarGrid.kt)
+- Hoist and apply scroll states for the grouped Timeline view.
 
 ## Verification Plan
 
@@ -43,7 +30,16 @@ This plan outlines the steps to implement a robust deletion mechanism for media 
 - Verify build success.
 
 ### Manual Verification
-1.  **Single File Deletion**: Delete a photo from `FullImageScreen`. Verify the system dialog appears, and the photo is gone from storage and UI after "Allow".
-2.  **Batch Deletion**: Select 3 photos -> Delete. Verify one system prompt for 3 items.
-3.  **Folder Deletion**: Select a folder -> Delete. Verify all contents are physically removed.
-4.  **Unique Folders**: Create two folders named "Vacation" in different directories. Select one -> Delete. Verify only the targeted one is deleted.
+1.  **Folder Selection**:
+    - Scroll down to the middle of the folder grid.
+    - Long-press a folder.
+    - Verify the grid stays at the same scroll position.
+    - Exit selection mode and verify the position is still maintained.
+2.  **Photo Selection**:
+    - Open a folder with many photos.
+    - Scroll down and long-press a photo.
+    - Verify the photo remains visible and the grid doesn't jump.
+3.  **Timeline Selection**:
+    - Scroll down in the Timeline.
+    - Long-press a photo.
+    - Verify scroll position is preserved.
