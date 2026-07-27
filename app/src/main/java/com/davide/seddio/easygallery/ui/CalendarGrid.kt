@@ -1,12 +1,15 @@
 package com.davide.seddio.easygallery.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -31,6 +34,7 @@ fun CalendarGrid(
     showInfo: Boolean
 ) {
     val pictureViewType by viewModel.pictureViewType.collectAsState()
+    val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
 
     if (pictureViewType == ViewType.GRID) {
         var cumulativeScale by remember { mutableFloatStateOf(1f) }
@@ -65,15 +69,17 @@ fun CalendarGrid(
         ) {
             groupedPhotos.forEach { (header, items) ->
                 if (header.isNotEmpty()) {
-                    item(span = { GridItemSpan(columns) }) {
+                    item(span = { GridItemSpan(columns) }, key = header) {
                         DateHeader(header)
                     }
                 }
-                items(items) { item ->
+                items(items, key = { it.uri.toString() }) { item ->
                     MediaGridItem(
                         item = item,
                         showInfo = showInfo,
-                        onClick = { viewModel.selectMedia(item) }
+                        isSelected = selectedMediaItems.contains(item.uri),
+                        onClick = { viewModel.selectMedia(item) },
+                        onLongClick = { viewModel.enterMediaSelectionMode(item) }
                     )
                 }
             }
@@ -86,15 +92,17 @@ fun CalendarGrid(
         ) {
             groupedPhotos.forEach { (header, items) ->
                 if (header.isNotEmpty()) {
-                    item {
-                        DateHeader(header)
+                    item(key = header) {
+                        DateHeaderList(header)
                     }
                 }
-                items(items) { item ->
+                items(items, key = { it.uri.toString() }) { item ->
                     MediaListItem(
                         item = item,
                         showInfo = showInfo,
-                        onClick = { viewModel.selectMedia(item) }
+                        isSelected = selectedMediaItems.contains(item.uri),
+                        onClick = { viewModel.selectMedia(item) },
+                        onLongClick = { viewModel.enterMediaSelectionMode(item) }
                     )
                 }
             }
@@ -102,14 +110,31 @@ fun CalendarGrid(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DateHeader(date: String) {
+fun LazyGridItemScope.DateHeader(date: String) {
     Text(
         text = date,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = Color.White,
         modifier = Modifier
+            .animateItem()
+            .padding(vertical = 12.dp, horizontal = 4.dp)
+            .fillMaxWidth()
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun LazyItemScope.DateHeaderList(date: String) {
+    Text(
+        text = date,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        modifier = Modifier
+            .animateItem()
             .padding(vertical = 12.dp, horizontal = 4.dp)
             .fillMaxWidth()
     )

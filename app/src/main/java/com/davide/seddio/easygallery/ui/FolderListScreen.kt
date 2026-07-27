@@ -621,7 +621,7 @@ fun FolderGrid(
                 }
             }
     ) {
-        items(folders) { folder ->
+        items(folders, key = { it.path }) { folder ->
             FolderGridItem(
                 folder = folder,
                 isSelected = selectedFolders.contains(folder.name),
@@ -634,7 +634,7 @@ fun FolderGrid(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FolderGridItem(
+fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
     folder: Folder,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -643,6 +643,7 @@ fun FolderGridItem(
     Card(
         modifier = Modifier
             .aspectRatio(1f)
+            .animateItem()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick

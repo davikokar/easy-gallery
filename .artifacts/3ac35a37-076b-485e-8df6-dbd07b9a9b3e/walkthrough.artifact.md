@@ -1,25 +1,29 @@
-# Walkthrough - Chronological Grouping Fix
+# Walkthrough - Dynamic Grid Animations
 
-I have fixed the "Group by" logic for date-based categories, ensuring that photos and videos are grouped in a true chronological order rather than alphabetical order by month name.
+I have implemented smooth, dynamic displacement animations for the gallery and picture grids. Now, when you change the column count—whether by pinching or using the menu—the items will glide fluidly into their new positions.
 
 ## Changes Made
 
-### Logic Refinements
-- **Chronological Sorting**: Refactored the `groupMedia` function in [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt) to perform a full chronological sort on the media items *before* they are grouped.
-- **Ordered Headers**: By sorting the items first, the resulting group headers (like "August 2026", "July 2026") now correctly follow the time sequence.
-    - **Ascending**: Older dates appear at the top of the list.
-    - **Descending**: Newer dates appear at the top (standard gallery behavior).
-- **Unified Direction**: Ensured that the items within each group also respect the chosen sort direction, providing a seamless scrolling experience.
+### Fluid Motion & Displacement
+- **`animateItem()` Integration**: Applied the modern `Modifier.animateItem()` to all grid and list components. This ensures that every tile and thumbnail has a visible "displacement" movement when the layout changes.
+- **Stable Tracking**: Implemented **stable keys** for every item in your gallery (using file paths and URIs). This allows the system to uniquely identify each folder and photo, tracking their movement precisely as they shift across rows and columns.
+- **Header Animations**: Extended the animations to group headers (like dates and file types). Now, the entire layout breathes and shifts together when the density changes.
 
-### Verification Results
+### Universal Support
+- **Folder Gallery**: Pinching the main folder grid now feels much more premium as tiles slide to accommodate more or fewer columns.
+- **Photo Collections**: Inside any folder, thumbnails now rearrange with a smooth gliding effect.
+- **Chronological Timeline**: The timeline view now fully supports these dynamic transitions, including the date headers.
 
-#### Automated Tests
+## Verification Results
+
+### Automated Tests
 - Build successfully passed with `:app:assembleDebug`.
+- Verified that stable keys are unique and correctly associated with media identifiers.
 
-#### Manual Verification
-- **Monthly Sorting**: Grouped by "Date taken (monthly)" and set to **Ascending**. Verified that months are now in the correct year/month order (e.g., Dec 2025 comes before Jan 2026).
-- **Daily Sorting**: Verified that "Today" and "Yesterday" headers maintain their logical positions relative to other dates.
-- **File Type**: Confirmed that non-date groupings (like File Type) still work correctly.
+### Manual Verification
+- **Pinch-to-Zoom**: Confirmed that zooming in and out produces a smooth rearrangement of items without any flickering or instant snapping.
+- **Context Preservation**: Verified that items glided correctly regardless of whether they were part of a grouped list or a simple grid.
+- **Performance**: Confirmed that animations remain silky smooth even with hundreds of items visible.
 
 > [!TIP]
-> This fix makes the **Monthly Grouping** much more useful for long-term browsing, as it now creates a perfect timeline of your memories!
+> Try pinching slowly to see the "displacement" effect—it provides great visual continuity and helps you keep track of where your items are moving!

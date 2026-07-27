@@ -26,7 +26,7 @@ import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MediaListItem(
+fun androidx.compose.foundation.lazy.LazyItemScope.MediaListItem(
     item: MediaItem,
     showInfo: Boolean,
     isSelected: Boolean = false,
@@ -37,6 +37,7 @@ fun MediaListItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
+            .animateItem()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick

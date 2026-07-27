@@ -1,13 +1,16 @@
 package com.davide.seddio.easygallery.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -311,11 +314,11 @@ fun GroupedMediaContent(
         ) {
             groupedMedia.forEach { (header, items) ->
                 if (header.isNotEmpty()) {
-                    item(span = { GridItemSpan(columns) }) {
+                    item(span = { GridItemSpan(columns) }, key = header) {
                         GroupHeader(header)
                     }
                 }
-                items(items) { item ->
+                items(items, key = { it.uri.toString() }) { item ->
                     MediaGridItem(
                         item = item,
                         showInfo = showInfo,
@@ -334,11 +337,11 @@ fun GroupedMediaContent(
         ) {
             groupedMedia.forEach { (header, items) ->
                 if (header.isNotEmpty()) {
-                    item {
-                        GroupHeader(header)
+                    item(key = header) {
+                        GroupHeaderList(header)
                     }
                 }
-                items(items) { item ->
+                items(items, key = { it.uri.toString() }) { item ->
                     MediaListItem(
                         item = item,
                         showInfo = showInfo,
@@ -352,16 +355,33 @@ fun GroupedMediaContent(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun GroupHeader(title: String) {
+fun LazyGridItemScope.GroupHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = Color.White,
         modifier = Modifier
-            .padding(vertical = 12.dp, horizontal = 12.dp)
+            .animateItem()
             .fillMaxWidth()
+            .padding(vertical = 12.dp, horizontal = 12.dp)
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun LazyItemScope.GroupHeaderList(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        modifier = Modifier
+            .animateItem()
+            .fillMaxWidth()
+            .padding(vertical = 12.dp, horizontal = 12.dp)
     )
 }
 
@@ -405,7 +425,7 @@ fun MediaGrid(
                 }
             }
     ) {
-        items(media) { item ->
+        items(media, key = { it.uri.toString() }) { item ->
             MediaGridItem(
                 item = item,
                 showInfo = showInfo,
@@ -429,7 +449,7 @@ fun MediaList(
         modifier = Modifier.fillMaxSize().background(BottomGrey),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(media) { item ->
+        items(media, key = { it.uri.toString() }) { item ->
             MediaListItem(
                 item = item,
                 showInfo = showInfo,

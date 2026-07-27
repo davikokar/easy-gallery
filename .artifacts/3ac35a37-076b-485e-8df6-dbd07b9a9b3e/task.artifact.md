@@ -1,8 +1,6 @@
-- [x] Add `GroupByType` enum and states to `GalleryViewModel`
-- [x] Refactor `groupedPhotosByDate` to generic `groupedMedia` in `GalleryViewModel`
-- [x] Add `onGroupByClick` to `SearchTopBar`
-- [x] Create `GroupByDialog` component
-- [x] Update `FolderDetailScreen` to support grouped layouts
-- [x] Refactor `CalendarGrid` to use `groupedMedia`
-- [x] Verify grouping logic and independent behavior
-- [x] Correct date grouping order logic (chronological vs alphabetical)
+- [x] Add stable keys to `FolderGrid` items
+- [x] Add stable keys to `MediaGrid` items
+- [x] Implement `Modifier.animateItem()` in `FolderGridItem`
+- [x] Implement `Modifier.animateItem()` in `MediaGridItem`
+- [x] Update `CalendarGrid` with stable keys and item animations
+- [x] Verify smooth displacement movements on column changes

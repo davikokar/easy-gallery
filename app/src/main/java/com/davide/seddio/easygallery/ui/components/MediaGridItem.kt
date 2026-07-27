@@ -27,7 +27,7 @@ import com.davide.seddio.easygallery.ui.theme.BottomGrey
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MediaGridItem(
+fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
     item: MediaItem,
     showInfo: Boolean,
     isSelected: Boolean = false,
@@ -37,6 +37,7 @@ fun MediaGridItem(
     Card(
         modifier = Modifier
             .aspectRatio(1f)
+            .animateItem()
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
