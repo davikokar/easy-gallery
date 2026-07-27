@@ -1,4 +1,8 @@
-- [x] Update `Theme.kt` with comprehensive surface mapping
-- [x] Verify `AlertDialog` backgrounds in `FolderListScreen`
-- [x] Verify `DropdownMenu` backgrounds in `SearchTopBar` and `SelectionTopBar`
-- [x] Final visual check for white-on-white text issues
+- [x] Add `GroupByType` enum and states to `GalleryViewModel`
+- [x] Refactor `groupedPhotosByDate` to generic `groupedMedia` in `GalleryViewModel`
+- [x] Add `onGroupByClick` to `SearchTopBar`
+- [x] Create `GroupByDialog` component
+- [x] Update `FolderDetailScreen` to support grouped layouts
+- [x] Refactor `CalendarGrid` to use `groupedMedia`
+- [x] Verify grouping logic and independent behavior
+- [x] Correct date grouping order logic (chronological vs alphabetical)

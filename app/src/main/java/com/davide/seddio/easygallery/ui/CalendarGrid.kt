@@ -63,9 +63,11 @@ fun CalendarGrid(
                     }
                 }
         ) {
-            groupedPhotos.forEach { (date, items) ->
-                item(span = { GridItemSpan(columns) }) {
-                    DateHeader(date)
+            groupedPhotos.forEach { (header, items) ->
+                if (header.isNotEmpty()) {
+                    item(span = { GridItemSpan(columns) }) {
+                        DateHeader(header)
+                    }
                 }
                 items(items) { item ->
                     MediaGridItem(
@@ -82,9 +84,11 @@ fun CalendarGrid(
                 .fillMaxSize()
                 .background(BottomGrey)
         ) {
-            groupedPhotos.forEach { (date, items) ->
-                item {
-                    DateHeader(date)
+            groupedPhotos.forEach { (header, items) ->
+                if (header.isNotEmpty()) {
+                    item {
+                        DateHeader(header)
+                    }
                 }
                 items(items) { item ->
                     MediaListItem(

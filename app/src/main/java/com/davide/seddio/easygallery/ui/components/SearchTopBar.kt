@@ -28,6 +28,7 @@ fun SearchTopBar(
     onToggleDisplayMode: (() -> Unit)? = null,
     onSortClick: (() -> Unit)? = null,
     onColumnCountClick: (() -> Unit)? = null,
+    onGroupByClick: (() -> Unit)? = null,
     onViewTypeClick: (() -> Unit)? = null,
     onFilterMediaClick: (() -> Unit)? = null,
     onShowExcludedClick: (() -> Unit)? = null,
@@ -116,6 +117,15 @@ fun SearchTopBar(
                                 onColumnCountClick?.invoke()
                             }
                         )
+                        if (onGroupByClick != null) {
+                            DropdownMenuItem(
+                                text = { Text("Group by") },
+                                onClick = {
+                                    showMenu = false
+                                    onGroupByClick.invoke()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Temporarily show excluded") },
                             onClick = {

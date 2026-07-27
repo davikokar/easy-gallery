@@ -61,6 +61,77 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _pictureViewType = MutableStateFlow(ViewType.GRID)
     val pictureViewType: StateFlow<ViewType> = _pictureViewType.asStateFlow()
 
+    private val _pictureGroupBy = MutableStateFlow(GroupByType.DATE_TAKEN_DAILY)
+    val pictureGroupBy: StateFlow<GroupByType> = _pictureGroupBy.asStateFlow()
+
+    private val _pictureGroupOrder = MutableStateFlow(SortOrder.DESCENDING)
+    val pictureGroupOrder: StateFlow<SortOrder> = _pictureGroupOrder.asStateFlow()
+
+    private val _pinnedFolders = MutableStateFlow<Set<String>>(emptySet())
+    private val _selectedFolders = MutableStateFlow<Set<String>>(emptySet())
+    val selectedFolders: StateFlow<Set<String>> = _selectedFolders.asStateFlow()
+
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
+
+    private val _selectedMediaItems = MutableStateFlow<Set<android.net.Uri>>(emptySet())
+    val selectedMediaItems: StateFlow<Set<android.net.Uri>> = _selectedMediaItems.asStateFlow()
+
+    private val _isMediaSelectionMode = MutableStateFlow(false)
+    val isMediaSelectionMode: StateFlow<Boolean> = _isMediaSelectionMode.asStateFlow()
+
+    private val _isManageExcludedMode = MutableStateFlow(false)
+    val isManageExcludedMode: StateFlow<Boolean> = _isManageExcludedMode.asStateFlow()
+
+    private val _isSettingsMode = MutableStateFlow(false)
+    val isSettingsMode: StateFlow<Boolean> = _isSettingsMode.asStateFlow()
+
+    private val _showExcludedTemporarily = MutableStateFlow(false)
+    val showExcludedTemporarily: StateFlow<Boolean> = _showExcludedTemporarily.asStateFlow()
+
+    private val _isDestinationPickerActive = MutableStateFlow(false)
+    val isDestinationPickerActive: StateFlow<Boolean> = _isDestinationPickerActive.asStateFlow()
+
+    private val _pendingOperation = MutableStateFlow<OperationType?>(null)
+    val pendingOperation: StateFlow<OperationType?> = _pendingOperation.asStateFlow()
+
+    private val _browsingPath = MutableStateFlow(Environment.getExternalStorageDirectory().absolutePath)
+    val browsingPath: StateFlow<String> = _browsingPath.asStateFlow()
+
+    private val _pendingWriteRequest = MutableStateFlow<android.content.IntentSender?>(null)
+    val pendingWriteRequest: StateFlow<android.content.IntentSender?> = _pendingWriteRequest.asStateFlow()
+
+    private val _selectedFolder = MutableStateFlow<Folder?>(null)
+    val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
+
+    private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
+    val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
+
+    private val _folderColumns = MutableStateFlow(2)
+    val folderColumns: StateFlow<Int> = _folderColumns.asStateFlow()
+
+    private val _pictureColumns = MutableStateFlow(3)
+    val pictureColumns: StateFlow<Int> = _pictureColumns.asStateFlow()
+
+    private val _showInfo = MutableStateFlow(false)
+    val showInfo: StateFlow<Boolean> = _showInfo.asStateFlow()
+
+    private val _selectedMedia = MutableStateFlow<MediaItem?>(null)
+    val selectedMedia: StateFlow<MediaItem?> = _selectedMedia.asStateFlow()
+
+    private val _isImmersiveMode = MutableStateFlow(false)
+    val isImmersiveMode: StateFlow<Boolean> = _isImmersiveMode.asStateFlow()
+
+    private val _currentRotation = MutableStateFlow(0f)
+    val currentRotation: StateFlow<Float> = _currentRotation.asStateFlow()
+
+    private val _currentMediaList = MutableStateFlow<List<MediaItem>>(emptyList())
+    val currentMediaList: StateFlow<List<MediaItem>> = _currentMediaList.asStateFlow()
+
+    val browsingFolders: StateFlow<List<Folder>> = combine(_browsingPath, _selectedFolders) { path, selected ->
+        dataSource.getSubdirectories(path).filter { !selected.contains(it.name) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
         _allMedia, _searchQuery, _excludedFolders, _selectedMediaTypes, _pictureSortType, _pictureSortOrder
     ) { args ->
@@ -84,34 +155,33 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         sortMedia(searchFiltered, sort, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    private val _pinnedFolders = MutableStateFlow<Set<String>>(emptySet())
-    private val _selectedFolders = MutableStateFlow<Set<String>>(emptySet())
-    val selectedFolders: StateFlow<Set<String>> = _selectedFolders.asStateFlow()
+    val filteredMedia: StateFlow<List<MediaItem>> = combine(_mediaInFolder, _searchQuery, _selectedMediaTypes, _pictureSortType, _pictureSortOrder) { args ->
+        val media = args[0] as List<MediaItem>
+        val query = args[1] as String
+        val types = args[2] as Set<MediaType>
+        val sort = args[3] as SortType
+        val order = args[4] as SortOrder
 
-    private val _isSelectionMode = MutableStateFlow(false)
-    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
-
-    private val _isManageExcludedMode = MutableStateFlow(false)
-    val isManageExcludedMode: StateFlow<Boolean> = _isManageExcludedMode.asStateFlow()
-
-    private val _isSettingsMode = MutableStateFlow(false)
-    val isSettingsMode: StateFlow<Boolean> = _isSettingsMode.asStateFlow()
-
-    private val _showExcludedTemporarily = MutableStateFlow(false)
-    val showExcludedTemporarily: StateFlow<Boolean> = _showExcludedTemporarily.asStateFlow()
-
-    private val _isDestinationPickerActive = MutableStateFlow(false)
-    val isDestinationPickerActive: StateFlow<Boolean> = _isDestinationPickerActive.asStateFlow()
-
-    private val _pendingOperation = MutableStateFlow<OperationType?>(null)
-    val pendingOperation: StateFlow<OperationType?> = _pendingOperation.asStateFlow()
-
-    private val _browsingPath = MutableStateFlow(Environment.getExternalStorageDirectory().absolutePath)
-    val browsingPath: StateFlow<String> = _browsingPath.asStateFlow()
-
-    val browsingFolders: StateFlow<List<Folder>> = combine(_browsingPath, _selectedFolders) { path, selected ->
-        dataSource.getSubdirectories(path).filter { !selected.contains(it.name) }
+        val typeFiltered = media.filter { types.contains(it.type) }
+        val searchFiltered = if (query.isNotEmpty()) {
+            typeFiltered.filter { it.name.contains(query, ignoreCase = true) }
+        } else {
+            typeFiltered
+        }
+        sortMedia(searchFiltered, sort, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
+        filteredAllMedia, _pictureGroupBy, _pictureGroupOrder
+    ) { media: List<MediaItem>, groupBy: GroupByType, order: SortOrder ->
+        groupMedia(media, groupBy, order)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
+    val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
+        filteredMedia, _pictureGroupBy, _pictureGroupOrder
+    ) { media: List<MediaItem>, groupBy: GroupByType, order: SortOrder ->
+        groupMedia(media, groupBy, order)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
         _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _excludedFolders, _selectedMediaTypes, _folderSortOrder, _showExcludedTemporarily
@@ -141,14 +211,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                             isPinned = pinned.contains(item.bucketName),
                             path = item.folderPath,
                             size = item.size,
-                            dateModified = item.dateAdded,
+                            dateModified = item.dateModified,
                             dateTaken = item.dateAdded
                         )
                     } else {
                         foldersMap[item.bucketName] = existing.copy(
                             imageCount = existing.imageCount + 1,
                             size = existing.size + item.size,
-                            dateModified = maxOf(existing.dateModified, item.dateAdded),
+                            dateModified = maxOf(existing.dateModified, item.dateModified),
                             dateTaken = maxOf(existing.dateTaken, item.dateAdded)
                         )
                     }
@@ -160,9 +230,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             val baseSorted = when (sort) {
                 SortType.NAME -> foldersList.sortedBy { it.name }
                 SortType.PATH -> foldersList.sortedBy { it.path }
-                SortType.SIZE -> foldersList.sortedBy { it.size }
-                SortType.LAST_MODIFIED -> foldersList.sortedBy { it.dateModified }
-                SortType.DATE_TAKEN -> foldersList.sortedBy { it.dateTaken }
+                SortType.SIZE -> foldersList.sortedByDescending { it.size }
+                SortType.LAST_MODIFIED -> foldersList.sortedByDescending { it.dateModified }
+                SortType.DATE_TAKEN -> foldersList.sortedByDescending { it.dateTaken }
                 SortType.RANDOM -> foldersList.shuffled()
             }
 
@@ -183,55 +253,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             GalleryUiState.Success(filteredList)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
-
-    val groupedPhotosByDate: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredAllMedia, _searchQuery
-    ) { media, _ ->
-        groupMediaByDate(media)
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
-
-    private val _folderColumns = MutableStateFlow(2)
-    val folderColumns: StateFlow<Int> = _folderColumns.asStateFlow()
-
-    private val _pictureColumns = MutableStateFlow(3)
-    val pictureColumns: StateFlow<Int> = _pictureColumns.asStateFlow()
-
-    private val _selectedFolder = MutableStateFlow<Folder?>(null)
-    val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
-
-    private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
-    val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
-
-    val filteredMedia: StateFlow<List<MediaItem>> = combine(_mediaInFolder, _searchQuery, _selectedMediaTypes, _pictureSortType, _pictureSortOrder) { args ->
-        val media = args[0] as List<MediaItem>
-        val query = args[1] as String
-        val types = args[2] as Set<MediaType>
-        val sort = args[3] as SortType
-        val order = args[4] as SortOrder
-
-        val typeFiltered = media.filter { types.contains(it.type) }
-        val searchFiltered = if (query.isNotEmpty()) {
-            typeFiltered.filter { it.name.contains(query, ignoreCase = true) }
-        } else {
-            typeFiltered
-        }
-        sortMedia(searchFiltered, sort, order)
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    private val _showInfo = MutableStateFlow(false)
-    val showInfo: StateFlow<Boolean> = _showInfo.asStateFlow()
-
-    private val _selectedMedia = MutableStateFlow<MediaItem?>(null)
-    val selectedMedia: StateFlow<MediaItem?> = _selectedMedia.asStateFlow()
-
-    private val _isImmersiveMode = MutableStateFlow(false)
-    val isImmersiveMode: StateFlow<Boolean> = _isImmersiveMode.asStateFlow()
-
-    private val _currentRotation = MutableStateFlow(0f)
-    val currentRotation: StateFlow<Float> = _currentRotation.asStateFlow()
-
-    private val _currentMediaList = MutableStateFlow<List<MediaItem>>(emptyList())
-    val currentMediaList: StateFlow<List<MediaItem>> = _currentMediaList.asStateFlow()
 
     fun loadFolders() {
         viewModelScope.launch {
@@ -294,15 +315,101 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectMedia(item: MediaItem) {
+        if (_isMediaSelectionMode.value) {
+            toggleMediaSelection(item)
+        } else {
+            val list = if (_selectedFolder.value != null) {
+                filteredMedia.value
+            } else {
+                filteredAllMedia.value
+            }
+            _currentMediaList.value = list
+            _selectedMedia.value = item
+            _isImmersiveMode.value = false
+            _currentRotation.value = 0f
+        }
+    }
+
+    fun toggleMediaSelection(item: MediaItem) {
+        val current = _selectedMediaItems.value.toMutableSet()
+        if (current.contains(item.uri)) {
+            current.remove(item.uri)
+        } else {
+            current.add(item.uri)
+        }
+        _selectedMediaItems.value = current
+        if (current.isEmpty()) {
+            _isMediaSelectionMode.value = false
+        }
+    }
+
+    fun enterMediaSelectionMode(item: MediaItem) {
+        exitSelectionMode()
+        _isMediaSelectionMode.value = true
+        _selectedMediaItems.value = setOf(item.uri)
+    }
+
+    fun exitMediaSelectionMode() {
+        _isMediaSelectionMode.value = false
+        _selectedMediaItems.value = emptySet()
+    }
+
+    fun selectAllMedia() {
         val list = if (_selectedFolder.value != null) {
             filteredMedia.value
         } else {
             filteredAllMedia.value
         }
-        _currentMediaList.value = list
-        _selectedMedia.value = item
-        _isImmersiveMode.value = false
-        _currentRotation.value = 0f
+        _selectedMediaItems.value = list.map { it.uri }.toSet()
+    }
+
+    fun getSelectedMediaData(): List<MediaItem> {
+        val selectedUris = _selectedMediaItems.value
+        val allVisible = if (_selectedFolder.value != null) {
+            _mediaInFolder.value
+        } else {
+            _allMedia.value
+        }
+        return allVisible.filter { selectedUris.contains(it.uri) }
+    }
+
+    fun deleteSelectedMedia() {
+        val selectedUris = _selectedMediaItems.value
+        viewModelScope.launch {
+            _mediaInFolder.value = _mediaInFolder.value.filter { !selectedUris.contains(it.uri) }
+            _allMedia.value = _allMedia.value.filter { !selectedUris.contains(it.uri) }
+            exitMediaSelectionMode()
+        }
+    }
+
+    fun rotateSelectedMedia(degrees: Int) {
+        val selectedMedia = getSelectedMediaData().filter { it.type == MediaType.IMAGE || it.type == MediaType.GIF }
+        if (selectedMedia.isEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                selectedMedia.forEach { item ->
+                    dataSource.rotateImage(item.uri, degrees)
+                }
+                exitMediaSelectionMode()
+                loadFolders()
+            } catch (e: SecurityException) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    val uris = selectedMedia.map { it.uri }
+                    val intentSender = android.provider.MediaStore.createWriteRequest(
+                        getApplication<Application>().contentResolver,
+                        uris
+                    ).intentSender
+                    _pendingWriteRequest.value = intentSender
+                } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && e is android.app.RecoverableSecurityException) {
+                    _pendingWriteRequest.value = e.userAction.actionIntent.intentSender
+                }
+            }
+        }
+    }
+
+    fun clearPendingWriteRequest() {
+        _pendingWriteRequest.value = null
     }
 
     fun setCurrentMedia(item: MediaItem) {
@@ -375,20 +482,32 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun performOperationWithPath(path: String) {
-        val selectedFoldersData = getSelectedFoldersData()
         val operation = _pendingOperation.value ?: return
         
         viewModelScope.launch {
-            selectedFoldersData.forEach { folder ->
-                if (operation == OperationType.MOVE) {
-                    dataSource.moveFolderContents(folder.path, path)
-                } else {
-                    dataSource.copyFolderContents(folder.path, path)
+            if (_isMediaSelectionMode.value) {
+                val selectedMedia = getSelectedMediaData()
+                selectedMedia.forEach { item ->
+                    if (operation == OperationType.MOVE) {
+                        dataSource.moveFile(item.folderPath, item.name, path)
+                    } else {
+                        dataSource.copyFile(item.folderPath, item.name, path)
+                    }
                 }
+                exitMediaSelectionMode()
+            } else {
+                val selectedFoldersData = getSelectedFoldersData()
+                selectedFoldersData.forEach { folder ->
+                    if (operation == OperationType.MOVE) {
+                        dataSource.moveFolderContents(folder.path, path)
+                    } else {
+                        dataSource.copyFolderContents(folder.path, path)
+                    }
+                }
+                exitSelectionMode()
             }
             
             cancelOperation()
-            exitSelectionMode()
             loadFolders()
         }
     }
@@ -429,6 +548,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             _folderSortOrder.value = order
         }
+    }
+
+    fun setGroupBy(type: GroupByType) {
+        _pictureGroupBy.value = type
+    }
+
+    fun setGroupOrder(order: SortOrder) {
+        _pictureGroupOrder.value = order
     }
 
     fun setViewType(viewType: ViewType, forPictures: Boolean) {
@@ -539,7 +666,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private fun sortMedia(media: List<MediaItem>, sort: SortType, order: SortOrder): List<MediaItem> {
         val baseSorted = when (sort) {
             SortType.NAME -> media.sortedBy { it.name }
-            SortType.LAST_MODIFIED -> media.sortedBy { it.dateAdded }
+            SortType.LAST_MODIFIED -> media.sortedBy { it.dateModified }
             SortType.DATE_TAKEN -> media.sortedBy { it.dateAdded }
             SortType.RANDOM -> media.shuffled()
             else -> media.sortedBy { it.dateAdded }
@@ -552,21 +679,54 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun groupMediaByDate(items: List<MediaItem>): Map<String, List<MediaItem>> {
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val today = sdf.format(Date())
-        val yesterday = sdf.format(Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000))
+    private fun groupMedia(items: List<MediaItem>, type: GroupByType, order: SortOrder): Map<String, List<MediaItem>> {
+        if (type == GroupByType.NONE) return mapOf("" to items)
 
-        return items.groupBy {
-            val dateStr = sdf.format(Date(it.dateAdded * 1000))
-            when (dateStr) {
-                today -> "Today"
-                yesterday -> "Yesterday"
-                else -> {
-                    val prettySdf = SimpleDateFormat("MMMM d, yyyy", Locale.getDefault())
-                    prettySdf.format(Date(it.dateAdded * 1000))
+        val sortedItems = when (type) {
+            GroupByType.DATE_TAKEN_DAILY, GroupByType.DATE_TAKEN_MONTHLY -> {
+                if (order == SortOrder.DESCENDING) items.sortedByDescending { it.dateAdded }
+                else items.sortedBy { it.dateAdded }
+            }
+            GroupByType.LAST_MODIFIED_DAILY, GroupByType.LAST_MODIFIED_MONTHLY -> {
+                if (order == SortOrder.DESCENDING) items.sortedByDescending { it.dateModified }
+                else items.sortedBy { it.dateModified }
+            }
+            GroupByType.FILE_TYPE -> {
+                if (order == SortOrder.DESCENDING) items.sortedByDescending { it.type.name }
+                else items.sortedBy { it.type.name }
+            }
+            GroupByType.NONE -> items
+        }
+
+        return when (type) {
+            GroupByType.DATE_TAKEN_DAILY, GroupByType.LAST_MODIFIED_DAILY -> {
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val today = sdf.format(Date())
+                val yesterday = sdf.format(Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000))
+                
+                sortedItems.groupBy { item ->
+                    val date = if (type == GroupByType.DATE_TAKEN_DAILY) item.dateAdded else item.dateModified
+                    val dateStr = sdf.format(Date(date * 1000))
+                    when (dateStr) {
+                        today -> "Today"
+                        yesterday -> "Yesterday"
+                        else -> SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(date * 1000))
+                    }
                 }
             }
+            GroupByType.DATE_TAKEN_MONTHLY, GroupByType.LAST_MODIFIED_MONTHLY -> {
+                val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+                sortedItems.groupBy { item ->
+                    val date = if (type == GroupByType.DATE_TAKEN_MONTHLY) item.dateAdded else item.dateModified
+                    sdf.format(Date(date * 1000))
+                }
+            }
+            GroupByType.FILE_TYPE -> {
+                sortedItems.groupBy {
+                    it.type.name.lowercase().replaceFirstChar { char -> char.uppercase() } + "s"
+                }
+            }
+            GroupByType.NONE -> mapOf("" to sortedItems)
         }
     }
 }
@@ -577,6 +737,10 @@ enum class DisplayMode {
 
 enum class OperationType {
     COPY, MOVE
+}
+
+enum class GroupByType {
+    NONE, LAST_MODIFIED_DAILY, LAST_MODIFIED_MONTHLY, DATE_TAKEN_DAILY, DATE_TAKEN_MONTHLY, FILE_TYPE
 }
 
 enum class SortType {

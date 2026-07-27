@@ -5,6 +5,7 @@ import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -115,6 +116,55 @@ class MediaStoreDataSource(private val context: Context) {
         }
     }
 
+    suspend fun copyFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) = withContext(Dispatchers.IO) {
+        val sourceFile = File(sourceFolderPath, fileName)
+        val targetFile = File(targetFolderPath, fileName)
+        sourceFile.inputStream().use { input ->
+            targetFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
+    }
+
+    suspend fun moveFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) = withContext(Dispatchers.IO) {
+        val sourceFile = File(sourceFolderPath, fileName)
+        val targetFile = File(targetFolderPath, fileName)
+        if (sourceFile.renameTo(targetFile)) {
+            MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
+            MediaScannerConnection.scanFile(context, arrayOf(sourceFile.absolutePath), null, null)
+        }
+    }
+
+    suspend fun rotateImage(uri: Uri, degrees: Int) = withContext(Dispatchers.IO) {
+        context.contentResolver.openFileDescriptor(uri, "rw")?.use { fd ->
+            val exif = ExifInterface(fd.fileDescriptor)
+            val currentOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            val newOrientation = calculateNewOrientation(currentOrientation, degrees)
+            exif.setAttribute(ExifInterface.TAG_ORIENTATION, newOrientation.toString())
+            exif.saveAttributes()
+            MediaScannerConnection.scanFile(context, arrayOf(uri.toString()), null, null)
+        }
+    }
+
+    private fun calculateNewOrientation(current: Int, degrees: Int): Int {
+        val currentDegrees = when (current) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270
+            else -> 0
+        }
+        var newDegrees = (currentDegrees + degrees) % 360
+        if (newDegrees < 0) newDegrees += 360
+        
+        return when (newDegrees) {
+            90 -> ExifInterface.ORIENTATION_ROTATE_90
+            180 -> ExifInterface.ORIENTATION_ROTATE_180
+            270 -> ExifInterface.ORIENTATION_ROTATE_270
+            else -> ExifInterface.ORIENTATION_NORMAL
+        }
+    }
+
     private fun scanDirectory(dir: File) {
         dir.listFiles()?.forEach { file ->
             if (file.isDirectory) scanDirectory(file)
@@ -154,6 +204,7 @@ class MediaStoreDataSource(private val context: Context) {
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.BUCKET_DISPLAY_NAME,
             MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.DATE_MODIFIED,
             MediaStore.MediaColumns.MIME_TYPE,
             MediaStore.MediaColumns.DATA,
             MediaStore.MediaColumns.SIZE
@@ -166,6 +217,7 @@ class MediaStoreDataSource(private val context: Context) {
             val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             val bucketCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.BUCKET_DISPLAY_NAME)
             val addedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+            val modCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
             val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
             val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
@@ -176,6 +228,7 @@ class MediaStoreDataSource(private val context: Context) {
                 val name = cursor.getString(nameCol) ?: "Unknown"
                 val bucket = cursor.getString(bucketCol) ?: "Unknown"
                 val added = cursor.getLong(addedCol)
+                val modified = cursor.getLong(modCol)
                 val mime = cursor.getString(mimeCol) ?: ""
                 val path = cursor.getString(dataCol) ?: ""
                 val folderPath = path.substringBeforeLast("/")
@@ -189,7 +242,7 @@ class MediaStoreDataSource(private val context: Context) {
                     else -> MediaType.IMAGE
                 }
 
-                onItem(MediaItem(itemUri, name, added, size, type, bucket, folderPath, duration))
+                onItem(MediaItem(itemUri, name, added, modified, size, type, bucket, folderPath, duration))
             }
         }
     }

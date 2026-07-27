@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -26,11 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
-import com.davide.seddio.easygallery.ui.components.MediaGridItem
-import com.davide.seddio.easygallery.ui.components.MediaListItem
-import com.davide.seddio.easygallery.ui.components.SearchTopBar
-import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
-import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
+import com.davide.seddio.easygallery.ui.components.*
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 import java.text.SimpleDateFormat
 import java.util.*
@@ -48,44 +45,111 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val pictureSortType by viewModel.pictureSortType.collectAsState()
     val pictureSortOrder by viewModel.pictureSortOrder.collectAsState()
     val pictureViewType by viewModel.pictureViewType.collectAsState()
+    val pictureGroupBy by viewModel.pictureGroupBy.collectAsState()
+    val pictureGroupOrder by viewModel.pictureGroupOrder.collectAsState()
+    val groupedMedia by viewModel.groupedFolderMedia.collectAsState()
+    
+    val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
+    val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
 
     var showColumnCountDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
+    var showGroupByDialog by remember { mutableStateOf(false) }
     var showViewTypeDialog by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showPropertiesDialog by remember { mutableStateOf(false) }
+    var showRotateDialog by remember { mutableStateOf(false) }
+    
+    val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
+    val pendingOperation by viewModel.pendingOperation.collectAsState()
 
     Scaffold(
         topBar = {
-            SearchTopBar(
-                title = selectedFolder?.name ?: "Gallery",
-                searchQuery = searchQuery,
-                isSearchActive = isSearchActive,
-                onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                onSearchActiveChange = { viewModel.setSearchActive(it) },
-                onColumnCountClick = { showColumnCountDialog = true },
-                onFilterMediaClick = { showFilterDialog = true },
-                onSortClick = { showSortDialog = true },
-                onViewTypeClick = { showViewTypeDialog = true },
-                onShowExcludedClick = { viewModel.setShowExcludedTemporarily(true) },
-                onSettingsClick = { viewModel.setSettingsMode(true) },
-                navigationIcon = {
-                    IconButton(onClick = { viewModel.backToFolders() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            if (isMediaSelectionMode) {
+                MediaSelectionTopBar(
+                    selectedCount = selectedMediaItems.size,
+                    totalCount = media.size,
+                    onClose = { viewModel.exitMediaSelectionMode() },
+                    onDelete = { showDeleteDialog = true },
+                    onInfoClick = { showPropertiesDialog = true },
+                    onRename = { /* Placeholder */ },
+                    onRotate = { showRotateDialog = true },
+                    onCopyTo = { viewModel.startOperation(OperationType.COPY) },
+                    onMoveTo = { viewModel.startOperation(OperationType.MOVE) },
+                    onSelectAll = { viewModel.selectAllMedia() }
+                )
+            } else {
+                SearchTopBar(
+                    title = selectedFolder?.name ?: "Gallery",
+                    searchQuery = searchQuery,
+                    isSearchActive = isSearchActive,
+                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
+                    onSearchActiveChange = { viewModel.setSearchActive(it) },
+                    onColumnCountClick = { showColumnCountDialog = true },
+                    onFilterMediaClick = { showFilterDialog = true },
+                    onSortClick = { showSortDialog = true },
+                    onGroupByClick = { showGroupByDialog = true },
+                    onViewTypeClick = { showViewTypeDialog = true },
+                    onShowExcludedClick = { viewModel.setShowExcludedTemporarily(true) },
+                    onSettingsClick = { viewModel.setSettingsMode(true) },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.backToFolders() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.toggleInfo() }) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = "Toggle Info",
+                                tint = if (showInfo) MaterialTheme.colorScheme.primary else Color.White
+                            )
+                        }
                     }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.toggleInfo() }) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = "Toggle Info",
-                            tint = if (showInfo) MaterialTheme.colorScheme.primary else Color.White
-                        )
-                    }
-                }
-            )
+                )
+            }
         },
         containerColor = BottomGrey
     ) { padding ->
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Delete Media") },
+                text = { Text("Are you sure you want to delete the selected items? This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.deleteSelectedMedia()
+                        showDeleteDialog = false
+                    }) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showPropertiesDialog) {
+            MediaPropertiesDialog(
+                media = viewModel.getSelectedMediaData(),
+                onDismiss = { showPropertiesDialog = false }
+            )
+        }
+
+        if (showRotateDialog) {
+            RotateDialog(
+                onRotate = {
+                    viewModel.rotateSelectedMedia(it)
+                    showRotateDialog = false
+                },
+                onDismiss = { showRotateDialog = false }
+            )
+        }
+
         if (showColumnCountDialog) {
             ColumnCountDialog(
                 currentCount = columnsCount,
@@ -122,6 +186,16 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             )
         }
 
+        if (showGroupByDialog) {
+            GroupByDialog(
+                currentGroupBy = pictureGroupBy,
+                currentOrder = pictureGroupOrder,
+                onGroupBySelected = { viewModel.setGroupBy(it) },
+                onOrderSelected = { viewModel.setGroupOrder(it) },
+                onDismiss = { showGroupByDialog = false }
+            )
+        }
+
         if (showViewTypeDialog) {
             ViewTypeDialog(
                 currentViewType = pictureViewType,
@@ -133,26 +207,59 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             )
         }
 
+        if (isDestinationPickerActive) {
+            val browsingPath by viewModel.browsingPath.collectAsState()
+            val browsingFolders by viewModel.browsingFolders.collectAsState()
+            
+            DestinationFolderPickerDialog(
+                title = if (pendingOperation == OperationType.MOVE) "Move to..." else "Copy to...",
+                currentPath = browsingPath,
+                folders = browsingFolders,
+                onFolderSelected = { viewModel.updateBrowsingPath(it.path) },
+                onBreadcrumbClick = { viewModel.updateBrowsingPath(it) },
+                onConfirm = { viewModel.performOperationWithPath(browsingPath) },
+                onDismiss = { viewModel.cancelOperation() }
+            )
+        }
+
         Box(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
                 .background(BottomGrey)
         ) {
-            if (pictureViewType == ViewType.GRID) {
-                MediaGrid(
-                    media = media,
+            if (pictureGroupBy == GroupByType.NONE) {
+                if (pictureViewType == ViewType.GRID) {
+                    MediaGrid(
+                        media = media,
+                        columns = columnsCount,
+                        showInfo = showInfo,
+                        selectedItems = selectedMediaItems,
+                        onItemClick = { viewModel.selectMedia(it) },
+                        onItemLongClick = { viewModel.enterMediaSelectionMode(it) },
+                        onZoomIn = { viewModel.decreaseColumns(forPictures = true) },
+                        onZoomOut = { viewModel.increaseColumns(forPictures = true) }
+                    )
+                } else {
+                    MediaList(
+                        media = media,
+                        showInfo = showInfo,
+                        selectedItems = selectedMediaItems,
+                        onItemClick = { viewModel.selectMedia(it) },
+                        onItemLongClick = { viewModel.enterMediaSelectionMode(it) }
+                    )
+                }
+            } else {
+                GroupedMediaContent(
+                    groupedMedia = groupedMedia,
+                    viewType = pictureViewType,
                     columns = columnsCount,
                     showInfo = showInfo,
+                    selectedItems = selectedMediaItems,
                     onItemClick = { viewModel.selectMedia(it) },
+                    onItemLongClick = { viewModel.enterMediaSelectionMode(it) },
                     onZoomIn = { viewModel.decreaseColumns(forPictures = true) },
                     onZoomOut = { viewModel.increaseColumns(forPictures = true) }
-                )
-            } else {
-                MediaList(
-                    media = media,
-                    showInfo = showInfo,
-                    onItemClick = { viewModel.selectMedia(it) }
                 )
             }
         }
@@ -160,11 +267,112 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
 }
 
 @Composable
+fun GroupedMediaContent(
+    groupedMedia: Map<String, List<MediaItem>>,
+    viewType: ViewType,
+    columns: Int,
+    showInfo: Boolean,
+    selectedItems: Set<android.net.Uri>,
+    onItemClick: (MediaItem) -> Unit,
+    onItemLongClick: (MediaItem) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit
+) {
+    if (viewType == ViewType.GRID) {
+        var cumulativeScale by remember { mutableFloatStateOf(1f) }
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            horizontalArrangement = Arrangement.spacedBy(1.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BottomGrey)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        do {
+                            val event = awaitPointerEvent()
+                            val zoom = event.calculateZoom()
+                            if (zoom != 1f) {
+                                cumulativeScale *= zoom
+                                if (cumulativeScale > 1.25f) {
+                                    onZoomIn()
+                                    cumulativeScale = 1f
+                                } else if (cumulativeScale < 0.75f) {
+                                    onZoomOut()
+                                    cumulativeScale = 1f
+                                }
+                                event.changes.forEach { it.consume() }
+                            }
+                        } while (event.changes.any { it.pressed })
+                        cumulativeScale = 1f
+                    }
+                }
+        ) {
+            groupedMedia.forEach { (header, items) ->
+                if (header.isNotEmpty()) {
+                    item(span = { GridItemSpan(columns) }) {
+                        GroupHeader(header)
+                    }
+                }
+                items(items) { item ->
+                    MediaGridItem(
+                        item = item,
+                        showInfo = showInfo,
+                        isSelected = selectedItems.contains(item.uri),
+                        onClick = { onItemClick(item) },
+                        onLongClick = { onItemLongClick(item) }
+                    )
+                }
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(BottomGrey)
+        ) {
+            groupedMedia.forEach { (header, items) ->
+                if (header.isNotEmpty()) {
+                    item {
+                        GroupHeader(header)
+                    }
+                }
+                items(items) { item ->
+                    MediaListItem(
+                        item = item,
+                        showInfo = showInfo,
+                        isSelected = selectedItems.contains(item.uri),
+                        onClick = { onItemClick(item) },
+                        onLongClick = { onItemLongClick(item) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GroupHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        modifier = Modifier
+            .padding(vertical = 12.dp, horizontal = 12.dp)
+            .fillMaxWidth()
+    )
+}
+
+@Composable
 fun MediaGrid(
     media: List<MediaItem>,
     columns: Int,
     showInfo: Boolean,
+    selectedItems: Set<android.net.Uri>,
     onItemClick: (MediaItem) -> Unit,
+    onItemLongClick: (MediaItem) -> Unit,
     onZoomIn: () -> Unit,
     onZoomOut: () -> Unit
 ) {
@@ -201,7 +409,9 @@ fun MediaGrid(
             MediaGridItem(
                 item = item,
                 showInfo = showInfo,
-                onClick = { onItemClick(item) }
+                isSelected = selectedItems.contains(item.uri),
+                onClick = { onItemClick(item) },
+                onLongClick = { onItemLongClick(item) }
             )
         }
     }
@@ -211,7 +421,9 @@ fun MediaGrid(
 fun MediaList(
     media: List<MediaItem>,
     showInfo: Boolean,
-    onItemClick: (MediaItem) -> Unit
+    selectedItems: Set<android.net.Uri>,
+    onItemClick: (MediaItem) -> Unit,
+    onItemLongClick: (MediaItem) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(BottomGrey),
@@ -221,7 +433,9 @@ fun MediaList(
             MediaListItem(
                 item = item,
                 showInfo = showInfo,
-                onClick = { onItemClick(item) }
+                isSelected = selectedItems.contains(item.uri),
+                onClick = { onItemClick(item) },
+                onLongClick = { onItemLongClick(item) }
             )
         }
     }

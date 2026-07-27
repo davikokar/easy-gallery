@@ -6,6 +6,7 @@ data class MediaItem(
     val uri: Uri,
     val name: String,
     val dateAdded: Long,
+    val dateModified: Long,
     val size: Long,
     val type: MediaType,
     val bucketName: String,

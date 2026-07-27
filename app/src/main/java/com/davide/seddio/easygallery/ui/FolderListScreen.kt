@@ -40,10 +40,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaType
-import com.davide.seddio.easygallery.ui.components.SearchTopBar
-import com.davide.seddio.easygallery.ui.components.SelectionTopBar
-import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
-import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
+import com.davide.seddio.easygallery.ui.components.*
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
 import java.io.File
 
@@ -56,25 +53,31 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchActive by viewModel.isSearchActive.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+    val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
+    val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
     val selectedFolders by viewModel.selectedFolders.collectAsState()
     val displayMode by viewModel.displayMode.collectAsState()
-    val groupedPhotos by viewModel.groupedPhotosByDate.collectAsState()
+    val groupedAllMedia by viewModel.groupedAllMedia.collectAsState()
     val showInfo by viewModel.showInfo.collectAsState()
     val folderSortType by viewModel.folderSortType.collectAsState()
     val pictureSortType by viewModel.pictureSortType.collectAsState()
     val folderSortOrder by viewModel.folderSortOrder.collectAsState()
     val pictureSortOrder by viewModel.pictureSortOrder.collectAsState()
+    val pictureGroupBy by viewModel.pictureGroupBy.collectAsState()
+    val pictureGroupOrder by viewModel.pictureGroupOrder.collectAsState()
     val folderViewType by viewModel.folderViewType.collectAsState()
     val pictureViewType by viewModel.pictureViewType.collectAsState()
     val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
     
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSortDialog by remember { mutableStateOf(false) }
+    var showGroupByDialog by remember { mutableStateOf(false) }
     var showColumnCountDialog by remember { mutableStateOf(false) }
     var showViewTypeDialog by remember { mutableStateOf(false) }
     var showPropertiesDialog by remember { mutableStateOf(false) }
     var showExcludeDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
+    var showRotateDialog by remember { mutableStateOf(false) }
     
     val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
     val pendingOperation by viewModel.pendingOperation.collectAsState()
@@ -83,7 +86,25 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
 
     Scaffold(
         topBar = {
-            if (isSelectionMode) {
+            if (isMediaSelectionMode) {
+                val mediaList = if (displayMode == DisplayMode.CALENDAR) {
+                    viewModel.filteredAllMedia.collectAsState().value
+                } else {
+                    emptyList()
+                }
+                MediaSelectionTopBar(
+                    selectedCount = selectedMediaItems.size,
+                    totalCount = mediaList.size,
+                    onClose = { viewModel.exitMediaSelectionMode() },
+                    onDelete = { showDeleteDialog = true },
+                    onInfoClick = { showPropertiesDialog = true },
+                    onRename = { /* Placeholder */ },
+                    onRotate = { showRotateDialog = true },
+                    onCopyTo = { viewModel.startOperation(OperationType.COPY) },
+                    onMoveTo = { viewModel.startOperation(OperationType.MOVE) },
+                    onSelectAll = { viewModel.selectAllMedia() }
+                )
+            } else if (isSelectionMode) {
                 SelectionTopBar(
                     selectedCount = selectedFolders.size,
                     totalCount = totalFolders,
@@ -108,6 +129,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     onToggleDisplayMode = { viewModel.toggleDisplayMode() },
                     onSortClick = { showSortDialog = true },
                     onColumnCountClick = { showColumnCountDialog = true },
+                    onGroupByClick = if (displayMode == DisplayMode.CALENDAR) { { showGroupByDialog = true } } else null,
                     onViewTypeClick = { showViewTypeDialog = true },
                     onFilterMediaClick = { showFilterDialog = true },
                     onShowExcludedClick = { viewModel.setShowExcludedTemporarily(true) },
@@ -118,13 +140,24 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         containerColor = BottomGrey
     ) { padding ->
         if (showDeleteDialog) {
+            val title = if (isMediaSelectionMode) "Delete Media" else "Delete Folders"
+            val text = if (isMediaSelectionMode) {
+                "Are you sure you want to delete the selected items? This action cannot be undone."
+            } else {
+                "Are you sure you want to delete the selected folders? This action might be irreversible."
+            }
+
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Folders") },
-                text = { Text("Are you sure you want to delete the selected folders? This action might be irreversible.") },
+                title = { Text(title) },
+                text = { Text(text) },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel.deleteSelected()
+                        if (isMediaSelectionMode) {
+                            viewModel.deleteSelectedMedia()
+                        } else {
+                            viewModel.deleteSelected()
+                        }
                         showDeleteDialog = false
                     }) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -173,6 +206,16 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             )
         }
 
+        if (showGroupByDialog) {
+            GroupByDialog(
+                currentGroupBy = pictureGroupBy,
+                currentOrder = pictureGroupOrder,
+                onGroupBySelected = { viewModel.setGroupBy(it) },
+                onOrderSelected = { viewModel.setGroupOrder(it) },
+                onDismiss = { showGroupByDialog = false }
+            )
+        }
+
         if (showColumnCountDialog) {
             ColumnCountDialog(
                 currentCount = if (displayMode == DisplayMode.GALLERY) folderColumns else pictureColumns,
@@ -196,9 +239,26 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         }
 
         if (showPropertiesDialog) {
-            PropertiesDialog(
-                folders = viewModel.getSelectedFoldersData(),
-                onDismiss = { showPropertiesDialog = false }
+            if (isMediaSelectionMode) {
+                MediaPropertiesDialog(
+                    media = viewModel.getSelectedMediaData(),
+                    onDismiss = { showPropertiesDialog = false }
+                )
+            } else {
+                PropertiesDialog(
+                    folders = viewModel.getSelectedFoldersData(),
+                    onDismiss = { showPropertiesDialog = false }
+                )
+            }
+        }
+
+        if (showRotateDialog) {
+            RotateDialog(
+                onRotate = {
+                    viewModel.rotateSelectedMedia(it)
+                    showRotateDialog = false
+                },
+                onDismiss = { showRotateDialog = false }
             )
         }
 
@@ -237,7 +297,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             if (displayMode == DisplayMode.CALENDAR) {
                 CalendarGrid(
                     viewModel = viewModel,
-                    groupedPhotos = groupedPhotos,
+                    groupedPhotos = groupedAllMedia,
                     columns = pictureColumns,
                     showInfo = showInfo
                 )
@@ -520,66 +580,6 @@ fun SortDialog(
             TextButton(onClick = onDismiss) { Text("OK") }
         }
     )
-}
-
-@Composable
-fun SortOption(
-    label: String,
-    type: SortType,
-    selected: Boolean,
-    onSortSelected: (SortType) -> Unit
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .selectable(
-                selected = selected,
-                onClick = { onSortSelected(type) },
-                role = Role.RadioButton
-            )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-fun OrderOption(
-    label: String,
-    order: SortOrder,
-    selected: Boolean,
-    enabled: Boolean,
-    onOrderSelected: (SortOrder) -> Unit
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .selectable(
-                selected = selected,
-                enabled = enabled,
-                onClick = { if (enabled) onOrderSelected(order) },
-                role = Role.RadioButton
-            )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(selected = selected, onClick = null, enabled = enabled)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(start = 16.dp),
-            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-        )
-    }
 }
 
 @Composable
