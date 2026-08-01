@@ -11,6 +11,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -692,19 +693,6 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
                 )
             }
             
-            // Pin icon for pinned folders
-            if (folder.isPinned) {
-                Icon(
-                    imageVector = Icons.Default.PushPin,
-                    contentDescription = "Pinned",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp)
-                        .size(20.dp)
-                )
-            }
-
             // Gradient and text overlay
             Box(
                 modifier = Modifier
@@ -716,6 +704,21 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
                         )
                     )
             )
+
+            // Pin icon for pinned folders
+            if (folder.isPinned) {
+                Icon(
+                    imageVector = Icons.Default.PushPin,
+                    contentDescription = "Pinned",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .size(20.dp)
+                        .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                        .padding(2.dp)
+                )
+            }
 
             Column(
                 modifier = Modifier
@@ -798,17 +801,6 @@ fun FolderListItem(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
-                if (folder.isPinned) {
-                    Icon(
-                        imageVector = Icons.Default.PushPin,
-                        contentDescription = "Pinned",
-                        tint = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(4.dp)
-                            .size(16.dp)
-                    )
-                }
                 if (isSelected) {
                     Box(
                         modifier = Modifier
@@ -823,6 +815,19 @@ fun FolderListItem(
                             .align(Alignment.Center)
                             .size(24.dp)
                             .background(Color.White, CircleShape)
+                    )
+                }
+                if (folder.isPinned) {
+                    Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .size(16.dp)
+                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                            .padding(1.dp)
                     )
                 }
             }

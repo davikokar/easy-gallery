@@ -150,14 +150,18 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         if (state is GalleryUiState.Success) {
             val nonExcluded = state.folders.filter { showExcluded || !excluded.contains(it.path) }
             
+            val withPinned = nonExcluded.map { folder ->
+                folder.copy(isPinned = pinned.contains(folder.path))
+            }
+
             val sorted = when (sort) {
-                SortType.NAME -> nonExcluded.sortedBy { it.name }
-                SortType.PATH -> nonExcluded.sortedBy { it.path }
-                SortType.SIZE -> nonExcluded.sortedByDescending { it.size }
-                SortType.LAST_MODIFIED -> nonExcluded.sortedByDescending { it.dateModified }
-                SortType.DATE_TAKEN -> nonExcluded.sortedByDescending { it.dateTaken }
-                SortType.RANDOM -> nonExcluded.shuffled()
-                else -> nonExcluded
+                SortType.NAME -> withPinned.sortedBy { it.name }
+                SortType.PATH -> withPinned.sortedBy { it.path }
+                SortType.SIZE -> withPinned.sortedByDescending { it.size }
+                SortType.LAST_MODIFIED -> withPinned.sortedByDescending { it.dateModified }
+                SortType.DATE_TAKEN -> withPinned.sortedByDescending { it.dateTaken }
+                SortType.RANDOM -> withPinned.shuffled()
+                else -> withPinned
             }
 
             val ordered = if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {

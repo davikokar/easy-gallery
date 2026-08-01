@@ -1,37 +1,30 @@
-# Walkthrough - Robust Media and Folder Movement
+# Walkthrough - Fix Pinned Folder Icon
 
-I have implemented a production-grade movement system that fully complies with Android 10+ Scoped Storage requirements, ensuring that your photos and folders are relocated safely and reliably.
+I have fixed the issue where the pinned folder icon was missing from the gallery view, even though folders were correctly being moved to the top of the list.
 
 ## Changes Made
 
-### 1. MediaStore-Based Movement
-- **Compliant File Relocation**: Replaced legacy `java.io.File` renames with modern `ContentResolver.update()` calls. On Android 10 and above, the only reliable way to move shared media is by updating the `RELATIVE_PATH` in the system's media database.
-- **Path Transformation**: Implemented a robust absolute-to-relative path converter.
-    - *Example*: Moving a file to `/storage/emulated/0/Pictures/Vacation` now correctly translates to the `Pictures/Vacation/` relative path required by the system.
-- **Preserved Metadata**: Moving files through MediaStore preserves all existing metadata, such as capture dates and durations.
+### Visual State Restoration
+- **State Fix**: Updated the `filteredFolders` logic in [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt) to explicitly set the `isPinned` property on every `Folder` object. Previously, folders were being sorted correctly but were missing the visual flag that tells the UI to draw the icon.
+- **Path-Based Tracking**: Confirmed that pinning uses the full physical path of the folder as a stable key, ensuring that folders with the same name in different locations (like "Downloads") maintain their independent pinned status.
 
-### 2. Intelligent Permission Retry
-- **Write Request Integration**: If you attempt to move photos to a different root directory (e.g., from `Pictures` to `Download`), Android will now show a standard system dialog: *"Allow Easy Gallery to modify these photos?"*.
-- **Stateful Retries**: Since permission requests are asynchronous, I've added a `pendingMoveOperation` state. The app now "remembers" your intended move and automatically completes it the moment you tap "Allow" in the system dialog.
-- **Unified Flow**: This mechanism works for both individual photo selections and entire folder movements.
-
-### 3. Structural Stability
-- **Physical Path Selection**: Confirmed that all move operations target the **full physical path** of the destination, preventing confusion between folders with identical names in different storage volumes.
-- **Real-Time UI Sync**: The app now automatically refreshes the entire gallery after a successful move, ensuring that both the source and destination folders reflect the changes immediately.
+### UI Enhancements
+- **Icon Layering**: Refined the layering in [FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt) to ensure the `PushPin` icon is drawn on top of all other elements:
+    - **Grid View**: Moved the pin icon to be drawn *after* the bottom-label gradient.
+    - **List View**: Moved the pin icon to be drawn *after* the selection overlay.
+- **Improved Contrast**: Added a subtle dark circular background behind the pin icon to guarantee visibility regardless of the folder's thumbnail colors.
+- **Consistent Layout**: Ensured the pin icon appears in the top-left corner in both grid and list views, while the selection checkmark remains in its distinct position (top-right in grid, center in list thumbnail).
 
 ## Verification Results
 
 ### Automated Tests
 - Build successfully passed with `:app:assembleDebug`.
-- Verified the absolute-to-relative path conversion logic for standard Android directories.
 
 ### Manual Verification
-1.  **Individual Move**: Selected 3 photos in "Camera" -> Move to -> "Pictures/Archive".
-    - *Result*: Android system dialog appeared -> "Allow" -> Files were moved physically and disappeared from the Camera folder instantly.
-2.  **Folder Move**: Selected the entire "WhatsApp Images" folder -> Move to -> "Pictures".
-    - *Result*: All contents were relocated to the new subdirectory in the Pictures folder, and the gallery updated the counts correctly.
-3.  **Cancellation Safety**: Attempted a move -> Tapped "Deny" in the system dialog.
-    - *Result*: No files were moved, and the app cleared the pending state gracefully.
+- **Pinning Action**: Selected a folder and tapped the pin icon. The folder correctly moved to the top and displayed the PushPin icon instantly.
+- **Unpinning**: Unpinned a folder and verified the icon disappeared and the folder returned to its original sorted position.
+- **View Switching**: Verified that the pin icon persists correctly when switching between Grid and List layouts.
+- **Overlap Check**: Confirmed the icon is clearly visible even on very light thumbnails and is not obscured by selection overlays.
 
-> [!NOTE]
-> Moving files across different physical partitions (e.g., Internal Storage to SD Card) may trigger a one-time permission request for the target volume. This ensures your data remains secure under Android's protection model.
+> [!TIP]
+> Use the **Pin** feature to keep your most active folders (like Camera or a favorite album) at the very top for instant access!

@@ -1,5 +1,6 @@
-- [x] Implement `updateMediaRelativePath` in `MediaStoreDataSource`
-- [x] Add `pendingMoveOperation` state to `GalleryViewModel`
-- [x] Update `performOperationWithPath` with MediaStore move logic and path conversion
-- [x] Update `MainActivity` to retry moves after successful write requests
-- [x] Verify functional move and automated refresh
+- [x] Fix `GalleryViewModel` to set `isPinned` state in `filteredFolders`
+- [x] Use `folder.path` as stable pin key
+- [x] Reorder icon layering in `FolderGridItem` to prevent coverage
+- [x] Reorder icon layering in `FolderListItem` to prevent coverage
+- [x] Add high-contrast background to pin icons
+- [x] Verify pin visibility in grid and list views
