@@ -25,7 +25,7 @@ fun MediaPropertiesDialog(media: List<MediaItem>, onDismiss: () -> Unit) {
                 if (media.size == 1) {
                     val item = media[0]
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    Text("Name: ${item.name}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Name: ${item.name}", fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
                     Text("Path: ${item.folderPath}/${item.name}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val dateStr = remember(item.dateAdded) {
                         SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(Date(item.dateAdded * 1000))

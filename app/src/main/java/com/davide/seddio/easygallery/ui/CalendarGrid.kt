@@ -121,7 +121,7 @@ fun LazyGridItemScope.DateHeader(date: String) {
     Text(
         text = date,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Normal,
         color = Color.White,
         modifier = Modifier
             .animateItem()
@@ -136,7 +136,7 @@ fun LazyItemScope.DateHeaderList(date: String) {
     Text(
         text = date,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Normal,
         color = Color.White,
         modifier = Modifier
             .animateItem()

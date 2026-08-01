@@ -485,7 +485,7 @@ fun PropertiesDialog(folders: List<Folder>, onDismiss: () -> Unit) {
                 if (folders.size == 1) {
                     val folder = folders[0]
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    Text("Name: ${folder.name}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Name: ${folder.name}", fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
                     Text("Path: ${folder.path}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -728,7 +728,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
                 Text(
                     text = folder.name,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal,
                     fontSize = 16.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis

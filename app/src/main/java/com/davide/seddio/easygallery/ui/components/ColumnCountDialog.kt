@@ -48,7 +48,7 @@ fun ColumnCountDialog(
                         Text(
                             text = count.toString(),
                             color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Normal else FontWeight.Normal
                         )
                     }
                 }

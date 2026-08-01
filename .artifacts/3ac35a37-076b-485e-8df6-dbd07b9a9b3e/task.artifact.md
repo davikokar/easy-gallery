@@ -1,6 +1,6 @@
-- [x] Fix `GalleryViewModel` to set `isPinned` state in `filteredFolders`
-- [x] Use `folder.path` as stable pin key
-- [x] Reorder icon layering in `FolderGridItem` to prevent coverage
-- [x] Reorder icon layering in `FolderListItem` to prevent coverage
-- [x] Add high-contrast background to pin icons
-- [x] Verify pin visibility in grid and list views
+- [x] Update `CalendarGrid.kt` headers to Normal weight
+- [x] Update `FolderDetailScreen.kt` headers to Normal weight
+- [x] Update `FolderListScreen.kt` (PropertiesDialog and GridItem) to Normal weight
+- [x] Update `ColumnCountDialog.kt` to Normal weight for selected item
+- [x] Update `MediaPropertiesDialog.kt` to Normal weight
+- [x] Final visual verification across the whole app

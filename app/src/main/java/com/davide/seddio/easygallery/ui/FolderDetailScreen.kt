@@ -379,7 +379,7 @@ fun LazyGridItemScope.GroupHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Normal,
         color = Color.White,
         modifier = Modifier
             .animateItem()
@@ -394,7 +394,7 @@ fun LazyItemScope.GroupHeaderList(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.Normal,
         color = Color.White,
         modifier = Modifier
             .animateItem()
