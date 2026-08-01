@@ -1,6 +1,7 @@
 package com.davide.seddio.easygallery.data
 
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
@@ -81,21 +82,6 @@ class MediaStoreDataSource(private val context: Context) {
         media.sortedByDescending { it.dateAdded }
     }
 
-    suspend fun moveFolderContents(sourcePath: String, targetParentPath: String): Unit = withContext(Dispatchers.IO) {
-        val sourceDir = File(sourcePath)
-        val targetDir = File(targetParentPath, sourceDir.name)
-        
-        if (!targetDir.exists()) targetDir.mkdirs()
-
-        if (sourceDir.renameTo(targetDir)) {
-            scanDirectory(targetDir)
-        } else {
-            // Fallback to copy and delete if rename fails (e.g. cross-partition)
-            copyFolderContents(sourcePath, targetParentPath)
-            deleteRecursive(sourceDir)
-        }
-    }
-
     suspend fun copyFolderContents(sourcePath: String, targetParentPath: String): Unit = withContext(Dispatchers.IO) {
         val sourceDir = File(sourcePath)
         val targetDir = File(targetParentPath, sourceDir.name)
@@ -125,15 +111,6 @@ class MediaStoreDataSource(private val context: Context) {
             }
         }
         MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
-    }
-
-    suspend fun moveFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) = withContext(Dispatchers.IO) {
-        val sourceFile = File(sourceFolderPath, fileName)
-        val targetFile = File(targetFolderPath, fileName)
-        if (sourceFile.renameTo(targetFile)) {
-            MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
-            MediaScannerConnection.scanFile(context, arrayOf(sourceFile.absolutePath), null, null)
-        }
     }
 
     suspend fun rotateImage(uri: Uri, degrees: Int) = withContext(Dispatchers.IO) {
@@ -180,6 +157,15 @@ class MediaStoreDataSource(private val context: Context) {
     suspend fun deleteMediaItems(uris: List<Uri>) = withContext(Dispatchers.IO) {
         uris.forEach { uri ->
             context.contentResolver.delete(uri, null, null)
+        }
+    }
+
+    suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String) = withContext(Dispatchers.IO) {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.RELATIVE_PATH, targetRelativePath)
+        }
+        uris.forEach { uri ->
+            context.contentResolver.update(uri, values, null, null)
         }
     }
 

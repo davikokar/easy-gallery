@@ -49,10 +49,12 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK) {
-            viewModel.loadFolders()
+            viewModel.onWriteRequestResult(true)
             viewModel.exitSelectionMode()
             viewModel.exitMediaSelectionMode()
             viewModel.closeMedia()
+        } else {
+            viewModel.onWriteRequestResult(false)
         }
         viewModel.clearPendingWriteRequest()
     }
@@ -93,6 +95,7 @@ class MainActivity : ComponentActivity() {
                     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
                     val selectedMedia: com.davide.seddio.easygallery.data.MediaItem? by viewModel.selectedMedia.collectAsState()
                     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+                    val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
                     val isManageExcludedMode by viewModel.isManageExcludedMode.collectAsState()
                     val isSettingsMode by viewModel.isSettingsMode.collectAsState()
 
@@ -101,6 +104,11 @@ class MainActivity : ComponentActivity() {
                             viewModel.closeMedia()
                         }
                         FullImageScreen(viewModel)
+                    } else if (isMediaSelectionMode) {
+                        BackHandler {
+                            viewModel.exitMediaSelectionMode()
+                        }
+                        if (selectedFolder != null) FolderDetailScreen(viewModel) else FolderListScreen(viewModel)
                     } else if (isManageExcludedMode) {
                         BackHandler {
                             viewModel.setManageExcludedMode(false)
@@ -112,7 +120,15 @@ class MainActivity : ComponentActivity() {
                         }
                         SettingsScreen(viewModel)
                     } else if (selectedFolder != null) {
+                        BackHandler {
+                            viewModel.backToFolders()
+                        }
                         FolderDetailScreen(viewModel)
+                    } else if (isSelectionMode) {
+                        BackHandler {
+                            viewModel.exitSelectionMode()
+                        }
+                        FolderListScreen(viewModel)
                     } else if (hasPermission) {
                         FolderListScreen(viewModel)
                     } else {

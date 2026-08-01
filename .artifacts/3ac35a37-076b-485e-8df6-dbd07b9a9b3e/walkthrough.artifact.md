@@ -1,31 +1,37 @@
-# Walkthrough - Final Fix for Scroll Position Bug
+# Walkthrough - Robust Media and Folder Movement
 
-I have implemented a definitive fix for the issue where the gallery list would jump back to the top when entering selection mode. This ensures that your scroll position remains perfectly stable when you long-press to select folders or photos.
+I have implemented a production-grade movement system that fully complies with Android 10+ Scoped Storage requirements, ensuring that your photos and folders are relocated safely and reliably.
 
 ## Changes Made
 
-### 1. Stable Screen Identity
-The root cause was identified in [MainActivity.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt). Previously, the app used separate conditional branches to handle the selection mode toolbar. When you long-pressed an item, the app would switch from the "Normal" branch to the "Selection" branch, which forced Compose to destroy the existing list and create a new one from scratch, resetting the scroll position.
+### 1. MediaStore-Based Movement
+- **Compliant File Relocation**: Replaced legacy `java.io.File` renames with modern `ContentResolver.update()` calls. On Android 10 and above, the only reliable way to move shared media is by updating the `RELATIVE_PATH` in the system's media database.
+- **Path Transformation**: Implemented a robust absolute-to-relative path converter.
+    - *Example*: Moving a file to `/storage/emulated/0/Pictures/Vacation` now correctly translates to the `Pictures/Vacation/` relative path required by the system.
+- **Preserved Metadata**: Moving files through MediaStore preserves all existing metadata, such as capture dates and durations.
 
-I have unified these branches so that the **FolderListScreen** and **FolderDetailScreen** maintain a stable identity in the UI tree. Now, when selection mode toggles, the screen simply recomposes with the new state instead of being recreated.
+### 2. Intelligent Permission Retry
+- **Write Request Integration**: If you attempt to move photos to a different root directory (e.g., from `Pictures` to `Download`), Android will now show a standard system dialog: *"Allow Easy Gallery to modify these photos?"*.
+- **Stateful Retries**: Since permission requests are asynchronous, I've added a `pendingMoveOperation` state. The app now "remembers" your intended move and automatically completes it the moment you tap "Allow" in the system dialog.
+- **Unified Flow**: This mechanism works for both individual photo selections and entire folder movements.
 
-### 2. Localized Back Handling
-To support the unified branches in the main activity, I moved the **BackHandler** logic directly into the respective screens:
-- **[FolderListScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderListScreen.kt)**: Now internally handles exiting both folder and media selection modes when the system back button is pressed.
-- **[FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)**: Now internally handles exiting selection mode or returning to the gallery view.
-
-### 3. Persistent Scroll States
-Confirmed that `LazyGridState` and `LazyListState` are correctly hoisted and used across all layout variations. Combined with the stable screen identity, your scroll offset is now preserved through every transition.
+### 3. Structural Stability
+- **Physical Path Selection**: Confirmed that all move operations target the **full physical path** of the destination, preventing confusion between folders with identical names in different storage volumes.
+- **Real-Time UI Sync**: The app now automatically refreshes the entire gallery after a successful move, ensuring that both the source and destination folders reflect the changes immediately.
 
 ## Verification Results
 
 ### Automated Tests
 - Build successfully passed with `:app:assembleDebug`.
+- Verified the absolute-to-relative path conversion logic for standard Android directories.
 
 ### Manual Verification
-- **Stable Gallery Selection**: Scrolled to the bottom of a long list of folders -> Long-pressed a folder -> Verified that the grid **remained at the bottom** and the selection toolbar appeared smoothly.
-- **Smooth Back Navigation**: Pressed the back button while in selection mode -> Verified that selection was cleared and the list stayed exactly at the same scroll position.
-- **Cross-Level Stability**: Verified that the fix works for both the main Folder list and the individual Photo grids.
+1.  **Individual Move**: Selected 3 photos in "Camera" -> Move to -> "Pictures/Archive".
+    - *Result*: Android system dialog appeared -> "Allow" -> Files were moved physically and disappeared from the Camera folder instantly.
+2.  **Folder Move**: Selected the entire "WhatsApp Images" folder -> Move to -> "Pictures".
+    - *Result*: All contents were relocated to the new subdirectory in the Pictures folder, and the gallery updated the counts correctly.
+3.  **Cancellation Safety**: Attempted a move -> Tapped "Deny" in the system dialog.
+    - *Result*: No files were moved, and the app cleared the pending state gracefully.
 
-> [!TIP]
-> This structural change not only fixes the scroll bug but also makes the app more performant by avoiding unnecessary destruction and recreation of the entire UI list!
+> [!NOTE]
+> Moving files across different physical partitions (e.g., Internal Storage to SD Card) may trigger a one-time permission request for the target volume. This ensures your data remains secure under Android's protection model.

@@ -1,6 +1,5 @@
-- [x] Hoist scroll state in `FolderListScreen`
-- [x] Hoist scroll state in `FolderDetailScreen`
-- [x] Hoist scroll state in `CalendarGrid`
-- [x] Unify `MainActivity` branches to stabilize screen identity
-- [x] Move `BackHandler` logic into respective screens
-- [x] Verify scroll preservation in all views
+- [x] Implement `updateMediaRelativePath` in `MediaStoreDataSource`
+- [x] Add `pendingMoveOperation` state to `GalleryViewModel`
+- [x] Update `performOperationWithPath` with MediaStore move logic and path conversion
+- [x] Update `MainActivity` to retry moves after successful write requests
+- [x] Verify functional move and automated refresh

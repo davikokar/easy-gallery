@@ -30,6 +30,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val displayMode: StateFlow<DisplayMode> = _displayMode.asStateFlow()
 
     private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
+    val allMedia: StateFlow<List<MediaItem>> = _allMedia.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -101,8 +102,14 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     private val _pendingWriteRequest = MutableStateFlow<android.content.IntentSender?>(null)
     val pendingWriteRequest: StateFlow<android.content.IntentSender?> = _pendingWriteRequest.asStateFlow()
 
+    private val _pendingMoveOperation = MutableStateFlow<MoveOperation?>(null)
+    val pendingMoveOperation: StateFlow<MoveOperation?> = _pendingMoveOperation.asStateFlow()
+
     private val _selectedFolder = MutableStateFlow<Folder?>(null)
     val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
+
+    private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
+    val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
     private val _folderColumns = MutableStateFlow(2)
     val folderColumns: StateFlow<Int> = _folderColumns.asStateFlow()
@@ -129,6 +136,66 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         dataSource.getSubdirectories(path).filter { !selected.contains(it.path) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    val filteredFolders: StateFlow<GalleryUiState> = combine(
+        _uiState, _searchQuery, _pinnedFolders, _folderSortType, _folderSortOrder, _excludedFolders, _showExcludedTemporarily
+    ) { args ->
+        val state = args[0] as GalleryUiState
+        val query = args[1] as String
+        val pinned = args[2] as Set<String>
+        val sort = args[3] as SortType
+        val order = args[4] as SortOrder
+        val excluded = args[5] as Set<String>
+        val showExcluded = args[6] as Boolean
+
+        if (state is GalleryUiState.Success) {
+            val nonExcluded = state.folders.filter { showExcluded || !excluded.contains(it.path) }
+            
+            val sorted = when (sort) {
+                SortType.NAME -> nonExcluded.sortedBy { it.name }
+                SortType.PATH -> nonExcluded.sortedBy { it.path }
+                SortType.SIZE -> nonExcluded.sortedByDescending { it.size }
+                SortType.LAST_MODIFIED -> nonExcluded.sortedByDescending { it.dateModified }
+                SortType.DATE_TAKEN -> nonExcluded.sortedByDescending { it.dateTaken }
+                SortType.RANDOM -> nonExcluded.shuffled()
+                else -> nonExcluded
+            }
+
+            val ordered = if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
+                sorted.reversed()
+            } else {
+                sorted
+            }
+
+            val finalSorted = ordered.sortedByDescending { pinned.contains(it.path) }
+
+            if (query.isNotEmpty()) {
+                GalleryUiState.Success(finalSorted.filter { it.name.contains(query, ignoreCase = true) })
+            } else {
+                GalleryUiState.Success(finalSorted)
+            }
+        } else {
+            state
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
+
+    val filteredMedia: StateFlow<List<MediaItem>> = combine(
+        _mediaInFolder, _searchQuery, _selectedMediaTypes, _pictureSortType, _pictureSortOrder
+    ) { args ->
+        val media = args[0] as List<MediaItem>
+        val query = args[1] as String
+        val types = args[2] as Set<MediaType>
+        val sort = args[3] as SortType
+        val order = args[4] as SortOrder
+
+        val typeFiltered = media.filter { types.contains(it.type) }
+        val searchFiltered = if (query.isNotEmpty()) {
+            typeFiltered.filter { it.name.contains(query, ignoreCase = true) }
+        } else {
+            typeFiltered
+        }
+        sortMedia(searchFiltered, sort, order)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
         _allMedia, _searchQuery, _excludedFolders, _selectedMediaTypes, _pictureSortType, _pictureSortOrder
     ) { args ->
@@ -139,33 +206,8 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         val sort = args[4] as SortType
         val order = args[5] as SortOrder
 
-        val filtered = media.filter { 
-            !excluded.contains(it.folderPath) && types.contains(it.type)
-        }
-        
-        val searchFiltered = if (query.isNotEmpty()) {
-            filtered.filter { it.name.contains(query, ignoreCase = true) }
-        } else {
-            filtered
-        }
-
-        sortMedia(searchFiltered, sort, order)
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    val filteredMedia: StateFlow<List<MediaItem>> = combine(
-        _allMedia, _selectedFolder, _searchQuery, _selectedMediaTypes, _pictureSortType, _pictureSortOrder
-    ) { args ->
-        val allMedia = args[0] as List<MediaItem>
-        val folder = args[1] as Folder?
-        val query = args[2] as String
-        val types = args[3] as Set<MediaType>
-        val sort = args[4] as SortType
-        val order = args[5] as SortOrder
-
-        if (folder == null) return@combine emptyList<MediaItem>()
-
-        val folderMedia = allMedia.filter { it.folderPath == folder.path }
-        val typeFiltered = folderMedia.filter { types.contains(it.type) }
+        val nonExcluded = media.filter { !excluded.contains(it.folderPath) }
+        val typeFiltered = nonExcluded.filter { types.contains(it.type) }
         val searchFiltered = if (query.isNotEmpty()) {
             typeFiltered.filter { it.name.contains(query, ignoreCase = true) }
         } else {
@@ -186,87 +228,20 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         groupMedia(media, groupBy, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
-    val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _excludedFolders, _selectedMediaTypes, _folderSortOrder, _showExcludedTemporarily
-    ) { args ->
-        val media = args[0] as List<MediaItem>
-        val query = args[1] as String
-        val pinned = args[2] as Set<String>
-        val sort = args[3] as SortType
-        val excluded = args[4] as Set<String>
-        val types = args[5] as Set<MediaType>
-        val order = args[6] as SortOrder
-        val showExcluded = args[7] as Boolean
-
-        if (media.isEmpty() && _uiState.value is GalleryUiState.Loading) {
-            GalleryUiState.Loading
-        } else {
-            val foldersMap = mutableMapOf<String, Folder>()
-            media.forEach { item ->
-                val isExcluded = excluded.contains(item.folderPath)
-                if ((showExcluded || !isExcluded) && types.contains(item.type)) {
-                    val existing = foldersMap[item.folderPath]
-                    if (existing == null) {
-                        foldersMap[item.folderPath] = Folder(
-                            name = item.bucketName,
-                            imageCount = 1,
-                            thumbnailUri = item.uri,
-                            isPinned = pinned.contains(item.folderPath),
-                            path = item.folderPath,
-                            size = item.size,
-                            dateModified = item.dateModified,
-                            dateTaken = item.dateAdded
-                        )
-                    } else {
-                        foldersMap[item.folderPath] = existing.copy(
-                            imageCount = existing.imageCount + 1,
-                            size = existing.size + item.size,
-                            dateModified = maxOf(existing.dateModified, item.dateModified),
-                            dateTaken = maxOf(existing.dateTaken, item.dateAdded)
-                        )
-                    }
-                }
-            }
-
-            val foldersList = foldersMap.values.toList()
-
-            val baseSorted = when (sort) {
-                SortType.NAME -> foldersList.sortedBy { it.name }
-                SortType.PATH -> foldersList.sortedBy { it.path }
-                SortType.SIZE -> foldersList.sortedByDescending { it.size }
-                SortType.LAST_MODIFIED -> foldersList.sortedByDescending { it.dateModified }
-                SortType.DATE_TAKEN -> foldersList.sortedByDescending { it.dateTaken }
-                SortType.RANDOM -> foldersList.shuffled()
-            }
-
-            val orderedFolders = if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
-                baseSorted.reversed()
-            } else {
-                baseSorted
-            }
-
-            val finalSorted = orderedFolders.sortedByDescending { it.isPinned }
-
-            val filteredList = if (query.isNotEmpty()) {
-                finalSorted.filter { it.name.contains(query, ignoreCase = true) }
-            } else {
-                finalSorted
-            }
-            
-            GalleryUiState.Success(filteredList)
-        }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
-
     fun loadFolders() {
         viewModelScope.launch {
             try {
                 if (_uiState.value is GalleryUiState.Error) {
                     _uiState.value = GalleryUiState.Loading
                 }
-                
                 val folders = dataSource.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
                 _allMedia.value = dataSource.getAllMedia()
+                
+                // If a folder is open, refresh its contents from the reactive source
+                _selectedFolder.value?.let { currentFolder ->
+                    _mediaInFolder.value = dataSource.getMediaInFolder(currentFolder.name)
+                }
             } catch (e: Exception) {
                 _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
             }
@@ -304,12 +279,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             toggleSelection(folder.path)
         } else {
             _selectedFolder.value = folder
-            // No need to manually fetch media, it's reactive now!
+            viewModelScope.launch {
+                _mediaInFolder.value = dataSource.getMediaInFolder(folder.name)
+            }
         }
     }
 
     fun backToFolders() {
         _selectedFolder.value = null
+        _mediaInFolder.value = emptyList()
         setSearchActive(false)
     }
 
@@ -321,7 +299,12 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         if (_isMediaSelectionMode.value) {
             toggleMediaSelection(item)
         } else {
-            _currentMediaList.value = filteredMedia.value
+            val list = if (_selectedFolder.value != null) {
+                filteredMedia.value
+            } else {
+                filteredAllMedia.value
+            }
+            _currentMediaList.value = list
             _selectedMedia.value = item
             _isImmersiveMode.value = false
             _currentRotation.value = 0f
@@ -353,12 +336,22 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun selectAllMedia() {
-        _selectedMediaItems.value = filteredMedia.value.map { it.uri }.toSet()
+        val list = if (_selectedFolder.value != null) {
+            filteredMedia.value
+        } else {
+            filteredAllMedia.value
+        }
+        _selectedMediaItems.value = list.map { it.uri }.toSet()
     }
 
     fun getSelectedMediaData(): List<MediaItem> {
         val selectedUris = _selectedMediaItems.value
-        return _allMedia.value.filter { selectedUris.contains(it.uri) }
+        val allVisible = if (_selectedFolder.value != null) {
+            _mediaInFolder.value
+        } else {
+            _allMedia.value
+        }
+        return allVisible.filter { selectedUris.contains(it.uri) }
     }
 
     fun deleteMedia(item: MediaItem) {
@@ -507,33 +500,92 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     fun performOperationWithPath(path: String) {
         val operation = _pendingOperation.value ?: return
+        val relativePath = absoluteToRelativePath(path) ?: return
         
         viewModelScope.launch {
-            if (_isMediaSelectionMode.value) {
-                val selectedMedia = getSelectedMediaData()
-                selectedMedia.forEach { item ->
-                    if (operation == OperationType.MOVE) {
-                        dataSource.moveFile(item.folderPath, item.name, path)
-                    } else {
+            val urisToMove = if (_isMediaSelectionMode.value) {
+                _selectedMediaItems.value.toList()
+            } else {
+                val selectedPaths = _selectedFolders.value
+                _allMedia.value
+                    .filter { selectedPaths.contains(it.folderPath) }
+                    .map { it.uri }
+            }
+
+            if (urisToMove.isEmpty()) {
+                cancelOperation()
+                return@launch
+            }
+
+            if (operation == OperationType.MOVE) {
+                tryMoveMedia(urisToMove, relativePath)
+            } else {
+                // Copy logic remains File-based for now as MediaStore doesn't have a direct "duplicate" update
+                // Or we could implement it via streams. Let's focus on MOVE first.
+                if (_isMediaSelectionMode.value) {
+                    val selectedMedia = getSelectedMediaData()
+                    selectedMedia.forEach { item ->
                         dataSource.copyFile(item.folderPath, item.name, path)
                     }
-                }
-                exitMediaSelectionMode()
-            } else {
-                val selectedFoldersData = getSelectedFoldersData()
-                selectedFoldersData.forEach { folder ->
-                    if (operation == OperationType.MOVE) {
-                        dataSource.moveFolderContents(folder.path, path)
-                    } else {
+                    exitMediaSelectionMode()
+                } else {
+                    val selectedFoldersData = getSelectedFoldersData()
+                    selectedFoldersData.forEach { folder ->
                         dataSource.copyFolderContents(folder.path, path)
                     }
+                    exitSelectionMode()
                 }
-                exitSelectionMode()
+                cancelOperation()
+                loadFolders()
             }
-            
+        }
+    }
+
+    private suspend fun tryMoveMedia(uris: List<android.net.Uri>, targetRelativePath: String) {
+        try {
+            dataSource.updateMediaRelativePath(uris, targetRelativePath)
+            exitMediaSelectionMode()
+            exitSelectionMode()
             cancelOperation()
             loadFolders()
+        } catch (e: SecurityException) {
+            _pendingMoveOperation.value = MoveOperation(uris, targetRelativePath)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val intentSender = android.provider.MediaStore.createWriteRequest(
+                    getApplication<Application>().contentResolver,
+                    uris
+                ).intentSender
+                _pendingWriteRequest.value = intentSender
+            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && e is android.app.RecoverableSecurityException) {
+                _pendingWriteRequest.value = e.userAction.actionIntent.intentSender
+            }
         }
+    }
+
+    fun onWriteRequestResult(granted: Boolean) {
+        if (granted) {
+            val pending = _pendingMoveOperation.value
+            if (pending != null) {
+                viewModelScope.launch {
+                    tryMoveMedia(pending.uris, pending.targetRelativePath)
+                }
+            } else {
+                loadFolders()
+            }
+        } else {
+            _pendingMoveOperation.value = null
+        }
+    }
+
+    private fun absoluteToRelativePath(absolutePath: String): String? {
+        val root = Environment.getExternalStorageDirectory().absolutePath
+        if (!absolutePath.startsWith(root)) return null
+        
+        var relative = absolutePath.removePrefix(root).trimStart('/')
+        if (relative.isNotEmpty() && !relative.endsWith('/')) {
+            relative += '/'
+        }
+        return relative
     }
 
     fun unexcludeFolder(folderName: String) {
@@ -752,6 +804,11 @@ enum class DisplayMode {
 enum class OperationType {
     COPY, MOVE
 }
+
+data class MoveOperation(
+    val uris: List<android.net.Uri>,
+    val targetRelativePath: String
+)
 
 enum class GroupByType {
     NONE, LAST_MODIFIED_DAILY, LAST_MODIFIED_MONTHLY, DATE_TAKEN_DAILY, DATE_TAKEN_MONTHLY, FILE_TYPE
