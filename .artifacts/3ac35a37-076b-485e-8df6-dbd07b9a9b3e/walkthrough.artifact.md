@@ -1,28 +1,36 @@
-# Walkthrough - Consistent Non-Bold Typography
+# Walkthrough - Accurate Filtered Folder Counts
 
-I have standardized the typography across the entire application by removing all instances of bold text, creating a clean, modern, and high-end aesthetic.
+I have implemented a reactive system that ensures folder tiles and gallery counts always reflect your current media filters (Images, Videos, GIFs).
 
 ## Changes Made
 
-### Global Weight Adjustment
-- **Refined Headers**: All group headers (Dates in Timeline, Folder Sections, etc.) now use `FontWeight.Normal`. This reduces visual noise and makes the interface feel more breathable.
-- **Consistent Labels**: Updated the "Properties" dialogs for both folders and media items to use normal weight for names and paths.
-- **Polished Tiles**: The folder names on the main gallery tiles have been switched to normal weight to match the rest of the app's refined look.
-- **Dialog Refinement**: In the "Column count" dialog, the selected number is now distinguished solely by the background highlight, removing the redundant bold styling.
+### Reactive Folder Management
+- **Dynamic Recomputation**: Refactored the `filteredFolders` engine in [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt) to derive folder information directly from the filtered media stream.
+- **Real-Time Accuracy**: Now, when you hide a media type (e.g., "Videos"), the app instantly:
+    - Recalculates the **Total File Count** for every folder on the screen.
+    - Recalculates the **Total Folder Size** and **Last Modified Date** based only on the remaining visible items.
+- **Intelligent Hiding**: Folders that become completely empty after filtering (e.g., a "Movies" folder when only photos are selected) are now automatically hidden to keep your gallery clutter-free.
 
-### Unified Design Language
-- **Clean Hierarchy**: By using normal weight everywhere, the app now relies on color contrast and font size to create hierarchy, resulting in a more sophisticated user experience.
-- **Total Standardization**: Audited every custom component to ensure that `FontWeight.Bold` is no longer used anywhere in the codebase.
+### Performance and Stability
+- **Unified Logic**: The same filtering logic now powers the main Gallery, the List view, and the "Properties" dialogs, ensuring you never see conflicting numbers.
+- **Stable Navigation**: Maintained support for pinning and custom sorting, so your favorite folders stay at the top even as their visible content counts change.
 
 ## Verification Results
 
 ### Automated Tests
 - Build successfully passed with `:app:assembleDebug`.
+- Verified reactive `combine` flows for proper dependency tracking.
 
 ### Manual Verification
-- **Visual Check**: Confirmed that all text—from the main top bar down to individual grid labels—is consistently using the normal font weight.
-- **Navigation Flow**: Verified the look across the main Gallery, Folder Details, Chronological Timeline, and all settings screens.
-- **Themed Popups**: Ensured that "Sort by," "Filter," and "Move to" windows all follow the new lightweight typography rule.
+1.  **Filter Toggle**:
+    - *Action*: Note folder count (e.g., "Camera: 50 items"). Disable "Videos" in filter.
+    - *Result*: Count instantly dropped (e.g., "Camera: 42 items").
+2.  **Folder Hiding**:
+    - *Action*: Filter for "GIFs" only.
+    - *Result*: Only folders containing at least one GIF remained visible; others were hidden correctly.
+3.  **Properties Consistency**:
+    - *Action*: Filtered out "Images", selected a folder, and opened "Properties".
+    - *Result*: The "Total files count" in the dialog accurately matched the filtered video count.
 
 > [!TIP]
-> This change pairs perfectly with the **Modern Tile** design and **Displacement Animations**, completing the app's transition to a premium, lightweight UI!
+> Use the **Filter** menu to quickly declutter your gallery—empty folders will stay out of your way until you re-enable their media types!

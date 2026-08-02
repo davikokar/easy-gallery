@@ -137,31 +137,57 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _uiState, _searchQuery, _pinnedFolders, _folderSortType, _folderSortOrder, _excludedFolders, _showExcludedTemporarily
+        _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _folderSortOrder, _excludedFolders, _showExcludedTemporarily, _selectedMediaTypes
     ) { args ->
-        val state = args[0] as GalleryUiState
+        val allMedia = args[0] as List<MediaItem>
         val query = args[1] as String
         val pinned = args[2] as Set<String>
         val sort = args[3] as SortType
         val order = args[4] as SortOrder
         val excluded = args[5] as Set<String>
         val showExcluded = args[6] as Boolean
+        val types = args[7] as Set<MediaType>
 
-        if (state is GalleryUiState.Success) {
-            val nonExcluded = state.folders.filter { showExcluded || !excluded.contains(it.path) }
-            
-            val withPinned = nonExcluded.map { folder ->
-                folder.copy(isPinned = pinned.contains(folder.path))
+        if (allMedia.isEmpty() && _uiState.value is GalleryUiState.Loading) {
+            GalleryUiState.Loading
+        } else {
+            val foldersMap = mutableMapOf<String, Folder>()
+            allMedia.forEach { item ->
+                val isExcluded = excluded.contains(item.folderPath)
+                if ((showExcluded || !isExcluded) && types.contains(item.type)) {
+                    val existing = foldersMap[item.folderPath]
+                    if (existing == null) {
+                        foldersMap[item.folderPath] = Folder(
+                            name = item.bucketName,
+                            imageCount = 1,
+                            thumbnailUri = item.uri,
+                            isPinned = pinned.contains(item.folderPath),
+                            path = item.folderPath,
+                            size = item.size,
+                            dateModified = item.dateModified,
+                            dateTaken = item.dateAdded
+                        )
+                    } else {
+                        foldersMap[item.folderPath] = existing.copy(
+                            imageCount = existing.imageCount + 1,
+                            size = existing.size + item.size,
+                            dateModified = maxOf(existing.dateModified, item.dateModified),
+                            dateTaken = maxOf(existing.dateTaken, item.dateAdded)
+                        )
+                    }
+                }
             }
 
+            val foldersList = foldersMap.values.toList()
+
             val sorted = when (sort) {
-                SortType.NAME -> withPinned.sortedBy { it.name }
-                SortType.PATH -> withPinned.sortedBy { it.path }
-                SortType.SIZE -> withPinned.sortedByDescending { it.size }
-                SortType.LAST_MODIFIED -> withPinned.sortedByDescending { it.dateModified }
-                SortType.DATE_TAKEN -> withPinned.sortedByDescending { it.dateTaken }
-                SortType.RANDOM -> withPinned.shuffled()
-                else -> withPinned
+                SortType.NAME -> foldersList.sortedBy { it.name }
+                SortType.PATH -> foldersList.sortedBy { it.path }
+                SortType.SIZE -> foldersList.sortedByDescending { it.size }
+                SortType.LAST_MODIFIED -> foldersList.sortedByDescending { it.dateModified }
+                SortType.DATE_TAKEN -> foldersList.sortedByDescending { it.dateTaken }
+                SortType.RANDOM -> foldersList.shuffled()
+                else -> foldersList
             }
 
             val ordered = if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
@@ -170,15 +196,15 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 sorted
             }
 
-            val finalSorted = ordered.sortedByDescending { pinned.contains(it.path) }
+            val finalSorted = ordered.sortedByDescending { it.isPinned }
 
-            if (query.isNotEmpty()) {
-                GalleryUiState.Success(finalSorted.filter { it.name.contains(query, ignoreCase = true) })
+            val filteredList = if (query.isNotEmpty()) {
+                finalSorted.filter { it.name.contains(query, ignoreCase = true) }
             } else {
-                GalleryUiState.Success(finalSorted)
+                finalSorted
             }
-        } else {
-            state
+            
+            GalleryUiState.Success(filteredList)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
@@ -222,13 +248,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
         filteredAllMedia, _pictureGroupBy, _pictureGroupOrder
-    ) { media: List<MediaItem>, groupBy: GroupByType, order: SortOrder ->
+    ) { media, groupBy, order ->
         groupMedia(media, groupBy, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
         filteredMedia, _pictureGroupBy, _pictureGroupOrder
-    ) { media: List<MediaItem>, groupBy: GroupByType, order: SortOrder ->
+    ) { media, groupBy, order ->
         groupMedia(media, groupBy, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
@@ -241,11 +267,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 val folders = dataSource.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
                 _allMedia.value = dataSource.getAllMedia()
-                
-                // If a folder is open, refresh its contents from the reactive source
-                _selectedFolder.value?.let { currentFolder ->
-                    _mediaInFolder.value = dataSource.getMediaInFolder(currentFolder.name)
-                }
             } catch (e: Exception) {
                 _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
             }
@@ -524,8 +545,6 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
             if (operation == OperationType.MOVE) {
                 tryMoveMedia(urisToMove, relativePath)
             } else {
-                // Copy logic remains File-based for now as MediaStore doesn't have a direct "duplicate" update
-                // Or we could implement it via streams. Let's focus on MOVE first.
                 if (_isMediaSelectionMode.value) {
                     val selectedMedia = getSelectedMediaData()
                     selectedMedia.forEach { item ->
