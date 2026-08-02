@@ -1,11 +1,4 @@
-- [x] Update `CalendarGrid.kt` headers to Normal weight
-- [x] Update `FolderDetailScreen.kt` headers to Normal weight
-- [x] Update `FolderListScreen.kt` (PropertiesDialog and GridItem) to Normal weight
-- [x] Update `ColumnCountDialog.kt` to Normal weight for selected item
-- [x] Update `MediaPropertiesDialog.kt` to Normal weight
-- [x] Final visual verification across the whole app
-- [ ] Update `GalleryViewModel.filteredFolders` dependencies to include `_allMedia` and `_selectedMediaTypes`
-- [ ] Implement recomputation logic for folder counts, size, and dates within `filteredFolders`
-- [ ] Implement hiding of empty folders after filtering
-- [ ] Update `getSelectedFoldersData` to use filtered values
-- [ ] Verify reactive updates in Grid and List views
+- [x] Add testing versions and libraries to `libs.versions.toml`
+- [x] Add testing dependencies to `app/build.gradle.kts`
+- [x] Sync Gradle
+- [x] Verify build and existing tests

@@ -1,36 +1,24 @@
-# Walkthrough - Accurate Filtered Folder Counts
+# Walkthrough - Test Infrastructure Ready
 
-I have implemented a reactive system that ensures folder tiles and gallery counts always reflect your current media filters (Images, Videos, GIFs).
+I have prepared your project for unit testing by adding the essential libraries for testing Coroutines, StateFlows, and ViewModels.
 
 ## Changes Made
 
-### Reactive Folder Management
-- **Dynamic Recomputation**: Refactored the `filteredFolders` engine in [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt) to derive folder information directly from the filtered media stream.
-- **Real-Time Accuracy**: Now, when you hide a media type (e.g., "Videos"), the app instantly:
-    - Recalculates the **Total File Count** for every folder on the screen.
-    - Recalculates the **Total Folder Size** and **Last Modified Date** based only on the remaining visible items.
-- **Intelligent Hiding**: Folders that become completely empty after filtering (e.g., a "Movies" folder when only photos are selected) are now automatically hidden to keep your gallery clutter-free.
+### Dependency Management
+- **[libs.versions.toml](file:///C:/git/easy-gallery/gradle/libs.versions.toml)**: Centralized the versioning for testing libraries:
+    - `kotlinx-coroutines-test`: Standard library for testing asynchronous code.
+    - `turbine`: A specialized library for asserting on Kotlin Flows.
+    - `androidx-arch-core-testing`: Provides the `InstantTaskExecutorRule` to ensure LiveData/Flow operations run synchronously in tests.
+    - `androidx-lifecycle-runtime-testing`: Testing utilities for Android lifecycle components.
 
-### Performance and Stability
-- **Unified Logic**: The same filtering logic now powers the main Gallery, the List view, and the "Properties" dialogs, ensuring you never see conflicting numbers.
-- **Stable Navigation**: Maintained support for pinning and custom sorting, so your favorite folders stay at the top even as their visible content counts change.
+### Build Configuration
+- **[app/build.gradle.kts](file:///C:/git/easy-gallery/app/build.gradle.kts)**: Registered the new libraries under the `testImplementation` configuration. This ensures these libraries are only available during unit testing and won't bloat your production APK.
 
 ## Verification Results
 
 ### Automated Tests
-- Build successfully passed with `:app:assembleDebug`.
-- Verified reactive `combine` flows for proper dependency tracking.
-
-### Manual Verification
-1.  **Filter Toggle**:
-    - *Action*: Note folder count (e.g., "Camera: 50 items"). Disable "Videos" in filter.
-    - *Result*: Count instantly dropped (e.g., "Camera: 42 items").
-2.  **Folder Hiding**:
-    - *Action*: Filter for "GIFs" only.
-    - *Result*: Only folders containing at least one GIF remained visible; others were hidden correctly.
-3.  **Properties Consistency**:
-    - *Action*: Filtered out "Images", selected a folder, and opened "Properties".
-    - *Result*: The "Total files count" in the dialog accurately matched the filtered video count.
+- **Gradle Sync**: Completed successfully, ensuring all new dependencies are resolved.
+- **Project Build**: Ran `:app:assembleDebug` successfully. All existing code remains compatible with the new test setup.
 
 > [!TIP]
-> Use the **Filter** menu to quickly declutter your gallery—empty folders will stay out of your way until you re-enable their media types!
+> You are now ready to start writing unit tests for your `GalleryViewModel`. Use `kotlinx-coroutines-test` and `Turbine` to easily verify that your gallery updates correctly when filters are applied or items are moved!
