@@ -107,11 +107,92 @@ class FolderListContentTest {
         composeTestRule.onNodeWithTag("selected_checkmark", useUnmergedTree = true).assertIsDisplayed()
     }
 
+    @Test
+    fun scrollPositionIsMaintainedWhenEnteringSelectionMode() {
+        val manyFolders = (1..80).map {
+            fakeFolder.copy(name = "Folder $it", path = "/path/$it")
+        }
+
+        var isSelectionMode by mutableStateOf(false)
+        var selectedFolders by mutableStateOf(emptySet<String>())
+        val targetIndex = 60
+
+        composeTestRule.setContent {
+            // Use a stable branch as in the fixed MainActivity
+            FolderListContentWrapper(
+                uiState = GalleryUiState.Success(manyFolders),
+                isSelectionMode = isSelectionMode,
+                selectedFolders = selectedFolders
+            )
+        }
+
+        // Scroll to a specific index
+        composeTestRule.onNodeWithTag("folder_grid").performScrollToIndex(targetIndex)
+
+        // Verify target is displayed
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[targetIndex].path}", useUnmergedTree = true).assertIsDisplayed()
+
+        // Long click to enter selection mode
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[targetIndex].path}", useUnmergedTree = true).performTouchInput {
+            longClick()
+        }
+        
+        // Simulate app logic: enter selection mode and select the folder
+        isSelectionMode = true
+        selectedFolders = setOf(manyFolders[targetIndex].path)
+
+        // Verify we are still at the same item and it's selected
+        // In the buggy implementation, this will fail because scroll resets to top (targetIndex 0)
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[targetIndex].path}", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("selected_checkmark", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun scrollPositionIsMaintainedInListViewWhenEnteringSelectionMode() {
+        val manyFolders = (1..80).map {
+            fakeFolder.copy(name = "Folder $it", path = "/path/$it")
+        }
+
+        var isSelectionMode by mutableStateOf(false)
+        var selectedFolders by mutableStateOf(emptySet<String>())
+        val targetIndex = 60
+
+        composeTestRule.setContent {
+            // Use a stable branch as in the fixed MainActivity
+            FolderListContentWrapper(
+                uiState = GalleryUiState.Success(manyFolders),
+                isSelectionMode = isSelectionMode,
+                selectedFolders = selectedFolders,
+                folderViewType = ViewType.LIST
+            )
+        }
+
+        // Scroll to a specific index
+        composeTestRule.onNodeWithTag("folder_list").performScrollToIndex(targetIndex)
+
+        // Verify target is displayed
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[targetIndex].path}", useUnmergedTree = true).assertIsDisplayed()
+
+        // Long click to enter selection mode
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[targetIndex].path}", useUnmergedTree = true).performTouchInput {
+            longClick()
+        }
+
+        // Simulate app logic: enter selection mode and select the folder
+        isSelectionMode = true
+        selectedFolders = setOf(manyFolders[targetIndex].path)
+
+        // Verify we are still at the same item and it's selected
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[targetIndex].path}", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("selected_checkmark", useUnmergedTree = true).assertIsDisplayed()
+    }
+
     @Composable
     private fun FolderListContentWrapper(
         uiState: GalleryUiState = GalleryUiState.Success(emptyList()),
         isSelectionMode: Boolean = false,
-        selectedFolders: Set<String> = emptySet()
+        selectedFolders: Set<String> = emptySet(),
+        folderViewType: ViewType = ViewType.GRID
     ) {
         FolderListContent(
             uiState = uiState,
@@ -132,7 +213,7 @@ class FolderListContentTest {
             pictureSortOrder = SortOrder.DESCENDING,
             pictureGroupBy = GroupByType.NONE,
             pictureGroupOrder = SortOrder.DESCENDING,
-            folderViewType = ViewType.GRID,
+            folderViewType = folderViewType,
             pictureViewType = ViewType.GRID,
             selectedMediaTypes = MediaType.entries.toSet(),
             isDestinationPickerActive = false,

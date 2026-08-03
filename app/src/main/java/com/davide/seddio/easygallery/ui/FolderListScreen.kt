@@ -888,7 +888,7 @@ fun FolderList(
         state = state,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(folders) { folder ->
+        items(folders, key = { it.path }) { folder ->
             FolderListItem(
                 folder = folder,
                 isSelected = selectedFolders.contains(folder.path),
