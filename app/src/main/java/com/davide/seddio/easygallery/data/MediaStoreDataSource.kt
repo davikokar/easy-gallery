@@ -11,9 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-class MediaStoreDataSource(private val context: Context) {
+class MediaStoreDataSource(private val context: Context) : MediaRepository {
 
-    suspend fun getFolders(): List<Folder> = withContext(Dispatchers.IO) {
+    override suspend fun getFolders(): List<Folder> = withContext(Dispatchers.IO) {
         val foldersMap = mutableMapOf<String, FolderData>()
         
         val projection = arrayOf(
@@ -64,7 +64,7 @@ class MediaStoreDataSource(private val context: Context) {
         }
     }
 
-    suspend fun getMediaInFolder(bucketName: String): List<MediaItem> = withContext(Dispatchers.IO) {
+    override suspend fun getMediaInFolder(bucketName: String): List<MediaItem> = withContext(Dispatchers.IO) {
         val media = mutableListOf<MediaItem>()
         val selection = "${MediaStore.MediaColumns.BUCKET_DISPLAY_NAME} = ?"
         val selectionArgs = arrayOf(bucketName)
@@ -75,14 +75,14 @@ class MediaStoreDataSource(private val context: Context) {
         media.sortedByDescending { it.dateAdded }
     }
 
-    suspend fun getAllMedia(): List<MediaItem> = withContext(Dispatchers.IO) {
+    override suspend fun getAllMedia(): List<MediaItem> = withContext(Dispatchers.IO) {
         val media = mutableListOf<MediaItem>()
         queryMedia(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false) { media.add(it) }
         queryMedia(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true) { media.add(it) }
         media.sortedByDescending { it.dateAdded }
     }
 
-    suspend fun copyFolderContents(sourcePath: String, targetParentPath: String): Unit = withContext(Dispatchers.IO) {
+    override suspend fun copyFolderContents(sourcePath: String, targetParentPath: String): Unit = withContext(Dispatchers.IO) {
         val sourceDir = File(sourcePath)
         val targetDir = File(targetParentPath, sourceDir.name)
         if (!targetDir.exists()) targetDir.mkdirs()
@@ -102,7 +102,7 @@ class MediaStoreDataSource(private val context: Context) {
         }
     }
 
-    suspend fun copyFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) = withContext(Dispatchers.IO) {
+    override suspend fun copyFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) = withContext(Dispatchers.IO) {
         val sourceFile = File(sourceFolderPath, fileName)
         val targetFile = File(targetFolderPath, fileName)
         sourceFile.inputStream().use { input ->
@@ -113,7 +113,7 @@ class MediaStoreDataSource(private val context: Context) {
         MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
     }
 
-    suspend fun rotateImage(uri: Uri, degrees: Int) = withContext(Dispatchers.IO) {
+    override suspend fun rotateImage(uri: Uri, degrees: Int): Unit = withContext(Dispatchers.IO) {
         context.contentResolver.openFileDescriptor(uri, "rw")?.use { fd ->
             val exif = ExifInterface(fd.fileDescriptor)
             val currentOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
@@ -154,13 +154,13 @@ class MediaStoreDataSource(private val context: Context) {
         file.delete()
     }
 
-    suspend fun deleteMediaItems(uris: List<Uri>) = withContext(Dispatchers.IO) {
+    override suspend fun deleteMediaItems(uris: List<Uri>) = withContext(Dispatchers.IO) {
         uris.forEach { uri ->
             context.contentResolver.delete(uri, null, null)
         }
     }
 
-    suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String) = withContext(Dispatchers.IO) {
+    override suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String) = withContext(Dispatchers.IO) {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.RELATIVE_PATH, targetRelativePath)
         }
@@ -169,7 +169,7 @@ class MediaStoreDataSource(private val context: Context) {
         }
     }
 
-    fun getSubdirectories(path: String): List<Folder> {
+    override fun getSubdirectories(path: String): List<Folder> {
         val root = File(path)
         if (!root.exists() || !root.isDirectory) return emptyList()
         

@@ -5,6 +5,7 @@ import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.data.Folder
+import com.davide.seddio.easygallery.data.MediaRepository
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
@@ -19,9 +20,10 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-class GalleryViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val dataSource = MediaStoreDataSource(application)
+class GalleryViewModel @JvmOverloads constructor(
+    application: Application,
+    private val repository: MediaRepository = MediaStoreDataSource(application)
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
@@ -133,7 +135,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
     val currentMediaList: StateFlow<List<MediaItem>> = _currentMediaList.asStateFlow()
 
     val browsingFolders: StateFlow<List<Folder>> = combine(_browsingPath, _selectedFolders) { path, selected ->
-        dataSource.getSubdirectories(path).filter { !selected.contains(it.path) }
+        repository.getSubdirectories(path).filter { !selected.contains(it.path) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
@@ -264,9 +266,9 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 if (_uiState.value is GalleryUiState.Error) {
                     _uiState.value = GalleryUiState.Loading
                 }
-                val folders = dataSource.getFolders()
+                val folders = repository.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
-                _allMedia.value = dataSource.getAllMedia()
+                _allMedia.value = repository.getAllMedia()
             } catch (e: Exception) {
                 _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
             }
@@ -305,7 +307,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         } else {
             _selectedFolder.value = folder
             viewModelScope.launch {
-                _mediaInFolder.value = dataSource.getMediaInFolder(folder.name)
+                _mediaInFolder.value = repository.getMediaInFolder(folder.name)
             }
         }
     }
@@ -416,7 +418,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun performDeletion(uris: List<android.net.Uri>, onSuccess: () -> Unit) {
         try {
-            dataSource.deleteMediaItems(uris)
+            repository.deleteMediaItems(uris)
             onSuccess()
             loadFolders()
         } catch (e: SecurityException) {
@@ -439,7 +441,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try {
                 selectedMedia.forEach { item ->
-                    dataSource.rotateImage(item.uri, degrees)
+                    repository.rotateImage(item.uri, degrees)
                 }
                 exitMediaSelectionMode()
                 loadFolders()
@@ -548,13 +550,13 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
                 if (_isMediaSelectionMode.value) {
                     val selectedMedia = getSelectedMediaData()
                     selectedMedia.forEach { item ->
-                        dataSource.copyFile(item.folderPath, item.name, path)
+                        repository.copyFile(item.folderPath, item.name, path)
                     }
                     exitMediaSelectionMode()
                 } else {
                     val selectedFoldersData = getSelectedFoldersData()
                     selectedFoldersData.forEach { folder ->
-                        dataSource.copyFolderContents(folder.path, path)
+                        repository.copyFolderContents(folder.path, path)
                     }
                     exitSelectionMode()
                 }
@@ -566,7 +568,7 @@ class GalleryViewModel(application: Application) : AndroidViewModel(application)
 
     private suspend fun tryMoveMedia(uris: List<android.net.Uri>, targetRelativePath: String) {
         try {
-            dataSource.updateMediaRelativePath(uris, targetRelativePath)
+            repository.updateMediaRelativePath(uris, targetRelativePath)
             exitMediaSelectionMode()
             exitSelectionMode()
             cancelOperation()
