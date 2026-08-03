@@ -9,8 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.davide.seddio.easygallery.ui.GroupByType
-import com.davide.seddio.easygallery.ui.SortOrder
+import com.davide.seddio.easygallery.data.GroupByType
+import com.davide.seddio.easygallery.data.SortOrder
 
 @Composable
 fun GroupByDialog(

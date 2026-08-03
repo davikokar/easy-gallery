@@ -8,8 +8,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import com.davide.seddio.easygallery.ui.SortOrder
-import com.davide.seddio.easygallery.ui.SortType
+import com.davide.seddio.easygallery.data.SortOrder
+import com.davide.seddio.easygallery.data.SortType
 
 @Composable
 fun SortOption(

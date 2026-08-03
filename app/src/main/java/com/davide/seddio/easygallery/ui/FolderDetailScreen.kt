@@ -1,5 +1,12 @@
 package com.davide.seddio.easygallery.ui
 
+import com.davide.seddio.easygallery.data.DisplayMode
+import com.davide.seddio.easygallery.data.GalleryUiState
+import com.davide.seddio.easygallery.data.SortType
+import com.davide.seddio.easygallery.data.SortOrder
+import com.davide.seddio.easygallery.data.ViewType
+import com.davide.seddio.easygallery.data.OperationType
+import com.davide.seddio.easygallery.data.GroupByType
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background

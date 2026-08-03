@@ -4,11 +4,7 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.davide.seddio.easygallery.data.Folder
-import com.davide.seddio.easygallery.data.MediaRepository
-import com.davide.seddio.easygallery.data.MediaStoreDataSource
-import com.davide.seddio.easygallery.data.MediaItem
-import com.davide.seddio.easygallery.data.MediaType
+import com.davide.seddio.easygallery.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -153,60 +149,10 @@ class GalleryViewModel @JvmOverloads constructor(
         if (allMedia.isEmpty() && _uiState.value is GalleryUiState.Loading) {
             GalleryUiState.Loading
         } else {
-            val foldersMap = mutableMapOf<String, Folder>()
-            allMedia.forEach { item ->
-                val isExcluded = excluded.contains(item.folderPath)
-                if ((showExcluded || !isExcluded) && types.contains(item.type)) {
-                    val existing = foldersMap[item.folderPath]
-                    if (existing == null) {
-                        foldersMap[item.folderPath] = Folder(
-                            name = item.bucketName,
-                            imageCount = 1,
-                            thumbnailUri = item.uri,
-                            isPinned = pinned.contains(item.folderPath),
-                            path = item.folderPath,
-                            size = item.size,
-                            dateModified = item.dateModified,
-                            dateTaken = item.dateAdded
-                        )
-                    } else {
-                        foldersMap[item.folderPath] = existing.copy(
-                            imageCount = existing.imageCount + 1,
-                            size = existing.size + item.size,
-                            dateModified = maxOf(existing.dateModified, item.dateModified),
-                            dateTaken = maxOf(existing.dateTaken, item.dateAdded)
-                        )
-                    }
-                }
-            }
-
-            val foldersList = foldersMap.values.toList()
-
-            val sorted = when (sort) {
-                SortType.NAME -> foldersList.sortedBy { it.name }
-                SortType.PATH -> foldersList.sortedBy { it.path }
-                SortType.SIZE -> foldersList.sortedByDescending { it.size }
-                SortType.LAST_MODIFIED -> foldersList.sortedByDescending { it.dateModified }
-                SortType.DATE_TAKEN -> foldersList.sortedByDescending { it.dateTaken }
-                SortType.RANDOM -> foldersList.shuffled()
-                else -> foldersList
-            }
-
-            val ordered = if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
-                sorted.reversed()
-            } else {
-                sorted
-            }
-
-            val finalSorted = ordered.sortedByDescending { it.isPinned }
-
-            val filteredList = if (query.isNotEmpty()) {
-                finalSorted.filter { it.name.contains(query, ignoreCase = true) }
-            } else {
-                finalSorted
-            }
-            
-            GalleryUiState.Success(filteredList)
+            val folders = GalleryTransformations.filterAndSortFolders(
+                allMedia, query, pinned, sort, order, excluded, showExcluded, types
+            )
+            GalleryUiState.Success(folders)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
@@ -219,13 +165,8 @@ class GalleryViewModel @JvmOverloads constructor(
         val sort = args[3] as SortType
         val order = args[4] as SortOrder
 
-        val typeFiltered = media.filter { types.contains(it.type) }
-        val searchFiltered = if (query.isNotEmpty()) {
-            typeFiltered.filter { it.name.contains(query, ignoreCase = true) }
-        } else {
-            typeFiltered
-        }
-        sortMedia(searchFiltered, sort, order)
+        val filtered = GalleryTransformations.filterMedia(media, query, types)
+        GalleryTransformations.sortMedia(filtered, sort, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
@@ -238,26 +179,20 @@ class GalleryViewModel @JvmOverloads constructor(
         val sort = args[4] as SortType
         val order = args[5] as SortOrder
 
-        val nonExcluded = media.filter { !excluded.contains(it.folderPath) }
-        val typeFiltered = nonExcluded.filter { types.contains(it.type) }
-        val searchFiltered = if (query.isNotEmpty()) {
-            typeFiltered.filter { it.name.contains(query, ignoreCase = true) }
-        } else {
-            typeFiltered
-        }
-        sortMedia(searchFiltered, sort, order)
+        val filtered = GalleryTransformations.filterMedia(media, query, types, excluded)
+        GalleryTransformations.sortMedia(filtered, sort, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
         filteredAllMedia, _pictureGroupBy, _pictureGroupOrder
     ) { media, groupBy, order ->
-        groupMedia(media, groupBy, order)
+        GalleryTransformations.groupMedia(media, groupBy, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
         filteredMedia, _pictureGroupBy, _pictureGroupOrder
     ) { media, groupBy, order ->
-        groupMedia(media, groupBy, order)
+        GalleryTransformations.groupMedia(media, groupBy, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     fun loadFolders() {
@@ -527,7 +462,8 @@ class GalleryViewModel @JvmOverloads constructor(
 
     fun performOperationWithPath(path: String) {
         val operation = _pendingOperation.value ?: return
-        val relativePath = absoluteToRelativePath(path) ?: return
+        val rootPath = Environment.getExternalStorageDirectory().absolutePath
+        val relativePath = GalleryTransformations.absoluteToRelativePath(path, rootPath) ?: return
         
         viewModelScope.launch {
             val urisToMove = if (_isMediaSelectionMode.value) {
@@ -600,17 +536,6 @@ class GalleryViewModel @JvmOverloads constructor(
         } else {
             _pendingMoveOperation.value = null
         }
-    }
-
-    private fun absoluteToRelativePath(absolutePath: String): String? {
-        val root = Environment.getExternalStorageDirectory().absolutePath
-        if (!absolutePath.startsWith(root)) return null
-        
-        var relative = absolutePath.removePrefix(root).trimStart('/')
-        if (relative.isNotEmpty() && !relative.endsWith('/')) {
-            relative += '/'
-        }
-        return relative
     }
 
     fun unexcludeFolder(folderName: String) {
@@ -754,105 +679,9 @@ class GalleryViewModel @JvmOverloads constructor(
         exitSelectionMode()
     }
 
-    private fun sortMedia(media: List<MediaItem>, sort: SortType, order: SortOrder): List<MediaItem> {
-        val baseSorted = when (sort) {
-            SortType.NAME -> media.sortedBy { it.name }
-            SortType.LAST_MODIFIED -> media.sortedBy { it.dateModified }
-            SortType.DATE_TAKEN -> media.sortedBy { it.dateAdded }
-            SortType.RANDOM -> media.shuffled()
-            else -> media.sortedBy { it.dateAdded }
-        }
-
-        return if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
-            baseSorted.reversed()
-        } else {
-            baseSorted
-        }
-    }
-
-    private fun groupMedia(items: List<MediaItem>, type: GroupByType, order: SortOrder): Map<String, List<MediaItem>> {
-        if (type == GroupByType.NONE) return mapOf("" to items)
-
-        val sortedItems = when (type) {
-            GroupByType.DATE_TAKEN_DAILY, GroupByType.DATE_TAKEN_MONTHLY -> {
-                if (order == SortOrder.DESCENDING) items.sortedByDescending { it.dateAdded }
-                else items.sortedBy { it.dateAdded }
-            }
-            GroupByType.LAST_MODIFIED_DAILY, GroupByType.LAST_MODIFIED_MONTHLY -> {
-                if (order == SortOrder.DESCENDING) items.sortedByDescending { it.dateModified }
-                else items.sortedBy { it.dateModified }
-            }
-            GroupByType.FILE_TYPE -> {
-                if (order == SortOrder.DESCENDING) items.sortedByDescending { it.type.name }
-                else items.sortedBy { it.type.name }
-            }
-            GroupByType.NONE -> items
-        }
-
-        return when (type) {
-            GroupByType.DATE_TAKEN_DAILY, GroupByType.LAST_MODIFIED_DAILY -> {
-                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val today = sdf.format(Date())
-                val yesterday = sdf.format(Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000))
-                
-                sortedItems.groupBy { item ->
-                    val date = if (type == GroupByType.DATE_TAKEN_DAILY) item.dateAdded else item.dateModified
-                    val dateStr = sdf.format(Date(date * 1000))
-                    when (dateStr) {
-                        today -> "Today"
-                        yesterday -> "Yesterday"
-                        else -> SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(date * 1000))
-                    }
-                }
-            }
-            GroupByType.DATE_TAKEN_MONTHLY, GroupByType.LAST_MODIFIED_MONTHLY -> {
-                val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-                sortedItems.groupBy { item ->
-                    val date = if (type == GroupByType.DATE_TAKEN_MONTHLY) item.dateAdded else item.dateModified
-                    sdf.format(Date(date * 1000))
-                }
-            }
-            GroupByType.FILE_TYPE -> {
-                sortedItems.groupBy {
-                    it.type.name.lowercase().replaceFirstChar { char -> char.uppercase() } + "s"
-                }
-            }
-            GroupByType.NONE -> mapOf("" to sortedItems)
-        }
-    }
-}
-
-enum class DisplayMode {
-    GALLERY, CALENDAR
-}
-
-enum class OperationType {
-    COPY, MOVE
 }
 
 data class MoveOperation(
     val uris: List<android.net.Uri>,
     val targetRelativePath: String
 )
-
-enum class GroupByType {
-    NONE, LAST_MODIFIED_DAILY, LAST_MODIFIED_MONTHLY, DATE_TAKEN_DAILY, DATE_TAKEN_MONTHLY, FILE_TYPE
-}
-
-enum class SortType {
-    NAME, PATH, SIZE, LAST_MODIFIED, DATE_TAKEN, RANDOM
-}
-
-enum class SortOrder {
-    ASCENDING, DESCENDING
-}
-
-enum class ViewType {
-    GRID, LIST
-}
-
-sealed class GalleryUiState {
-    object Loading : GalleryUiState()
-    data class Success(val folders: List<com.davide.seddio.easygallery.data.Folder>) : GalleryUiState()
-    data class Error(val message: String) : GalleryUiState()
-}

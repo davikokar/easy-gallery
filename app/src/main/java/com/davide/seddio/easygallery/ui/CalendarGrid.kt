@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.ui
 
+import com.davide.seddio.easygallery.data.ViewType
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
