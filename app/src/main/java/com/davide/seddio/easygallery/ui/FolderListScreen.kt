@@ -746,6 +746,7 @@ fun FolderGrid(
         verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier
             .fillMaxSize()
+            .testTag("folder_grid")
             .pointerInput(Unit) {
                 awaitEachGesture {
                     do {
@@ -886,7 +887,7 @@ fun FolderList(
     onFolderLongClick: (Folder) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(BottomGrey),
+        modifier = Modifier.fillMaxSize().background(BottomGrey).testTag("folder_list"),
         state = state,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
