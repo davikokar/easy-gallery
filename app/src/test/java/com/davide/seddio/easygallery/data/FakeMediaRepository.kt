@@ -6,6 +6,7 @@ class FakeMediaRepository : MediaRepository {
     var folders = listOf<Folder>()
     var mediaItems = listOf<MediaItem>()
     val deletedUris = mutableListOf<Uri>()
+    val movedUris = mutableListOf<Pair<List<Uri>, String>>()
     var shouldThrowSecurityException = false
 
     override suspend fun getFolders(): List<Folder> = folders
@@ -28,6 +29,7 @@ class FakeMediaRepository : MediaRepository {
 
     override suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String) {
         if (shouldThrowSecurityException) throw SecurityException("Mock security exception")
+        movedUris.add(uris to targetRelativePath)
     }
 
     override fun getSubdirectories(path: String): List<Folder> = emptyList()

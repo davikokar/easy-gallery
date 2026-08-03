@@ -217,4 +217,122 @@ class GalleryViewModelTest {
         assertNotNull(viewModel.pendingWriteRequest.value)
         assertEquals(mockIntentSender, viewModel.pendingWriteRequest.value?.intentSender)
     }
+
+    @Test
+    fun `moving selected media calls repository with correct parameters`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        val destPath = "/storage/emulated/0/NewFolder"
+        
+        viewModel.enterMediaSelectionMode(item)
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath(destPath)
+        
+        assertEquals(1, repository.movedUris.size)
+        assertEquals(listOf(mockUri1), repository.movedUris[0].first)
+        assertEquals("NewFolder/", repository.movedUris[0].second)
+    }
+
+    @Test
+    fun `moving selected folders moves all contained media`() = runTest {
+        val media = listOf(
+            createMediaItem(mockUri1, "/storage/emulated/0/A"),
+            createMediaItem(mockUri2, "/storage/emulated/0/A"),
+            createMediaItem(mockk(), "/storage/emulated/0/B")
+        )
+        repository.mediaItems = media
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        viewModel.loadFolders()
+        
+        viewModel.enterSelectionMode("/storage/emulated/0/A")
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath("/storage/emulated/0/Target")
+        
+        assertEquals(1, repository.movedUris.size)
+        assertEquals(setOf(mockUri1, mockUri2), repository.movedUris[0].first.toSet())
+        assertEquals("Target/", repository.movedUris[0].second)
+    }
+
+    @Test
+    fun `successful move cleans up UI state`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        
+        viewModel.enterMediaSelectionMode(item)
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath("/storage/emulated/0/Target")
+        
+        assertFalse(viewModel.isMediaSelectionMode.value)
+        assertFalse(viewModel.isDestinationPickerActive.value)
+        assertNull(viewModel.pendingOperation.value)
+    }
+
+    @Test
+    fun `move to invalid path outside root does nothing`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        
+        viewModel.enterMediaSelectionMode(item)
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath("/data/user/0/invalid")
+        
+        assertTrue(repository.movedUris.isEmpty())
+        assertTrue(viewModel.isMediaSelectionMode.value) // Still in mode
+    }
+
+    @Test
+    fun `SecurityException during move stores pending operation and emits request`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        val mockIntentSender = mockk<android.content.IntentSender>()
+        
+        repository.shouldThrowSecurityException = true
+        every { permissionHandler.createWriteRequest(any(), any()) } returns mockIntentSender
+        
+        viewModel.enterMediaSelectionMode(item)
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath("/storage/emulated/0/Target")
+        
+        assertNotNull(viewModel.pendingMoveOperation.value)
+        assertEquals(listOf(mockUri1), viewModel.pendingMoveOperation.value?.uris)
+        assertEquals("Target/", viewModel.pendingMoveOperation.value?.targetRelativePath)
+        assertEquals(mockIntentSender, viewModel.pendingWriteRequest.value?.intentSender)
+    }
+
+    @Test
+    fun `onWriteRequestResult true retries pending move`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        
+        // 1. Simulate SecurityException to set up pending operation
+        repository.shouldThrowSecurityException = true
+        viewModel.enterMediaSelectionMode(item)
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath("/storage/emulated/0/Target")
+        
+        // 2. Clear exception flag and grant permission
+        repository.shouldThrowSecurityException = false
+        viewModel.onWriteRequestResult(true)
+        
+        // 3. Verify move finally happened
+        assertEquals(1, repository.movedUris.size)
+        assertEquals(listOf(mockUri1), repository.movedUris[0].first)
+        assertNull(viewModel.pendingMoveOperation.value)
+    }
+
+    @Test
+    fun `onWriteRequestResult false clears pending move`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        
+        repository.shouldThrowSecurityException = true
+        viewModel.enterMediaSelectionMode(item)
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath("/storage/emulated/0/Target")
+        
+        viewModel.onWriteRequestResult(false)
+        
+        assertNull(viewModel.pendingMoveOperation.value)
+        assertTrue(repository.movedUris.isEmpty())
+    }
 }

@@ -498,6 +498,7 @@ class GalleryViewModel @JvmOverloads constructor(
     private suspend fun tryMoveMedia(uris: List<android.net.Uri>, targetRelativePath: String) {
         try {
             repository.updateMediaRelativePath(uris, targetRelativePath)
+            _pendingMoveOperation.value = null
             exitMediaSelectionMode()
             exitSelectionMode()
             cancelOperation()
