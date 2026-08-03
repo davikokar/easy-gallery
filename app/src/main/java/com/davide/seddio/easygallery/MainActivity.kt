@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
             
             LaunchedEffect(pendingWriteRequest) {
                 pendingWriteRequest?.let {
-                    intentSenderLauncher.launch(IntentSenderRequest.Builder(it).build())
+                    intentSenderLauncher.launch(IntentSenderRequest.Builder(it.intentSender).build())
                 }
             }
 

@@ -5,6 +5,8 @@ import android.net.Uri
 class FakeMediaRepository : MediaRepository {
     var folders = listOf<Folder>()
     var mediaItems = listOf<MediaItem>()
+    val deletedUris = mutableListOf<Uri>()
+    var shouldThrowSecurityException = false
 
     override suspend fun getFolders(): List<Folder> = folders
 
@@ -19,9 +21,14 @@ class FakeMediaRepository : MediaRepository {
 
     override suspend fun rotateImage(uri: Uri, degrees: Int) {}
 
-    override suspend fun deleteMediaItems(uris: List<Uri>) {}
+    override suspend fun deleteMediaItems(uris: List<Uri>) {
+        if (shouldThrowSecurityException) throw SecurityException("Mock security exception")
+        deletedUris.addAll(uris)
+    }
 
-    override suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String) {}
+    override suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String) {
+        if (shouldThrowSecurityException) throw SecurityException("Mock security exception")
+    }
 
     override fun getSubdirectories(path: String): List<Folder> = emptyList()
 }

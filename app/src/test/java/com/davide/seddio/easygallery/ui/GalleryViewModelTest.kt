@@ -26,6 +26,7 @@ class GalleryViewModelTest {
 
     private val application = mockk<Application>(relaxed = true)
     private val repository = FakeMediaRepository()
+    private val permissionHandler = mockk<MediaPermissionHandler>(relaxed = true)
     private val testDispatcher = UnconfinedTestDispatcher()
 
     private val mockUri1 = mockk<Uri>()
@@ -61,7 +62,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `long-pressing a folder enters selection mode`() = runTest {
-        val viewModel = GalleryViewModel(application, repository)
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
         val folderPath = "/storage/emulated/0/Pictures"
         
         viewModel.enterSelectionMode(folderPath)
@@ -72,7 +73,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `selecting a second folder adds it to selection`() = runTest {
-        val viewModel = GalleryViewModel(application, repository)
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
         val folder1 = "/path/1"
         val folder2 = "/path/2"
         
@@ -84,7 +85,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `selecting the last selected folder exits selection mode`() = runTest {
-        val viewModel = GalleryViewModel(application, repository)
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
         val folderPath = "/path/1"
         
         viewModel.enterSelectionMode(folderPath)
@@ -102,7 +103,7 @@ class GalleryViewModelTest {
         )
         repository.mediaItems = media
         
-        val viewModel = GalleryViewModel(application, repository)
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
         
         // Start collecting filteredFolders to activate stateIn
         val job = launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -123,7 +124,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `selected media uses Uri identity`() = runTest {
-        val viewModel = GalleryViewModel(application, repository)
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
         val item = createMediaItem(mockUri1, "/path")
         
         viewModel.enterMediaSelectionMode(item)
@@ -134,7 +135,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `exiting media selection clears selected media`() = runTest {
-        val viewModel = GalleryViewModel(application, repository)
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
         val item = createMediaItem(mockUri1, "/path")
         
         viewModel.enterMediaSelectionMode(item)
@@ -146,12 +147,74 @@ class GalleryViewModelTest {
 
     @Test
     fun `exiting folder selection clears selected folders`() = runTest {
-        val viewModel = GalleryViewModel(application, repository)
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
         
         viewModel.enterSelectionMode("/path")
         viewModel.exitSelectionMode()
         
         assertFalse(viewModel.isSelectionMode.value)
         assertTrue(viewModel.selectedFolders.value.isEmpty())
+    }
+
+    @Test
+    fun `deleteMedia calls repository and reloads folders`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        
+        viewModel.deleteMedia(item)
+        
+        assertEquals(listOf(mockUri1), repository.deletedUris)
+        // Verify loadFolders was called by checking repository interaction
+        // Since we are using UnconfinedTestDispatcher and a fake, we check side effects.
+    }
+
+    @Test
+    fun `deleteSelectedMedia deletes all selected media Uris`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item1 = createMediaItem(mockUri1, "/path1")
+        val item2 = createMediaItem(mockUri2, "/path2")
+        
+        viewModel.enterMediaSelectionMode(item1)
+        viewModel.toggleMediaSelection(item2)
+        
+        viewModel.deleteSelectedMedia()
+        
+        assertEquals(setOf(mockUri1, mockUri2), repository.deletedUris.toSet())
+        assertFalse(viewModel.isMediaSelectionMode.value)
+    }
+
+    @Test
+    fun `deleteSelected folder deletes all media in those folders`() = runTest {
+        val media = listOf(
+            createMediaItem(mockUri1, "/path/A"),
+            createMediaItem(mockUri2, "/path/B"),
+            createMediaItem(mockk(), "/path/C")
+        )
+        repository.mediaItems = media
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        viewModel.loadFolders()
+        
+        viewModel.enterSelectionMode("/path/A")
+        viewModel.toggleSelection("/path/B")
+        
+        viewModel.deleteSelected()
+        
+        assertEquals(setOf(mockUri1, mockUri2), repository.deletedUris.toSet())
+        assertFalse(viewModel.isSelectionMode.value)
+    }
+
+    @Test
+    fun `SecurityException in deletion emits pending permission request`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+        val mockIntentSender = mockk<android.content.IntentSender>()
+        
+        repository.shouldThrowSecurityException = true
+        every { permissionHandler.createDeleteRequest(any(), any()) } returns mockIntentSender
+        
+        viewModel.deleteMedia(item)
+        
+        assertNotNull(viewModel.pendingWriteRequest.value)
+        assertEquals(mockIntentSender, viewModel.pendingWriteRequest.value?.intentSender)
     }
 }

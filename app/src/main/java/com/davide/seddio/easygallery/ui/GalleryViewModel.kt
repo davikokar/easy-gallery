@@ -18,7 +18,8 @@ import java.util.*
 
 class GalleryViewModel @JvmOverloads constructor(
     application: Application,
-    private val repository: MediaRepository = MediaStoreDataSource(application)
+    private val repository: MediaRepository = MediaStoreDataSource(application),
+    private val permissionHandler: MediaPermissionHandler = DefaultMediaPermissionHandler()
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
@@ -97,8 +98,8 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _browsingPath = MutableStateFlow(Environment.getExternalStorageDirectory().absolutePath)
     val browsingPath: StateFlow<String> = _browsingPath.asStateFlow()
 
-    private val _pendingWriteRequest = MutableStateFlow<android.content.IntentSender?>(null)
-    val pendingWriteRequest: StateFlow<android.content.IntentSender?> = _pendingWriteRequest.asStateFlow()
+    private val _pendingWriteRequest = MutableStateFlow<PendingMediaPermissionRequest?>(null)
+    val pendingWriteRequest: StateFlow<PendingMediaPermissionRequest?> = _pendingWriteRequest.asStateFlow()
 
     private val _pendingMoveOperation = MutableStateFlow<MoveOperation?>(null)
     val pendingMoveOperation: StateFlow<MoveOperation?> = _pendingMoveOperation.asStateFlow()
@@ -357,14 +358,10 @@ class GalleryViewModel @JvmOverloads constructor(
             onSuccess()
             loadFolders()
         } catch (e: SecurityException) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val intentSender = android.provider.MediaStore.createDeleteRequest(
-                    getApplication<Application>().contentResolver,
-                    uris
-                ).intentSender
-                _pendingWriteRequest.value = intentSender
-            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && e is android.app.RecoverableSecurityException) {
-                _pendingWriteRequest.value = e.userAction.actionIntent.intentSender
+            permissionHandler.createDeleteRequest(getApplication<Application>().contentResolver, uris)?.let {
+                _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
+            } ?: permissionHandler.getIntentSenderFromException(e)?.let {
+                _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
             }
         }
     }
@@ -381,15 +378,11 @@ class GalleryViewModel @JvmOverloads constructor(
                 exitMediaSelectionMode()
                 loadFolders()
             } catch (e: SecurityException) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    val uris = selectedMedia.map { it.uri }
-                    val intentSender = android.provider.MediaStore.createWriteRequest(
-                        getApplication<Application>().contentResolver,
-                        uris
-                    ).intentSender
-                    _pendingWriteRequest.value = intentSender
-                } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && e is android.app.RecoverableSecurityException) {
-                    _pendingWriteRequest.value = e.userAction.actionIntent.intentSender
+                val uris = selectedMedia.map { it.uri }
+                permissionHandler.createWriteRequest(getApplication<Application>().contentResolver, uris)?.let {
+                    _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
+                } ?: permissionHandler.getIntentSenderFromException(e)?.let {
+                    _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
                 }
             }
         }
@@ -511,14 +504,10 @@ class GalleryViewModel @JvmOverloads constructor(
             loadFolders()
         } catch (e: SecurityException) {
             _pendingMoveOperation.value = MoveOperation(uris, targetRelativePath)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val intentSender = android.provider.MediaStore.createWriteRequest(
-                    getApplication<Application>().contentResolver,
-                    uris
-                ).intentSender
-                _pendingWriteRequest.value = intentSender
-            } else if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q && e is android.app.RecoverableSecurityException) {
-                _pendingWriteRequest.value = e.userAction.actionIntent.intentSender
+            permissionHandler.createWriteRequest(getApplication<Application>().contentResolver, uris)?.let {
+                _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
+            } ?: permissionHandler.getIntentSenderFromException(e)?.let {
+                _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
             }
         }
     }

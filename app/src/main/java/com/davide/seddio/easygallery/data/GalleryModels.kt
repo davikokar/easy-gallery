@@ -26,6 +26,16 @@ enum class ViewType {
 
 sealed class GalleryUiState {
     object Loading : GalleryUiState()
-    data class Success(val folders: List<Folder>) : GalleryUiState()
+data class Success(val folders: List<Folder>) : GalleryUiState()
     data class Error(val message: String) : GalleryUiState()
+}
+
+data class PendingMediaPermissionRequest(
+    val intentSender: android.content.IntentSender
+)
+
+interface MediaPermissionHandler {
+    fun createDeleteRequest(contentResolver: android.content.ContentResolver, uris: List<android.net.Uri>): android.content.IntentSender?
+    fun createWriteRequest(contentResolver: android.content.ContentResolver, uris: List<android.net.Uri>): android.content.IntentSender?
+    fun getIntentSenderFromException(e: SecurityException): android.content.IntentSender?
 }
