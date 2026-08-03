@@ -9,7 +9,9 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import com.davide.seddio.easygallery.ui.theme.TopBarBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +45,10 @@ fun SelectionTopBar(
             IconButton(onClick = onPin) {
                 Icon(Icons.Default.PushPin, contentDescription = "Pin/Unpin", tint = Color.White)
             }
-            IconButton(onClick = onDelete) {
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.testTag("delete_button")
+            ) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
             }
             
@@ -71,6 +76,7 @@ fun SelectionTopBar(
                     )
                     DropdownMenuItem(
                         text = { Text("Move to") },
+                        modifier = Modifier.testTag("move_to_button"),
                         onClick = {
                             showMenu = false
                             onMoveTo()

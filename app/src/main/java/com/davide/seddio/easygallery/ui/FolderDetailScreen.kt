@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.*
@@ -59,17 +60,118 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val pictureGroupBy by viewModel.pictureGroupBy.collectAsState()
     val pictureGroupOrder by viewModel.pictureGroupOrder.collectAsState()
     val groupedMedia by viewModel.groupedFolderMedia.collectAsState()
-    
     val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
+    val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
+    val pendingOperation by viewModel.pendingOperation.collectAsState()
+    val browsingPath by viewModel.browsingPath.collectAsState()
+    val browsingFolders by viewModel.browsingFolders.collectAsState()
 
+    FolderDetailContent(
+        media = media,
+        selectedFolder = selectedFolder,
+        columnsCount = columnsCount,
+        showInfo = showInfo,
+        searchQuery = searchQuery,
+        isSearchActive = isSearchActive,
+        selectedMediaTypes = selectedMediaTypes,
+        pictureSortType = pictureSortType,
+        pictureSortOrder = pictureSortOrder,
+        pictureViewType = pictureViewType,
+        pictureGroupBy = pictureGroupBy,
+        pictureGroupOrder = pictureGroupOrder,
+        groupedMedia = groupedMedia,
+        isMediaSelectionMode = isMediaSelectionMode,
+        selectedMediaItems = selectedMediaItems,
+        isDestinationPickerActive = isDestinationPickerActive,
+        pendingOperation = pendingOperation,
+        browsingPath = browsingPath,
+        browsingFolders = browsingFolders,
+        onExitMediaSelectionMode = { viewModel.exitMediaSelectionMode() },
+        onDeleteSelectedMedia = { viewModel.deleteSelectedMedia() },
+        onStartOperation = { viewModel.startOperation(it) },
+        onSelectAllMedia = { viewModel.selectAllMedia() },
+        onSetSearchQuery = { viewModel.setSearchQuery(it) },
+        onSetSearchActive = { viewModel.setSearchActive(it) },
+        onSetColumnsCount = { count, forPictures -> viewModel.setColumnsCount(count, forPictures) },
+        onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it) },
+        onSetSortType = { type, forPictures -> viewModel.setSortType(type, forPictures) },
+        onSetSortOrder = { order, forPictures -> viewModel.setSortOrder(order, forPictures) },
+        onSetGroupBy = { viewModel.setGroupBy(it) },
+        onSetGroupOrder = { viewModel.setGroupOrder(it) },
+        onSetViewType = { type, forPictures -> viewModel.setViewType(type, forPictures) },
+        onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
+        onSetSettingsMode = { viewModel.setSettingsMode(it) },
+        onBackToFolders = { viewModel.backToFolders() },
+        onToggleInfo = { viewModel.toggleInfo() },
+        onUpdateBrowsingPath = { viewModel.updateBrowsingPath(it) },
+        onPerformOperationWithPath = { viewModel.performOperationWithPath(it) },
+        onCancelOperation = { viewModel.cancelOperation() },
+        getSelectedMediaData = { viewModel.getSelectedMediaData() },
+        onRotateSelectedMedia = { viewModel.rotateSelectedMedia(it) },
+        onSelectMedia = { viewModel.selectMedia(it) },
+        onEnterMediaSelectionMode = { viewModel.enterMediaSelectionMode(it) },
+        onDecreaseColumns = { viewModel.decreaseColumns(it) },
+        onIncreaseColumns = { viewModel.increaseColumns(it) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderDetailContent(
+    media: List<MediaItem>,
+    selectedFolder: com.davide.seddio.easygallery.data.Folder?,
+    columnsCount: Int,
+    showInfo: Boolean,
+    searchQuery: String,
+    isSearchActive: Boolean,
+    selectedMediaTypes: Set<com.davide.seddio.easygallery.data.MediaType>,
+    pictureSortType: SortType,
+    pictureSortOrder: SortOrder,
+    pictureViewType: ViewType,
+    pictureGroupBy: GroupByType,
+    pictureGroupOrder: SortOrder,
+    groupedMedia: Map<String, List<MediaItem>>,
+    isMediaSelectionMode: Boolean,
+    selectedMediaItems: Set<android.net.Uri>,
+    isDestinationPickerActive: Boolean,
+    pendingOperation: OperationType?,
+    browsingPath: String,
+    browsingFolders: List<com.davide.seddio.easygallery.data.Folder>,
+    onExitMediaSelectionMode: () -> Unit,
+    onDeleteSelectedMedia: () -> Unit,
+    onStartOperation: (OperationType) -> Unit,
+    onSelectAllMedia: () -> Unit,
+    onSetSearchQuery: (String) -> Unit,
+    onSetSearchActive: (Boolean) -> Unit,
+    onSetColumnsCount: (Int, Boolean) -> Unit,
+    onSetSelectedMediaTypes: (Set<com.davide.seddio.easygallery.data.MediaType>) -> Unit,
+    onSetSortType: (SortType, Boolean) -> Unit,
+    onSetSortOrder: (SortOrder, Boolean) -> Unit,
+    onSetGroupBy: (GroupByType) -> Unit,
+    onSetGroupOrder: (SortOrder) -> Unit,
+    onSetViewType: (ViewType, Boolean) -> Unit,
+    onSetShowExcludedTemporarily: (Boolean) -> Unit,
+    onSetSettingsMode: (Boolean) -> Unit,
+    onBackToFolders: () -> Unit,
+    onToggleInfo: () -> Unit,
+    onUpdateBrowsingPath: (String) -> Unit,
+    onPerformOperationWithPath: (String) -> Unit,
+    onCancelOperation: () -> Unit,
+    getSelectedMediaData: () -> List<MediaItem>,
+    onRotateSelectedMedia: (Int) -> Unit,
+    onSelectMedia: (MediaItem) -> Unit,
+    onEnterMediaSelectionMode: (MediaItem) -> Unit,
+    onDecreaseColumns: (Boolean) -> Unit,
+    onIncreaseColumns: (Boolean) -> Unit
+) {
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     if (isMediaSelectionMode) {
-        BackHandler { viewModel.exitMediaSelectionMode() }
+        BackHandler { onExitMediaSelectionMode() }
     } else {
-        BackHandler { viewModel.backToFolders() }
+        BackHandler { onBackToFolders() }
     }
 
     var showColumnCountDialog by remember { mutableStateOf(false) }
@@ -81,45 +183,42 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     var showPropertiesDialog by remember { mutableStateOf(false) }
     var showRotateDialog by remember { mutableStateOf(false) }
     
-    val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
-    val pendingOperation by viewModel.pendingOperation.collectAsState()
-
     Scaffold(
         topBar = {
             if (isMediaSelectionMode) {
                 MediaSelectionTopBar(
                     selectedCount = selectedMediaItems.size,
                     totalCount = media.size,
-                    onClose = { viewModel.exitMediaSelectionMode() },
+                    onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
                     onInfoClick = { showPropertiesDialog = true },
                     onRename = { /* Placeholder */ },
                     onRotate = { showRotateDialog = true },
-                    onCopyTo = { viewModel.startOperation(OperationType.COPY) },
-                    onMoveTo = { viewModel.startOperation(OperationType.MOVE) },
-                    onSelectAll = { viewModel.selectAllMedia() }
+                    onCopyTo = { onStartOperation(OperationType.COPY) },
+                    onMoveTo = { onStartOperation(OperationType.MOVE) },
+                    onSelectAll = { onSelectAllMedia() }
                 )
             } else {
                 SearchTopBar(
                     title = selectedFolder?.name ?: "Gallery",
                     searchQuery = searchQuery,
                     isSearchActive = isSearchActive,
-                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                    onSearchActiveChange = { viewModel.setSearchActive(it) },
+                    onSearchQueryChange = { onSetSearchQuery(it) },
+                    onSearchActiveChange = { onSetSearchActive(it) },
                     onColumnCountClick = { showColumnCountDialog = true },
                     onFilterMediaClick = { showFilterDialog = true },
                     onSortClick = { showSortDialog = true },
                     onGroupByClick = { showGroupByDialog = true },
                     onViewTypeClick = { showViewTypeDialog = true },
-                    onShowExcludedClick = { viewModel.setShowExcludedTemporarily(true) },
-                    onSettingsClick = { viewModel.setSettingsMode(true) },
+                    onShowExcludedClick = { onSetShowExcludedTemporarily(true) },
+                    onSettingsClick = { onSetSettingsMode(true) },
                     navigationIcon = {
-                        IconButton(onClick = { viewModel.backToFolders() }) {
+                        IconButton(onClick = { onBackToFolders() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                     },
                     actions = {
-                        IconButton(onClick = { viewModel.toggleInfo() }) {
+                        IconButton(onClick = { onToggleInfo() }) {
                             Icon(
                                 Icons.Default.Info,
                                 contentDescription = "Toggle Info",
@@ -139,7 +238,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 text = { Text("Are you sure you want to delete the selected items? This action cannot be undone.") },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel.deleteSelectedMedia()
+                        onDeleteSelectedMedia()
                         showDeleteDialog = false
                     }) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -155,7 +254,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
 
         if (showPropertiesDialog) {
             MediaPropertiesDialog(
-                media = viewModel.getSelectedMediaData(),
+                media = getSelectedMediaData(),
                 onDismiss = { showPropertiesDialog = false }
             )
         }
@@ -163,7 +262,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         if (showRotateDialog) {
             RotateDialog(
                 onRotate = {
-                    viewModel.rotateSelectedMedia(it)
+                    onRotateSelectedMedia(it)
                     showRotateDialog = false
                 },
                 onDismiss = { showRotateDialog = false }
@@ -174,7 +273,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             ColumnCountDialog(
                 currentCount = columnsCount,
                 onCountSelected = {
-                    viewModel.setColumnsCount(it, forPictures = true)
+                    onSetColumnsCount(it, true)
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
@@ -185,7 +284,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             FilterMediaDialog(
                 initialSelectedTypes = selectedMediaTypes,
                 onConfirm = {
-                    viewModel.setSelectedMediaTypes(it)
+                    onSetSelectedMediaTypes(it)
                     showFilterDialog = false
                 },
                 onDismiss = { showFilterDialog = false }
@@ -197,10 +296,10 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                 currentSort = pictureSortType,
                 currentOrder = pictureSortOrder,
                 onSortSelected = {
-                    viewModel.setSortType(it, forPictures = true)
+                    onSetSortType(it, true)
                 },
                 onOrderSelected = {
-                    viewModel.setSortOrder(it, forPictures = true)
+                    onSetSortOrder(it, true)
                 },
                 onDismiss = { showSortDialog = false }
             )
@@ -210,8 +309,8 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             GroupByDialog(
                 currentGroupBy = pictureGroupBy,
                 currentOrder = pictureGroupOrder,
-                onGroupBySelected = { viewModel.setGroupBy(it) },
-                onOrderSelected = { viewModel.setGroupOrder(it) },
+                onGroupBySelected = { onSetGroupBy(it) },
+                onOrderSelected = { onSetGroupOrder(it) },
                 onDismiss = { showGroupByDialog = false }
             )
         }
@@ -220,7 +319,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
             ViewTypeDialog(
                 currentViewType = pictureViewType,
                 onViewTypeSelected = {
-                    viewModel.setViewType(it, forPictures = true)
+                    onSetViewType(it, true)
                     showViewTypeDialog = false
                 },
                 onDismiss = { showViewTypeDialog = false }
@@ -228,17 +327,14 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         }
 
         if (isDestinationPickerActive) {
-            val browsingPath by viewModel.browsingPath.collectAsState()
-            val browsingFolders by viewModel.browsingFolders.collectAsState()
-            
             DestinationFolderPickerDialog(
                 title = if (pendingOperation == OperationType.MOVE) "Move to..." else "Copy to...",
                 currentPath = browsingPath,
                 folders = browsingFolders,
-                onFolderSelected = { viewModel.updateBrowsingPath(it.path) },
-                onBreadcrumbClick = { viewModel.updateBrowsingPath(it) },
-                onConfirm = { viewModel.performOperationWithPath(browsingPath) },
-                onDismiss = { viewModel.cancelOperation() }
+                onFolderSelected = { onUpdateBrowsingPath(it.path) },
+                onBreadcrumbClick = { onUpdateBrowsingPath(it) },
+                onConfirm = { onPerformOperationWithPath(browsingPath) },
+                onDismiss = { onCancelOperation() }
             )
         }
 
@@ -256,10 +352,10 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                         state = gridState,
                         showInfo = showInfo,
                         selectedItems = selectedMediaItems,
-                        onItemClick = { viewModel.selectMedia(it) },
-                        onItemLongClick = { viewModel.enterMediaSelectionMode(it) },
-                        onZoomIn = { viewModel.decreaseColumns(forPictures = true) },
-                        onZoomOut = { viewModel.increaseColumns(forPictures = true) }
+                        onItemClick = { onSelectMedia(it) },
+                        onItemLongClick = { onEnterMediaSelectionMode(it) },
+                        onZoomIn = { onDecreaseColumns(true) },
+                        onZoomOut = { onIncreaseColumns(true) }
                     )
                 } else {
                     MediaList(
@@ -267,8 +363,8 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                         state = listState,
                         showInfo = showInfo,
                         selectedItems = selectedMediaItems,
-                        onItemClick = { viewModel.selectMedia(it) },
-                        onItemLongClick = { viewModel.enterMediaSelectionMode(it) }
+                        onItemClick = { onSelectMedia(it) },
+                        onItemLongClick = { onEnterMediaSelectionMode(it) }
                     )
                 }
             } else {
@@ -280,10 +376,10 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
                     listState = listState,
                     showInfo = showInfo,
                     selectedItems = selectedMediaItems,
-                    onItemClick = { viewModel.selectMedia(it) },
-                    onItemLongClick = { viewModel.enterMediaSelectionMode(it) },
-                    onZoomIn = { viewModel.decreaseColumns(forPictures = true) },
-                    onZoomOut = { viewModel.increaseColumns(forPictures = true) }
+                    onItemClick = { onSelectMedia(it) },
+                    onItemLongClick = { onEnterMediaSelectionMode(it) },
+                    onZoomIn = { onDecreaseColumns(true) },
+                    onZoomOut = { onIncreaseColumns(true) }
                 )
             }
         }

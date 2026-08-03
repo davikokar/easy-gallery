@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import com.davide.seddio.easygallery.data.DisplayMode
 import com.davide.seddio.easygallery.ui.theme.TopBarBlue
 
@@ -135,6 +136,7 @@ fun SearchTopBar(
                         )
                         DropdownMenuItem(
                             text = { Text("Filter media") },
+                            modifier = Modifier.testTag("filter_media_button"),
                             onClick = {
                                 showMenu = false
                                 onFilterMediaClick?.invoke()

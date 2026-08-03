@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
@@ -38,6 +39,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
         modifier = Modifier
             .aspectRatio(1f)
             .animateItem()
+            .testTag("media_tile_${item.uri}")
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -67,6 +69,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
+                        .testTag("selected_checkmark")
                         .background(Color.White, CircleShape)
                 )
             }

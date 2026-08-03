@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaType
@@ -77,14 +78,153 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val folderViewType by viewModel.folderViewType.collectAsState()
     val pictureViewType by viewModel.pictureViewType.collectAsState()
     val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
-    
+    val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
+    val pendingOperation by viewModel.pendingOperation.collectAsState()
+    val browsingPath by viewModel.browsingPath.collectAsState()
+    val browsingFolders by viewModel.browsingFolders.collectAsState()
+
+    FolderListContent(
+        uiState = uiState,
+        folderColumns = folderColumns,
+        pictureColumns = pictureColumns,
+        searchQuery = searchQuery,
+        isSearchActive = isSearchActive,
+        isSelectionMode = isSelectionMode,
+        isMediaSelectionMode = isMediaSelectionMode,
+        selectedMediaItems = selectedMediaItems,
+        selectedFolders = selectedFolders,
+        displayMode = displayMode,
+        groupedAllMedia = groupedAllMedia,
+        showInfo = showInfo,
+        folderSortType = folderSortType,
+        pictureSortType = pictureSortType,
+        folderSortOrder = folderSortOrder,
+        pictureSortOrder = pictureSortOrder,
+        pictureGroupBy = pictureGroupBy,
+        pictureGroupOrder = pictureGroupOrder,
+        folderViewType = folderViewType,
+        pictureViewType = pictureViewType,
+        selectedMediaTypes = selectedMediaTypes,
+        isDestinationPickerActive = isDestinationPickerActive,
+        pendingOperation = pendingOperation,
+        browsingPath = browsingPath,
+        browsingFolders = browsingFolders,
+        onExitMediaSelectionMode = { viewModel.exitMediaSelectionMode() },
+        onExitSelectionMode = { viewModel.exitSelectionMode() },
+        onDeleteSelectedMedia = { viewModel.deleteSelectedMedia() },
+        onDeleteSelectedFolders = { viewModel.deleteSelected() },
+        onPinSelected = { viewModel.pinSelected() },
+        onSelectAllMedia = { viewModel.selectAllMedia() },
+        onSelectAllFolders = { viewModel.selectAll() },
+        onExcludeSelected = { viewModel.excludeSelected() },
+        onStartOperation = { viewModel.startOperation(it) },
+        onSetSearchQuery = { viewModel.setSearchQuery(it) },
+        onSetSearchActive = { viewModel.setSearchActive(it) },
+        onToggleDisplayMode = { viewModel.toggleDisplayMode() },
+        onSetSortType = { type, forPictures -> viewModel.setSortType(type, forPictures) },
+        onSetSortOrder = { order, forPictures -> viewModel.setSortOrder(order, forPictures) },
+        onSetGroupBy = { viewModel.setGroupBy(it) },
+        onSetGroupOrder = { viewModel.setGroupOrder(it) },
+        onSetColumnsCount = { count, forPictures -> viewModel.setColumnsCount(count, forPictures) },
+        onSetViewType = { type, forPictures -> viewModel.setViewType(type, forPictures) },
+        onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it) },
+        onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
+        onSetSettingsMode = { viewModel.setSettingsMode(it) },
+        onUpdateBrowsingPath = { viewModel.updateBrowsingPath(it) },
+        onPerformOperationWithPath = { viewModel.performOperationWithPath(it) },
+        onCancelOperation = { viewModel.cancelOperation() },
+        onSelectFolder = { viewModel.selectFolder(it) },
+        onEnterSelectionMode = { viewModel.enterSelectionMode(it) },
+        onDecreaseColumns = { viewModel.decreaseColumns(it) },
+        onIncreaseColumns = { viewModel.increaseColumns(it) },
+        onToggleInfo = { viewModel.toggleInfo() },
+        getSelectedMediaData = { viewModel.getSelectedMediaData() },
+        getSelectedFoldersData = { viewModel.getSelectedFoldersData() },
+        onRotateSelectedMedia = { viewModel.rotateSelectedMedia(it) },
+        onSelectMedia = { viewModel.selectMedia(it) },
+        onEnterMediaSelectionMode = { viewModel.enterMediaSelectionMode(it) },
+        calendarContent = {
+            CalendarGrid(
+                viewModel = viewModel,
+                groupedPhotos = groupedAllMedia,
+                columns = pictureColumns,
+                showInfo = showInfo
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FolderListContent(
+    uiState: GalleryUiState,
+    folderColumns: Int,
+    pictureColumns: Int,
+    searchQuery: String,
+    isSearchActive: Boolean,
+    isSelectionMode: Boolean,
+    isMediaSelectionMode: Boolean,
+    selectedMediaItems: Set<android.net.Uri>,
+    selectedFolders: Set<String>,
+    displayMode: DisplayMode,
+    groupedAllMedia: Map<String, List<com.davide.seddio.easygallery.data.MediaItem>>,
+    showInfo: Boolean,
+    folderSortType: SortType,
+    pictureSortType: SortType,
+    folderSortOrder: SortOrder,
+    pictureSortOrder: SortOrder,
+    pictureGroupBy: GroupByType,
+    pictureGroupOrder: SortOrder,
+    folderViewType: ViewType,
+    pictureViewType: ViewType,
+    selectedMediaTypes: Set<MediaType>,
+    isDestinationPickerActive: Boolean,
+    pendingOperation: OperationType?,
+    browsingPath: String,
+    browsingFolders: List<Folder>,
+    onExitMediaSelectionMode: () -> Unit,
+    onExitSelectionMode: () -> Unit,
+    onDeleteSelectedMedia: () -> Unit,
+    onDeleteSelectedFolders: () -> Unit,
+    onPinSelected: () -> Unit,
+    onSelectAllMedia: () -> Unit,
+    onSelectAllFolders: () -> Unit,
+    onExcludeSelected: () -> Unit,
+    onStartOperation: (OperationType) -> Unit,
+    onSetSearchQuery: (String) -> Unit,
+    onSetSearchActive: (Boolean) -> Unit,
+    onToggleDisplayMode: () -> Unit,
+    onSetSortType: (SortType, Boolean) -> Unit,
+    onSetSortOrder: (SortOrder, Boolean) -> Unit,
+    onSetGroupBy: (GroupByType) -> Unit,
+    onSetGroupOrder: (SortOrder) -> Unit,
+    onSetColumnsCount: (Int, Boolean) -> Unit,
+    onSetViewType: (ViewType, Boolean) -> Unit,
+    onSetSelectedMediaTypes: (Set<MediaType>) -> Unit,
+    onSetShowExcludedTemporarily: (Boolean) -> Unit,
+    onSetSettingsMode: (Boolean) -> Unit,
+    onUpdateBrowsingPath: (String) -> Unit,
+    onPerformOperationWithPath: (String) -> Unit,
+    onCancelOperation: () -> Unit,
+    onSelectFolder: (Folder) -> Unit,
+    onEnterSelectionMode: (String) -> Unit,
+    onDecreaseColumns: (Boolean) -> Unit,
+    onIncreaseColumns: (Boolean) -> Unit,
+    onToggleInfo: () -> Unit,
+    getSelectedMediaData: () -> List<com.davide.seddio.easygallery.data.MediaItem>,
+    getSelectedFoldersData: () -> List<Folder>,
+    onRotateSelectedMedia: (Int) -> Unit,
+    onSelectMedia: (com.davide.seddio.easygallery.data.MediaItem) -> Unit,
+    onEnterMediaSelectionMode: (com.davide.seddio.easygallery.data.MediaItem) -> Unit,
+    calendarContent: @Composable () -> Unit
+) {
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
     if (isMediaSelectionMode) {
-        BackHandler { viewModel.exitMediaSelectionMode() }
+        BackHandler { onExitMediaSelectionMode() }
     } else if (isSelectionMode) {
-        BackHandler { viewModel.exitSelectionMode() }
+        BackHandler { onExitSelectionMode() }
     }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -97,44 +237,36 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     var showFilterDialog by remember { mutableStateOf(false) }
     var showRotateDialog by remember { mutableStateOf(false) }
     
-    val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
-    val pendingOperation by viewModel.pendingOperation.collectAsState()
-
-    val totalFolders = if (uiState is GalleryUiState.Success) (uiState as GalleryUiState.Success).folders.size else 0
+    val totalFolders = if (uiState is GalleryUiState.Success) uiState.folders.size else 0
 
     Scaffold(
         topBar = {
             if (isMediaSelectionMode) {
-                val mediaList = if (displayMode == DisplayMode.CALENDAR) {
-                    viewModel.filteredAllMedia.collectAsState().value
-                } else {
-                    emptyList()
-                }
                 MediaSelectionTopBar(
                     selectedCount = selectedMediaItems.size,
-                    totalCount = mediaList.size,
-                    onClose = { viewModel.exitMediaSelectionMode() },
+                    totalCount = if (displayMode == DisplayMode.CALENDAR) groupedAllMedia.values.flatten().size else 0,
+                    onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
                     onInfoClick = { showPropertiesDialog = true },
                     onRename = { /* Placeholder */ },
                     onRotate = { showRotateDialog = true },
-                    onCopyTo = { viewModel.startOperation(OperationType.COPY) },
-                    onMoveTo = { viewModel.startOperation(OperationType.MOVE) },
-                    onSelectAll = { viewModel.selectAllMedia() }
+                    onCopyTo = { onStartOperation(OperationType.COPY) },
+                    onMoveTo = { onStartOperation(OperationType.MOVE) },
+                    onSelectAll = { onSelectAllMedia() }
                 )
             } else if (isSelectionMode) {
                 SelectionTopBar(
                     selectedCount = selectedFolders.size,
                     totalCount = totalFolders,
-                    onClose = { viewModel.exitSelectionMode() },
+                    onClose = { onExitSelectionMode() },
                     onDelete = { showDeleteDialog = true },
-                    onPin = { viewModel.pinSelected() },
+                    onPin = { onPinSelected() },
                     onInfoClick = { showPropertiesDialog = true },
-                    onSelectAll = { viewModel.selectAll() },
+                    onSelectAll = { onSelectAllFolders() },
                     onExclude = { showExcludeDialog = true },
                     onRename = { /* Placeholder */ },
-                    onCopyTo = { viewModel.startOperation(OperationType.COPY) },
-                    onMoveTo = { viewModel.startOperation(OperationType.MOVE) }
+                    onCopyTo = { onStartOperation(OperationType.COPY) },
+                    onMoveTo = { onStartOperation(OperationType.MOVE) }
                 )
             } else {
                 SearchTopBar(
@@ -142,16 +274,16 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                     searchQuery = searchQuery,
                     isSearchActive = isSearchActive,
                     displayMode = displayMode,
-                    onSearchQueryChange = { viewModel.setSearchQuery(it) },
-                    onSearchActiveChange = { viewModel.setSearchActive(it) },
-                    onToggleDisplayMode = { viewModel.toggleDisplayMode() },
+                    onSearchQueryChange = { onSetSearchQuery(it) },
+                    onSearchActiveChange = { onSetSearchActive(it) },
+                    onToggleDisplayMode = { onToggleDisplayMode() },
                     onSortClick = { showSortDialog = true },
                     onColumnCountClick = { showColumnCountDialog = true },
                     onGroupByClick = if (displayMode == DisplayMode.CALENDAR) { { showGroupByDialog = true } } else null,
                     onViewTypeClick = { showViewTypeDialog = true },
                     onFilterMediaClick = { showFilterDialog = true },
-                    onShowExcludedClick = { viewModel.setShowExcludedTemporarily(true) },
-                    onSettingsClick = { viewModel.setSettingsMode(true) }
+                    onShowExcludedClick = { onSetShowExcludedTemporarily(true) },
+                    onSettingsClick = { onSetSettingsMode(true) }
                 )
             }
         },
@@ -172,9 +304,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 confirmButton = {
                     TextButton(onClick = {
                         if (isMediaSelectionMode) {
-                            viewModel.deleteSelectedMedia()
+                            onDeleteSelectedMedia()
                         } else {
-                            viewModel.deleteSelected()
+                            onDeleteSelectedFolders()
                         }
                         showDeleteDialog = false
                     }) {
@@ -196,7 +328,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 text = { Text("The selected folders will be excluded from the gallery. If you want to include them again, you must visit Settings > Manage Excluded.") },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel.excludeSelected()
+                        onExcludeSelected()
                         showExcludeDialog = false
                     }) {
                         Text("Exclude")
@@ -215,10 +347,10 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 currentSort = if (displayMode == DisplayMode.GALLERY) folderSortType else pictureSortType,
                 currentOrder = if (displayMode == DisplayMode.GALLERY) folderSortOrder else pictureSortOrder,
                 onSortSelected = {
-                    viewModel.setSortType(it, forPictures = displayMode != DisplayMode.GALLERY)
+                    onSetSortType(it, displayMode != DisplayMode.GALLERY)
                 },
                 onOrderSelected = {
-                    viewModel.setSortOrder(it, forPictures = displayMode != DisplayMode.GALLERY)
+                    onSetSortOrder(it, displayMode != DisplayMode.GALLERY)
                 },
                 onDismiss = { showSortDialog = false }
             )
@@ -228,8 +360,8 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             GroupByDialog(
                 currentGroupBy = pictureGroupBy,
                 currentOrder = pictureGroupOrder,
-                onGroupBySelected = { viewModel.setGroupBy(it) },
-                onOrderSelected = { viewModel.setGroupOrder(it) },
+                onGroupBySelected = { onSetGroupBy(it) },
+                onOrderSelected = { onSetGroupOrder(it) },
                 onDismiss = { showGroupByDialog = false }
             )
         }
@@ -238,7 +370,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             ColumnCountDialog(
                 currentCount = if (displayMode == DisplayMode.GALLERY) folderColumns else pictureColumns,
                 onCountSelected = {
-                    viewModel.setColumnsCount(it, forPictures = displayMode != DisplayMode.GALLERY)
+                    onSetColumnsCount(it, displayMode != DisplayMode.GALLERY)
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
@@ -249,7 +381,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             ViewTypeDialog(
                 currentViewType = if (displayMode == DisplayMode.GALLERY) folderViewType else pictureViewType,
                 onViewTypeSelected = {
-                    viewModel.setViewType(it, forPictures = displayMode != DisplayMode.GALLERY)
+                    onSetViewType(it, displayMode != DisplayMode.GALLERY)
                     showViewTypeDialog = false
                 },
                 onDismiss = { showViewTypeDialog = false }
@@ -259,12 +391,12 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         if (showPropertiesDialog) {
             if (isMediaSelectionMode) {
                 MediaPropertiesDialog(
-                    media = viewModel.getSelectedMediaData(),
+                    media = getSelectedMediaData(),
                     onDismiss = { showPropertiesDialog = false }
                 )
             } else {
                 PropertiesDialog(
-                    folders = viewModel.getSelectedFoldersData(),
+                    folders = getSelectedFoldersData(),
                     onDismiss = { showPropertiesDialog = false }
                 )
             }
@@ -273,7 +405,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         if (showRotateDialog) {
             RotateDialog(
                 onRotate = {
-                    viewModel.rotateSelectedMedia(it)
+                    onRotateSelectedMedia(it)
                     showRotateDialog = false
                 },
                 onDismiss = { showRotateDialog = false }
@@ -284,7 +416,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
             FilterMediaDialog(
                 initialSelectedTypes = selectedMediaTypes,
                 onConfirm = {
-                    viewModel.setSelectedMediaTypes(it)
+                    onSetSelectedMediaTypes(it)
                     showFilterDialog = false
                 },
                 onDismiss = { showFilterDialog = false }
@@ -292,17 +424,14 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         }
 
         if (isDestinationPickerActive) {
-            val browsingPath by viewModel.browsingPath.collectAsState()
-            val browsingFolders by viewModel.browsingFolders.collectAsState()
-            
             DestinationFolderPickerDialog(
                 title = if (pendingOperation == OperationType.MOVE) "Move to..." else "Copy to...",
                 currentPath = browsingPath,
                 folders = browsingFolders,
-                onFolderSelected = { viewModel.updateBrowsingPath(it.path) },
-                onBreadcrumbClick = { viewModel.updateBrowsingPath(it) },
-                onConfirm = { viewModel.performOperationWithPath(browsingPath) },
-                onDismiss = { viewModel.cancelOperation() }
+                onFolderSelected = { onUpdateBrowsingPath(it.path) },
+                onBreadcrumbClick = { onUpdateBrowsingPath(it) },
+                onConfirm = { onPerformOperationWithPath(browsingPath) },
+                onDismiss = { onCancelOperation() }
             )
         }
 
@@ -313,12 +442,7 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                 .background(BottomGrey)
         ) {
             if (displayMode == DisplayMode.CALENDAR) {
-                CalendarGrid(
-                    viewModel = viewModel,
-                    groupedPhotos = groupedAllMedia,
-                    columns = pictureColumns,
-                    showInfo = showInfo
-                )
+                calendarContent()
             } else {
                 when (val state = uiState) {
                     is GalleryUiState.Loading -> {
@@ -333,18 +457,18 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
                                 columns = folderColumns,
                                 state = gridState,
                                 selectedFolders = selectedFolders,
-                                onFolderClick = { viewModel.selectFolder(it) },
-                                onFolderLongClick = { viewModel.enterSelectionMode(it.path) },
-                                onZoomIn = { viewModel.decreaseColumns(forPictures = false) },
-                                onZoomOut = { viewModel.increaseColumns(forPictures = false) }
+                                onFolderClick = { onSelectFolder(it) },
+                                onFolderLongClick = { onEnterSelectionMode(it.path) },
+                                onZoomIn = { onDecreaseColumns(false) },
+                                onZoomOut = { onIncreaseColumns(false) }
                             )
                         } else {
                             FolderList(
                                 folders = state.folders,
                                 state = listState,
                                 selectedFolders = selectedFolders,
-                                onFolderClick = { viewModel.selectFolder(it) },
-                                onFolderLongClick = { viewModel.enterSelectionMode(it.path) }
+                                onFolderClick = { onSelectFolder(it) },
+                                onFolderLongClick = { onEnterSelectionMode(it.path) }
                             )
                         }
                     }
@@ -666,6 +790,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
         modifier = Modifier
             .aspectRatio(1f)
             .animateItem()
+            .testTag("folder_tile_${folder.path}")
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -696,6 +821,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
+                        .testTag("selected_checkmark")
                         .background(Color.White, CircleShape)
                 )
             }
@@ -722,6 +848,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
                         .align(Alignment.TopStart)
                         .padding(8.dp)
                         .size(20.dp)
+                        .testTag("pin_icon")
                         .background(Color.Black.copy(alpha = 0.3f), CircleShape)
                         .padding(2.dp)
                 )
@@ -786,6 +913,7 @@ fun FolderListItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
+            .testTag("folder_tile_${folder.path}")
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -821,6 +949,7 @@ fun FolderListItem(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .size(24.dp)
+                            .testTag("selected_checkmark")
                             .background(Color.White, CircleShape)
                     )
                 }
@@ -833,6 +962,7 @@ fun FolderListItem(
                             .align(Alignment.TopStart)
                             .padding(4.dp)
                             .size(16.dp)
+                            .testTag("pin_icon")
                             .background(Color.Black.copy(alpha = 0.3f), CircleShape)
                             .padding(1.dp)
                     )
