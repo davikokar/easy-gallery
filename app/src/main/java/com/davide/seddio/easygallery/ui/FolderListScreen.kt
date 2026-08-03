@@ -52,7 +52,6 @@ import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.components.*
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
-import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -248,7 +247,6 @@ fun FolderListContent(
                     onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
                     onInfoClick = { showPropertiesDialog = true },
-                    onRename = { /* Placeholder */ },
                     onRotate = { showRotateDialog = true },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
@@ -264,7 +262,6 @@ fun FolderListContent(
                     onInfoClick = { showPropertiesDialog = true },
                     onSelectAll = { onSelectAllFolders() },
                     onExclude = { showExcludeDialog = true },
-                    onRename = { /* Placeholder */ },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) }
                 )

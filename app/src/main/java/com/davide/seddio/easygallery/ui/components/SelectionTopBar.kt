@@ -25,7 +25,6 @@ fun SelectionTopBar(
     onInfoClick: () -> Unit,
     onSelectAll: () -> Unit,
     onExclude: () -> Unit,
-    onRename: () -> Unit,
     onCopyTo: () -> Unit,
     onMoveTo: () -> Unit
 ) {
@@ -60,13 +59,6 @@ fun SelectionTopBar(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Rename") },
-                        onClick = {
-                            showMenu = false
-                            onRename()
-                        }
-                    )
                     DropdownMenuItem(
                         text = { Text("Copy to") },
                         onClick = {

@@ -1,0 +1,21 @@
+- [x] Delete default Android Studio sample tests
+    - [x] app/src/test/java/com/davide/seddio/easygallery/ExampleUnitTest.kt
+    - [x] app/src/androidTest/java/com/davide/seddio/easygallery/ExampleInstrumentedTest.kt
+- [x] Clean up MediaStoreDataSource.kt
+    - [x] Remove scanDirectory(...)
+    - [x] Remove deleteRecursive(...)
+- [x] Clean up GalleryViewModel.kt
+    - [x] Remove performOperation(Folder)
+    - [x] Remove toggleMediaType(MediaType)
+    - [x] Optimize imports (java.text.SimpleDateFormat, java.util.*, etc.)
+- [x] Clean up GalleryModels.kt
+    - [x] Reformat and fix indentation around GalleryUiState.Success
+- [x] Clean up Top Bars
+    - [x] MediaSelectionTopBar.kt: Remove Rename item and onRename parameter
+    - [x] SelectionTopBar.kt: Remove Rename item and onRename parameter
+- [x] Clean up Screen files
+    - [x] FolderListScreen.kt: Remove onRename calls and stale java.io.File import
+    - [x] FolderDetailScreen.kt: Remove onRename calls and stale java.text.SimpleDateFormat/java.util imports
+- [x] Verification
+    - [x] Run unit tests
+    - [x] App compile/build

@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.*
 
 class GalleryViewModel @JvmOverloads constructor(
     application: Application,
@@ -449,9 +447,6 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }
 
-    fun performOperation(destination: Folder) {
-        performOperationWithPath(destination.path)
-    }
 
     fun performOperationWithPath(path: String) {
         val operation = _pendingOperation.value ?: return
@@ -582,15 +577,6 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }
 
-    fun toggleMediaType(type: MediaType) {
-        val current = _selectedMediaTypes.value.toMutableSet()
-        if (current.contains(type)) {
-            current.remove(type)
-        } else {
-            current.add(type)
-        }
-        _selectedMediaTypes.value = current
-    }
 
     fun setSelectedMediaTypes(types: Set<MediaType>) {
         _selectedMediaTypes.value = types

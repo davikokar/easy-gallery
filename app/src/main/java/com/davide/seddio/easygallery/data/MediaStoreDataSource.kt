@@ -142,17 +142,6 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
         }
     }
 
-    private fun scanDirectory(dir: File) {
-        dir.listFiles()?.forEach { file ->
-            if (file.isDirectory) scanDirectory(file)
-            else MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null, null)
-        }
-    }
-
-    private fun deleteRecursive(file: File) {
-        if (file.isDirectory) file.listFiles()?.forEach { deleteRecursive(it) }
-        file.delete()
-    }
 
     override suspend fun deleteMediaItems(uris: List<Uri>) = withContext(Dispatchers.IO) {
         uris.forEach { uri ->

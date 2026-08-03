@@ -26,7 +26,7 @@ enum class ViewType {
 
 sealed class GalleryUiState {
     object Loading : GalleryUiState()
-data class Success(val folders: List<Folder>) : GalleryUiState()
+    data class Success(val folders: List<Folder>) : GalleryUiState()
     data class Error(val message: String) : GalleryUiState()
 }
 

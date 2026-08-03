@@ -41,8 +41,6 @@ import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.*
 import com.davide.seddio.easygallery.ui.theme.BottomGrey
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,7 +190,6 @@ fun FolderDetailContent(
                     onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
                     onInfoClick = { showPropertiesDialog = true },
-                    onRename = { /* Placeholder */ },
                     onRotate = { showRotateDialog = true },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
