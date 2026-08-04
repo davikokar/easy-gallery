@@ -1,29 +1,21 @@
-# Walkthrough - Folder Selection Scroll Reset Fix
+# Walkthrough - Fix Move-Refresh Bug
 
-I have fixed the regression where the scroll position would reset to the top when entering selection mode in the folder gallery.
+I have fixed the bug where the folder view would not immediately refresh after moving or deleting media items.
 
 ## Changes Made
 
-### MainActivity Navigation Refactor
-I refactored the navigation logic in `MainActivity.kt` to stabilize the composition branch for the gallery and folder detail screens.
-- **Before**: `MainActivity` switched between different `if-else` branches depending on `isSelectionMode` or `isMediaSelectionMode`. This caused the entire screen to be disposed and recreated, losing the internal scroll state of the lists/grids.
-- **After**: `MainActivity` now uses a stable navigation structure. It decides which screen to show based on `selectedMedia`, `isSettingsMode`, and `selectedFolder`, but it **no longer** branches on selection modes. Selection modes are now handled internally by `FolderListScreen` and `FolderDetailScreen`, allowing the scroll state to be preserved.
+### GalleryViewModel
+- Updated `loadFolders()` in [GalleryViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt) to also refresh the `_mediaInFolder` state flow if a folder is currently selected.
+- This ensures that when `loadFolders()` is called (which happens after operations like Move, Delete, or Rotate), the currently displayed folder's content is also re-queried from the repository and updated in the UI.
 
-### UI Improvements
-- **Stable Item Keys**: Added stable keys (`key = { it.path }`) to the `LazyColumn` in `FolderListScreen.kt`. This ensures that items are correctly tracked by Compose even if the list contents change slightly, contributing to better scroll stability.
+### Test Fix
+- Fixed the regression test in [GalleryViewModelTest.kt](file:///C:/git/easy-gallery/app/src/test/java/com/davide/seddio/easygallery/ui/GalleryViewModelTest.kt) by using `backgroundScope.launch` for background flow collection. This prevents `UncompletedCoroutinesError` in the test.
 
 ## Verification Results
 
 ### Automated Tests
-I updated the regression tests in `FolderListContentTest.kt` to match the new stable navigation pattern and verified that they now pass:
-- `scrollPositionIsMaintainedWhenEnteringSelectionMode`: **PASSED**
-- `scrollPositionIsMaintainedInListViewWhenEnteringSelectionMode`: **PASSED**
-- All other 5 tests in the suite also **PASSED**.
+I ran the full unit test suite, including the new regression test, and all tests passed:
 
-### Acceptance Criteria Check
-- [x] Scroll down in folder grid view.
-- [x] Long-press a folder tile -> Tile becomes selected.
-- [x] Screen **does not** jump to the top.
-- [x] Selected tile remains visible.
-- [x] Exit selection mode -> Scroll position is preserved.
-- [x] Verified for both Grid and List views.
+> [!TIP]
+> **Test Result**: `25 passed, 0 skipped, 0 failed`
+> The test `moved media disappears from source folder immediately` now passes, confirming that the UI state correctly reflects the moved item's removal from the source folder without requiring a manual refresh.

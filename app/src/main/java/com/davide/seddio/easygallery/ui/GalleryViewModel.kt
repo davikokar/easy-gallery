@@ -203,6 +203,11 @@ class GalleryViewModel @JvmOverloads constructor(
                 val folders = repository.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
                 _allMedia.value = repository.getAllMedia()
+
+                // Refresh current folder media if one is selected
+                _selectedFolder.value?.let { currentFolder ->
+                    _mediaInFolder.value = repository.getMediaInFolder(currentFolder.name)
+                }
             } catch (e: Exception) {
                 _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
             }

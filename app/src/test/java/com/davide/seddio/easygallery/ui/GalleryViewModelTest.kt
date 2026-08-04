@@ -335,4 +335,51 @@ class GalleryViewModelTest {
         assertNull(viewModel.pendingMoveOperation.value)
         assertTrue(repository.movedUris.isEmpty())
     }
+
+    @Test
+    fun `moved media disappears from source folder immediately`() = runTest {
+        // 1. Setup folders and media
+        val sourcePath = "/storage/emulated/0/Pictures/Source"
+        val targetPath = "/storage/emulated/0/Pictures/Target"
+        val sourceBucket = "Source"
+
+        val movedItem = createMediaItem(mockUri1, sourcePath).copy(name = "moved.jpg", bucketName = sourceBucket)
+        val stayItem = createMediaItem(mockUri2, sourcePath).copy(name = "stay.jpg", bucketName = sourceBucket)
+
+        repository.mediaItems = listOf(movedItem, stayItem)
+
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+
+        // Start collecting flows to activate stateIn
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredMedia.collect {}
+        }
+
+        // 2. Load folders and select source folder
+        viewModel.loadFolders()
+        val sourceFolder = Folder(name = sourceBucket, imageCount = 2, thumbnailUri = mockUri1, path = sourcePath)
+        viewModel.selectFolder(sourceFolder)
+
+        // Assert filteredMedia contains both items
+        assertEquals(2, viewModel.filteredMedia.value.size)
+        assertTrue(viewModel.filteredMedia.value.any { it.name == "moved.jpg" })
+        assertTrue(viewModel.filteredMedia.value.any { it.name == "stay.jpg" })
+
+        // 3. Perform move
+        viewModel.enterMediaSelectionMode(movedItem)
+        viewModel.startOperation(OperationType.MOVE)
+        viewModel.performOperationWithPath(targetPath)
+
+        // 4. Assertions
+        // Verify repository was called
+        assertEquals(1, repository.movedUris.size)
+        assertEquals(listOf(mockUri1), repository.movedUris[0].first)
+
+        // Verify filteredMedia for the currently open Source folder no longer contains moved.jpg
+        // This is expected to FAIL in current implementation because loadFolders() doesn't update _mediaInFolder
+        val currentMedia = viewModel.filteredMedia.value
+        assertFalse("Moved item should be gone from filteredMedia", currentMedia.any { it.uri == mockUri1 })
+        assertEquals(1, currentMedia.size)
+        assertTrue(currentMedia.any { it.name == "stay.jpg" })
+    }
 }

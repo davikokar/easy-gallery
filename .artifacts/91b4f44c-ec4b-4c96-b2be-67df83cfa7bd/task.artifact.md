@@ -1,6 +1,5 @@
-# Task List - Fix Scroll Reset
+# Task List - Fix Move-Refresh Bug
 
-- [x] Stabilize composition branches in `MainActivity.kt`
-- [x] Add stable keys to `LazyColumn` in `FolderListScreen.kt`
-- [x] Run regression tests to verify the fix
-- [x] Verify manually if possible (via deployment if requested, but regression tests are primary)
+- [x] Modify `GalleryViewModel.kt` to refresh `_mediaInFolder` in `loadFolders()`
+- [x] Run unit regression tests to verify the fix
+- [x] Verify fix manually in app (simulated via tests)

@@ -30,6 +30,21 @@ class FakeMediaRepository : MediaRepository {
     override suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String) {
         if (shouldThrowSecurityException) throw SecurityException("Mock security exception")
         movedUris.add(uris to targetRelativePath)
+        
+        val rootPath = "/storage/emulated/0"
+        val newFolderPath = "$rootPath/${targetRelativePath.trimEnd('/')}"
+        val newBucketName = targetRelativePath.trimEnd('/').substringAfterLast('/')
+        
+        mediaItems = mediaItems.map { item ->
+            if (uris.contains(item.uri)) {
+                item.copy(
+                    folderPath = newFolderPath,
+                    bucketName = newBucketName
+                )
+            } else {
+                item
+            }
+        }
     }
 
     override fun getSubdirectories(path: String): List<Folder> = emptyList()
