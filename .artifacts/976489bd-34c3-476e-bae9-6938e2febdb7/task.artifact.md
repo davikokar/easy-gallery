@@ -1,0 +1,6 @@
+- [x] Create failing test for excluded folders bug
+- [x] Rename `excludeFolder` and `unexcludeFolder` parameters in `GalleryViewModel` to `folderPath`
+- [x] Update `AddExcludedFolderDialog` to pass folder path instead of name
+- [x] Update `ManageExcludedScreen` to display and use folder paths correctly
+- [ ] Verify fix with tests
+- [ ] Verify no regressions in selection or scroll preservation

@@ -52,7 +52,7 @@ fun ManageExcludedScreen(viewModel: GalleryViewModel) {
             AddExcludedFolderDialog(
                 folders = viewModel.getNonExcludedFolders(),
                 onFolderSelected = {
-                    viewModel.excludeFolder(it.name)
+                    viewModel.excludeFolder(it.path)
                     showAddDialog = false
                 },
                 onDismiss = { showAddDialog = false }
@@ -75,10 +75,12 @@ fun ManageExcludedScreen(viewModel: GalleryViewModel) {
                     .padding(padding)
                     .background(BottomGrey)
             ) {
-                items(excludedFolders.toList().sorted()) { folderName ->
+                items(excludedFolders.toList().sorted()) { folderPath ->
+                    val folderName = folderPath.substringAfterLast("/", folderPath)
                     ExcludedFolderItem(
                         name = folderName,
-                        onRemove = { viewModel.unexcludeFolder(folderName) }
+                        path = folderPath,
+                        onRemove = { viewModel.unexcludeFolder(folderPath) }
                     )
                 }
             }
@@ -87,7 +89,7 @@ fun ManageExcludedScreen(viewModel: GalleryViewModel) {
 }
 
 @Composable
-fun ExcludedFolderItem(name: String, onRemove: () -> Unit) {
+fun ExcludedFolderItem(name: String, path: String, onRemove: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -99,7 +101,15 @@ fun ExcludedFolderItem(name: String, onRemove: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = name, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = name, color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = path,
+                    color = Color.White.copy(alpha = 0.5f),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1
+                )
+            }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White.copy(alpha = 0.7f))
             }

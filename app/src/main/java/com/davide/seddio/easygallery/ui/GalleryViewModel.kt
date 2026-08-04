@@ -506,15 +506,15 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }
 
-    fun unexcludeFolder(folderName: String) {
+    fun unexcludeFolder(folderPath: String) {
         val current = _excludedFolders.value.toMutableSet()
-        current.remove(folderName)
+        current.remove(folderPath)
         _excludedFolders.value = current
     }
 
-    fun excludeFolder(folderName: String) {
+    fun excludeFolder(folderPath: String) {
         val current = _excludedFolders.value.toMutableSet()
-        current.add(folderName)
+        current.add(folderPath)
         _excludedFolders.value = current
     }
 

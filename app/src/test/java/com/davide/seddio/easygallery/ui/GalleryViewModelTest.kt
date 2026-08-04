@@ -382,4 +382,49 @@ class GalleryViewModelTest {
         assertEquals(1, currentMedia.size)
         assertTrue(currentMedia.any { it.name == "stay.jpg" })
     }
+
+    @Test
+    fun `excluding folder by path correctly filters it out`() = runTest {
+        val folderPath = "/storage/emulated/0/DCIM/Camera"
+        val folderName = "Camera"
+        val media = listOf(createMediaItem(mockUri1, folderPath))
+        repository.mediaItems = media
+        repository.folders = listOf(Folder(name = folderName, imageCount = 1, thumbnailUri = mockUri1, path = folderPath))
+        
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredFolders.collect {}
+        }
+        
+        viewModel.loadFolders()
+        
+        // Verify initially visible
+        val uiStateInitial = viewModel.filteredFolders.value
+        assertTrue((uiStateInitial as GalleryUiState.Success).folders.any { it.path == folderPath })
+
+        // Exclude by path
+        viewModel.excludeFolder(folderPath)
+        
+        // Assert: It is in excludedFolders set
+        assertTrue(viewModel.excludedFolders.value.contains(folderPath))
+        
+        // Assert: filteredFolders correctly excludes it
+        val uiStateExcluded = viewModel.filteredFolders.value
+        assertFalse("Folder should be hidden when excluded by path", 
+            (uiStateExcluded as GalleryUiState.Success).folders.any { it.path == folderPath })
+        
+        // Un-exclude by path
+        viewModel.unexcludeFolder(folderPath)
+        
+        // Assert: It is no longer in excludedFolders set
+        assertFalse(viewModel.excludedFolders.value.contains(folderPath))
+        
+        // Assert: filteredFolders correctly includes it again
+        val uiStateIncluded = viewModel.filteredFolders.value
+        assertTrue("Folder should be visible again after un-excluding by path", 
+            (uiStateIncluded as GalleryUiState.Success).folders.any { it.path == folderPath })
+            
+        job.cancel()
+    }
 }
