@@ -106,7 +106,6 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         onPerformOperationWithPath = { viewModel.performOperationWithPath(it) },
         onCancelOperation = { viewModel.cancelOperation() },
         getSelectedMediaData = { viewModel.getSelectedMediaData() },
-        onRotateSelectedMedia = { viewModel.rotateSelectedMedia(it) },
         onSelectMedia = { viewModel.selectMedia(it) },
         onEnterMediaSelectionMode = { viewModel.enterMediaSelectionMode(it) },
         onDecreaseColumns = { viewModel.decreaseColumns(it) },
@@ -157,7 +156,6 @@ fun FolderDetailContent(
     onPerformOperationWithPath: (String) -> Unit,
     onCancelOperation: () -> Unit,
     getSelectedMediaData: () -> List<MediaItem>,
-    onRotateSelectedMedia: (Int) -> Unit,
     onSelectMedia: (MediaItem) -> Unit,
     onEnterMediaSelectionMode: (MediaItem) -> Unit,
     onDecreaseColumns: (Boolean) -> Unit,
@@ -179,7 +177,6 @@ fun FolderDetailContent(
     var showViewTypeDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPropertiesDialog by remember { mutableStateOf(false) }
-    var showRotateDialog by remember { mutableStateOf(false) }
     
     Scaffold(
         topBar = {
@@ -190,7 +187,6 @@ fun FolderDetailContent(
                     onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
                     onInfoClick = { showPropertiesDialog = true },
-                    onRotate = { showRotateDialog = true },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
                     onSelectAll = { onSelectAllMedia() }
@@ -253,16 +249,6 @@ fun FolderDetailContent(
             MediaPropertiesDialog(
                 media = getSelectedMediaData(),
                 onDismiss = { showPropertiesDialog = false }
-            )
-        }
-
-        if (showRotateDialog) {
-            RotateDialog(
-                onRotate = {
-                    onRotateSelectedMedia(it)
-                    showRotateDialog = false
-                },
-                onDismiss = { showRotateDialog = false }
             )
         }
 

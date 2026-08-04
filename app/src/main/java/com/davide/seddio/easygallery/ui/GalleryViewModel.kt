@@ -369,28 +369,6 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }
 
-    fun rotateSelectedMedia(degrees: Int) {
-        val selectedMedia = getSelectedMediaData().filter { it.type == MediaType.IMAGE || it.type == MediaType.GIF }
-        if (selectedMedia.isEmpty()) return
-
-        viewModelScope.launch {
-            try {
-                selectedMedia.forEach { item ->
-                    repository.rotateImage(item.uri, degrees)
-                }
-                exitMediaSelectionMode()
-                loadFolders()
-            } catch (e: SecurityException) {
-                val uris = selectedMedia.map { it.uri }
-                permissionHandler.createWriteRequest(getApplication<Application>().contentResolver, uris)?.let {
-                    _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
-                } ?: permissionHandler.getIntentSenderFromException(e)?.let {
-                    _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
-                }
-            }
-        }
-    }
-
     fun clearPendingWriteRequest() {
         _pendingWriteRequest.value = null
     }

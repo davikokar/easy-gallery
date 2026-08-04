@@ -20,8 +20,6 @@ class FakeMediaRepository : MediaRepository {
 
     override suspend fun copyFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) {}
 
-    override suspend fun rotateImage(uri: Uri, degrees: Int) {}
-
     override suspend fun deleteMediaItems(uris: List<Uri>) {
         if (shouldThrowSecurityException) throw SecurityException("Mock security exception")
         deletedUris.addAll(uris)

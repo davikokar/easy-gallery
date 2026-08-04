@@ -6,7 +6,6 @@ import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.provider.MediaStore
-import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -112,36 +111,6 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
         }
         MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
     }
-
-    override suspend fun rotateImage(uri: Uri, degrees: Int): Unit = withContext(Dispatchers.IO) {
-        context.contentResolver.openFileDescriptor(uri, "rw")?.use { fd ->
-            val exif = ExifInterface(fd.fileDescriptor)
-            val currentOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-            val newOrientation = calculateNewOrientation(currentOrientation, degrees)
-            exif.setAttribute(ExifInterface.TAG_ORIENTATION, newOrientation.toString())
-            exif.saveAttributes()
-            MediaScannerConnection.scanFile(context, arrayOf(uri.toString()), null, null)
-        }
-    }
-
-    private fun calculateNewOrientation(current: Int, degrees: Int): Int {
-        val currentDegrees = when (current) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270
-            else -> 0
-        }
-        var newDegrees = (currentDegrees + degrees) % 360
-        if (newDegrees < 0) newDegrees += 360
-        
-        return when (newDegrees) {
-            90 -> ExifInterface.ORIENTATION_ROTATE_90
-            180 -> ExifInterface.ORIENTATION_ROTATE_180
-            270 -> ExifInterface.ORIENTATION_ROTATE_270
-            else -> ExifInterface.ORIENTATION_NORMAL
-        }
-    }
-
 
     override suspend fun deleteMediaItems(uris: List<Uri>) = withContext(Dispatchers.IO) {
         uris.forEach { uri ->

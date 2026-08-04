@@ -139,7 +139,6 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         onToggleInfo = { viewModel.toggleInfo() },
         getSelectedMediaData = { viewModel.getSelectedMediaData() },
         getSelectedFoldersData = { viewModel.getSelectedFoldersData() },
-        onRotateSelectedMedia = { viewModel.rotateSelectedMedia(it) },
         onSelectMedia = { viewModel.selectMedia(it) },
         onEnterMediaSelectionMode = { viewModel.enterMediaSelectionMode(it) },
         calendarContent = {
@@ -212,7 +211,6 @@ fun FolderListContent(
     onToggleInfo: () -> Unit,
     getSelectedMediaData: () -> List<com.davide.seddio.easygallery.data.MediaItem>,
     getSelectedFoldersData: () -> List<Folder>,
-    onRotateSelectedMedia: (Int) -> Unit,
     onSelectMedia: (com.davide.seddio.easygallery.data.MediaItem) -> Unit,
     onEnterMediaSelectionMode: (com.davide.seddio.easygallery.data.MediaItem) -> Unit,
     calendarContent: @Composable () -> Unit
@@ -234,7 +232,6 @@ fun FolderListContent(
     var showPropertiesDialog by remember { mutableStateOf(false) }
     var showExcludeDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
-    var showRotateDialog by remember { mutableStateOf(false) }
     
     val totalFolders = if (uiState is GalleryUiState.Success) uiState.folders.size else 0
 
@@ -247,7 +244,6 @@ fun FolderListContent(
                     onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
                     onInfoClick = { showPropertiesDialog = true },
-                    onRotate = { showRotateDialog = true },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
                     onSelectAll = { onSelectAllMedia() }
@@ -397,16 +393,6 @@ fun FolderListContent(
                     onDismiss = { showPropertiesDialog = false }
                 )
             }
-        }
-
-        if (showRotateDialog) {
-            RotateDialog(
-                onRotate = {
-                    onRotateSelectedMedia(it)
-                    showRotateDialog = false
-                },
-                onDismiss = { showRotateDialog = false }
-            )
         }
 
         if (showFilterDialog) {

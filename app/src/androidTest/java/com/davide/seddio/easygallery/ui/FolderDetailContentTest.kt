@@ -51,6 +51,27 @@ class FolderDetailContentTest {
         composeTestRule.onNodeWithTag("delete_button", useUnmergedTree = true).assertIsDisplayed()
     }
 
+    @Test
+    fun rotateOptionIsMissingFromSelectionMenu() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(mockUri)
+            )
+        }
+
+        // Open overflow menu
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        // Verify "Rotate" is not present
+        composeTestRule.onNodeWithText("Rotate").assertDoesNotExist()
+        
+        // Verify other options are still there
+        composeTestRule.onNodeWithText("Copy to").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Move to").assertIsDisplayed()
+    }
+
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
@@ -98,7 +119,6 @@ class FolderDetailContentTest {
             onPerformOperationWithPath = {},
             onCancelOperation = {},
             getSelectedMediaData = { emptyList() },
-            onRotateSelectedMedia = {},
             onSelectMedia = {},
             onEnterMediaSelectionMode = {},
             onDecreaseColumns = {},

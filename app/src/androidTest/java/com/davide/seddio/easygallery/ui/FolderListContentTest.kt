@@ -251,7 +251,6 @@ class FolderListContentTest {
             onToggleInfo = {},
             getSelectedMediaData = { emptyList() },
             getSelectedFoldersData = { emptyList() },
-            onRotateSelectedMedia = {},
             onSelectMedia = {},
             onEnterMediaSelectionMode = {},
             calendarContent = {}

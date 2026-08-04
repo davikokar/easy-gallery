@@ -8,7 +8,6 @@ interface MediaRepository {
     suspend fun getAllMedia(): List<MediaItem>
     suspend fun copyFolderContents(sourcePath: String, targetParentPath: String)
     suspend fun copyFile(sourceFolderPath: String, fileName: String, targetFolderPath: String)
-    suspend fun rotateImage(uri: Uri, degrees: Int)
     suspend fun deleteMediaItems(uris: List<Uri>)
     suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String)
     fun getSubdirectories(path: String): List<Folder>

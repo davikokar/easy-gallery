@@ -21,7 +21,6 @@ fun MediaSelectionTopBar(
     onClose: () -> Unit,
     onDelete: () -> Unit,
     onInfoClick: () -> Unit,
-    onRotate: () -> Unit,
     onCopyTo: () -> Unit,
     onMoveTo: () -> Unit,
     onSelectAll: () -> Unit
@@ -54,13 +53,6 @@ fun MediaSelectionTopBar(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("Rotate") },
-                        onClick = {
-                            showMenu = false
-                            onRotate()
-                        }
-                    )
                     DropdownMenuItem(
                         text = { Text("Copy to") },
                         onClick = {
