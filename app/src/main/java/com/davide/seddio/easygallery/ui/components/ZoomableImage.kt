@@ -17,6 +17,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntSize
 import coil3.compose.AsyncImage
 
+private const val MIN_SCALE = 1f
+private const val MAX_SCALE = 30f
+private const val DOUBLE_TAP_SCALE = 3f
+
+/**
+ * Calculates a new offset by damping the pan based on the current scale.
+ * This ensures 1:1 finger tracking even at high zoom levels.
+ */
+fun calculateNewOffset(currentOffset: Offset, pan: Offset, scale: Float): Offset {
+    return if (scale > 1f) {
+        currentOffset + (pan / scale)
+    } else {
+        Offset.Zero
+    }
+}
+
 @Composable
 fun ZoomableImage(
     uri: Uri,
@@ -43,11 +59,11 @@ fun ZoomableImage(
                 detectTapGestures(
                     onTap = { onTap() },
                     onDoubleTap = {
-                        if (scale > 1f) {
-                            scale = 1f
+                        if (scale > MIN_SCALE) {
+                            scale = MIN_SCALE
                             offset = Offset.Zero
                         } else {
-                            scale = 3f
+                            scale = DOUBLE_TAP_SCALE
                         }
                         onScaleChanged(scale)
                     }
@@ -62,17 +78,19 @@ fun ZoomableImage(
                         val pan = event.calculatePan()
 
                         // If we are zooming or already zoomed, we handle it locally
-                        if (scale > 1f || zoom != 1f) {
-                            val newScale = (scale * zoom).coerceIn(1f, 5f)
+                        if (scale > MIN_SCALE || zoom != 1f) {
+                            val newScale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
                             if (newScale != scale) {
                                 scale = newScale
                                 onScaleChanged(scale)
                             }
                             
-                            if (scale > 1f) {
-                                offset += pan
-                                // Consume horizontal changes to prevent Pager from swiping
-                                event.changes.forEach { it.consume() }
+                            if (scale > MIN_SCALE) {
+                                offset = calculateNewOffset(offset, pan, scale)
+                                // Only consume if we are actually zooming or panning to allow tap gestures to reach other listeners
+                                if (zoom != 1f || pan != Offset.Zero) {
+                                    event.changes.forEach { it.consume() }
+                                }
                             } else {
                                 offset = Offset.Zero
                             }
