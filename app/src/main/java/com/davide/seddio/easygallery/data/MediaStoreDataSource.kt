@@ -142,6 +142,27 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
             }?.sortedBy { it.name } ?: emptyList()
     }
 
+    override suspend fun createFolder(parentPath: String, folderName: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val folder = File(parentPath, folderName)
+            if (folder.exists()) {
+                Result.failure(Exception("Folder already exists"))
+            } else {
+                if (folder.mkdirs()) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("Failed to create folder"))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override fun folderExists(path: String): Boolean {
+        return File(path).exists()
+    }
+
     private fun queryMedia(
         uri: android.net.Uri,
         isVideo: Boolean,

@@ -82,6 +82,11 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
     val browsingPath by viewModel.browsingPath.collectAsState()
     val browsingFolders by viewModel.browsingFolders.collectAsState()
 
+    val isCreateFolderDialogOpen by viewModel.isCreateFolderDialogOpen.collectAsState()
+    val createFolderError by viewModel.createFolderError.collectAsState()
+    val createFolderBrowsingPath by viewModel.createFolderBrowsingPath.collectAsState()
+    val createFolderBrowsingFolders by viewModel.createFolderBrowsingFolders.collectAsState()
+
     FolderListContent(
         uiState = uiState,
         folderColumns = folderColumns,
@@ -105,6 +110,10 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         pictureViewType = pictureViewType,
         selectedMediaTypes = selectedMediaTypes,
         isDestinationPickerActive = isDestinationPickerActive,
+        isCreateFolderDialogOpen = isCreateFolderDialogOpen,
+        createFolderError = createFolderError,
+        createFolderBrowsingPath = createFolderBrowsingPath,
+        createFolderBrowsingFolders = createFolderBrowsingFolders,
         pendingOperation = pendingOperation,
         browsingPath = browsingPath,
         browsingFolders = browsingFolders,
@@ -129,6 +138,9 @@ fun FolderListScreen(viewModel: GalleryViewModel) {
         onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it) },
         onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
         onSetSettingsMode = { viewModel.setSettingsMode(it) },
+        onSetCreateFolderDialogOpen = { viewModel.setCreateFolderDialogOpen(it) },
+        onCreateFolder = { viewModel.createFolder(it) },
+        onUpdateCreateFolderBrowsingPath = { viewModel.updateCreateFolderBrowsingPath(it) },
         onUpdateBrowsingPath = { viewModel.updateBrowsingPath(it) },
         onPerformOperationWithPath = { viewModel.performOperationWithPath(it) },
         onCancelOperation = { viewModel.cancelOperation() },
@@ -177,6 +189,10 @@ fun FolderListContent(
     pictureViewType: ViewType,
     selectedMediaTypes: Set<MediaType>,
     isDestinationPickerActive: Boolean,
+    isCreateFolderDialogOpen: Boolean,
+    createFolderError: String?,
+    createFolderBrowsingPath: String,
+    createFolderBrowsingFolders: List<Folder>,
     pendingOperation: OperationType?,
     browsingPath: String,
     browsingFolders: List<Folder>,
@@ -201,6 +217,9 @@ fun FolderListContent(
     onSetSelectedMediaTypes: (Set<MediaType>) -> Unit,
     onSetShowExcludedTemporarily: (Boolean) -> Unit,
     onSetSettingsMode: (Boolean) -> Unit,
+    onSetCreateFolderDialogOpen: (Boolean) -> Unit,
+    onCreateFolder: (String) -> Unit,
+    onUpdateCreateFolderBrowsingPath: (String) -> Unit,
     onUpdateBrowsingPath: (String) -> Unit,
     onPerformOperationWithPath: (String) -> Unit,
     onCancelOperation: () -> Unit,
@@ -276,6 +295,7 @@ fun FolderListContent(
                     onViewTypeClick = { showViewTypeDialog = true },
                     onFilterMediaClick = { showFilterDialog = true },
                     onShowExcludedClick = { onSetShowExcludedTemporarily(true) },
+                    onCreateFolderClick = { onSetCreateFolderDialogOpen(true) },
                     onSettingsClick = { onSetSettingsMode(true) }
                 )
             }
@@ -418,6 +438,17 @@ fun FolderListContent(
             )
         }
 
+        if (isCreateFolderDialogOpen) {
+            CreateFolderDialog(
+                currentPath = createFolderBrowsingPath,
+                folders = createFolderBrowsingFolders,
+                error = createFolderError,
+                onPathChange = onUpdateCreateFolderBrowsingPath,
+                onDismiss = { onSetCreateFolderDialogOpen(false) },
+                onCreate = { onCreateFolder(it) }
+            )
+        }
+
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -463,123 +494,6 @@ fun FolderListContent(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun DestinationFolderPickerDialog(
-    title: String,
-    currentPath: String,
-    folders: List<Folder>,
-    onFolderSelected: (Folder) -> Unit,
-    onBreadcrumbClick: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Breadcrumb(
-                    path = currentPath,
-                    onBreadcrumbClick = onBreadcrumbClick
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (folders.isEmpty()) {
-                    Box(modifier = Modifier.height(200.dp).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("No subfolders here.", style = MaterialTheme.typography.bodySmall)
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                        items(folders) { folder ->
-                            FolderPickerItem(
-                                folder = folder,
-                                onClick = { onFolderSelected(folder) }
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun Breadcrumb(path: String, onBreadcrumbClick: (String) -> Unit) {
-    val segments = remember(path) {
-        val root = android.os.Environment.getExternalStorageDirectory().absolutePath
-        val relative = path.removePrefix(root).trimStart('/')
-        val list = mutableListOf("Internal Storage" to root)
-        if (relative.isNotEmpty()) {
-            var current = root
-            relative.split('/').forEach { segment ->
-                current = "$current/$segment"
-                list.add(segment to current)
-            }
-        }
-        list
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        segments.forEachIndexed { index, (label, fullPath) ->
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (index == segments.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.clickable { onBreadcrumbClick(fullPath) }
-            )
-            if (index < segments.lastIndex) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun FolderPickerItem(folder: Folder, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.Folder,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            modifier = Modifier.size(24.dp)
-        )
-        Text(
-            text = folder.name,
-            modifier = Modifier.padding(start = 12.dp),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
     }
 }
 

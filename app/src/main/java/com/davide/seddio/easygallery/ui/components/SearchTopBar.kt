@@ -33,6 +33,7 @@ fun SearchTopBar(
     onViewTypeClick: (() -> Unit)? = null,
     onFilterMediaClick: (() -> Unit)? = null,
     onShowExcludedClick: (() -> Unit)? = null,
+    onCreateFolderClick: (() -> Unit)? = null,
     onSettingsClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null
@@ -149,6 +150,16 @@ fun SearchTopBar(
                                 onViewTypeClick?.invoke()
                             }
                         )
+                        if (onCreateFolderClick != null) {
+                            DropdownMenuItem(
+                                text = { Text("Create new folder") },
+                                modifier = Modifier.testTag("create_folder_button"),
+                                onClick = {
+                                    showMenu = false
+                                    onCreateFolderClick()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Settings") },
                             onClick = {

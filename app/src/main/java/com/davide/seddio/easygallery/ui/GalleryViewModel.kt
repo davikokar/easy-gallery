@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -123,6 +124,15 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _isImmersiveMode = MutableStateFlow(false)
     val isImmersiveMode: StateFlow<Boolean> = _isImmersiveMode.asStateFlow()
 
+    private val _isCreateFolderDialogOpen = MutableStateFlow(false)
+    val isCreateFolderDialogOpen: StateFlow<Boolean> = _isCreateFolderDialogOpen.asStateFlow()
+
+    private val _createFolderError = MutableStateFlow<String?>(null)
+    val createFolderError: StateFlow<String?> = _createFolderError.asStateFlow()
+
+    private val _createFolderBrowsingPath = MutableStateFlow(Environment.getExternalStorageDirectory().absolutePath)
+    val createFolderBrowsingPath: StateFlow<String> = _createFolderBrowsingPath.asStateFlow()
+
     private val _currentRotation = MutableStateFlow(0f)
     val currentRotation: StateFlow<Float> = _currentRotation.asStateFlow()
 
@@ -131,6 +141,10 @@ class GalleryViewModel @JvmOverloads constructor(
 
     val browsingFolders: StateFlow<List<Folder>> = combine(_browsingPath, _selectedFolders) { path, selected ->
         repository.getSubdirectories(path).filter { !selected.contains(it.path) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val createFolderBrowsingFolders: StateFlow<List<Folder>> = _createFolderBrowsingPath.map { path ->
+        repository.getSubdirectories(path)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
@@ -636,6 +650,50 @@ class GalleryViewModel @JvmOverloads constructor(
         currentExcluded.addAll(selectedPaths)
         _excludedFolders.value = currentExcluded
         exitSelectionMode()
+    }
+
+    fun setCreateFolderDialogOpen(open: Boolean) {
+        _isCreateFolderDialogOpen.value = open
+        if (open) {
+            _createFolderBrowsingPath.value = Environment.getExternalStorageDirectory().absolutePath
+        } else {
+            _createFolderError.value = null
+        }
+    }
+
+    fun updateCreateFolderBrowsingPath(path: String) {
+        _createFolderBrowsingPath.value = path
+    }
+
+    fun createFolder(name: String) {
+        if (name.isBlank()) {
+            _createFolderError.value = "Folder name cannot be empty"
+            return
+        }
+
+        val invalidChars = listOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
+        if (name.any { it in invalidChars }) {
+            _createFolderError.value = "Invalid characters in folder name"
+            return
+        }
+
+        val parentPath = _createFolderBrowsingPath.value
+        val fullPath = File(parentPath, name).absolutePath
+
+        if (repository.folderExists(fullPath)) {
+            _createFolderError.value = "Folder already exists"
+            return
+        }
+
+        viewModelScope.launch {
+            val result = repository.createFolder(parentPath, name)
+            if (result.isSuccess) {
+                setCreateFolderDialogOpen(false)
+                loadFolders()
+            } else {
+                _createFolderError.value = result.exceptionOrNull()?.message ?: "Failed to create folder"
+            }
+        }
     }
 
 }

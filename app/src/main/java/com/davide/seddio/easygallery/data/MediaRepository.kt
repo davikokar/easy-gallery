@@ -11,4 +11,6 @@ interface MediaRepository {
     suspend fun deleteMediaItems(uris: List<Uri>)
     suspend fun updateMediaRelativePath(uris: List<Uri>, targetRelativePath: String)
     fun getSubdirectories(path: String): List<Folder>
+    suspend fun createFolder(parentPath: String, folderName: String): Result<Unit>
+    fun folderExists(path: String): Boolean
 }

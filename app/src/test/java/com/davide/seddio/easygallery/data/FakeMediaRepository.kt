@@ -46,4 +46,17 @@ class FakeMediaRepository : MediaRepository {
     }
 
     override fun getSubdirectories(path: String): List<Folder> = emptyList()
+
+    override suspend fun createFolder(parentPath: String, folderName: String): Result<Unit> {
+        val newPath = "$parentPath/$folderName"
+        return if (folders.any { it.path == newPath }) {
+            Result.failure(Exception("Folder already exists"))
+        } else {
+            Result.success(Unit)
+        }
+    }
+
+    override fun folderExists(path: String): Boolean {
+        return folders.any { it.path == path }
+    }
 }
