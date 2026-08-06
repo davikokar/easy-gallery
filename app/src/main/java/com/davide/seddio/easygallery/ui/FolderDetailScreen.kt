@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridItemScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
@@ -41,6 +42,7 @@ import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.*
 import com.davide.seddio.easygallery.ui.theme.AppBackground
+import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -211,11 +213,14 @@ fun FolderDetailContent(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { onToggleInfo() }) {
+                        IconButton(
+                            onClick = { onToggleInfo() },
+                            modifier = if (showInfo) Modifier.background(Color.White, CircleShape) else Modifier
+                        ) {
                             Icon(
                                 Icons.Default.Info,
                                 contentDescription = "Toggle Info",
-                                tint = if (showInfo) MaterialTheme.colorScheme.primary else Color.White
+                                tint = if (showInfo) BrandBlue else Color.White
                             )
                         }
                     }
