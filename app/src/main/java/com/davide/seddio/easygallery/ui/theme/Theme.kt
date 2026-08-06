@@ -12,41 +12,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = BottomGrey,
-    surface = BottomGrey,
-    surfaceVariant = BottomGrey,
-    surfaceContainer = BottomGrey,
-    surfaceContainerLow = BottomGrey,
-    surfaceContainerHigh = BottomGrey,
-    surfaceContainerLowest = BottomGrey,
-    surfaceContainerHighest = BottomGrey,
+private val BrandedDarkColorScheme = darkColorScheme(
+    primary = BrandBlue,
+    onPrimary = Color.White,
+    primaryContainer = BrandBlueDark,
+    onPrimaryContainer = Color.White,
+    secondary = BrandCyan,
+    tertiary = BrandAmber,
+    background = AppBackground,
+    surface = AppSurface,
+    surfaceVariant = AppSurfaceHigh,
+    outline = AppOutline,
     onBackground = Color.White,
     onSurface = Color.White,
-    onSurfaceVariant = Color.White.copy(alpha = 0.7f),
-    onPrimary = Color.White
+    onSurfaceVariant = Color.White.copy(alpha = 0.7f)
 )
 
-private val LightColorScheme = darkColorScheme( // Force dark theme colors even in light mode
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = BottomGrey,
-    surface = BottomGrey,
-    surfaceVariant = BottomGrey,
-    surfaceContainer = BottomGrey,
-    surfaceContainerLow = BottomGrey,
-    surfaceContainerHigh = BottomGrey,
-    surfaceContainerLowest = BottomGrey,
-    surfaceContainerHighest = BottomGrey,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    onSurfaceVariant = Color.White.copy(alpha = 0.7f),
-    onPrimary = Color.White
-)
+// The app intentionally uses a dark-themed UI for both light and dark system settings
+private val BrandedLightColorScheme = BrandedDarkColorScheme
 
 @Composable
 fun EasyGalleryTheme(
@@ -61,8 +44,8 @@ fun EasyGalleryTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> BrandedDarkColorScheme
+        else -> BrandedLightColorScheme
     }
 
     MaterialTheme(

@@ -32,8 +32,8 @@ import coil3.gif.AnimatedImageDecoder
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.components.ZoomableImage
-import com.davide.seddio.easygallery.ui.theme.BottomGrey
-import com.davide.seddio.easygallery.ui.theme.TopBarBlue
+import com.davide.seddio.easygallery.ui.theme.AppBackground
+import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,7 +126,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     Surface(
-                        color = BottomGrey,
+                        color = AppBackground,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(

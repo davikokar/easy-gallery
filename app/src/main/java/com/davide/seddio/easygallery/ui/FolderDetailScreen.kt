@@ -40,7 +40,7 @@ import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.*
-import com.davide.seddio.easygallery.ui.theme.BottomGrey
+import com.davide.seddio.easygallery.ui.theme.AppBackground
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,7 +222,7 @@ fun FolderDetailContent(
                 )
             }
         },
-        containerColor = BottomGrey
+        containerColor = AppBackground
     ) { padding ->
         if (showDeleteDialog) {
             AlertDialog(
@@ -325,7 +325,7 @@ fun FolderDetailContent(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .background(BottomGrey)
+                .background(AppBackground)
         ) {
             if (pictureGroupBy == GroupByType.NONE) {
                 if (pictureViewType == ViewType.GRID) {
@@ -393,7 +393,7 @@ fun GroupedMediaContent(
             verticalArrangement = Arrangement.spacedBy(1.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .background(BottomGrey)
+                .background(AppBackground)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         do {
@@ -436,7 +436,7 @@ fun GroupedMediaContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BottomGrey),
+                .background(AppBackground),
             state = listState
         ) {
             groupedMedia.forEach { (header, items) ->
@@ -553,7 +553,7 @@ fun MediaList(
     onItemLongClick: (MediaItem) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(BottomGrey),
+        modifier = Modifier.fillMaxSize().background(AppBackground),
         state = state,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {

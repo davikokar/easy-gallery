@@ -51,7 +51,7 @@ import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.components.*
-import com.davide.seddio.easygallery.ui.theme.BottomGrey
+import com.davide.seddio.easygallery.ui.theme.AppBackground
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -300,7 +300,7 @@ fun FolderListContent(
                 )
             }
         },
-        containerColor = BottomGrey
+        containerColor = AppBackground
     ) { padding ->
         if (showDeleteDialog) {
             val title = if (isMediaSelectionMode) "Delete Media" else "Delete Folders"
@@ -453,7 +453,7 @@ fun FolderListContent(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .background(BottomGrey)
+                .background(AppBackground)
         ) {
             if (displayMode == DisplayMode.CALENDAR) {
                 calendarContent()
@@ -695,7 +695,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
             ),
         shape = androidx.compose.ui.graphics.RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = BottomGrey)
+        colors = CardDefaults.cardColors(containerColor = AppBackground)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
@@ -784,7 +784,7 @@ fun FolderList(
     onFolderLongClick: (Folder) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(BottomGrey).testTag("folder_list"),
+        modifier = Modifier.fillMaxSize().background(AppBackground).testTag("folder_list"),
         state = state,
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {

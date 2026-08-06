@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.MediaGridItem
 import com.davide.seddio.easygallery.ui.components.MediaListItem
-import com.davide.seddio.easygallery.ui.theme.BottomGrey
+import com.davide.seddio.easygallery.ui.theme.AppBackground
 
 @Composable
 fun CalendarGrid(
@@ -50,7 +50,7 @@ fun CalendarGrid(
             verticalArrangement = Arrangement.spacedBy(1.dp),
             modifier = Modifier
                 .fillMaxSize()
-                .background(BottomGrey)
+                .background(AppBackground)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         do {
@@ -93,7 +93,7 @@ fun CalendarGrid(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(BottomGrey),
+                .background(AppBackground),
             state = listState
         ) {
             groupedPhotos.forEach { (header, items) ->

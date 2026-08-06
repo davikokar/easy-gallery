@@ -15,8 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.data.Folder
-import com.davide.seddio.easygallery.ui.theme.BottomGrey
-import com.davide.seddio.easygallery.ui.theme.TopBarBlue
+import com.davide.seddio.easygallery.ui.theme.AppBackground
+import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,14 +39,14 @@ fun ManageExcludedScreen(viewModel: GalleryViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TopBarBlue,
+                    containerColor = BrandBlue,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
                 )
             )
         },
-        containerColor = BottomGrey
+        containerColor = AppBackground
     ) { padding ->
         if (showAddDialog) {
             AddExcludedFolderDialog(
@@ -73,7 +73,7 @@ fun ManageExcludedScreen(viewModel: GalleryViewModel) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .background(BottomGrey)
+                    .background(AppBackground)
             ) {
                 items(excludedFolders.toList().sorted()) { folderPath ->
                     val folderName = folderPath.substringAfterLast("/", folderPath)

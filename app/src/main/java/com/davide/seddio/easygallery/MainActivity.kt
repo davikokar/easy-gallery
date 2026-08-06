@@ -38,7 +38,6 @@ import com.davide.seddio.easygallery.ui.FolderDetailScreen
 import com.davide.seddio.easygallery.ui.FolderListScreen
 import com.davide.seddio.easygallery.ui.GalleryViewModel
 import com.davide.seddio.easygallery.ui.theme.EasyGalleryTheme
-import com.davide.seddio.easygallery.ui.theme.TopBarBlue
 
 class MainActivity : ComponentActivity() {
 

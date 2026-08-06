@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
-import com.davide.seddio.easygallery.ui.theme.BottomGrey
+import com.davide.seddio.easygallery.ui.theme.AppBackground
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -46,7 +46,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
             ),
         shape = RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = BottomGrey)
+        colors = CardDefaults.cardColors(containerColor = AppBackground)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(

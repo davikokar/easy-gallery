@@ -21,8 +21,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.davide.seddio.easygallery.ui.theme.BottomGrey
-import com.davide.seddio.easygallery.ui.theme.TopBarBlue
+import com.davide.seddio.easygallery.ui.theme.AppBackground
+import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,13 +42,13 @@ fun SettingsScreen(viewModel: GalleryViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TopBarBlue,
+                    containerColor = BrandBlue,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
             )
         },
-        containerColor = BottomGrey
+        containerColor = AppBackground
     ) { padding ->
         Column(
             modifier = Modifier
@@ -102,7 +102,7 @@ fun SettingsScreen(viewModel: GalleryViewModel) {
 @Preview
 @Composable
 fun SettingsScreenPreview() {
-    Surface(color = BottomGrey) {
+    Surface(color = AppBackground) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -145,7 +145,7 @@ fun SettingsScreenPreview() {
 fun SettingsSection(title: String) {
     Text(
         text = title,
-        color = TopBarBlue,
+        color = BrandBlue,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 8.dp)
