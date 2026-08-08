@@ -83,12 +83,12 @@ fun SettingsScreen(viewModel: GalleryViewModel) {
             SettingsItem(
                 title = "Privacy & Policy",
                 icon = Icons.Default.PrivacyTip,
-                onClick = { /* TODO: Implement Privacy Policy */ }
+                onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/privacy.html") }
             )
             SettingsItem(
                 title = "Terms",
                 icon = Icons.Default.Description,
-                onClick = { /* TODO: Implement Terms */ }
+                onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/terms.html") }
             )
             SettingsItem(
                 title = "Customer Support",
@@ -207,4 +207,11 @@ private fun rateApp(context: Context) {
         }
         context.startActivity(webIntent)
     }
+}
+
+private fun openUrl(context: Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        data = Uri.parse(url)
+    }
+    context.startActivity(intent)
 }
