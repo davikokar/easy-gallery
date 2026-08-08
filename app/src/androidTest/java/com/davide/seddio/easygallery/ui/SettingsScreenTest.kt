@@ -48,4 +48,16 @@ class SettingsScreenTest {
 
         verify { viewModel.setManageExcludedMode(true) }
     }
+
+    @Test
+    fun clickingCustomerSupportCallsCallback() {
+        val onContactSupportClick = mockk<(android.content.Context) -> Unit>(relaxed = true)
+        composeTestRule.setContent {
+            SettingsScreen(viewModel, onContactSupportClick = onContactSupportClick)
+        }
+
+        composeTestRule.onNodeWithText("Customer Support").performClick()
+
+        verify { onContactSupportClick(any()) }
+    }
 }

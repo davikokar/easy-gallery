@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Easy Gallery</string>
+    <string name="support_email_address">davidemela.support@gmail.com</string>
+    <string name="support_email_subject">Easy Gallery support request</string>
+    <string name="error_no_email_app">No email application found</string>
 </resources>

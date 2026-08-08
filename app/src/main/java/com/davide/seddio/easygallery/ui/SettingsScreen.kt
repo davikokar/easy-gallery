@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,7 +27,10 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: GalleryViewModel) {
+fun SettingsScreen(
+    viewModel: GalleryViewModel,
+    onContactSupportClick: (Context) -> Unit = { contactSupport(it) }
+) {
     val context = LocalContext.current
     Scaffold(
         topBar = {
@@ -93,7 +97,7 @@ fun SettingsScreen(viewModel: GalleryViewModel) {
             SettingsItem(
                 title = "Customer Support",
                 icon = Icons.Default.SupportAgent,
-                onClick = { /* TODO: Implement Customer Support */ }
+                onClick = { onContactSupportClick(context) }
             )
         }
     }
@@ -214,4 +218,25 @@ private fun openUrl(context: Context, url: String) {
         data = Uri.parse(url)
     }
     context.startActivity(intent)
+}
+
+internal fun createSupportEmailIntent(context: Context): Intent {
+    val email = context.getString(com.davide.seddio.easygallery.R.string.support_email_address)
+    val subject = context.getString(com.davide.seddio.easygallery.R.string.support_email_subject)
+    return Intent(Intent.ACTION_SENDTO).apply {
+        data = Uri.parse("mailto:$email?subject=${Uri.encode(subject)}")
+    }
+}
+
+private fun contactSupport(context: Context) {
+    val intent = createSupportEmailIntent(context)
+    try {
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(
+            context,
+            context.getString(com.davide.seddio.easygallery.R.string.error_no_email_app),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
 }
