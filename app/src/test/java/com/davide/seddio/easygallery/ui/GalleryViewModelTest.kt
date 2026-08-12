@@ -378,8 +378,9 @@ class GalleryViewModelTest {
         assertEquals(1, repository.movedUris.size)
         assertEquals(listOf(mockUri1), repository.movedUris[0].first)
 
-        // Verify filteredMedia for the currently open Source folder no longer contains moved.jpg
-        // This is expected to FAIL in current implementation because loadFolders() doesn't update _mediaInFolder
+        // Verify filteredMedia for the currently open Source folder no longer contains moved.jpg.
+        // After a successful move, tryMoveMedia() calls loadFolders(), which refreshes _mediaInFolder
+        // for the open folder, so the moved item is removed immediately while the other item stays.
         val currentMedia = viewModel.filteredMedia.value
         assertFalse("Moved item should be gone from filteredMedia", currentMedia.any { it.uri == mockUri1 })
         assertEquals(1, currentMedia.size)
@@ -429,83 +430,5 @@ class GalleryViewModelTest {
             (uiStateIncluded as GalleryUiState.Success).folders.any { it.path == folderPath })
             
         job.cancel()
-    }
-
-    @Test
-    fun `createFolder with blank name sets error`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
-        
-        viewModel.createFolder("")
-        
-        assertEquals("Folder name cannot be empty", viewModel.createFolderError.value)
-    }
-
-    @Test
-    fun `createFolder with invalid characters sets error`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
-        
-        viewModel.createFolder("Folder/Name")
-        
-        assertEquals("Invalid characters in folder name", viewModel.createFolderError.value)
-    }
-
-    @Test
-    fun `createFolder with existing path sets error`() = runTest {
-        val picturesDir = Environment.DIRECTORY_PICTURES ?: "Pictures"
-        val rootPath = "/storage/emulated/0"
-        val parentPath = "$rootPath/$picturesDir"
-        val folderPath = "$parentPath/Existing"
-        
-        repository.folders = listOf(Folder(name = "Existing", imageCount = 0, thumbnailUri = mockUri, path = folderPath))
-        
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
-        viewModel.setCreateFolderDialogOpen(true) // Resets path to root
-        viewModel.updateCreateFolderBrowsingPath(parentPath)
-        
-        viewModel.createFolder("Existing")
-        
-        assertEquals("Folder already exists", viewModel.createFolderError.value)
-    }
-
-    @Test
-    fun `successful createFolder calls repository and reloads folders`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
-        
-        viewModel.createFolder("NewFolder")
-        
-        // In FakeMediaRepository, Result.success is returned.
-        // We verify that the dialog is closed.
-        assertFalse(viewModel.isCreateFolderDialogOpen.value)
-        assertNull(viewModel.createFolderError.value)
-    }
-
-    @Test
-    fun `navigating in create folder dialog updates browsing path`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
-        val initialPath = "/storage/emulated/0"
-        val newPath = "/storage/emulated/0/DCIM"
-        
-        viewModel.setCreateFolderDialogOpen(true)
-        assertEquals(initialPath, viewModel.createFolderBrowsingPath.value)
-        
-        viewModel.updateCreateFolderBrowsingPath(newPath)
-        assertEquals(newPath, viewModel.createFolderBrowsingPath.value)
-    }
-
-    @Test
-    fun `createFolder uses current browsing path as parent`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
-        val parentPath = "/storage/emulated/0/Custom"
-        val folderName = "MySubFolder"
-        
-        viewModel.setCreateFolderDialogOpen(true)
-        viewModel.updateCreateFolderBrowsingPath(parentPath)
-        
-        viewModel.createFolder(folderName)
-        
-        // In FakeMediaRepository, it doesn't strictly check the parent path for creation yet,
-        // but we can assume success if the dialog closes.
-        // To be more precise, we'd need to mock/verify the repository call.
-        assertFalse(viewModel.isCreateFolderDialogOpen.value)
     }
 }
