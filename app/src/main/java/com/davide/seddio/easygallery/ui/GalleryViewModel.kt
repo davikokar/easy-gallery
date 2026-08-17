@@ -24,47 +24,25 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
 
-    private val _displayMode = MutableStateFlow(DisplayMode.GALLERY)
-    val displayMode: StateFlow<DisplayMode> = _displayMode.asStateFlow()
+    private val prefs = DisplayPreferencesState()
+    val displayMode: StateFlow<DisplayMode> = prefs.displayMode
+    val searchQuery: StateFlow<String> = prefs.searchQuery
+    val isSearchActive: StateFlow<Boolean> = prefs.isSearchActive
+    val selectedMediaTypes: StateFlow<Set<MediaType>> = prefs.selectedMediaTypes
+    val folderSortType: StateFlow<SortType> = prefs.folderSortType
+    val pictureSortType: StateFlow<SortType> = prefs.pictureSortType
+    val folderSortOrder: StateFlow<SortOrder> = prefs.folderSortOrder
+    val pictureSortOrder: StateFlow<SortOrder> = prefs.pictureSortOrder
+    val folderViewType: StateFlow<ViewType> = prefs.folderViewType
+    val pictureViewType: StateFlow<ViewType> = prefs.pictureViewType
+    val pictureGroupBy: StateFlow<GroupByType> = prefs.pictureGroupBy
+    val pictureGroupOrder: StateFlow<SortOrder> = prefs.pictureGroupOrder
 
     private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
     val allMedia: StateFlow<List<MediaItem>> = _allMedia.asStateFlow()
 
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
-    private val _isSearchActive = MutableStateFlow(false)
-    val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
-
     private val _excludedFolders = MutableStateFlow<Set<String>>(emptySet()) // Stores folder paths
     val excludedFolders: StateFlow<Set<String>> = _excludedFolders.asStateFlow()
-
-    private val _selectedMediaTypes = MutableStateFlow(MediaType.entries.toSet())
-    val selectedMediaTypes: StateFlow<Set<MediaType>> = _selectedMediaTypes.asStateFlow()
-
-    private val _folderSortType = MutableStateFlow(SortType.NAME)
-    val folderSortType: StateFlow<SortType> = _folderSortType.asStateFlow()
-
-    private val _pictureSortType = MutableStateFlow(SortType.DATE_TAKEN)
-    val pictureSortType: StateFlow<SortType> = _pictureSortType.asStateFlow()
-
-    private val _folderSortOrder = MutableStateFlow(SortOrder.ASCENDING)
-    val folderSortOrder: StateFlow<SortOrder> = _folderSortOrder.asStateFlow()
-
-    private val _pictureSortOrder = MutableStateFlow(SortOrder.DESCENDING)
-    val pictureSortOrder: StateFlow<SortOrder> = _pictureSortOrder.asStateFlow()
-
-    private val _folderViewType = MutableStateFlow(ViewType.GRID)
-    val folderViewType: StateFlow<ViewType> = _folderViewType.asStateFlow()
-
-    private val _pictureViewType = MutableStateFlow(ViewType.GRID)
-    val pictureViewType: StateFlow<ViewType> = _pictureViewType.asStateFlow()
-
-    private val _pictureGroupBy = MutableStateFlow(GroupByType.DATE_TAKEN_DAILY)
-    val pictureGroupBy: StateFlow<GroupByType> = _pictureGroupBy.asStateFlow()
-
-    private val _pictureGroupOrder = MutableStateFlow(SortOrder.DESCENDING)
-    val pictureGroupOrder: StateFlow<SortOrder> = _pictureGroupOrder.asStateFlow()
 
     private val _pinnedFolders = MutableStateFlow<Set<String>>(emptySet()) // Stores folder paths
     private val _selectedFolders = MutableStateFlow<Set<String>>(emptySet()) // Stores folder paths
@@ -109,46 +87,22 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
     val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
-    private val _folderColumns = MutableStateFlow(2)
-    val folderColumns: StateFlow<Int> = _folderColumns.asStateFlow()
+    val folderColumns: StateFlow<Int> = prefs.folderColumns
+    val pictureColumns: StateFlow<Int> = prefs.pictureColumns
+    val showInfo: StateFlow<Boolean> = prefs.showInfo
 
-    private val _pictureColumns = MutableStateFlow(3)
-    val pictureColumns: StateFlow<Int> = _pictureColumns.asStateFlow()
-
-    private val _showInfo = MutableStateFlow(false)
-    val showInfo: StateFlow<Boolean> = _showInfo.asStateFlow()
-
-    private val _selectedMedia = MutableStateFlow<MediaItem?>(null)
-    val selectedMedia: StateFlow<MediaItem?> = _selectedMedia.asStateFlow()
-
-    private val _isImmersiveMode = MutableStateFlow(false)
-    val isImmersiveMode: StateFlow<Boolean> = _isImmersiveMode.asStateFlow()
-
-    private val _isCreateFolderDialogOpen = MutableStateFlow(false)
-    val isCreateFolderDialogOpen: StateFlow<Boolean> = _isCreateFolderDialogOpen.asStateFlow()
-
-    private val _createFolderError = MutableStateFlow<String?>(null)
-    val createFolderError: StateFlow<String?> = _createFolderError.asStateFlow()
-
-    private val _createFolderBrowsingPath = MutableStateFlow(Environment.getExternalStorageDirectory().absolutePath)
-    val createFolderBrowsingPath: StateFlow<String> = _createFolderBrowsingPath.asStateFlow()
-
-    private val _currentRotation = MutableStateFlow(0f)
-    val currentRotation: StateFlow<Float> = _currentRotation.asStateFlow()
-
-    private val _currentMediaList = MutableStateFlow<List<MediaItem>>(emptyList())
-    val currentMediaList: StateFlow<List<MediaItem>> = _currentMediaList.asStateFlow()
+    private val mediaViewer = MediaViewerState()
+    val selectedMedia: StateFlow<MediaItem?> = mediaViewer.selectedMedia
+    val currentMediaList: StateFlow<List<MediaItem>> = mediaViewer.currentMediaList
+    val isImmersiveMode: StateFlow<Boolean> = mediaViewer.isImmersiveMode
+    val currentRotation: StateFlow<Float> = mediaViewer.currentRotation
 
     val browsingFolders: StateFlow<List<Folder>> = combine(_browsingPath, _selectedFolders) { path, selected ->
         repository.getSubdirectories(path).filter { !selected.contains(it.path) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val createFolderBrowsingFolders: StateFlow<List<Folder>> = _createFolderBrowsingPath.map { path ->
-        repository.getSubdirectories(path)
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _allMedia, _searchQuery, _pinnedFolders, _folderSortType, _folderSortOrder, _excludedFolders, _showExcludedTemporarily, _selectedMediaTypes
+        _allMedia, prefs.searchQuery, _pinnedFolders, prefs.folderSortType, prefs.folderSortOrder, _excludedFolders, _showExcludedTemporarily, prefs.selectedMediaTypes
     ) { args ->
         val allMedia = args[0] as List<MediaItem>
         val query = args[1] as String
@@ -170,7 +124,7 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
     val filteredMedia: StateFlow<List<MediaItem>> = combine(
-        _mediaInFolder, _searchQuery, _selectedMediaTypes, _pictureSortType, _pictureSortOrder
+        _mediaInFolder, prefs.searchQuery, prefs.selectedMediaTypes, prefs.pictureSortType, prefs.pictureSortOrder
     ) { args ->
         val media = args[0] as List<MediaItem>
         val query = args[1] as String
@@ -183,7 +137,7 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
-        _allMedia, _searchQuery, _excludedFolders, _selectedMediaTypes, _pictureSortType, _pictureSortOrder
+        _allMedia, prefs.searchQuery, _excludedFolders, prefs.selectedMediaTypes, prefs.pictureSortType, prefs.pictureSortOrder
     ) { args ->
         val media = args[0] as List<MediaItem>
         val query = args[1] as String
@@ -197,13 +151,13 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredAllMedia, _pictureGroupBy, _pictureGroupOrder
+        filteredAllMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
     ) { media, groupBy, order ->
         GalleryTransformations.groupMedia(media, groupBy, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredMedia, _pictureGroupBy, _pictureGroupOrder
+        filteredMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
     ) { media, groupBy, order ->
         GalleryTransformations.groupMedia(media, groupBy, order)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
@@ -229,28 +183,15 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun increaseColumns(forPictures: Boolean) {
-        if (forPictures) {
-            if (_pictureColumns.value < 20) _pictureColumns.value += 1
-        } else {
-            if (_folderColumns.value < 20) _folderColumns.value += 1
-        }
+        prefs.increaseColumns(forPictures)
     }
 
     fun decreaseColumns(forPictures: Boolean) {
-        if (forPictures) {
-            if (_pictureColumns.value > 1) _pictureColumns.value -= 1
-        } else {
-            if (_folderColumns.value > 1) _folderColumns.value -= 1
-        }
+        prefs.decreaseColumns(forPictures)
     }
 
     fun setColumnsCount(count: Int, forPictures: Boolean) {
-        val safeCount = count.coerceIn(1, 20)
-        if (forPictures) {
-            _pictureColumns.value = safeCount
-        } else {
-            _folderColumns.value = safeCount
-        }
+        prefs.setColumnsCount(count, forPictures)
     }
 
     fun selectFolder(folder: Folder) {
@@ -272,7 +213,7 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun toggleInfo() {
-        _showInfo.value = !_showInfo.value
+        prefs.toggleInfo()
     }
 
     fun selectMedia(item: MediaItem) {
@@ -284,10 +225,7 @@ class GalleryViewModel @JvmOverloads constructor(
             } else {
                 filteredAllMedia.value
             }
-            _currentMediaList.value = list
-            _selectedMedia.value = item
-            _isImmersiveMode.value = false
-            _currentRotation.value = 0f
+            mediaViewer.open(item, list)
         }
     }
 
@@ -388,25 +326,24 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun setCurrentMedia(item: MediaItem) {
-        _selectedMedia.value = item
-        _currentRotation.value = 0f
+        mediaViewer.setCurrent(item)
     }
 
     fun closeMedia() {
-        _selectedMedia.value = null
+        mediaViewer.close()
     }
 
     fun toggleImmersiveMode() {
-        _isImmersiveMode.value = !_isImmersiveMode.value
+        mediaViewer.toggleImmersive()
     }
 
     fun rotatePhoto() {
-        _currentRotation.value = (_currentRotation.value + 90f) % 360f
+        mediaViewer.rotate()
     }
 
     fun toggleDisplayMode() {
         _showExcludedTemporarily.value = false
-        _displayMode.value = if (_displayMode.value == DisplayMode.GALLERY) DisplayMode.CALENDAR else DisplayMode.GALLERY
+        prefs.toggleDisplayMode()
     }
 
     fun setShowExcludedTemporarily(show: Boolean) {
@@ -543,51 +480,36 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun setSortType(sortType: SortType, forPictures: Boolean) {
-        if (forPictures) {
-            _pictureSortType.value = sortType
-        } else {
-            _folderSortType.value = sortType
-        }
+        prefs.setSortType(sortType, forPictures)
     }
 
     fun setSortOrder(order: SortOrder, forPictures: Boolean) {
-        if (forPictures) {
-            _pictureSortOrder.value = order
-        } else {
-            _folderSortOrder.value = order
-        }
+        prefs.setSortOrder(order, forPictures)
     }
 
     fun setGroupBy(type: GroupByType) {
-        _pictureGroupBy.value = type
+        prefs.setGroupBy(type)
     }
 
     fun setGroupOrder(order: SortOrder) {
-        _pictureGroupOrder.value = order
+        prefs.setGroupOrder(order)
     }
 
     fun setViewType(viewType: ViewType, forPictures: Boolean) {
-        if (forPictures) {
-            _pictureViewType.value = viewType
-        } else {
-            _folderViewType.value = viewType
-        }
+        prefs.setViewType(viewType, forPictures)
     }
 
 
     fun setSelectedMediaTypes(types: Set<MediaType>) {
-        _selectedMediaTypes.value = types
+        prefs.setSelectedMediaTypes(types)
     }
 
     fun setSearchQuery(query: String) {
-        _searchQuery.value = query
+        prefs.setSearchQuery(query)
     }
 
     fun setSearchActive(active: Boolean) {
-        _isSearchActive.value = active
-        if (!active) {
-            _searchQuery.value = ""
-        }
+        prefs.setSearchActive(active)
     }
 
     fun toggleSelection(folderPath: String) {
@@ -650,50 +572,6 @@ class GalleryViewModel @JvmOverloads constructor(
         currentExcluded.addAll(selectedPaths)
         _excludedFolders.value = currentExcluded
         exitSelectionMode()
-    }
-
-    fun setCreateFolderDialogOpen(open: Boolean) {
-        _isCreateFolderDialogOpen.value = open
-        if (open) {
-            _createFolderBrowsingPath.value = Environment.getExternalStorageDirectory().absolutePath
-        } else {
-            _createFolderError.value = null
-        }
-    }
-
-    fun updateCreateFolderBrowsingPath(path: String) {
-        _createFolderBrowsingPath.value = path
-    }
-
-    fun createFolder(name: String) {
-        if (name.isBlank()) {
-            _createFolderError.value = "Folder name cannot be empty"
-            return
-        }
-
-        val invalidChars = listOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
-        if (name.any { it in invalidChars }) {
-            _createFolderError.value = "Invalid characters in folder name"
-            return
-        }
-
-        val parentPath = _createFolderBrowsingPath.value
-        val fullPath = File(parentPath, name).absolutePath
-
-        if (repository.folderExists(fullPath)) {
-            _createFolderError.value = "Folder already exists"
-            return
-        }
-
-        viewModelScope.launch {
-            val result = repository.createFolder(parentPath, name)
-            if (result.isSuccess) {
-                setCreateFolderDialogOpen(false)
-                loadFolders()
-            } else {
-                _createFolderError.value = result.exceptionOrNull()?.message ?: "Failed to create folder"
-            }
-        }
     }
 
 }

@@ -36,12 +36,14 @@ import com.davide.seddio.easygallery.ui.ManageExcludedScreen
 import com.davide.seddio.easygallery.ui.SettingsScreen
 import com.davide.seddio.easygallery.ui.FolderDetailScreen
 import com.davide.seddio.easygallery.ui.FolderListScreen
+import com.davide.seddio.easygallery.ui.CreateFolderViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
 import com.davide.seddio.easygallery.ui.theme.EasyGalleryTheme
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: GalleryViewModel by viewModels()
+    private val createFolderViewModel: CreateFolderViewModel by viewModels()
     private var hasPermission by mutableStateOf(false)
 
     private val intentSenderLauncher = registerForActivityResult(
@@ -114,7 +116,7 @@ class MainActivity : ComponentActivity() {
                     } else if (selectedFolder != null) {
                         FolderDetailScreen(viewModel)
                     } else if (hasPermission) {
-                        FolderListScreen(viewModel)
+                        FolderListScreen(viewModel, createFolderViewModel)
                     } else {
                         PermissionDeniedScreen {
                             checkPermissions()

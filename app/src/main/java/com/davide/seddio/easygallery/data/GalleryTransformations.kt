@@ -45,7 +45,7 @@ object GalleryTransformations {
         val foldersList = foldersMap.values.toList()
 
         val sorted = when (sort) {
-            SortType.NAME -> foldersList.sortedBy { it.name }
+            SortType.NAME -> foldersList.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
             SortType.PATH -> foldersList.sortedBy { it.path }
             SortType.SIZE -> foldersList.sortedByDescending { it.size }
             SortType.LAST_MODIFIED -> foldersList.sortedByDescending { it.dateModified }
