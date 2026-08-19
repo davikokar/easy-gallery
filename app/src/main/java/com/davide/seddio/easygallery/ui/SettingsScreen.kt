@@ -52,6 +52,8 @@ fun SettingsScreen(
                 showLanguageDialog = false
                 if (tag != LocaleHelper.getPersistedLanguageTag(context)) {
                     LocaleHelper.persistLanguageTag(context, tag)
+                    LocaleHelper.applyLocale(context)
+                    viewModel.onLocaleChanged()
                     activity?.recreate()
                 }
             },
@@ -253,6 +255,7 @@ fun LanguageSelectionDialog(
     onLanguageSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var temporaryTag by remember { mutableStateOf(currentTag) }
     // "" represents "follow the system language".
     val options = listOf("") + LocaleHelper.supportedLanguageTags
 
@@ -277,14 +280,14 @@ fun LanguageSelectionDialog(
                             .fillMaxWidth()
                             .height(48.dp)
                             .selectable(
-                                selected = tag == currentTag,
-                                onClick = { onLanguageSelected(tag) },
+                                selected = tag == temporaryTag,
+                                onClick = { temporaryTag = tag },
                                 role = Role.RadioButton
                             )
                             .padding(horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(selected = tag == currentTag, onClick = null)
+                        RadioButton(selected = tag == temporaryTag, onClick = null)
                         Text(
                             text = label,
                             style = MaterialTheme.typography.bodyLarge,
@@ -295,9 +298,15 @@ fun LanguageSelectionDialog(
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            TextButton(onClick = { onLanguageSelected(temporaryTag) }) {
+                Text(stringResource(R.string.action_ok))
+            }
+        },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
         }
     )
 }
@@ -313,7 +322,7 @@ private fun shareApp(context: Context) {
         action = Intent.ACTION_SEND
         putExtra(
             Intent.EXTRA_TEXT,
-            "Check out Easy Gallery: https://play.google.com/store/apps/details?id=${context.packageName}"
+            context.getString(R.string.share_app_text, context.packageName)
         )
         type = "text/plain"
     }

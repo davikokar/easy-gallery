@@ -25,8 +25,27 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
 
-    private val todayLabel: String = application.getString(R.string.date_today)
-    private val yesterdayLabel: String = application.getString(R.string.date_yesterday)
+    private val _localeTrigger = MutableStateFlow(System.currentTimeMillis())
+    
+    private var todayLabel: String = application.getString(R.string.date_today)
+    private var yesterdayLabel: String = application.getString(R.string.date_yesterday)
+    private var fileTypeLabels: Map<MediaType, String> = mapOf(
+        MediaType.IMAGE to application.getString(R.string.filter_images),
+        MediaType.VIDEO to application.getString(R.string.filter_videos),
+        MediaType.GIF to application.getString(R.string.filter_gifs)
+    )
+
+    fun onLocaleChanged() {
+        val application = getApplication<Application>()
+        todayLabel = application.getString(R.string.date_today)
+        yesterdayLabel = application.getString(R.string.date_yesterday)
+        fileTypeLabels = mapOf(
+            MediaType.IMAGE to application.getString(R.string.filter_images),
+            MediaType.VIDEO to application.getString(R.string.filter_videos),
+            MediaType.GIF to application.getString(R.string.filter_gifs)
+        )
+        _localeTrigger.value = System.currentTimeMillis()
+    }
 
     private val prefs = DisplayPreferencesState()
     val displayMode: StateFlow<DisplayMode> = prefs.displayMode
@@ -155,15 +174,15 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredAllMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
-    ) { media, groupBy, order ->
-        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel)
+        filteredAllMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder, _localeTrigger
+    ) { media, groupBy, order, _ ->
+        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel, fileTypeLabels)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
-    ) { media, groupBy, order ->
-        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel)
+        filteredMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder, _localeTrigger
+    ) { media, groupBy, order, _ ->
+        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel, fileTypeLabels)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     fun loadFolders() {

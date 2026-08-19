@@ -24,7 +24,6 @@ import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.MediaItem
-import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -100,7 +99,7 @@ fun androidx.compose.foundation.lazy.LazyItemScope.MediaListItem(
                 
                 if (showInfo) {
                     val dateStr = remember(item.dateAdded) {
-                        SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(Date(item.dateAdded * 1000))
+                        java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, Locale.getDefault()).format(Date(item.dateAdded * 1000))
                     }
                     Text(
                         text = dateStr,

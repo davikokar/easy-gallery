@@ -45,4 +45,18 @@ object LocaleHelper {
         config.setLayoutDirection(locale)
         return context.createConfigurationContext(config)
     }
+
+    /** Updates the configuration of [context] and its application context to the persisted language. */
+    fun applyLocale(context: Context) {
+        val tag = getPersistedLanguageTag(context)
+        val locale = if (tag.isEmpty()) Locale.getDefault() else Locale.forLanguageTag(tag)
+        Locale.setDefault(locale)
+
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(locale)
+        config.setLayoutDirection(locale)
+
+        context.resources.updateConfiguration(config, context.resources.displayMetrics)
+        context.applicationContext.resources.updateConfiguration(config, context.applicationContext.resources.displayMetrics)
+    }
 }

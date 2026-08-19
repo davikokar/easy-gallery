@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Easy Gallery</string>
-    <string name="support_email_address">davidemela.support@gmail.com</string>
+    <string name="app_name" translatable="false">Easy Gallery</string>
+    <string name="support_email_address" translatable="false">davidemela.support@gmail.com</string>
     <string name="support_email_subject">Easy Gallery support request</string>
     <string name="error_no_email_app">No email application found</string>
     <string name="cd_back">Back</string>
@@ -51,6 +51,7 @@
     <string name="settings_manage_excluded">Manage excluded</string>
     <string name="settings_app">App</string>
     <string name="settings_share_app">Share app</string>
+    <string name="share_app_text">Check out Easy Gallery: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">Rate app</string>
     <string name="settings_terms">Terms</string>
     <string name="settings_customer_support">Customer Support</string>
@@ -104,4 +105,6 @@
     <string name="group_by_last_modified_monthly">Last modified (monthly)</string>
     <string name="settings_privacy">Privacy &amp; Policy</string>
     <string name="settings_community_support">Community &amp; Support</string>
+    <string name="billing_thanks">Thank you so much for your support! ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
 </resources>

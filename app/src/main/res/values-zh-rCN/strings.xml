@@ -48,6 +48,7 @@
     <string name="settings_manage_excluded">管理排除项</string>
     <string name="settings_app">应用</string>
     <string name="settings_share_app">分享应用</string>
+    <string name="share_app_text">看看这款 Easy Gallery：https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">给应用评分</string>
     <string name="settings_terms">条款</string>
     <string name="settings_customer_support">客户支持</string>
@@ -101,4 +102,6 @@
     <string name="group_by_last_modified_monthly">最后修改时间（每月）</string>
     <string name="settings_privacy">隐私与政策</string>
     <string name="settings_community_support">社区与支持</string>
+    <string name="billing_thanks">非常感谢您的支持！ ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
 </resources>

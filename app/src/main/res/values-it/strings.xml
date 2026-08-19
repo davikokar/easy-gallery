@@ -48,6 +48,7 @@
     <string name="settings_manage_excluded">Gestisci escluse</string>
     <string name="settings_app">App</string>
     <string name="settings_share_app">Condividi app</string>
+    <string name="share_app_text">Dai un\'occhiata a Easy Gallery: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">Valuta app</string>
     <string name="settings_terms">Termini</string>
     <string name="settings_customer_support">Servizio clienti</string>
@@ -101,4 +102,6 @@
     <string name="group_by_last_modified_monthly">Ultima modifica (mensile)</string>
     <string name="settings_privacy">Privacy e politica</string>
     <string name="settings_community_support">Community e supporto</string>
+    <string name="billing_thanks">Grazie mille per il tuo supporto! ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
 </resources>

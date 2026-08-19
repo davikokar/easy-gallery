@@ -33,7 +33,7 @@ fun SelectionTopBar(
     var showMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text("$selectedCount / $totalCount", color = Color.White) },
+        title = { Text(stringResource(R.string.selection_count, selectedCount, totalCount), color = Color.White) },
         navigationIcon = {
             IconButton(onClick = onClose) {
                 Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_exit_selection), tint = Color.White)

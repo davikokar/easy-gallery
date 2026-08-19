@@ -48,6 +48,7 @@
     <string name="settings_manage_excluded">除外設定の管理</string>
     <string name="settings_app">アプリ</string>
     <string name="settings_share_app">アプリを共有</string>
+    <string name="share_app_text">Easy Gallery をチェックしてみてください: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">アプリを評価</string>
     <string name="settings_terms">利用規約</string>
     <string name="settings_customer_support">カスタマーサポート</string>
@@ -101,4 +102,6 @@
     <string name="group_by_last_modified_monthly">最終更新日（月別）</string>
     <string name="settings_privacy">プライバシーとポリシー</string>
     <string name="settings_community_support">コミュニティとサポート</string>
+    <string name="billing_thanks">応援していただき、本当にありがとうございます！ ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
 </resources>

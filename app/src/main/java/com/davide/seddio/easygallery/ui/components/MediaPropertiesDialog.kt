@@ -10,7 +10,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.MediaItem
-import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
@@ -30,7 +29,7 @@ fun MediaPropertiesDialog(media: List<MediaItem>, onDismiss: () -> Unit) {
                     Text(stringResource(R.string.properties_name, item.name), fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
                     Text(stringResource(R.string.properties_path, "${item.folderPath}/${item.name}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     val dateStr = remember(item.dateAdded) {
-                        SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(Date(item.dateAdded * 1000))
+                        java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, Locale.getDefault()).format(Date(item.dateAdded * 1000))
                     }
                     Text(stringResource(R.string.properties_date, dateStr), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

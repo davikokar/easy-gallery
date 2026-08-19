@@ -48,6 +48,7 @@
     <string name="settings_manage_excluded">إدارة المجلدات المستبعدة</string>
     <string name="settings_app">التطبيق</string>
     <string name="settings_share_app">مشاركة التطبيق</string>
+    <string name="share_app_text">تحقق من تطبيق Easy Gallery: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">تقييم التطبيق</string>
     <string name="settings_terms">الشروط</string>
     <string name="settings_customer_support">دعم العملاء</string>
@@ -101,4 +102,6 @@
     <string name="group_by_last_modified_monthly">تاريخ آخر تعديل (شهري)</string>
     <string name="settings_privacy">الخصوصية والسياسة</string>
     <string name="settings_community_support">المجتمع والدعم</string>
+    <string name="billing_thanks">شكراً جزيلاً على دعمك! ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
 </resources>

@@ -48,6 +48,7 @@
     <string name="settings_manage_excluded">제외 항목 관리</string>
     <string name="settings_app">앱</string>
     <string name="settings_share_app">앱 공유</string>
+    <string name="share_app_text">Easy Gallery를 확인해 보세요: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">앱 평가</string>
     <string name="settings_terms">약관</string>
     <string name="settings_customer_support">고객 지원</string>
@@ -101,4 +102,6 @@
     <string name="group_by_last_modified_monthly">마지막 수정 날짜 (월별)</string>
     <string name="settings_privacy">개인정보 및 정책</string>
     <string name="settings_community_support">커뮤니티 및 지원</string>
+    <string name="billing_thanks">지원해 주셔서 정말 감사합니다! ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
 </resources>

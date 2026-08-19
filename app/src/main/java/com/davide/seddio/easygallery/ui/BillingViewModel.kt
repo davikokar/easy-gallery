@@ -102,7 +102,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
                 viewModelScope.launch {
                     Toast.makeText(
                         getApplication(),
-                        "Thank you so much for your support! ☕",
+                        getApplication<Application>().getString(com.davide.seddio.easygallery.R.string.billing_thanks),
                         Toast.LENGTH_LONG
                     ).show()
                 }

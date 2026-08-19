@@ -108,7 +108,8 @@ object GalleryTransformations {
         type: GroupByType,
         order: SortOrder,
         todayLabel: String = "Today",
-        yesterdayLabel: String = "Yesterday"
+        yesterdayLabel: String = "Yesterday",
+        fileTypeLabels: Map<MediaType, String> = emptyMap()
     ): Map<String, List<MediaItem>> {
         if (type == GroupByType.NONE) return mapOf("" to items)
 
@@ -133,6 +134,7 @@ object GalleryTransformations {
                 val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val today = sdf.format(Date())
                 val yesterday = sdf.format(Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000))
+                val longDateFormat = java.text.DateFormat.getDateInstance(java.text.DateFormat.LONG, Locale.getDefault())
                 
                 sortedItems.groupBy { item ->
                     val date = if (type == GroupByType.DATE_TAKEN_DAILY) item.dateAdded else item.dateModified
@@ -140,20 +142,22 @@ object GalleryTransformations {
                     when (dateStr) {
                         today -> todayLabel
                         yesterday -> yesterdayLabel
-                        else -> SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(date * 1000))
+                        else -> longDateFormat.format(Date(date * 1000))
                     }
                 }
             }
             GroupByType.DATE_TAKEN_MONTHLY, GroupByType.LAST_MODIFIED_MONTHLY -> {
-                val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+                // Using a localized pattern for month and year
+                val pattern = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMM yyyy")
+                val sdf = SimpleDateFormat(pattern, Locale.getDefault())
                 sortedItems.groupBy { item ->
                     val date = if (type == GroupByType.DATE_TAKEN_MONTHLY) item.dateAdded else item.dateModified
                     sdf.format(Date(date * 1000))
                 }
             }
             GroupByType.FILE_TYPE -> {
-                sortedItems.groupBy {
-                    it.type.name.lowercase().replaceFirstChar { char -> char.uppercase() } + "s"
+                sortedItems.groupBy { item ->
+                    fileTypeLabels[item.type] ?: (item.type.name.lowercase().replaceFirstChar { char -> char.uppercase() } + "s")
                 }
             }
             else -> mapOf("" to sortedItems)
