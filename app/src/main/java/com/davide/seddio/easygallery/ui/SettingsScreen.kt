@@ -44,6 +44,11 @@ fun SettingsScreen(
     val context = LocalContext.current
     val activity = context.findActivity()
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+
+    if (showAboutDialog) {
+        AboutDialog(onDismiss = { showAboutDialog = false })
+    }
 
     if (showLanguageDialog) {
         LanguageSelectionDialog(
@@ -118,19 +123,14 @@ fun SettingsScreen(
                 onClick = { rateApp(context) }
             )
             SettingsItem(
-                title = stringResource(R.string.settings_privacy),
-                icon = Icons.Default.PrivacyTip,
-                onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/privacy.html") }
-            )
-            SettingsItem(
-                title = stringResource(R.string.settings_terms),
-                icon = Icons.Default.Description,
-                onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/terms.html") }
-            )
-            SettingsItem(
                 title = stringResource(R.string.settings_customer_support),
                 icon = Icons.Default.SupportAgent,
                 onClick = { onContactSupportClick(context) }
+            )
+            SettingsItem(
+                title = stringResource(R.string.settings_about),
+                icon = Icons.Default.Info,
+                onClick = { showAboutDialog = true }
             )
 
             HorizontalDivider(
@@ -146,6 +146,24 @@ fun SettingsScreen(
                 onClick = { 
                     activity?.let { billingViewModel.buyCoffee(it) }
                 }
+            )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = Color.Gray.copy(alpha = 0.5f)
+            )
+
+            SettingsSection(title = stringResource(R.string.settings_legal))
+            SettingsItem(
+                title = stringResource(R.string.settings_privacy),
+                icon = Icons.Default.PrivacyTip,
+                onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/privacy.html") }
+            )
+            SettingsItem(
+                title = stringResource(R.string.settings_terms),
+                icon = Icons.Default.Description,
+                onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/terms.html") }
             )
         }
     }
@@ -308,6 +326,40 @@ fun LanguageSelectionDialog(
             }
         }
     )
+}
+
+@Composable
+fun AboutDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val versionName = remember { getAppVersionName(context) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_about)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    stringResource(R.string.about_version, versionName),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_ok))
+            }
+        }
+    )
+}
+
+private fun getAppVersionName(context: Context): String {
+    return try {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+    } catch (e: Exception) {
+        ""
+    }
 }
 
 fun Context.findActivity(): Activity? = when (this) {

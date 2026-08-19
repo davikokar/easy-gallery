@@ -104,4 +104,7 @@
     <string name="settings_community_support">Comunidade e suporte</string>
     <string name="billing_thanks">Muito obrigado pelo seu apoio! ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">Jurídico</string>
+    <string name="settings_about">Sobre</string>
+    <string name="about_version">Versão %1$s</string>
 </resources>

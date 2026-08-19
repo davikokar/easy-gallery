@@ -104,4 +104,7 @@
     <string name="settings_community_support">コミュニティとサポート</string>
     <string name="billing_thanks">応援していただき、本当にありがとうございます！ ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">法的情報</string>
+    <string name="settings_about">このアプリについて</string>
+    <string name="about_version">バージョン %1$s</string>
 </resources>

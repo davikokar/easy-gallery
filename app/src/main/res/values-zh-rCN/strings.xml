@@ -104,4 +104,7 @@
     <string name="settings_community_support">社区与支持</string>
     <string name="billing_thanks">非常感谢您的支持！ ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">法律</string>
+    <string name="settings_about">关于</string>
+    <string name="about_version">版本 %1$s</string>
 </resources>
