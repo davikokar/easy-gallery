@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +24,9 @@ class GalleryViewModel @JvmOverloads constructor(
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
+
+    private val todayLabel: String = application.getString(R.string.date_today)
+    private val yesterdayLabel: String = application.getString(R.string.date_yesterday)
 
     private val prefs = DisplayPreferencesState()
     val displayMode: StateFlow<DisplayMode> = prefs.displayMode
@@ -153,13 +157,13 @@ class GalleryViewModel @JvmOverloads constructor(
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
         filteredAllMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
     ) { media, groupBy, order ->
-        GalleryTransformations.groupMedia(media, groupBy, order)
+        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
         filteredMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
     ) { media, groupBy, order ->
-        GalleryTransformations.groupMedia(media, groupBy, order)
+        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     fun loadFolders() {
@@ -177,7 +181,7 @@ class GalleryViewModel @JvmOverloads constructor(
                     _mediaInFolder.value = repository.getMediaInFolder(currentFolder.name)
                 }
             } catch (e: Exception) {
-                _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
+                _uiState.value = GalleryUiState.Error(e.message ?: getApplication<Application>().getString(R.string.error_unknown))
             }
         }
     }

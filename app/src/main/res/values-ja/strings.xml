@@ -87,4 +87,16 @@
     <string name="error_unknown">不明なエラー</string>
     <string name="date_today">今日</string>
     <string name="date_yesterday">昨日</string>
+    <string name="action_retry">再試行</string>
+    <string name="permission_denied_message">ギャラリーを表示するにはストレージの権限を許可してください。</string>
+    <string name="gallery_title">ギャラリー</string>
+    <string name="destination_copy_title">コピー先…</string>
+    <string name="destination_move_title">移動先…</string>
+    <string name="delete_folders_message">選択したフォルダを削除してもよろしいですか？この操作は元に戻せない場合があります。</string>
+    <string name="group_by_date_taken_daily">撮影日（日別）</string>
+    <string name="group_by_date_taken_monthly">撮影日（月別）</string>
+    <string name="group_by_last_modified_daily">最終更新日（日別）</string>
+    <string name="group_by_last_modified_monthly">最終更新日（月別）</string>
+    <string name="settings_privacy">プライバシーとポリシー</string>
+    <string name="settings_community_support">コミュニティとサポート</string>
 </resources>

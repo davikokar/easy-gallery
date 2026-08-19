@@ -16,12 +16,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.theme.AppBackground
@@ -64,7 +66,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
                 )
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.cd_selected),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -77,7 +79,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
             if (item.type == MediaType.VIDEO) {
                 Icon(
                     imageVector = Icons.Default.PlayCircle,
-                    contentDescription = "Video",
+                    contentDescription = stringResource(R.string.cd_video),
                     tint = Color.White.copy(alpha = 0.8f),
                     modifier = Modifier
                         .align(Alignment.Center)

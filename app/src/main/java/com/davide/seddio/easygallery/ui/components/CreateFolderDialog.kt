@@ -10,7 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.R
 
 @Composable
 fun CreateFolderDialog(
@@ -25,7 +27,7 @@ fun CreateFolderDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create New Folder") },
+        title = { Text(stringResource(R.string.create_folder_title)) },
         text = {
             Column {
                 FolderBrowser(
@@ -39,7 +41,7 @@ fun CreateFolderDialog(
                 OutlinedTextField(
                     value = folderName,
                     onValueChange = { folderName = it },
-                    label = { Text("New Folder Name") },
+                    label = { Text(stringResource(R.string.new_folder_name_label)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("folder_name_field"),
@@ -71,7 +73,7 @@ fun CreateFolderDialog(
                 onClick = { onCreate(folderName) },
                 modifier = Modifier.testTag("confirm_create_button")
             ) {
-                Text("Create")
+                Text(stringResource(R.string.action_create))
             }
         },
         dismissButton = {
@@ -79,7 +81,7 @@ fun CreateFolderDialog(
                 onClick = onDismiss,
                 modifier = Modifier.testTag("dismiss_create_button")
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )

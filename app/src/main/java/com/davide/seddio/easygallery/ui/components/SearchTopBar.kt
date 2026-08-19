@@ -14,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.DisplayMode
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
@@ -46,7 +48,7 @@ fun SearchTopBar(
                 TextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
-                    placeholder = { Text("Search...", color = Color.White.copy(alpha = 0.7f)) },
+                    placeholder = { Text(stringResource(R.string.search_placeholder), color = Color.White.copy(alpha = 0.7f)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     textStyle = LocalTextStyle.current.copy(color = Color.White),
@@ -64,7 +66,7 @@ fun SearchTopBar(
                 IconButton(onClick = { onSearchActiveChange(false) }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Cancel Search",
+                        contentDescription = stringResource(R.string.cd_cancel_search),
                         tint = Color.White
                     )
                 }
@@ -85,13 +87,13 @@ fun SearchTopBar(
                     IconButton(onClick = onToggleDisplayMode) {
                         Icon(
                             imageVector = if (displayMode == DisplayMode.GALLERY) Icons.Default.CalendarMonth else Icons.Default.Image,
-                            contentDescription = "Toggle Display Mode",
+                            contentDescription = stringResource(R.string.cd_toggle_display_mode),
                             tint = Color.White
                         )
                     }
                 }
                 IconButton(onClick = { onSearchActiveChange(true) }) {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
+                    Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search), tint = Color.White)
                 }
                 
                 actions?.invoke(this)
@@ -99,21 +101,21 @@ fun SearchTopBar(
                 // Overflow Menu
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = Color.White)
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = Color.White)
                     }
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Sort by") },
+                            text = { Text(stringResource(R.string.sort_by_title)) },
                             onClick = {
                                 showMenu = false
                                 onSortClick?.invoke()
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Column count") },
+                            text = { Text(stringResource(R.string.column_count_title)) },
                             onClick = {
                                 showMenu = false
                                 onColumnCountClick?.invoke()
@@ -121,7 +123,7 @@ fun SearchTopBar(
                         )
                         if (onGroupByClick != null) {
                             DropdownMenuItem(
-                                text = { Text("Group by") },
+                                text = { Text(stringResource(R.string.group_by_title)) },
                                 onClick = {
                                     showMenu = false
                                     onGroupByClick.invoke()
@@ -129,14 +131,14 @@ fun SearchTopBar(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("Temporarily show excluded") },
+                            text = { Text(stringResource(R.string.menu_show_excluded)) },
                             onClick = {
                                 showMenu = false
                                 onShowExcludedClick?.invoke()
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Filter media") },
+                            text = { Text(stringResource(R.string.filter_media_title)) },
                             modifier = Modifier.testTag("filter_media_button"),
                             onClick = {
                                 showMenu = false
@@ -144,7 +146,7 @@ fun SearchTopBar(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Change view type") },
+                            text = { Text(stringResource(R.string.change_view_type_title)) },
                             onClick = {
                                 showMenu = false
                                 onViewTypeClick?.invoke()
@@ -152,7 +154,7 @@ fun SearchTopBar(
                         )
                         if (onCreateFolderClick != null) {
                             DropdownMenuItem(
-                                text = { Text("Create new folder") },
+                                text = { Text(stringResource(R.string.menu_create_folder)) },
                                 modifier = Modifier.testTag("create_folder_button"),
                                 onClick = {
                                     showMenu = false
@@ -161,7 +163,7 @@ fun SearchTopBar(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("Settings") },
+                            text = { Text(stringResource(R.string.settings_title)) },
                             onClick = {
                                 showMenu = false
                                 onSettingsClick?.invoke()

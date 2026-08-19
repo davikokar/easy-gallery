@@ -16,11 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.MediaItem
 import java.text.SimpleDateFormat
 import java.util.*
@@ -71,7 +73,7 @@ fun androidx.compose.foundation.lazy.LazyItemScope.MediaListItem(
                     )
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
-                        contentDescription = "Selected",
+                        contentDescription = stringResource(R.string.cd_selected),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .align(Alignment.Center)

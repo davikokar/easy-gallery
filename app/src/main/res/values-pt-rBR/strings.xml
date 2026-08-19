@@ -87,4 +87,16 @@
     <string name="error_unknown">Erro desconhecido</string>
     <string name="date_today">Hoje</string>
     <string name="date_yesterday">Ontem</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="permission_denied_message">Conceda a permissão de armazenamento para ver a galeria.</string>
+    <string name="gallery_title">Galeria</string>
+    <string name="destination_copy_title">Copiar para…</string>
+    <string name="destination_move_title">Mover para…</string>
+    <string name="delete_folders_message">Tem certeza de que deseja excluir as pastas selecionadas? Esta ação pode ser irreversível.</string>
+    <string name="group_by_date_taken_daily">Data de captura (diário)</string>
+    <string name="group_by_date_taken_monthly">Data de captura (mensal)</string>
+    <string name="group_by_last_modified_daily">Última modificação (diário)</string>
+    <string name="group_by_last_modified_monthly">Última modificação (mensal)</string>
+    <string name="settings_privacy">Privacidade e política</string>
+    <string name="settings_community_support">Comunidade e suporte</string>
 </resources>

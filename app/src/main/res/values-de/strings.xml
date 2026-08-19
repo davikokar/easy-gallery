@@ -87,4 +87,16 @@
     <string name="error_unknown">Unbekannter Fehler</string>
     <string name="date_today">Heute</string>
     <string name="date_yesterday">Gestern</string>
+    <string name="action_retry">Wiederholen</string>
+    <string name="permission_denied_message">Bitte erteilen Sie die Speicherberechtigung, um die Galerie anzuzeigen.</string>
+    <string name="gallery_title">Galerie</string>
+    <string name="destination_copy_title">Kopieren nach …</string>
+    <string name="destination_move_title">Verschieben nach …</string>
+    <string name="delete_folders_message">Sind Sie sicher, dass Sie die ausgewählten Ordner löschen möchten? Diese Aktion kann möglicherweise nicht rückgängig gemacht werden.</string>
+    <string name="group_by_date_taken_daily">Aufnahmedatum (täglich)</string>
+    <string name="group_by_date_taken_monthly">Aufnahmedatum (monatlich)</string>
+    <string name="group_by_last_modified_daily">Zuletzt geändert (täglich)</string>
+    <string name="group_by_last_modified_monthly">Zuletzt geändert (monatlich)</string>
+    <string name="settings_privacy">Datenschutz &amp; Richtlinie</string>
+    <string name="settings_community_support">Community &amp; Support</string>
 </resources>

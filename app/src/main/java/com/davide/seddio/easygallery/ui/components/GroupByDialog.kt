@@ -7,8 +7,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.SortOrder
 
@@ -22,29 +24,29 @@ fun GroupByDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Group by") },
+        title = { Text(stringResource(R.string.group_by_title)) },
         text = {
             Column(Modifier.selectableGroup()) {
-                GroupByOption("Do not group", GroupByType.NONE, currentGroupBy == GroupByType.NONE, onGroupBySelected)
-                GroupByOption("Date taken (daily)", GroupByType.DATE_TAKEN_DAILY, currentGroupBy == GroupByType.DATE_TAKEN_DAILY, onGroupBySelected)
-                GroupByOption("Date taken (monthly)", GroupByType.DATE_TAKEN_MONTHLY, currentGroupBy == GroupByType.DATE_TAKEN_MONTHLY, onGroupBySelected)
-                GroupByOption("Last modified (daily)", GroupByType.LAST_MODIFIED_DAILY, currentGroupBy == GroupByType.LAST_MODIFIED_DAILY, onGroupBySelected)
-                GroupByOption("Last modified (monthly)", GroupByType.LAST_MODIFIED_MONTHLY, currentGroupBy == GroupByType.LAST_MODIFIED_MONTHLY, onGroupBySelected)
-                GroupByOption("File type", GroupByType.FILE_TYPE, currentGroupBy == GroupByType.FILE_TYPE, onGroupBySelected)
+                GroupByOption(stringResource(R.string.group_by_none), GroupByType.NONE, currentGroupBy == GroupByType.NONE, onGroupBySelected)
+                GroupByOption(stringResource(R.string.group_by_date_taken_daily), GroupByType.DATE_TAKEN_DAILY, currentGroupBy == GroupByType.DATE_TAKEN_DAILY, onGroupBySelected)
+                GroupByOption(stringResource(R.string.group_by_date_taken_monthly), GroupByType.DATE_TAKEN_MONTHLY, currentGroupBy == GroupByType.DATE_TAKEN_MONTHLY, onGroupBySelected)
+                GroupByOption(stringResource(R.string.group_by_last_modified_daily), GroupByType.LAST_MODIFIED_DAILY, currentGroupBy == GroupByType.LAST_MODIFIED_DAILY, onGroupBySelected)
+                GroupByOption(stringResource(R.string.group_by_last_modified_monthly), GroupByType.LAST_MODIFIED_MONTHLY, currentGroupBy == GroupByType.LAST_MODIFIED_MONTHLY, onGroupBySelected)
+                GroupByOption(stringResource(R.string.group_by_file_type), GroupByType.FILE_TYPE, currentGroupBy == GroupByType.FILE_TYPE, onGroupBySelected)
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 val isOrderEnabled = currentGroupBy != GroupByType.NONE
                 
                 OrderOption(
-                    label = "Ascending",
+                    label = stringResource(R.string.sort_ascending),
                     order = SortOrder.ASCENDING,
                     selected = currentOrder == SortOrder.ASCENDING,
                     enabled = isOrderEnabled,
                     onOrderSelected = onOrderSelected
                 )
                 OrderOption(
-                    label = "Descending",
+                    label = stringResource(R.string.sort_descending),
                     order = SortOrder.DESCENDING,
                     selected = currentOrder == SortOrder.DESCENDING,
                     enabled = isOrderEnabled,
@@ -53,7 +55,7 @@ fun GroupByDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("OK") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
         }
     )
 }

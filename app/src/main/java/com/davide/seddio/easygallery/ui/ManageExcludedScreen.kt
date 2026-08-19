@@ -13,7 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
@@ -27,15 +29,15 @@ fun ManageExcludedScreen(viewModel: GalleryViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Excluded", color = Color.White) },
+                title = { Text(stringResource(R.string.manage_excluded_title), color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.setManageExcludedMode(false) }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = Color.White)
                     }
                 },
                 actions = {
                     IconButton(onClick = { showAddDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Folder", tint = Color.White)
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_folder), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -66,7 +68,7 @@ fun ManageExcludedScreen(viewModel: GalleryViewModel) {
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "No excluded folders", color = Color.White.copy(alpha = 0.6f))
+                Text(text = stringResource(R.string.no_excluded_folders), color = Color.White.copy(alpha = 0.6f))
             }
         } else {
             LazyColumn(
@@ -111,7 +113,7 @@ fun ExcludedFolderItem(name: String, path: String, onRemove: () -> Unit) {
                 )
             }
             IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.White.copy(alpha = 0.7f))
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_remove), tint = Color.White.copy(alpha = 0.7f))
             }
         }
     }
@@ -125,10 +127,10 @@ fun AddExcludedFolderDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Exclude Folder") },
+        title = { Text(stringResource(R.string.exclude_folder_title)) },
         text = {
             if (folders.isEmpty()) {
-                Text("No more folders to exclude.")
+                Text(stringResource(R.string.no_more_folders_to_exclude))
             } else {
                 LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                     items(folders) { folder ->
@@ -144,7 +146,7 @@ fun AddExcludedFolderDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

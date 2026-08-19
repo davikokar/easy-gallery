@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.davide.seddio.easygallery.ui.FullImageScreen
@@ -156,10 +157,10 @@ class MainActivity : ComponentActivity() {
 fun PermissionDeniedScreen(onRetry: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Please grant storage permissions to view gallery.", color = androidx.compose.ui.graphics.Color.White)
+            Text(text = stringResource(R.string.permission_denied_message), color = androidx.compose.ui.graphics.Color.White)
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onRetry) {
-                Text("Retry")
+                Text(stringResource(R.string.action_retry))
             }
         }
     }

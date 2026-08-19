@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaRepository
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
@@ -60,13 +61,13 @@ class CreateFolderViewModel @JvmOverloads constructor(
 
     fun createFolder(name: String) {
         if (name.isBlank()) {
-            _error.value = "Folder name cannot be empty"
+            _error.value = getApplication<Application>().getString(R.string.error_folder_name_empty)
             return
         }
 
         val invalidChars = listOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
         if (name.any { it in invalidChars }) {
-            _error.value = "Invalid characters in folder name"
+            _error.value = getApplication<Application>().getString(R.string.error_invalid_folder_name)
             return
         }
 
@@ -74,7 +75,7 @@ class CreateFolderViewModel @JvmOverloads constructor(
         val fullPath = File(parentPath, name).absolutePath
 
         if (repository.folderExists(fullPath)) {
-            _error.value = "Folder already exists"
+            _error.value = getApplication<Application>().getString(R.string.error_folder_already_exists)
             return
         }
 
@@ -84,7 +85,7 @@ class CreateFolderViewModel @JvmOverloads constructor(
                 setDialogOpen(false)
                 _folderCreated.tryEmit(Unit)
             } else {
-                _error.value = result.exceptionOrNull()?.message ?: "Failed to create folder"
+                _error.value = result.exceptionOrNull()?.message ?: getApplication<Application>().getString(R.string.error_failed_create_folder)
             }
         }
     }

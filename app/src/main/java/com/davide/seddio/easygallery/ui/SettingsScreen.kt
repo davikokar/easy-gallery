@@ -21,9 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
@@ -39,12 +41,12 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings", color = Color.White) },
+                title = { Text(stringResource(R.string.settings_title), color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.setSettingsMode(false) }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.cd_back),
                             tint = Color.White
                         )
                     }
@@ -64,9 +66,9 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            SettingsSection(title = "General")
+            SettingsSection(title = stringResource(R.string.settings_general))
             SettingsItem(
-                title = "Manage excluded",
+                title = stringResource(R.string.settings_manage_excluded),
                 icon = Icons.Default.Block,
                 onClick = { viewModel.setManageExcludedMode(true) }
             )
@@ -77,29 +79,29 @@ fun SettingsScreen(
                 color = Color.Gray.copy(alpha = 0.5f)
             )
 
-            SettingsSection(title = "App")
+            SettingsSection(title = stringResource(R.string.settings_app))
             SettingsItem(
-                title = "Share app",
+                title = stringResource(R.string.settings_share_app),
                 icon = Icons.Default.Share,
                 onClick = { shareApp(context) }
             )
             SettingsItem(
-                title = "Rate app",
+                title = stringResource(R.string.settings_rate_app),
                 icon = Icons.Default.Star,
                 onClick = { rateApp(context) }
             )
             SettingsItem(
-                title = "Privacy & Policy",
+                title = stringResource(R.string.settings_privacy),
                 icon = Icons.Default.PrivacyTip,
                 onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/privacy.html") }
             )
             SettingsItem(
-                title = "Terms",
+                title = stringResource(R.string.settings_terms),
                 icon = Icons.Default.Description,
                 onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/terms.html") }
             )
             SettingsItem(
-                title = "Customer Support",
+                title = stringResource(R.string.settings_customer_support),
                 icon = Icons.Default.SupportAgent,
                 onClick = { onContactSupportClick(context) }
             )
@@ -110,9 +112,9 @@ fun SettingsScreen(
                 color = Color.Gray.copy(alpha = 0.5f)
             )
 
-            SettingsSection(title = "Community & Support")
+            SettingsSection(title = stringResource(R.string.settings_community_support))
             SettingsItem(
-                title = "Buy me a coffee",
+                title = stringResource(R.string.settings_buy_coffee),
                 icon = Icons.Default.Coffee,
                 onClick = { 
                     activity?.let { billingViewModel.buyCoffee(it) }
@@ -131,9 +133,9 @@ fun SettingsScreenPreview() {
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            SettingsSection(title = "General")
+            SettingsSection(title = stringResource(R.string.settings_general))
             SettingsItem(
-                title = "Manage excluded",
+                title = stringResource(R.string.settings_manage_excluded),
                 icon = Icons.Default.Block,
                 onClick = {}
             )
@@ -144,19 +146,19 @@ fun SettingsScreenPreview() {
                 color = Color.Gray.copy(alpha = 0.5f)
             )
 
-            SettingsSection(title = "App")
+            SettingsSection(title = stringResource(R.string.settings_app))
             SettingsItem(
-                title = "Share app",
+                title = stringResource(R.string.settings_share_app),
                 icon = Icons.Default.Share,
                 onClick = {}
             )
             SettingsItem(
-                title = "Rate app",
+                title = stringResource(R.string.settings_rate_app),
                 icon = Icons.Default.Star,
                 onClick = {}
             )
             SettingsItem(
-                title = "Privacy & Policy",
+                title = stringResource(R.string.settings_privacy),
                 icon = Icons.Default.PrivacyTip,
                 onClick = {}
             )

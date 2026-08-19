@@ -87,4 +87,16 @@
     <string name="error_unknown">Erreur inconnue</string>
     <string name="date_today">Aujourd\'hui</string>
     <string name="date_yesterday">Hier</string>
+    <string name="action_retry">Réessayer</string>
+    <string name="permission_denied_message">Veuillez accorder l\'autorisation de stockage pour afficher la galerie.</string>
+    <string name="gallery_title">Galerie</string>
+    <string name="destination_copy_title">Copier vers…</string>
+    <string name="destination_move_title">Déplacer vers…</string>
+    <string name="delete_folders_message">Êtes-vous sûr de vouloir supprimer les dossiers sélectionnés ? Cette action peut être irréversible.</string>
+    <string name="group_by_date_taken_daily">Date de prise (quotidien)</string>
+    <string name="group_by_date_taken_monthly">Date de prise (mensuel)</string>
+    <string name="group_by_last_modified_daily">Dernière modification (quotidien)</string>
+    <string name="group_by_last_modified_monthly">Dernière modification (mensuel)</string>
+    <string name="settings_privacy">Confidentialité et politique</string>
+    <string name="settings_community_support">Communauté et support</string>
 </resources>

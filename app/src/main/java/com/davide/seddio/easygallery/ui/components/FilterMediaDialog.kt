@@ -6,7 +6,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.MediaType
 
 @Composable
@@ -19,11 +21,11 @@ fun FilterMediaDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Filter media") },
+        title = { Text(stringResource(R.string.filter_media_title)) },
         text = {
             Column {
                 MediaTypeFilterItem(
-                    label = "Images",
+                    label = stringResource(R.string.filter_images),
                     type = MediaType.IMAGE,
                     checked = tempSelectedTypes.contains(MediaType.IMAGE),
                     onToggle = { type ->
@@ -35,7 +37,7 @@ fun FilterMediaDialog(
                     }
                 )
                 MediaTypeFilterItem(
-                    label = "Videos",
+                    label = stringResource(R.string.filter_videos),
                     type = MediaType.VIDEO,
                     checked = tempSelectedTypes.contains(MediaType.VIDEO),
                     onToggle = { type ->
@@ -47,7 +49,7 @@ fun FilterMediaDialog(
                     }
                 )
                 MediaTypeFilterItem(
-                    label = "GIFs",
+                    label = stringResource(R.string.filter_gifs),
                     type = MediaType.GIF,
                     checked = tempSelectedTypes.contains(MediaType.GIF),
                     onToggle = { type ->
@@ -61,10 +63,10 @@ fun FilterMediaDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(tempSelectedTypes) }) { Text("OK") }
+            TextButton(onClick = { onConfirm(tempSelectedTypes) }) { Text(stringResource(R.string.action_ok)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }
     )
 }

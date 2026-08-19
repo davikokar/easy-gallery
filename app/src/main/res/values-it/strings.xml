@@ -87,4 +87,16 @@
     <string name="error_unknown">Errore sconosciuto</string>
     <string name="date_today">Oggi</string>
     <string name="date_yesterday">Ieri</string>
+    <string name="action_retry">Riprova</string>
+    <string name="permission_denied_message">Concedi l\'autorizzazione di archiviazione per visualizzare la galleria.</string>
+    <string name="gallery_title">Galleria</string>
+    <string name="destination_copy_title">Copia in…</string>
+    <string name="destination_move_title">Muovi in…</string>
+    <string name="delete_folders_message">Sei sicuro di voler eliminare le cartelle selezionate? L\'azione potrebbe essere irreversibile.</string>
+    <string name="group_by_date_taken_daily">Data di scatto (giornaliero)</string>
+    <string name="group_by_date_taken_monthly">Data di scatto (mensile)</string>
+    <string name="group_by_last_modified_daily">Ultima modifica (giornaliero)</string>
+    <string name="group_by_last_modified_monthly">Ultima modifica (mensile)</string>
+    <string name="settings_privacy">Privacy e politica</string>
+    <string name="settings_community_support">Community e supporto</string>
 </resources>

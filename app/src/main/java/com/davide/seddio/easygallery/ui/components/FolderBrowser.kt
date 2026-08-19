@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.Folder
 
 @Composable
@@ -40,7 +42,7 @@ fun FolderBrowser(
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                Text("No subfolders here.", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.no_subfolders), style = MaterialTheme.typography.bodySmall)
             }
         } else {
             LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
@@ -78,12 +80,12 @@ fun DestinationFolderPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("OK")
+                Text(stringResource(R.string.action_ok))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -91,10 +93,11 @@ fun DestinationFolderPickerDialog(
 
 @Composable
 fun Breadcrumb(path: String, onBreadcrumbClick: (String) -> Unit) {
-    val segments = remember(path) {
+    val internalStorageLabel = stringResource(R.string.internal_storage)
+    val segments = remember(path, internalStorageLabel) {
         val root = android.os.Environment.getExternalStorageDirectory().absolutePath
         val relative = path.removePrefix(root).trimStart('/')
-        val list = mutableListOf("Internal Storage" to root)
+        val list = mutableListOf(internalStorageLabel to root)
         if (relative.isNotEmpty()) {
             var current = root
             relative.split('/').forEach { segment ->

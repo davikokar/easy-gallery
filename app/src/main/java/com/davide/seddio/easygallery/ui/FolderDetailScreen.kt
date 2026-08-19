@@ -33,11 +33,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
+import com.davide.seddio.easygallery.R
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.*
@@ -195,7 +197,7 @@ fun FolderDetailContent(
                 )
             } else {
                 SearchTopBar(
-                    title = selectedFolder?.name ?: "Gallery",
+                    title = selectedFolder?.name ?: stringResource(R.string.gallery_title),
                     searchQuery = searchQuery,
                     isSearchActive = isSearchActive,
                     onSearchQueryChange = { onSetSearchQuery(it) },
@@ -209,7 +211,7 @@ fun FolderDetailContent(
                     onSettingsClick = { onSetSettingsMode(true) },
                     navigationIcon = {
                         IconButton(onClick = { onBackToFolders() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = Color.White)
                         }
                     },
                     actions = {
@@ -219,7 +221,7 @@ fun FolderDetailContent(
                         ) {
                             Icon(
                                 Icons.Default.Info,
-                                contentDescription = "Toggle Info",
+                                contentDescription = stringResource(R.string.cd_toggle_info),
                                 tint = if (showInfo) BrandBlue else Color.White
                             )
                         }
@@ -232,19 +234,19 @@ fun FolderDetailContent(
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                title = { Text("Delete Media") },
-                text = { Text("Are you sure you want to delete the selected items? This action cannot be undone.") },
+                title = { Text(stringResource(R.string.delete_media_title)) },
+                text = { Text(stringResource(R.string.delete_media_message)) },
                 confirmButton = {
                     TextButton(onClick = {
                         onDeleteSelectedMedia()
                         showDeleteDialog = false
                     }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -316,7 +318,7 @@ fun FolderDetailContent(
 
         if (isDestinationPickerActive) {
             DestinationFolderPickerDialog(
-                title = if (pendingOperation == OperationType.MOVE) "Move to..." else "Copy to...",
+                title = if (pendingOperation == OperationType.MOVE) stringResource(R.string.destination_move_title) else stringResource(R.string.destination_copy_title),
                 currentPath = browsingPath,
                 folders = browsingFolders,
                 onFolderSelected = { onUpdateBrowsingPath(it.path) },

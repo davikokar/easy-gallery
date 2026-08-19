@@ -87,4 +87,16 @@
     <string name="error_unknown">未知错误</string>
     <string name="date_today">今天</string>
     <string name="date_yesterday">昨天</string>
+    <string name="action_retry">重试</string>
+    <string name="permission_denied_message">请授予存储权限以查看图库。</string>
+    <string name="gallery_title">图库</string>
+    <string name="destination_copy_title">复制到…</string>
+    <string name="destination_move_title">移动到…</string>
+    <string name="delete_folders_message">您确定要删除选定的文件夹吗？此操作可能无法撤消。</string>
+    <string name="group_by_date_taken_daily">拍摄日期（每天）</string>
+    <string name="group_by_date_taken_monthly">拍摄日期（每月）</string>
+    <string name="group_by_last_modified_daily">最后修改时间（每天）</string>
+    <string name="group_by_last_modified_monthly">最后修改时间（每月）</string>
+    <string name="settings_privacy">隐私与政策</string>
+    <string name="settings_community_support">社区与支持</string>
 </resources>

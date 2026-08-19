@@ -87,4 +87,16 @@
     <string name="error_unknown">خطأ غير معروف</string>
     <string name="date_today">اليوم</string>
     <string name="date_yesterday">أمس</string>
+    <string name="action_retry">إعادة المحاولة</string>
+    <string name="permission_denied_message">يرجى منح أذونات التخزين لعرض المعرض.</string>
+    <string name="gallery_title">المعرض</string>
+    <string name="destination_copy_title">نسخ إلى…</string>
+    <string name="destination_move_title">نقل إلى…</string>
+    <string name="delete_folders_message">هل أنت متأكد أنك تريد حذف المجلدات المختارة؟ قد يكون هذا الإجراء غير قابل للتراجع.</string>
+    <string name="group_by_date_taken_daily">تاريخ الالتقاط (يومي)</string>
+    <string name="group_by_date_taken_monthly">تاريخ الالتقاط (شهري)</string>
+    <string name="group_by_last_modified_daily">تاريخ آخر تعديل (يومي)</string>
+    <string name="group_by_last_modified_monthly">تاريخ آخر تعديل (شهري)</string>
+    <string name="settings_privacy">الخصوصية والسياسة</string>
+    <string name="settings_community_support">المجتمع والدعم</string>
 </resources>

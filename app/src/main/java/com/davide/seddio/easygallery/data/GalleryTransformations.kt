@@ -103,7 +103,13 @@ object GalleryTransformations {
         }
     }
 
-    fun groupMedia(items: List<MediaItem>, type: GroupByType, order: SortOrder): Map<String, List<MediaItem>> {
+    fun groupMedia(
+        items: List<MediaItem>,
+        type: GroupByType,
+        order: SortOrder,
+        todayLabel: String = "Today",
+        yesterdayLabel: String = "Yesterday"
+    ): Map<String, List<MediaItem>> {
         if (type == GroupByType.NONE) return mapOf("" to items)
 
         val sortedItems = when (type) {
@@ -132,8 +138,8 @@ object GalleryTransformations {
                     val date = if (type == GroupByType.DATE_TAKEN_DAILY) item.dateAdded else item.dateModified
                     val dateStr = sdf.format(Date(date * 1000))
                     when (dateStr) {
-                        today -> "Today"
-                        yesterday -> "Yesterday"
+                        today -> todayLabel
+                        yesterday -> yesterdayLabel
                         else -> SimpleDateFormat("MMMM d, yyyy", Locale.getDefault()).format(Date(date * 1000))
                     }
                 }

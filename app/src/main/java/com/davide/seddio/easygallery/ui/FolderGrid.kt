@@ -22,11 +22,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 
@@ -121,7 +123,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
                 )
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Selected",
+                    contentDescription = stringResource(R.string.cd_selected),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -147,7 +149,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.FolderGridItem(
             if (folder.isPinned) {
                 Icon(
                     imageVector = Icons.Default.PushPin,
-                    contentDescription = "Pinned",
+                    contentDescription = stringResource(R.string.cd_pinned),
                     tint = Color.White,
                     modifier = Modifier
                         .align(Alignment.TopStart)
