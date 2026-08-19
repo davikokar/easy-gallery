@@ -32,6 +32,14 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    bundle {
+        // The in-app "Change language" feature overrides the locale independently of the
+        // device's configured languages, so Play must not strip per-language config splits:
+        // otherwise a locale the device wasn't already using has no resources to switch to.
+        language {
+            enableSplit = false
+        }
+    }
     buildFeatures {
         compose = true
     }
