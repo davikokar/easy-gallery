@@ -51,6 +51,8 @@
     <string name="settings_rate_app">アプリを評価</string>
     <string name="settings_terms">利用規約</string>
     <string name="settings_customer_support">カスタマーサポート</string>
+    <string name="settings_change_language">言語を変更</string>
+    <string name="language_system_default">システムのデフォルト</string>
     <string name="settings_buy_coffee">コーヒーを奢る</string>
     <string name="column_count_title">列数</string>
     <string name="create_folder_title">新しいフォルダを作成</string>

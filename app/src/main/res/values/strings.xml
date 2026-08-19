@@ -54,6 +54,8 @@
     <string name="settings_rate_app">Rate app</string>
     <string name="settings_terms">Terms</string>
     <string name="settings_customer_support">Customer Support</string>
+    <string name="settings_change_language">Change language</string>
+    <string name="language_system_default">System default</string>
     <string name="settings_buy_coffee">Buy me a coffee</string>
     <string name="column_count_title">Column count</string>
     <string name="create_folder_title">Create New Folder</string>

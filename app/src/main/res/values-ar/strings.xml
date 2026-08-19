@@ -51,6 +51,8 @@
     <string name="settings_rate_app">تقييم التطبيق</string>
     <string name="settings_terms">الشروط</string>
     <string name="settings_customer_support">دعم العملاء</string>
+    <string name="settings_change_language">تغيير اللغة</string>
+    <string name="language_system_default">إعداد النظام الافتراضي</string>
     <string name="settings_buy_coffee">اشترِ لي قهوة</string>
     <string name="column_count_title">عدد الأعمدة</string>
     <string name="create_folder_title">إنشاء مجلد جديد</string>

@@ -51,6 +51,8 @@
     <string name="settings_rate_app">Calificar aplicación</string>
     <string name="settings_terms">Términos</string>
     <string name="settings_customer_support">Atención al cliente</string>
+    <string name="settings_change_language">Cambiar idioma</string>
+    <string name="language_system_default">Predeterminado del sistema</string>
     <string name="settings_buy_coffee">Cómprame un café</string>
     <string name="column_count_title">Recuento de columnas</string>
     <string name="create_folder_title">Crear nueva carpeta</string>

@@ -10,24 +10,29 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +43,22 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val activity = context.findActivity()
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentTag = LocaleHelper.getPersistedLanguageTag(context),
+            onLanguageSelected = { tag ->
+                showLanguageDialog = false
+                if (tag != LocaleHelper.getPersistedLanguageTag(context)) {
+                    LocaleHelper.persistLanguageTag(context, tag)
+                    activity?.recreate()
+                }
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,6 +92,11 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_manage_excluded),
                 icon = Icons.Default.Block,
                 onClick = { viewModel.setManageExcludedMode(true) }
+            )
+            SettingsItem(
+                title = stringResource(R.string.settings_change_language),
+                icon = Icons.Default.Language,
+                onClick = { showLanguageDialog = true }
             )
 
             HorizontalDivider(
@@ -219,6 +245,61 @@ fun SettingsItem(
             }
         }
     }
+}
+
+@Composable
+fun LanguageSelectionDialog(
+    currentTag: String,
+    onLanguageSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // "" represents "follow the system language".
+    val options = listOf("") + LocaleHelper.supportedLanguageTags
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_change_language)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .selectableGroup()
+            ) {
+                options.forEach { tag ->
+                    val label = if (tag.isEmpty()) {
+                        stringResource(R.string.language_system_default)
+                    } else {
+                        val locale = Locale.forLanguageTag(tag)
+                        locale.getDisplayName(locale).replaceFirstChar { it.uppercase(locale) }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .selectable(
+                                selected = tag == currentTag,
+                                onClick = { onLanguageSelected(tag) },
+                                role = Role.RadioButton
+                            )
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = tag == currentTag, onClick = null)
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        }
+    )
 }
 
 fun Context.findActivity(): Activity? = when (this) {

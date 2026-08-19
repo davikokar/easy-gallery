@@ -51,6 +51,8 @@
     <string name="settings_rate_app">앱 평가</string>
     <string name="settings_terms">약관</string>
     <string name="settings_customer_support">고객 지원</string>
+    <string name="settings_change_language">언어 변경</string>
+    <string name="language_system_default">시스템 기본값</string>
     <string name="settings_buy_coffee">커피 한 잔 후원하기</string>
     <string name="column_count_title">열 개수</string>
     <string name="create_folder_title">새 폴더 만들기</string>

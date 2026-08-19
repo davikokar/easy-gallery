@@ -51,6 +51,8 @@
     <string name="settings_rate_app">给应用评分</string>
     <string name="settings_terms">条款</string>
     <string name="settings_customer_support">客户支持</string>
+    <string name="settings_change_language">更改语言</string>
+    <string name="language_system_default">系统默认</string>
     <string name="settings_buy_coffee">请我喝杯咖啡</string>
     <string name="column_count_title">列数</string>
     <string name="create_folder_title">创建新文件夹</string>

@@ -51,6 +51,8 @@
     <string name="settings_rate_app">App bewerten</string>
     <string name="settings_terms">Bedingungen</string>
     <string name="settings_customer_support">Kundensupport</string>
+    <string name="settings_change_language">Sprache ändern</string>
+    <string name="language_system_default">Systemstandard</string>
     <string name="settings_buy_coffee">Kauf mir einen Kaffee</string>
     <string name="column_count_title">Spaltenanzahl</string>
     <string name="create_folder_title">Neuen Ordner erstellen</string>
