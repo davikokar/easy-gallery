@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat
 import com.davide.seddio.easygallery.ui.FullImageScreen
 import com.davide.seddio.easygallery.ui.ManageExcludedScreen
 import com.davide.seddio.easygallery.ui.SettingsScreen
+import com.davide.seddio.easygallery.ui.BillingViewModel
 import com.davide.seddio.easygallery.ui.FolderDetailScreen
 import com.davide.seddio.easygallery.ui.FolderListScreen
 import com.davide.seddio.easygallery.ui.CreateFolderViewModel
@@ -44,6 +45,7 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: GalleryViewModel by viewModels()
     private val createFolderViewModel: CreateFolderViewModel by viewModels()
+    private val billingViewModel: BillingViewModel by viewModels()
     private var hasPermission by mutableStateOf(false)
 
     private val intentSenderLauncher = registerForActivityResult(
@@ -112,7 +114,7 @@ class MainActivity : ComponentActivity() {
                         BackHandler {
                             viewModel.setSettingsMode(false)
                         }
-                        SettingsScreen(viewModel)
+                        SettingsScreen(viewModel, billingViewModel)
                     } else if (selectedFolder != null) {
                         FolderDetailScreen(viewModel)
                     } else if (hasPermission) {

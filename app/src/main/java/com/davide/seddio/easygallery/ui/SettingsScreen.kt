@@ -1,7 +1,9 @@
 package com.davide.seddio.easygallery.ui
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -29,9 +31,11 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 @Composable
 fun SettingsScreen(
     viewModel: GalleryViewModel,
+    billingViewModel: BillingViewModel,
     onContactSupportClick: (Context) -> Unit = { contactSupport(it) }
 ) {
     val context = LocalContext.current
+    val activity = context.findActivity()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -99,6 +103,21 @@ fun SettingsScreen(
                 icon = Icons.Default.SupportAgent,
                 onClick = { onContactSupportClick(context) }
             )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = Color.Gray.copy(alpha = 0.5f)
+            )
+
+            SettingsSection(title = "Community & Support")
+            SettingsItem(
+                title = "Buy me a coffee",
+                icon = Icons.Default.Coffee,
+                onClick = { 
+                    activity?.let { billingViewModel.buyCoffee(it) }
+                }
+            )
         }
     }
 }
@@ -157,7 +176,12 @@ fun SettingsSection(title: String) {
 }
 
 @Composable
-fun SettingsItem(title: String, icon: ImageVector, onClick: () -> Unit) {
+fun SettingsItem(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    subtitle: String? = null
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -177,13 +201,28 @@ fun SettingsItem(title: String, icon: ImageVector, onClick: () -> Unit) {
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = title,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge
-            )
+            Column {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
     }
+}
+
+fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 private fun shareApp(context: Context) {

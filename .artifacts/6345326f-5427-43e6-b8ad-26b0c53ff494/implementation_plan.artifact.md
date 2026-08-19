@@ -1,26 +1,50 @@
-# Fix Info Icon Visibility in Folder Detail Screen
+# Add "Buy Me a Coffee" In-App Purchase
 
-The "Toggle Info" icon in the `FolderDetailScreen` is currently nearly invisible when active because its tint (`MaterialTheme.colorScheme.primary`, which is `BrandBlue`) matches the `SearchTopBar`'s background color (`BrandBlue`).
+Implement a consumable in-app purchase for tipping the developer, integrated into the Settings screen.
+
+## User Review Required
+
+> [!IMPORTANT]
+> This implementation assumes a single product `tip_coffee`. If you have multiple tiers or products, the logic will need to be expanded.
+
+> [!WARNING]
+> Testing in-app purchases requires a real device with Google Play Services and a configured internal testing track in the Google Play Console.
 
 ## Proposed Changes
 
-### [Component Name] UI
+### UI Components
 
-#### [MODIFY] [FolderDetailScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt)
-- Update the `IconButton` for the "Toggle Info" action.
-- When `showInfo` is `true`, apply a `Color.White` background with `CircleShape` and set the icon tint to `BrandBlue`.
-- Add necessary imports for `CircleShape` and `BrandBlue`.
+#### [MODIFY] [SettingsScreen.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/SettingsScreen.kt)
+- Update `SettingsItem` composable to support an optional `subtitle`.
+- Add "Community & Support" section.
+- Add "☕ Buy me a coffee" item.
+- Update `SettingsScreen` signature to accept `BillingViewModel`.
+
+#### [NEW] [BillingViewModel.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/ui/BillingViewModel.kt)
+- Implement `BillingViewModel` using `BillingClient` (v7.0.0).
+- Handle `onPurchasesUpdated` with immediate consumption for the consumable `tip_coffee` product.
+- Provide functions to:
+    - Initialize and connect to Google Play.
+    - Query product details for `tip_coffee`.
+    - Launch the billing flow using a provided `Activity`.
+- Expose `StateFlow` for purchase status and product details.
+
+### Core Implementation
+
+#### [MODIFY] [MainActivity.kt](file:///C:/git/easy-gallery/app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt)
+- Instantiate `BillingViewModel` using `by viewModels()`.
+- Pass `BillingViewModel` to `SettingsScreen`.
 
 ## Verification Plan
 
+### Automated Tests
+- Build the app to ensure no compilation errors.
+- Unit test `BillingViewModel` if possible (mocking `BillingClient` is complex but can be done for state transitions).
+
 ### Manual Verification
-1. Launch the app.
-2. Open any folder to see the picture thumbnails (`FolderDetailScreen`).
-3. Verify the "Info" icon is visible in the top bar.
-4. Tap the "Info" icon to toggle filename overlays.
-5. Verify the "Info" icon is clearly visible in its active state (white circular background with blue icon).
-6. Verify filenames appear on thumbnails.
-7. Return to the main folder list view.
-8. Verify NO "Info" button is present in the main folder list view (GALLERY mode).
-9. Toggle Timeline (CALENDAR mode) and verify NO "Info" button is present there (as per "no new buttons" rule).
-10. Ensure filenames in Timeline still respect the `showInfo` state if it was toggled in a folder view.
+- Deploy to a physical device.
+- Navigate to Settings -> Community & Support.
+- Tap "☕ Buy me a coffee".
+- Verify Google Play Billing bottom sheet appears.
+- Verify successful purchase results in a "Thank you" Toast.
+- Verify the item can be purchased again (consumable check).
