@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,43 +33,43 @@ fun SelectionTopBar(
     var showMenu by remember { mutableStateOf(false) }
 
     TopAppBar(
-        title = { Text("$selectedCount / $totalCount", color = Color.White) },
+        title = { Text(stringResource(R.string.selection_count, selectedCount, totalCount), color = Color.White) },
         navigationIcon = {
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.Close, contentDescription = "Exit Selection", tint = Color.White)
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_exit_selection), tint = Color.White)
             }
         },
         actions = {
             IconButton(onClick = onInfoClick) {
-                Icon(Icons.Default.Info, contentDescription = "Properties", tint = Color.White)
+                Icon(Icons.Default.Info, contentDescription = stringResource(R.string.properties_title), tint = Color.White)
             }
             IconButton(onClick = onPin) {
-                Icon(Icons.Default.PushPin, contentDescription = "Pin/Unpin", tint = Color.White)
+                Icon(Icons.Default.PushPin, contentDescription = stringResource(R.string.cd_pin_unpin), tint = Color.White)
             }
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier.testTag("delete_button")
             ) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
             }
             
             Box {
                 IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = Color.White)
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = Color.White)
                 }
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Copy to") },
+                        text = { Text(stringResource(R.string.menu_copy_to)) },
                         onClick = {
                             showMenu = false
                             onCopyTo()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Move to") },
+                        text = { Text(stringResource(R.string.menu_move_to)) },
                         modifier = Modifier.testTag("move_to_button"),
                         onClick = {
                             showMenu = false
@@ -75,14 +77,14 @@ fun SelectionTopBar(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Exclude") },
+                        text = { Text(stringResource(R.string.action_exclude)) },
                         onClick = {
                             showMenu = false
                             onExclude()
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Select all") },
+                        text = { Text(stringResource(R.string.menu_select_all)) },
                         onClick = {
                             showMenu = false
                             onSelectAll()

@@ -15,8 +15,8 @@ android {
         applicationId = "com.davide.seddio.easygallery"
         minSdk = 28
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 5
+        versionName = "1.0.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -31,6 +31,14 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    bundle {
+        // The in-app "Change language" feature overrides the locale independently of the
+        // device's configured languages, so Play must not strip per-language config splits:
+        // otherwise a locale the device wasn't already using has no resources to switch to.
+        language {
+            enableSplit = false
+        }
     }
     buildFeatures {
         compose = true

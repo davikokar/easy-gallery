@@ -48,9 +48,12 @@
     <string name="settings_manage_excluded">管理排除项</string>
     <string name="settings_app">应用</string>
     <string name="settings_share_app">分享应用</string>
+    <string name="share_app_text">看看这款 Easy Gallery：https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">给应用评分</string>
     <string name="settings_terms">条款</string>
     <string name="settings_customer_support">客户支持</string>
+    <string name="settings_change_language">更改语言</string>
+    <string name="language_system_default">系统默认</string>
     <string name="settings_buy_coffee">请我喝杯咖啡</string>
     <string name="column_count_title">列数</string>
     <string name="create_folder_title">创建新文件夹</string>
@@ -87,4 +90,21 @@
     <string name="error_unknown">未知错误</string>
     <string name="date_today">今天</string>
     <string name="date_yesterday">昨天</string>
+    <string name="action_retry">重试</string>
+    <string name="permission_denied_message">请授予存储权限以查看图库。</string>
+    <string name="gallery_title">图库</string>
+    <string name="destination_copy_title">复制到…</string>
+    <string name="destination_move_title">移动到…</string>
+    <string name="delete_folders_message">您确定要删除选定的文件夹吗？此操作可能无法撤消。</string>
+    <string name="group_by_date_taken_daily">拍摄日期（每天）</string>
+    <string name="group_by_date_taken_monthly">拍摄日期（每月）</string>
+    <string name="group_by_last_modified_daily">最后修改时间（每天）</string>
+    <string name="group_by_last_modified_monthly">最后修改时间（每月）</string>
+    <string name="settings_privacy">隐私与政策</string>
+    <string name="settings_community_support">社区与支持</string>
+    <string name="billing_thanks">非常感谢您的支持！ ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">法律</string>
+    <string name="settings_about">关于</string>
+    <string name="about_version">版本 %1$s</string>
 </resources>

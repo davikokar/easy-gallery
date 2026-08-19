@@ -48,9 +48,12 @@
     <string name="settings_manage_excluded">除外設定の管理</string>
     <string name="settings_app">アプリ</string>
     <string name="settings_share_app">アプリを共有</string>
+    <string name="share_app_text">Easy Gallery をチェックしてみてください: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">アプリを評価</string>
     <string name="settings_terms">利用規約</string>
     <string name="settings_customer_support">カスタマーサポート</string>
+    <string name="settings_change_language">言語を変更</string>
+    <string name="language_system_default">システムのデフォルト</string>
     <string name="settings_buy_coffee">コーヒーを奢る</string>
     <string name="column_count_title">列数</string>
     <string name="create_folder_title">新しいフォルダを作成</string>
@@ -87,4 +90,21 @@
     <string name="error_unknown">不明なエラー</string>
     <string name="date_today">今日</string>
     <string name="date_yesterday">昨日</string>
+    <string name="action_retry">再試行</string>
+    <string name="permission_denied_message">ギャラリーを表示するにはストレージの権限を許可してください。</string>
+    <string name="gallery_title">ギャラリー</string>
+    <string name="destination_copy_title">コピー先…</string>
+    <string name="destination_move_title">移動先…</string>
+    <string name="delete_folders_message">選択したフォルダを削除してもよろしいですか？この操作は元に戻せない場合があります。</string>
+    <string name="group_by_date_taken_daily">撮影日（日別）</string>
+    <string name="group_by_date_taken_monthly">撮影日（月別）</string>
+    <string name="group_by_last_modified_daily">最終更新日（日別）</string>
+    <string name="group_by_last_modified_monthly">最終更新日（月別）</string>
+    <string name="settings_privacy">プライバシーとポリシー</string>
+    <string name="settings_community_support">コミュニティとサポート</string>
+    <string name="billing_thanks">応援していただき、本当にありがとうございます！ ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">法的情報</string>
+    <string name="settings_about">このアプリについて</string>
+    <string name="about_version">バージョン %1$s</string>
 </resources>

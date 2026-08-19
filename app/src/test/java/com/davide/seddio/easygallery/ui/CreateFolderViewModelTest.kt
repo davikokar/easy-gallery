@@ -3,6 +3,7 @@ package com.davide.seddio.easygallery.ui
 import android.app.Application
 import android.net.Uri
 import android.os.Environment
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.FakeMediaRepository
 import com.davide.seddio.easygallery.data.Folder
 import io.mockk.every
@@ -33,6 +34,10 @@ class CreateFolderViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        every { application.getString(R.string.error_folder_name_empty) } returns "Folder name cannot be empty"
+        every { application.getString(R.string.error_invalid_folder_name) } returns "Invalid characters in folder name"
+        every { application.getString(R.string.error_folder_already_exists) } returns "Folder already exists"
+        every { application.getString(R.string.error_failed_create_folder) } returns "Failed to create folder"
         mockkStatic(Environment::class)
         val mockFile = mockk<File>(relaxed = true)
         every { mockFile.absolutePath } returns "/storage/emulated/0"

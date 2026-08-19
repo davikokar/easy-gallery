@@ -4,6 +4,8 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.davide.seddio.easygallery.LocaleHelper
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +25,29 @@ class GalleryViewModel @JvmOverloads constructor(
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
+
+    private val _localeTrigger = MutableStateFlow(System.currentTimeMillis())
+
+    private var todayLabel: String = LocaleHelper.wrap(application).getString(R.string.date_today)
+    private var yesterdayLabel: String = LocaleHelper.wrap(application).getString(R.string.date_yesterday)
+    private var fileTypeLabels: Map<MediaType, String> = localizedFileTypeLabels(application)
+
+    fun onLocaleChanged() {
+        val localizedContext = LocaleHelper.wrap(getApplication<Application>())
+        todayLabel = localizedContext.getString(R.string.date_today)
+        yesterdayLabel = localizedContext.getString(R.string.date_yesterday)
+        fileTypeLabels = localizedFileTypeLabels(getApplication())
+        _localeTrigger.value = System.currentTimeMillis()
+    }
+
+    private fun localizedFileTypeLabels(application: Application): Map<MediaType, String> {
+        val localizedContext = LocaleHelper.wrap(application)
+        return mapOf(
+            MediaType.IMAGE to localizedContext.getString(R.string.filter_images),
+            MediaType.VIDEO to localizedContext.getString(R.string.filter_videos),
+            MediaType.GIF to localizedContext.getString(R.string.filter_gifs)
+        )
+    }
 
     private val prefs = DisplayPreferencesState()
     val displayMode: StateFlow<DisplayMode> = prefs.displayMode
@@ -151,15 +176,15 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredAllMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
-    ) { media, groupBy, order ->
-        GalleryTransformations.groupMedia(media, groupBy, order)
+        filteredAllMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder, _localeTrigger
+    ) { media, groupBy, order, _ ->
+        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel, fileTypeLabels)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder
-    ) { media, groupBy, order ->
-        GalleryTransformations.groupMedia(media, groupBy, order)
+        filteredMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder, _localeTrigger
+    ) { media, groupBy, order, _ ->
+        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel, fileTypeLabels)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     fun loadFolders() {
@@ -177,7 +202,7 @@ class GalleryViewModel @JvmOverloads constructor(
                     _mediaInFolder.value = repository.getMediaInFolder(currentFolder.name)
                 }
             } catch (e: Exception) {
-                _uiState.value = GalleryUiState.Error(e.message ?: "Unknown error")
+                _uiState.value = GalleryUiState.Error(e.message ?: LocaleHelper.wrap(getApplication<Application>()).getString(R.string.error_unknown))
             }
         }
     }

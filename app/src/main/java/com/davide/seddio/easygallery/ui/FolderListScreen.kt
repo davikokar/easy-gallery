@@ -44,10 +44,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.components.*
@@ -289,7 +291,7 @@ fun FolderListContent(
                 )
             } else {
                 SearchTopBar(
-                    title = if (displayMode == DisplayMode.GALLERY) "Easy Gallery" else "Timeline",
+                    title = if (displayMode == DisplayMode.GALLERY) stringResource(R.string.app_name) else stringResource(R.string.timeline_title),
                     searchQuery = searchQuery,
                     isSearchActive = isSearchActive,
                     displayMode = displayMode,
@@ -310,11 +312,11 @@ fun FolderListContent(
         containerColor = AppBackground
     ) { padding ->
         if (showDeleteDialog) {
-            val title = if (isMediaSelectionMode) "Delete Media" else "Delete Folders"
+            val title = if (isMediaSelectionMode) stringResource(R.string.delete_media_title) else stringResource(R.string.delete_folders_title)
             val text = if (isMediaSelectionMode) {
-                "Are you sure you want to delete the selected items? This action cannot be undone."
+                stringResource(R.string.delete_media_message)
             } else {
-                "Are you sure you want to delete the selected folders? This action might be irreversible."
+                stringResource(R.string.delete_folders_message)
             }
 
             AlertDialog(
@@ -330,12 +332,12 @@ fun FolderListContent(
                         }
                         showDeleteDialog = false
                     }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -344,19 +346,19 @@ fun FolderListContent(
         if (showExcludeDialog) {
             AlertDialog(
                 onDismissRequest = { showExcludeDialog = false },
-                title = { Text("Exclude Folders") },
-                text = { Text("The selected folders will be excluded from the gallery. If you want to include them again, you must visit Settings > Manage Excluded.") },
+                title = { Text(stringResource(R.string.exclude_folders_title)) },
+                text = { Text(stringResource(R.string.exclude_folders_message)) },
                 confirmButton = {
                     TextButton(onClick = {
                         onExcludeSelected()
                         showExcludeDialog = false
                     }) {
-                        Text("Exclude")
+                        Text(stringResource(R.string.action_exclude))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showExcludeDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             )
@@ -435,7 +437,7 @@ fun FolderListContent(
 
         if (isDestinationPickerActive) {
             DestinationFolderPickerDialog(
-                title = if (pendingOperation == OperationType.MOVE) "Move to..." else "Copy to...",
+                title = if (pendingOperation == OperationType.MOVE) stringResource(R.string.destination_move_title) else stringResource(R.string.destination_copy_title),
                 currentPath = browsingPath,
                 folders = browsingFolders,
                 onFolderSelected = { onUpdateBrowsingPath(it.path) },
@@ -495,7 +497,7 @@ fun FolderListContent(
                     }
                     is GalleryUiState.Error -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = "Error: ${state.message}", color = MaterialTheme.colorScheme.error)
+                            Text(text = stringResource(R.string.error_prefix, state.message), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }

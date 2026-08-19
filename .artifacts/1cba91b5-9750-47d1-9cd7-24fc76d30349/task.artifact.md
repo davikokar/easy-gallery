@@ -1,0 +1,12 @@
+- `[x]` Add UI strings to `res/values/strings.xml`
+- `[x]` Create localized `strings.xml` files for all 10 languages
+- `[x]` Refactor `GalleryTransformations.kt` for localized grouping headers
+- `[x]` Update `CreateFolderViewModel.kt` with localized error messages
+- `[x]` Update `BillingViewModel.kt` with localized toast
+- `[x]` Update `SettingsScreen.kt` - Refine `LanguageSelectionDialog` with OK/Cancel
+- `[x]` Update all Compose UI components to use `stringResource`
+- `[x]` Verify build and RTL layout
+- `[x]` Fix reactive localization for Timeline grouping
+    - `[x]` Update `LocaleHelper.kt` with `applyLocale`
+    - `[x]` Update `GalleryViewModel.kt` for reactive grouping
+    - `[x]` Update `SettingsScreen.kt` to trigger locale refresh

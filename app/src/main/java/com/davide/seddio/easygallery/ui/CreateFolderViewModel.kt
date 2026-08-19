@@ -4,6 +4,8 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.davide.seddio.easygallery.LocaleHelper
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaRepository
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
@@ -45,6 +47,11 @@ class CreateFolderViewModel @JvmOverloads constructor(
     private val _folderCreated = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val folderCreated: SharedFlow<Unit> = _folderCreated.asSharedFlow()
 
+    // Resolved fresh on every use (not cached) so a language change is reflected without
+    // restarting the process, since this ViewModel survives Activity.recreate().
+    private fun localizedString(resId: Int): String =
+        LocaleHelper.wrap(getApplication<Application>()).getString(resId)
+
     fun setDialogOpen(open: Boolean) {
         _isDialogOpen.value = open
         if (open) {
@@ -60,13 +67,13 @@ class CreateFolderViewModel @JvmOverloads constructor(
 
     fun createFolder(name: String) {
         if (name.isBlank()) {
-            _error.value = "Folder name cannot be empty"
+            _error.value = localizedString(R.string.error_folder_name_empty)
             return
         }
 
         val invalidChars = listOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
         if (name.any { it in invalidChars }) {
-            _error.value = "Invalid characters in folder name"
+            _error.value = localizedString(R.string.error_invalid_folder_name)
             return
         }
 
@@ -74,7 +81,7 @@ class CreateFolderViewModel @JvmOverloads constructor(
         val fullPath = File(parentPath, name).absolutePath
 
         if (repository.folderExists(fullPath)) {
-            _error.value = "Folder already exists"
+            _error.value = localizedString(R.string.error_folder_already_exists)
             return
         }
 
@@ -84,7 +91,7 @@ class CreateFolderViewModel @JvmOverloads constructor(
                 setDialogOpen(false)
                 _folderCreated.tryEmit(Unit)
             } else {
-                _error.value = result.exceptionOrNull()?.message ?: "Failed to create folder"
+                _error.value = result.exceptionOrNull()?.message ?: localizedString(R.string.error_failed_create_folder)
             }
         }
     }

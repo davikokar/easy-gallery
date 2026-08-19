@@ -48,9 +48,12 @@
     <string name="settings_manage_excluded">Gestisci escluse</string>
     <string name="settings_app">App</string>
     <string name="settings_share_app">Condividi app</string>
+    <string name="share_app_text">Dai un\'occhiata a Easy Gallery: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">Valuta app</string>
     <string name="settings_terms">Termini</string>
     <string name="settings_customer_support">Servizio clienti</string>
+    <string name="settings_change_language">Cambia lingua</string>
+    <string name="language_system_default">Predefinito di sistema</string>
     <string name="settings_buy_coffee">Offrimi un caffè</string>
     <string name="column_count_title">Numero colonne</string>
     <string name="create_folder_title">Crea nuova cartella</string>
@@ -87,4 +90,21 @@
     <string name="error_unknown">Errore sconosciuto</string>
     <string name="date_today">Oggi</string>
     <string name="date_yesterday">Ieri</string>
+    <string name="action_retry">Riprova</string>
+    <string name="permission_denied_message">Concedi l\'autorizzazione di archiviazione per visualizzare la galleria.</string>
+    <string name="gallery_title">Galleria</string>
+    <string name="destination_copy_title">Copia in…</string>
+    <string name="destination_move_title">Muovi in…</string>
+    <string name="delete_folders_message">Sei sicuro di voler eliminare le cartelle selezionate? L\'azione potrebbe essere irreversibile.</string>
+    <string name="group_by_date_taken_daily">Data di scatto (giornaliero)</string>
+    <string name="group_by_date_taken_monthly">Data di scatto (mensile)</string>
+    <string name="group_by_last_modified_daily">Ultima modifica (giornaliero)</string>
+    <string name="group_by_last_modified_monthly">Ultima modifica (mensile)</string>
+    <string name="settings_privacy">Privacy e politica</string>
+    <string name="settings_community_support">Community e supporto</string>
+    <string name="billing_thanks">Grazie mille per il tuo supporto! ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">Legale</string>
+    <string name="settings_about">Informazioni</string>
+    <string name="about_version">Versione %1$s</string>
 </resources>

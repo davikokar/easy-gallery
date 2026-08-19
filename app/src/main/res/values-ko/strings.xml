@@ -48,9 +48,12 @@
     <string name="settings_manage_excluded">제외 항목 관리</string>
     <string name="settings_app">앱</string>
     <string name="settings_share_app">앱 공유</string>
+    <string name="share_app_text">Easy Gallery를 확인해 보세요: https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">앱 평가</string>
     <string name="settings_terms">약관</string>
     <string name="settings_customer_support">고객 지원</string>
+    <string name="settings_change_language">언어 변경</string>
+    <string name="language_system_default">시스템 기본값</string>
     <string name="settings_buy_coffee">커피 한 잔 후원하기</string>
     <string name="column_count_title">열 개수</string>
     <string name="create_folder_title">새 폴더 만들기</string>
@@ -87,4 +90,21 @@
     <string name="error_unknown">알 수 없는 오류</string>
     <string name="date_today">오늘</string>
     <string name="date_yesterday">어제</string>
+    <string name="action_retry">다시 시도</string>
+    <string name="permission_denied_message">갤러리를 보려면 저장소 권한을 허용해 주세요.</string>
+    <string name="gallery_title">갤러리</string>
+    <string name="destination_copy_title">다음으로 복사…</string>
+    <string name="destination_move_title">다음으로 이동…</string>
+    <string name="delete_folders_message">선택한 폴더를 삭제하시겠습니까? 이 작업은 되돌릴 수 없을 수 있습니다.</string>
+    <string name="group_by_date_taken_daily">찬영 날짜 (일별)</string>
+    <string name="group_by_date_taken_monthly">찬영 날짜 (월별)</string>
+    <string name="group_by_last_modified_daily">마지막 수정 날짜 (일별)</string>
+    <string name="group_by_last_modified_monthly">마지막 수정 날짜 (월별)</string>
+    <string name="settings_privacy">개인정보 및 정책</string>
+    <string name="settings_community_support">커뮤니티 및 지원</string>
+    <string name="billing_thanks">지원해 주셔서 정말 감사합니다! ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">법적 고지</string>
+    <string name="settings_about">정보</string>
+    <string name="about_version">버전 %1$s</string>
 </resources>

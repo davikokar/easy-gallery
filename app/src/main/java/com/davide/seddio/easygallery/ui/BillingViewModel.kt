@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.billingclient.api.*
+import com.davide.seddio.easygallery.LocaleHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -102,7 +103,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
                 viewModelScope.launch {
                     Toast.makeText(
                         getApplication(),
-                        "Thank you so much for your support! ☕",
+                        LocaleHelper.wrap(getApplication<Application>()).getString(com.davide.seddio.easygallery.R.string.billing_thanks),
                         Toast.LENGTH_LONG
                     ).show()
                 }

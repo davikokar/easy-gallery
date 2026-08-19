@@ -48,9 +48,12 @@
     <string name="settings_manage_excluded">Gérer les exclus</string>
     <string name="settings_app">Application</string>
     <string name="settings_share_app">Partager l\'application</string>
+    <string name="share_app_text">Découvrez Easy Gallery : https://play.google.com/store/apps/details?id=%1$s</string>
     <string name="settings_rate_app">Évaluer l\'application</string>
     <string name="settings_terms">Conditions</string>
     <string name="settings_customer_support">Service client</string>
+    <string name="settings_change_language">Changer de langue</string>
+    <string name="language_system_default">Par défaut du système</string>
     <string name="settings_buy_coffee">Offrez-moi un café</string>
     <string name="column_count_title">Nombre de colonnes</string>
     <string name="create_folder_title">Créer un nouveau dossier</string>
@@ -87,4 +90,21 @@
     <string name="error_unknown">Erreur inconnue</string>
     <string name="date_today">Aujourd\'hui</string>
     <string name="date_yesterday">Hier</string>
+    <string name="action_retry">Réessayer</string>
+    <string name="permission_denied_message">Veuillez accorder l\'autorisation de stockage pour afficher la galerie.</string>
+    <string name="gallery_title">Galerie</string>
+    <string name="destination_copy_title">Copier vers…</string>
+    <string name="destination_move_title">Déplacer vers…</string>
+    <string name="delete_folders_message">Êtes-vous sûr de vouloir supprimer les dossiers sélectionnés ? Cette action peut être irréversible.</string>
+    <string name="group_by_date_taken_daily">Date de prise (quotidien)</string>
+    <string name="group_by_date_taken_monthly">Date de prise (mensuel)</string>
+    <string name="group_by_last_modified_daily">Dernière modification (quotidien)</string>
+    <string name="group_by_last_modified_monthly">Dernière modification (mensuel)</string>
+    <string name="settings_privacy">Confidentialité et politique</string>
+    <string name="settings_community_support">Communauté et support</string>
+    <string name="billing_thanks">Merci beaucoup pour votre soutien ! ☕</string>
+    <string name="selection_count">%1$d / %2$d</string>
+    <string name="settings_legal">Mentions légales</string>
+    <string name="settings_about">À propos</string>
+    <string name="about_version">Version %1$s</string>
 </resources>

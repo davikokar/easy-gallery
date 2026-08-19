@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem as Media3Item
@@ -29,6 +30,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.ui.components.ZoomableImage
@@ -72,19 +74,19 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
             if (showDeleteDialog) {
                 AlertDialog(
                     onDismissRequest = { showDeleteDialog = false },
-                    title = { Text("Delete Media") },
-                    text = { Text("Are you sure you want to delete this ${item.type.name.lowercase()}?") },
+                    title = { Text(stringResource(R.string.delete_media_title)) },
+                    text = { Text(stringResource(R.string.delete_single_media_message, item.type.name.lowercase())) },
                     confirmButton = {
                         TextButton(onClick = {
                             viewModel.deleteMedia(item)
                             showDeleteDialog = false
                         }) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { showDeleteDialog = false }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.action_cancel))
                         }
                     }
                 )
@@ -137,7 +139,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             IconButton(onClick = { showDeleteDialog = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
                             }
                             IconButton(onClick = {
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
@@ -145,13 +147,13 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                     putExtra(Intent.EXTRA_STREAM, item.uri)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, "Share Media"))
+                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_media_title)))
                             }) {
-                                Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share), tint = Color.White)
                             }
                             if (item.type != MediaType.VIDEO) {
                                 IconButton(onClick = { viewModel.rotatePhoto() }) {
-                                    Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = "Rotate", tint = Color.White)
+                                    Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = stringResource(R.string.cd_rotate), tint = Color.White)
                                 }
                             }
                         }
