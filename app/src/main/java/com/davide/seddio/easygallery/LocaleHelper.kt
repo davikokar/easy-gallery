@@ -2,6 +2,7 @@ package com.davide.seddio.easygallery
 
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import java.util.Locale
 
 /**
@@ -32,10 +33,28 @@ object LocaleHelper {
             .apply()
     }
 
-    /** Returns a context configured with the persisted language, or [context] if following system. */
+    /**
+     * Returns a context configured with the persisted language, or with the real system language
+     * if following system (tag is empty). Always returns a freshly wrapped context so that
+     * [Locale.setDefault] is reliably reset even when switching back to "follow system" after a
+     * previous override.
+     *
+     * Deliberately does NOT use the deprecated [android.content.res.Resources.updateConfiguration]
+     * API: it mutates a cached Resources instance in place, and the framework is free to replace
+     * that instance at any time (memory trims, other configuration changes, etc.), which caused the
+     * language change to intermittently "not stick". [android.content.Context.createConfigurationContext]
+     * always returns a fresh Resources instance tied to the returned context, which is reliable.
+     */
     fun wrap(context: Context): Context {
         val tag = getPersistedLanguageTag(context)
-        if (tag.isEmpty()) return context
+        if (tag.isEmpty()) {
+            // Reset the JVM-wide default locale back to the real system one, in case a previous
+            // in-process language override changed it (Locale.setDefault is a static, process-wide
+            // field, so without this "follow system" would keep showing the last override, e.g.
+            // date formatting elsewhere that reads Locale.getDefault()).
+            systemLocale()?.let { Locale.setDefault(it) }
+            return context
+        }
 
         val locale = Locale.forLanguageTag(tag)
         Locale.setDefault(locale)
@@ -46,17 +65,11 @@ object LocaleHelper {
         return context.createConfigurationContext(config)
     }
 
-    /** Updates the configuration of [context] and its application context to the persisted language. */
-    fun applyLocale(context: Context) {
-        val tag = getPersistedLanguageTag(context)
-        val locale = if (tag.isEmpty()) Locale.getDefault() else Locale.forLanguageTag(tag)
-        Locale.setDefault(locale)
-
-        val config = Configuration(context.resources.configuration)
-        config.setLocale(locale)
-        config.setLayoutDirection(locale)
-
-        context.resources.updateConfiguration(config, context.resources.displayMetrics)
-        context.applicationContext.resources.updateConfiguration(config, context.applicationContext.resources.displayMetrics)
+    /** The real device locale, unaffected by any previous [Locale.setDefault] override. */
+    private fun systemLocale(): Locale? = try {
+        Resources.getSystem().configuration.locales[0]
+    } catch (e: Throwable) {
+        // Resources.getSystem() isn't available in plain (non-instrumented) unit tests.
+        null
     }
 }

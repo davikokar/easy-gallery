@@ -52,7 +52,6 @@ fun SettingsScreen(
                 showLanguageDialog = false
                 if (tag != LocaleHelper.getPersistedLanguageTag(context)) {
                     LocaleHelper.persistLanguageTag(context, tag)
-                    LocaleHelper.applyLocale(context)
                     viewModel.onLocaleChanged()
                     activity?.recreate()
                 }

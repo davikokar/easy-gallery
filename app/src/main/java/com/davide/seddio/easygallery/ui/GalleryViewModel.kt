@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,25 +27,26 @@ class GalleryViewModel @JvmOverloads constructor(
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
 
     private val _localeTrigger = MutableStateFlow(System.currentTimeMillis())
-    
-    private var todayLabel: String = application.getString(R.string.date_today)
-    private var yesterdayLabel: String = application.getString(R.string.date_yesterday)
-    private var fileTypeLabels: Map<MediaType, String> = mapOf(
-        MediaType.IMAGE to application.getString(R.string.filter_images),
-        MediaType.VIDEO to application.getString(R.string.filter_videos),
-        MediaType.GIF to application.getString(R.string.filter_gifs)
-    )
+
+    private var todayLabel: String = LocaleHelper.wrap(application).getString(R.string.date_today)
+    private var yesterdayLabel: String = LocaleHelper.wrap(application).getString(R.string.date_yesterday)
+    private var fileTypeLabels: Map<MediaType, String> = localizedFileTypeLabels(application)
 
     fun onLocaleChanged() {
-        val application = getApplication<Application>()
-        todayLabel = application.getString(R.string.date_today)
-        yesterdayLabel = application.getString(R.string.date_yesterday)
-        fileTypeLabels = mapOf(
-            MediaType.IMAGE to application.getString(R.string.filter_images),
-            MediaType.VIDEO to application.getString(R.string.filter_videos),
-            MediaType.GIF to application.getString(R.string.filter_gifs)
-        )
+        val localizedContext = LocaleHelper.wrap(getApplication<Application>())
+        todayLabel = localizedContext.getString(R.string.date_today)
+        yesterdayLabel = localizedContext.getString(R.string.date_yesterday)
+        fileTypeLabels = localizedFileTypeLabels(getApplication())
         _localeTrigger.value = System.currentTimeMillis()
+    }
+
+    private fun localizedFileTypeLabels(application: Application): Map<MediaType, String> {
+        val localizedContext = LocaleHelper.wrap(application)
+        return mapOf(
+            MediaType.IMAGE to localizedContext.getString(R.string.filter_images),
+            MediaType.VIDEO to localizedContext.getString(R.string.filter_videos),
+            MediaType.GIF to localizedContext.getString(R.string.filter_gifs)
+        )
     }
 
     private val prefs = DisplayPreferencesState()
@@ -200,7 +202,7 @@ class GalleryViewModel @JvmOverloads constructor(
                     _mediaInFolder.value = repository.getMediaInFolder(currentFolder.name)
                 }
             } catch (e: Exception) {
-                _uiState.value = GalleryUiState.Error(e.message ?: getApplication<Application>().getString(R.string.error_unknown))
+                _uiState.value = GalleryUiState.Error(e.message ?: LocaleHelper.wrap(getApplication<Application>()).getString(R.string.error_unknown))
             }
         }
     }
