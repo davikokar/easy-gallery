@@ -18,7 +18,7 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
 
     private val billingClient = BillingClient.newBuilder(application)
         .setListener(this)
-        .enablePendingPurchases()
+        .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .build()
 
     init {
@@ -52,9 +52,10 @@ class BillingViewModel(application: Application) : AndroidViewModel(application)
             )
             .build()
 
-        billingClient.queryProductDetailsAsync(queryProductDetailsParams) { billingResult, productDetailsList ->
-            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                _productDetails.value = productDetailsList.find { it.productId == "tip_coffee" }
+        viewModelScope.launch {
+            val result = billingClient.queryProductDetails(queryProductDetailsParams)
+            if (result.billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                _productDetails.value = result.productDetailsList?.find { it.productId == "tip_coffee" }
             }
         }
     }
