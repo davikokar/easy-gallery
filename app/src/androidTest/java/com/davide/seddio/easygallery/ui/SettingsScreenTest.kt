@@ -13,11 +13,12 @@ class SettingsScreenTest {
     val composeTestRule = createComposeRule()
 
     private val viewModel: GalleryViewModel = mockk(relaxed = true)
+    private val billingViewModel: BillingViewModel = mockk(relaxed = true)
 
     @Test
     fun settingsScreenDisplaysAllSections() {
         composeTestRule.setContent {
-            SettingsScreen(viewModel)
+            SettingsScreen(viewModel, billingViewModel)
         }
 
         composeTestRule.onNodeWithText("General").assertIsDisplayed()
@@ -27,7 +28,7 @@ class SettingsScreenTest {
     @Test
     fun settingsScreenDisplaysAllItems() {
         composeTestRule.setContent {
-            SettingsScreen(viewModel)
+            SettingsScreen(viewModel, billingViewModel)
         }
 
         composeTestRule.onNodeWithText("Manage excluded").assertIsDisplayed()
@@ -41,7 +42,7 @@ class SettingsScreenTest {
     @Test
     fun clickingManageExcludedCallsViewModel() {
         composeTestRule.setContent {
-            SettingsScreen(viewModel)
+            SettingsScreen(viewModel, billingViewModel)
         }
 
         composeTestRule.onNodeWithText("Manage excluded").performClick()
@@ -53,7 +54,7 @@ class SettingsScreenTest {
     fun clickingCustomerSupportCallsCallback() {
         val onContactSupportClick = mockk<(android.content.Context) -> Unit>(relaxed = true)
         composeTestRule.setContent {
-            SettingsScreen(viewModel, onContactSupportClick = onContactSupportClick)
+            SettingsScreen(viewModel, billingViewModel, onContactSupportClick = onContactSupportClick)
         }
 
         composeTestRule.onNodeWithText("Customer Support").performClick()

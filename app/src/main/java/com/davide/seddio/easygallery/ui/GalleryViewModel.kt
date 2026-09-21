@@ -49,27 +49,25 @@ class GalleryViewModel @JvmOverloads constructor(
         )
     }
 
-    private val prefs = DisplayPreferencesState()
+    private val prefs = DisplayPreferencesState(SharedPreferencesDisplayStore(application))
+    private val folderStore: FolderPreferencesStore = SharedPreferencesFolderStore(application)
     val displayMode: StateFlow<DisplayMode> = prefs.displayMode
-    val searchQuery: StateFlow<String> = prefs.searchQuery
-    val isSearchActive: StateFlow<Boolean> = prefs.isSearchActive
-    val selectedMediaTypes: StateFlow<Set<MediaType>> = prefs.selectedMediaTypes
-    val folderSortType: StateFlow<SortType> = prefs.folderSortType
-    val pictureSortType: StateFlow<SortType> = prefs.pictureSortType
-    val folderSortOrder: StateFlow<SortOrder> = prefs.folderSortOrder
-    val pictureSortOrder: StateFlow<SortOrder> = prefs.pictureSortOrder
-    val folderViewType: StateFlow<ViewType> = prefs.folderViewType
-    val pictureViewType: StateFlow<ViewType> = prefs.pictureViewType
-    val pictureGroupBy: StateFlow<GroupByType> = prefs.pictureGroupBy
-    val pictureGroupOrder: StateFlow<SortOrder> = prefs.pictureGroupOrder
+
+    fun preferences(scope: PreferenceScope): StateFlow<ViewPreferences> = prefs.preferences(scope)
+    fun searchQuery(scope: PreferenceScope): StateFlow<String> = prefs.searchQuery(scope)
+    fun isSearchActive(scope: PreferenceScope): StateFlow<Boolean> = prefs.isSearchActive(scope)
+
+    private val foldersPrefs = prefs.preferences(PreferenceScope.FOLDERS)
+    private val timelinePrefs = prefs.preferences(PreferenceScope.TIMELINE)
+    private val folderDetailPrefs = prefs.preferences(PreferenceScope.FOLDER_DETAIL)
 
     private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
     val allMedia: StateFlow<List<MediaItem>> = _allMedia.asStateFlow()
 
-    private val _excludedFolders = MutableStateFlow<Set<String>>(emptySet()) // Stores folder paths
+    private val _excludedFolders = MutableStateFlow(folderStore.loadExcluded()) // Stores folder paths
     val excludedFolders: StateFlow<Set<String>> = _excludedFolders.asStateFlow()
 
-    private val _pinnedFolders = MutableStateFlow<Set<String>>(emptySet()) // Stores folder paths
+    private val _pinnedFolders = MutableStateFlow(folderStore.loadPinned()) // Stores folder paths
     private val _selectedFolders = MutableStateFlow<Set<String>>(emptySet()) // Stores folder paths
     val selectedFolders: StateFlow<Set<String>> = _selectedFolders.asStateFlow()
 
@@ -112,10 +110,6 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
     val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
-    val folderColumns: StateFlow<Int> = prefs.folderColumns
-    val pictureColumns: StateFlow<Int> = prefs.pictureColumns
-    val showInfo: StateFlow<Boolean> = prefs.showInfo
-
     private val mediaViewer = MediaViewerState()
     val selectedMedia: StateFlow<MediaItem?> = mediaViewer.selectedMedia
     val currentMediaList: StateFlow<List<MediaItem>> = mediaViewer.currentMediaList
@@ -127,64 +121,58 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
-        _allMedia, prefs.searchQuery, _pinnedFolders, prefs.folderSortType, prefs.folderSortOrder, _excludedFolders, _showExcludedTemporarily, prefs.selectedMediaTypes
-    ) { args ->
-        val allMedia = args[0] as List<MediaItem>
-        val query = args[1] as String
-        val pinned = args[2] as Set<String>
-        val sort = args[3] as SortType
-        val order = args[4] as SortOrder
-        val excluded = args[5] as Set<String>
-        val showExcluded = args[6] as Boolean
-        val types = args[7] as Set<MediaType>
-
+        _allMedia,
+        foldersPrefs,
+        prefs.searchQuery(PreferenceScope.FOLDERS),
+        _pinnedFolders,
+        combine(_excludedFolders, _showExcludedTemporarily) { excluded, showExcluded -> excluded to showExcluded }
+    ) { allMedia, viewPrefs, query, pinned, exclusion ->
+        val (excluded, showExcluded) = exclusion
         if (allMedia.isEmpty() && _uiState.value is GalleryUiState.Loading) {
             GalleryUiState.Loading
         } else {
             val folders = GalleryTransformations.filterAndSortFolders(
-                allMedia, query, pinned, sort, order, excluded, showExcluded, types
+                allMedia,
+                query,
+                pinned,
+                viewPrefs.sortType,
+                viewPrefs.sortOrder,
+                excluded,
+                showExcluded,
+                viewPrefs.mediaTypes
             )
             GalleryUiState.Success(folders)
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
     val filteredMedia: StateFlow<List<MediaItem>> = combine(
-        _mediaInFolder, prefs.searchQuery, prefs.selectedMediaTypes, prefs.pictureSortType, prefs.pictureSortOrder
-    ) { args ->
-        val media = args[0] as List<MediaItem>
-        val query = args[1] as String
-        val types = args[2] as Set<MediaType>
-        val sort = args[3] as SortType
-        val order = args[4] as SortOrder
-
-        val filtered = GalleryTransformations.filterMedia(media, query, types)
-        GalleryTransformations.sortMedia(filtered, sort, order)
+        _mediaInFolder, folderDetailPrefs, prefs.searchQuery(PreferenceScope.FOLDER_DETAIL)
+    ) { media, viewPrefs, query ->
+        val filtered = GalleryTransformations.filterMedia(media, query, viewPrefs.mediaTypes)
+        GalleryTransformations.sortMedia(filtered, viewPrefs.sortType, viewPrefs.sortOrder)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
-        _allMedia, prefs.searchQuery, _excludedFolders, prefs.selectedMediaTypes, prefs.pictureSortType, prefs.pictureSortOrder
-    ) { args ->
-        val media = args[0] as List<MediaItem>
-        val query = args[1] as String
-        val excluded = args[2] as Set<String>
-        val types = args[3] as Set<MediaType>
-        val sort = args[4] as SortType
-        val order = args[5] as SortOrder
-
-        val filtered = GalleryTransformations.filterMedia(media, query, types, excluded)
-        GalleryTransformations.sortMedia(filtered, sort, order)
+        _allMedia, timelinePrefs, prefs.searchQuery(PreferenceScope.TIMELINE), _excludedFolders
+    ) { media, viewPrefs, query, excluded ->
+        val filtered = GalleryTransformations.filterMedia(media, query, viewPrefs.mediaTypes, excluded)
+        GalleryTransformations.sortMedia(filtered, viewPrefs.sortType, viewPrefs.sortOrder)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredAllMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder, _localeTrigger
-    ) { media, groupBy, order, _ ->
-        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel, fileTypeLabels)
+        filteredAllMedia, timelinePrefs, _localeTrigger
+    ) { media, viewPrefs, _ ->
+        GalleryTransformations.groupMedia(
+            media, viewPrefs.groupBy, viewPrefs.groupOrder, todayLabel, yesterdayLabel, fileTypeLabels
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredMedia, prefs.pictureGroupBy, prefs.pictureGroupOrder, _localeTrigger
-    ) { media, groupBy, order, _ ->
-        GalleryTransformations.groupMedia(media, groupBy, order, todayLabel, yesterdayLabel, fileTypeLabels)
+        filteredMedia, folderDetailPrefs, _localeTrigger
+    ) { media, viewPrefs, _ ->
+        GalleryTransformations.groupMedia(
+            media, viewPrefs.groupBy, viewPrefs.groupOrder, todayLabel, yesterdayLabel, fileTypeLabels
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     fun loadFolders() {
@@ -207,16 +195,16 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }
 
-    fun increaseColumns(forPictures: Boolean) {
-        prefs.increaseColumns(forPictures)
+    fun increaseColumns(scope: PreferenceScope) {
+        prefs.increaseColumns(scope)
     }
 
-    fun decreaseColumns(forPictures: Boolean) {
-        prefs.decreaseColumns(forPictures)
+    fun decreaseColumns(scope: PreferenceScope) {
+        prefs.decreaseColumns(scope)
     }
 
-    fun setColumnsCount(count: Int, forPictures: Boolean) {
-        prefs.setColumnsCount(count, forPictures)
+    fun setColumnsCount(count: Int, scope: PreferenceScope) {
+        prefs.setColumnsCount(count, scope)
     }
 
     fun selectFolder(folder: Folder) {
@@ -234,11 +222,11 @@ class GalleryViewModel @JvmOverloads constructor(
     fun backToFolders() {
         _selectedFolder.value = null
         _mediaInFolder.value = emptyList()
-        setSearchActive(false)
+        setSearchActive(false, PreferenceScope.FOLDER_DETAIL)
     }
 
-    fun toggleInfo() {
-        prefs.toggleInfo()
+    fun toggleInfo(scope: PreferenceScope) {
+        prefs.toggleInfo(scope)
     }
 
     fun selectMedia(item: MediaItem) {
@@ -486,12 +474,14 @@ class GalleryViewModel @JvmOverloads constructor(
         val current = _excludedFolders.value.toMutableSet()
         current.remove(folderPath)
         _excludedFolders.value = current
+        folderStore.saveExcluded(current)
     }
 
     fun excludeFolder(folderPath: String) {
         val current = _excludedFolders.value.toMutableSet()
         current.add(folderPath)
         _excludedFolders.value = current
+        folderStore.saveExcluded(current)
     }
 
     fun getNonExcludedFolders(): List<Folder> {
@@ -504,37 +494,36 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }
 
-    fun setSortType(sortType: SortType, forPictures: Boolean) {
-        prefs.setSortType(sortType, forPictures)
+    fun setSortType(sortType: SortType, scope: PreferenceScope) {
+        prefs.setSortType(sortType, scope)
     }
 
-    fun setSortOrder(order: SortOrder, forPictures: Boolean) {
-        prefs.setSortOrder(order, forPictures)
+    fun setSortOrder(order: SortOrder, scope: PreferenceScope) {
+        prefs.setSortOrder(order, scope)
     }
 
-    fun setGroupBy(type: GroupByType) {
-        prefs.setGroupBy(type)
+    fun setGroupBy(type: GroupByType, scope: PreferenceScope) {
+        prefs.setGroupBy(type, scope)
     }
 
-    fun setGroupOrder(order: SortOrder) {
-        prefs.setGroupOrder(order)
+    fun setGroupOrder(order: SortOrder, scope: PreferenceScope) {
+        prefs.setGroupOrder(order, scope)
     }
 
-    fun setViewType(viewType: ViewType, forPictures: Boolean) {
-        prefs.setViewType(viewType, forPictures)
+    fun setViewType(viewType: ViewType, scope: PreferenceScope) {
+        prefs.setViewType(viewType, scope)
     }
 
-
-    fun setSelectedMediaTypes(types: Set<MediaType>) {
-        prefs.setSelectedMediaTypes(types)
+    fun setSelectedMediaTypes(types: Set<MediaType>, scope: PreferenceScope) {
+        prefs.setSelectedMediaTypes(types, scope)
     }
 
-    fun setSearchQuery(query: String) {
-        prefs.setSearchQuery(query)
+    fun setSearchQuery(query: String, scope: PreferenceScope) {
+        prefs.setSearchQuery(query, scope)
     }
 
-    fun setSearchActive(active: Boolean) {
-        prefs.setSearchActive(active)
+    fun setSearchActive(active: Boolean, scope: PreferenceScope) {
+        prefs.setSearchActive(active, scope)
     }
 
     fun toggleSelection(folderPath: String) {
@@ -553,7 +542,7 @@ class GalleryViewModel @JvmOverloads constructor(
     fun enterSelectionMode(folderPath: String) {
         _isSelectionMode.value = true
         _selectedFolders.value = setOf(folderPath)
-        setSearchActive(false)
+        setSearchActive(false, PreferenceScope.FOLDERS)
     }
 
     fun exitSelectionMode() {
@@ -588,6 +577,7 @@ class GalleryViewModel @JvmOverloads constructor(
             currentPinned.addAll(selectedPaths)
         }
         _pinnedFolders.value = currentPinned
+        folderStore.savePinned(currentPinned)
         exitSelectionMode()
     }
 
@@ -596,6 +586,7 @@ class GalleryViewModel @JvmOverloads constructor(
         val currentExcluded = _excludedFolders.value.toMutableSet()
         currentExcluded.addAll(selectedPaths)
         _excludedFolders.value = currentExcluded
+        folderStore.saveExcluded(currentExcluded)
         exitSelectionMode()
     }
 

@@ -2,8 +2,10 @@ package com.davide.seddio.easygallery.ui
 
 import com.davide.seddio.easygallery.data.DisplayMode
 import com.davide.seddio.easygallery.data.GalleryUiState
+import com.davide.seddio.easygallery.data.PreferenceScope
 import com.davide.seddio.easygallery.data.SortType
 import com.davide.seddio.easygallery.data.SortOrder
+import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.OperationType
 import com.davide.seddio.easygallery.data.GroupByType
@@ -49,18 +51,12 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderDetailScreen(viewModel: GalleryViewModel) {
+    val scope = PreferenceScope.FOLDER_DETAIL
     val media by viewModel.filteredMedia.collectAsState()
     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
-    val columnsCount by viewModel.pictureColumns.collectAsState()
-    val showInfo by viewModel.showInfo.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val isSearchActive by viewModel.isSearchActive.collectAsState()
-    val selectedMediaTypes by viewModel.selectedMediaTypes.collectAsState()
-    val pictureSortType by viewModel.pictureSortType.collectAsState()
-    val pictureSortOrder by viewModel.pictureSortOrder.collectAsState()
-    val pictureViewType by viewModel.pictureViewType.collectAsState()
-    val pictureGroupBy by viewModel.pictureGroupBy.collectAsState()
-    val pictureGroupOrder by viewModel.pictureGroupOrder.collectAsState()
+    val preferences by viewModel.preferences(scope).collectAsState()
+    val searchQuery by viewModel.searchQuery(scope).collectAsState()
+    val isSearchActive by viewModel.isSearchActive(scope).collectAsState()
     val groupedMedia by viewModel.groupedFolderMedia.collectAsState()
     val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
@@ -72,16 +68,9 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     FolderDetailContent(
         media = media,
         selectedFolder = selectedFolder,
-        columnsCount = columnsCount,
-        showInfo = showInfo,
+        preferences = preferences,
         searchQuery = searchQuery,
         isSearchActive = isSearchActive,
-        selectedMediaTypes = selectedMediaTypes,
-        pictureSortType = pictureSortType,
-        pictureSortOrder = pictureSortOrder,
-        pictureViewType = pictureViewType,
-        pictureGroupBy = pictureGroupBy,
-        pictureGroupOrder = pictureGroupOrder,
         groupedMedia = groupedMedia,
         isMediaSelectionMode = isMediaSelectionMode,
         selectedMediaItems = selectedMediaItems,
@@ -93,27 +82,27 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         onDeleteSelectedMedia = { viewModel.deleteSelectedMedia() },
         onStartOperation = { viewModel.startOperation(it) },
         onSelectAllMedia = { viewModel.selectAllMedia() },
-        onSetSearchQuery = { viewModel.setSearchQuery(it) },
-        onSetSearchActive = { viewModel.setSearchActive(it) },
-        onSetColumnsCount = { count, forPictures -> viewModel.setColumnsCount(count, forPictures) },
-        onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it) },
-        onSetSortType = { type, forPictures -> viewModel.setSortType(type, forPictures) },
-        onSetSortOrder = { order, forPictures -> viewModel.setSortOrder(order, forPictures) },
-        onSetGroupBy = { viewModel.setGroupBy(it) },
-        onSetGroupOrder = { viewModel.setGroupOrder(it) },
-        onSetViewType = { type, forPictures -> viewModel.setViewType(type, forPictures) },
+        onSetSearchQuery = { viewModel.setSearchQuery(it, scope) },
+        onSetSearchActive = { viewModel.setSearchActive(it, scope) },
+        onSetColumnsCount = { viewModel.setColumnsCount(it, scope) },
+        onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it, scope) },
+        onSetSortType = { viewModel.setSortType(it, scope) },
+        onSetSortOrder = { viewModel.setSortOrder(it, scope) },
+        onSetGroupBy = { viewModel.setGroupBy(it, scope) },
+        onSetGroupOrder = { viewModel.setGroupOrder(it, scope) },
+        onSetViewType = { viewModel.setViewType(it, scope) },
         onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
         onSetSettingsMode = { viewModel.setSettingsMode(it) },
         onBackToFolders = { viewModel.backToFolders() },
-        onToggleInfo = { viewModel.toggleInfo() },
+        onToggleInfo = { viewModel.toggleInfo(scope) },
         onUpdateBrowsingPath = { viewModel.updateBrowsingPath(it) },
         onPerformOperationWithPath = { viewModel.performOperationWithPath(it) },
         onCancelOperation = { viewModel.cancelOperation() },
         getSelectedMediaData = { viewModel.getSelectedMediaData() },
         onSelectMedia = { viewModel.selectMedia(it) },
         onEnterMediaSelectionMode = { viewModel.enterMediaSelectionMode(it) },
-        onDecreaseColumns = { viewModel.decreaseColumns(it) },
-        onIncreaseColumns = { viewModel.increaseColumns(it) }
+        onDecreaseColumns = { viewModel.decreaseColumns(scope) },
+        onIncreaseColumns = { viewModel.increaseColumns(scope) }
     )
 }
 
@@ -122,16 +111,9 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
 fun FolderDetailContent(
     media: List<MediaItem>,
     selectedFolder: com.davide.seddio.easygallery.data.Folder?,
-    columnsCount: Int,
-    showInfo: Boolean,
+    preferences: ViewPreferences,
     searchQuery: String,
     isSearchActive: Boolean,
-    selectedMediaTypes: Set<com.davide.seddio.easygallery.data.MediaType>,
-    pictureSortType: SortType,
-    pictureSortOrder: SortOrder,
-    pictureViewType: ViewType,
-    pictureGroupBy: GroupByType,
-    pictureGroupOrder: SortOrder,
     groupedMedia: Map<String, List<MediaItem>>,
     isMediaSelectionMode: Boolean,
     selectedMediaItems: Set<android.net.Uri>,
@@ -145,13 +127,13 @@ fun FolderDetailContent(
     onSelectAllMedia: () -> Unit,
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
-    onSetColumnsCount: (Int, Boolean) -> Unit,
+    onSetColumnsCount: (Int) -> Unit,
     onSetSelectedMediaTypes: (Set<com.davide.seddio.easygallery.data.MediaType>) -> Unit,
-    onSetSortType: (SortType, Boolean) -> Unit,
-    onSetSortOrder: (SortOrder, Boolean) -> Unit,
+    onSetSortType: (SortType) -> Unit,
+    onSetSortOrder: (SortOrder) -> Unit,
     onSetGroupBy: (GroupByType) -> Unit,
     onSetGroupOrder: (SortOrder) -> Unit,
-    onSetViewType: (ViewType, Boolean) -> Unit,
+    onSetViewType: (ViewType) -> Unit,
     onSetShowExcludedTemporarily: (Boolean) -> Unit,
     onSetSettingsMode: (Boolean) -> Unit,
     onBackToFolders: () -> Unit,
@@ -162,8 +144,8 @@ fun FolderDetailContent(
     getSelectedMediaData: () -> List<MediaItem>,
     onSelectMedia: (MediaItem) -> Unit,
     onEnterMediaSelectionMode: (MediaItem) -> Unit,
-    onDecreaseColumns: (Boolean) -> Unit,
-    onIncreaseColumns: (Boolean) -> Unit
+    onDecreaseColumns: () -> Unit,
+    onIncreaseColumns: () -> Unit
 ) {
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -217,12 +199,12 @@ fun FolderDetailContent(
                     actions = {
                         IconButton(
                             onClick = { onToggleInfo() },
-                            modifier = if (showInfo) Modifier.background(Color.White, CircleShape) else Modifier
+                            modifier = if (preferences.showInfo) Modifier.background(Color.White, CircleShape) else Modifier
                         ) {
                             Icon(
                                 Icons.Default.Info,
                                 contentDescription = stringResource(R.string.cd_toggle_info),
-                                tint = if (showInfo) BrandBlue else Color.White
+                                tint = if (preferences.showInfo) BrandBlue else Color.White
                             )
                         }
                     }
@@ -261,9 +243,9 @@ fun FolderDetailContent(
 
         if (showColumnCountDialog) {
             ColumnCountDialog(
-                currentCount = columnsCount,
+                currentCount = preferences.columns,
                 onCountSelected = {
-                    onSetColumnsCount(it, true)
+                    onSetColumnsCount(it)
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
@@ -272,7 +254,7 @@ fun FolderDetailContent(
 
         if (showFilterDialog) {
             FilterMediaDialog(
-                initialSelectedTypes = selectedMediaTypes,
+                initialSelectedTypes = preferences.mediaTypes,
                 onConfirm = {
                     onSetSelectedMediaTypes(it)
                     showFilterDialog = false
@@ -283,13 +265,13 @@ fun FolderDetailContent(
 
         if (showSortDialog) {
             SortDialog(
-                currentSort = pictureSortType,
-                currentOrder = pictureSortOrder,
+                currentSort = preferences.sortType,
+                currentOrder = preferences.sortOrder,
                 onSortSelected = {
-                    onSetSortType(it, true)
+                    onSetSortType(it)
                 },
                 onOrderSelected = {
-                    onSetSortOrder(it, true)
+                    onSetSortOrder(it)
                 },
                 onDismiss = { showSortDialog = false }
             )
@@ -297,8 +279,8 @@ fun FolderDetailContent(
 
         if (showGroupByDialog) {
             GroupByDialog(
-                currentGroupBy = pictureGroupBy,
-                currentOrder = pictureGroupOrder,
+                currentGroupBy = preferences.groupBy,
+                currentOrder = preferences.groupOrder,
                 onGroupBySelected = { onSetGroupBy(it) },
                 onOrderSelected = { onSetGroupOrder(it) },
                 onDismiss = { showGroupByDialog = false }
@@ -307,9 +289,9 @@ fun FolderDetailContent(
 
         if (showViewTypeDialog) {
             ViewTypeDialog(
-                currentViewType = pictureViewType,
+                currentViewType = preferences.viewType,
                 onViewTypeSelected = {
-                    onSetViewType(it, true)
+                    onSetViewType(it)
                     showViewTypeDialog = false
                 },
                 onDismiss = { showViewTypeDialog = false }
@@ -334,24 +316,24 @@ fun FolderDetailContent(
                 .fillMaxSize()
                 .background(AppBackground)
         ) {
-            if (pictureGroupBy == GroupByType.NONE) {
-                if (pictureViewType == ViewType.GRID) {
+            if (preferences.groupBy == GroupByType.NONE) {
+                if (preferences.viewType == ViewType.GRID) {
                     MediaGrid(
                         media = media,
-                        columns = columnsCount,
+                        columns = preferences.columns,
                         state = gridState,
-                        showInfo = showInfo,
+                        showInfo = preferences.showInfo,
                         selectedItems = selectedMediaItems,
                         onItemClick = { onSelectMedia(it) },
                         onItemLongClick = { onEnterMediaSelectionMode(it) },
-                        onZoomIn = { onDecreaseColumns(true) },
-                        onZoomOut = { onIncreaseColumns(true) }
+                        onZoomIn = { onDecreaseColumns() },
+                        onZoomOut = { onIncreaseColumns() }
                     )
                 } else {
                     MediaList(
                         media = media,
                         state = listState,
-                        showInfo = showInfo,
+                        showInfo = preferences.showInfo,
                         selectedItems = selectedMediaItems,
                         onItemClick = { onSelectMedia(it) },
                         onItemLongClick = { onEnterMediaSelectionMode(it) }
@@ -360,16 +342,16 @@ fun FolderDetailContent(
             } else {
                 GroupedMediaContent(
                     groupedMedia = groupedMedia,
-                    viewType = pictureViewType,
-                    columns = columnsCount,
+                    viewType = preferences.viewType,
+                    columns = preferences.columns,
                     gridState = gridState,
                     listState = listState,
-                    showInfo = showInfo,
+                    showInfo = preferences.showInfo,
                     selectedItems = selectedMediaItems,
                     onItemClick = { onSelectMedia(it) },
                     onItemLongClick = { onEnterMediaSelectionMode(it) },
-                    onZoomIn = { onDecreaseColumns(true) },
-                    onZoomOut = { onIncreaseColumns(true) }
+                    onZoomIn = { onDecreaseColumns() },
+                    onZoomOut = { onIncreaseColumns() }
                 )
             }
         }
