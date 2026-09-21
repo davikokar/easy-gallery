@@ -37,6 +37,8 @@
     <string name="share_media_title">미디어 공유</string>
     <string name="cd_share">공유</string>
     <string name="cd_rotate">회전</string>
+    <string name="cd_open_in_maps">지도에서 위치 열기</string>
+    <string name="maps_app_not_found">지도를 열 수 있는 앱이 없습니다</string>
     <string name="manage_excluded_title">제외 항목 관리</string>
     <string name="cd_add_folder">폴더 추가</string>
     <string name="no_excluded_folders">제외된 폴더 없음</string>
@@ -70,6 +72,7 @@
     <string name="group_by_file_type">파일 형식</string>
     <string name="cd_video">동영상</string>
     <string name="properties_date">날짜: %1$s</string>
+    <string name="properties_gps">GPS: %1$s</string>
     <string name="cd_exit_selection">선택 종료</string>
     <string name="cd_more_options">추가 옵션</string>
     <string name="menu_copy_to">다음으로 복사</string>

@@ -37,6 +37,8 @@
     <string name="share_media_title">مشاركة الوسائط</string>
     <string name="cd_share">مشاركة</string>
     <string name="cd_rotate">تدوير</string>
+    <string name="cd_open_in_maps">فتح الموقع في الخرائط</string>
+    <string name="maps_app_not_found">لا يوجد تطبيق متاح لفتح الخرائط</string>
     <string name="manage_excluded_title">إدارة المجلدات المستبعدة</string>
     <string name="cd_add_folder">إضافة مجلد</string>
     <string name="no_excluded_folders">لا توجد مجلدات مستبعدة</string>
@@ -70,6 +72,7 @@
     <string name="group_by_file_type">نوع الملف</string>
     <string name="cd_video">فيديو</string>
     <string name="properties_date">التاريخ: %1$s</string>
+    <string name="properties_gps">GPS: %1$s</string>
     <string name="cd_exit_selection">الخروج من الاختيار</string>
     <string name="cd_more_options">مزيد من الخيارات</string>
     <string name="menu_copy_to">نسخ إلى</string>
