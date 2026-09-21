@@ -37,6 +37,10 @@
     <string name="share_media_title">メディアを共有</string>
     <string name="cd_share">共有</string>
     <string name="cd_rotate">回転</string>
+    <string name="cd_play">再生</string>
+    <string name="cd_pause">一時停止</string>
+    <string name="cd_restart_video">動画を最初から再生</string>
+    <string name="cd_video_progress">動画の再生位置</string>
     <string name="cd_open_in_maps">地図で場所を開く</string>
     <string name="maps_app_not_found">地図を開けるアプリがありません</string>
     <string name="manage_excluded_title">除外設定の管理</string>
@@ -71,6 +75,7 @@
     <string name="group_by_none">グループ化しない</string>
     <string name="group_by_file_type">ファイル形式</string>
     <string name="cd_video">動画</string>
+    <string name="video_position_of_duration">%1$s / %2$s</string>
     <string name="properties_date">日付: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
     <string name="cd_exit_selection">選択を解除</string>

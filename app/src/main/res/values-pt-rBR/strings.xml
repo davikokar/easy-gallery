@@ -37,6 +37,10 @@
     <string name="share_media_title">Compartilhar mídia</string>
     <string name="cd_share">Compartilhar</string>
     <string name="cd_rotate">Girar</string>
+    <string name="cd_play">Reproduzir</string>
+    <string name="cd_pause">Pausar</string>
+    <string name="cd_restart_video">Reiniciar vídeo</string>
+    <string name="cd_video_progress">Progresso do vídeo</string>
     <string name="cd_open_in_maps">Abrir localização no mapa</string>
     <string name="maps_app_not_found">Nenhum aplicativo disponível para abrir mapas</string>
     <string name="manage_excluded_title">Gerenciar excluídos</string>
@@ -71,6 +75,7 @@
     <string name="group_by_none">Não agrupar</string>
     <string name="group_by_file_type">Tipo de arquivo</string>
     <string name="cd_video">Vídeo</string>
+    <string name="video_position_of_duration">%1$s / %2$s</string>
     <string name="properties_date">Data: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
     <string name="cd_exit_selection">Sair da seleção</string>
