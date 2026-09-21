@@ -342,6 +342,14 @@ class GalleryViewModel @JvmOverloads constructor(
         mediaViewer.setCurrent(item)
     }
 
+    fun recordVideoPlaybackPosition(uri: android.net.Uri, positionMs: Long, playWhenReady: Boolean) {
+        mediaViewer.record(uri, positionMs, playWhenReady)
+    }
+
+    fun consumeVideoPlaybackPosition(uri: android.net.Uri): MediaViewerState.VideoPlaybackPosition? {
+        return mediaViewer.consume(uri)
+    }
+
     fun closeMedia() {
         mediaViewer.close()
     }
