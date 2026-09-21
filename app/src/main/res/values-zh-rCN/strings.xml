@@ -37,6 +37,10 @@
     <string name="share_media_title">分享媒体</string>
     <string name="cd_share">分享</string>
     <string name="cd_rotate">旋转</string>
+    <string name="cd_play">播放</string>
+    <string name="cd_pause">暂停</string>
+    <string name="cd_restart_video">重新播放视频</string>
+    <string name="cd_video_progress">视频进度</string>
     <string name="cd_open_in_maps">在地图中打开位置</string>
     <string name="maps_app_not_found">没有可用于打开地图的应用</string>
     <string name="manage_excluded_title">管理排除项</string>
@@ -71,6 +75,7 @@
     <string name="group_by_none">不分组</string>
     <string name="group_by_file_type">文件类型</string>
     <string name="cd_video">视频</string>
+    <string name="video_position_of_duration">%1$s／%2$s</string>
     <string name="properties_date">日期：%1$s</string>
     <string name="properties_gps">GPS：%1$s</string>
     <string name="cd_exit_selection">退出选择</string>

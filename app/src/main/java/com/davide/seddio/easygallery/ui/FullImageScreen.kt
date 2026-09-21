@@ -1,6 +1,10 @@
 package com.davide.seddio.easygallery.ui
 
 import android.content.Intent
+import android.net.Uri
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -18,6 +22,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,25 +32,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem as Media3Item
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import coil3.ImageLoader
-import coil3.gif.AnimatedImageDecoder
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.formatCoordinatesForDisplay
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
+import com.davide.seddio.easygallery.ui.components.VideoPlaybackState
+import com.davide.seddio.easygallery.ui.components.formatMediaDuration
 import com.davide.seddio.easygallery.ui.components.openMediaLocationInMaps
+import com.davide.seddio.easygallery.ui.components.playbackProgressFraction
 import com.davide.seddio.easygallery.ui.components.rememberMediaLocation
+import com.davide.seddio.easygallery.ui.components.rememberVideoPlaybackState
 import com.davide.seddio.easygallery.ui.components.ZoomableImage
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
@@ -56,6 +71,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
     val isImmersive by viewModel.isImmersiveMode.collectAsState()
     val rotation by viewModel.currentRotation.collectAsState()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isZoomed by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }
@@ -70,15 +86,81 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
         if (index >= 0) index else 0
     }
 
+    val exoPlayer = remember(context) {
+        ExoPlayer.Builder(context).build().apply {
+            repeatMode = Player.REPEAT_MODE_ONE
+            playWhenReady = true
+        }
+    }
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
     key(mediaList) {
         val pagerState = rememberPagerState(initialPage = initialIndex) {
             mediaList.size
+        }
+        val isPagerScrolling = pagerState.isScrollInProgress
+        val activePage = pagerState.settledPage
+        val activeMedia = mediaList.getOrNull(activePage)
+        val activeVideo = activeMedia?.takeIf { it.type == MediaType.VIDEO }
+        var boundVideoUri by remember { mutableStateOf<Uri?>(null) }
+        var isLifecycleStarted by remember {
+            mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         }
 
         LaunchedEffect(pagerState.currentPage) {
             if (pagerState.currentPage in mediaList.indices) {
                 viewModel.setCurrentMedia(mediaList[pagerState.currentPage])
             }
+        }
+
+        DisposableEffect(lifecycleOwner, exoPlayer) {
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_START -> isLifecycleStarted = true
+                    Lifecycle.Event.ON_STOP -> {
+                        isLifecycleStarted = false
+                        exoPlayer.pause()
+                    }
+                    else -> Unit
+                }
+            }
+
+            lifecycleOwner.lifecycle.addObserver(observer)
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
+
+        LaunchedEffect(activeVideo?.uri, isPagerScrolling, isLifecycleStarted) {
+            if (!isLifecycleStarted || isPagerScrolling) {
+                exoPlayer.pause()
+                return@LaunchedEffect
+            }
+
+            if (activeVideo == null) {
+                exoPlayer.pause()
+                if (boundVideoUri != null) {
+                    exoPlayer.stop()
+                    exoPlayer.clearMediaItems()
+                    boundVideoUri = null
+                }
+                return@LaunchedEffect
+            }
+
+            if (boundVideoUri != activeVideo.uri) {
+                exoPlayer.stop()
+                exoPlayer.clearMediaItems()
+                exoPlayer.setMediaItem(Media3Item.fromUri(activeVideo.uri))
+                exoPlayer.prepare()
+                boundVideoUri = activeVideo.uri
+            }
+
+            exoPlayer.playWhenReady = true
+            exoPlayer.play()
         }
 
         val item = currentItem
@@ -119,7 +201,11 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                     if (page in mediaList.indices) {
                         val p = mediaList[page]
                         if (p.type == MediaType.VIDEO) {
-                            VideoPlayer(p)
+                            VideoPlayer(
+                                player = exoPlayer,
+                                isActive = page == activePage && !isPagerScrolling,
+                                onTap = { viewModel.toggleImmersiveMode() }
+                            )
                         } else {
                             ZoomableImage(
                                 uri = p.uri,
@@ -204,6 +290,13 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                 }
                             }
 
+                            if (activeVideo != null) {
+                                VideoPlaybackControls(
+                                    player = exoPlayer,
+                                    isPageActive = !isPagerScrolling && isLifecycleStarted
+                                )
+                            }
+
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -248,29 +341,151 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
 }
 
 @Composable
-fun VideoPlayer(item: MediaItem) {
-    val context = LocalContext.current
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(Media3Item.fromUri(item.uri))
-            repeatMode = Player.REPEAT_MODE_ONE
-            prepare()
-            playWhenReady = true
-        }
-    }
+private fun VideoPlaybackControls(
+    player: Player,
+    isPageActive: Boolean
+) {
+    val playbackState = rememberVideoPlaybackState(
+        player = player,
+        isPageActive = isPageActive
+    )
+    val durationMs = playbackState.durationMs
 
-    DisposableEffect(exoPlayer) {
-        onDispose {
-            exoPlayer.release()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        VideoPlayPauseButton(playbackState)
+        IconButton(onClick = playbackState::restart) {
+            Icon(
+                imageVector = Icons.Default.Replay,
+                contentDescription = stringResource(R.string.cd_restart_video),
+                tint = Color.White
+            )
         }
+        VideoProgressSlider(
+            playbackState = playbackState,
+            durationMs = durationMs,
+            modifier = Modifier.weight(1f)
+        )
+        VideoTimeLabel(
+            playbackState = playbackState,
+            durationMs = durationMs
+        )
     }
+}
+
+@Composable
+private fun VideoPlayPauseButton(playbackState: VideoPlaybackState) {
+    val isPlaying = playbackState.isPlaying
+    val description = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play)
+
+    IconButton(onClick = playbackState::togglePlayPause) {
+        Icon(
+            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+            contentDescription = description,
+            tint = Color.White
+        )
+    }
+}
+
+@Composable
+private fun VideoProgressSlider(
+    playbackState: VideoPlaybackState,
+    durationMs: Long,
+    modifier: Modifier = Modifier
+) {
+    val positionMs = playbackState.positionMs
+    val formattedPosition = formatMediaDuration(positionMs)
+    val formattedDuration = formatMediaDuration(durationMs)
+    val progressDescription = stringResource(R.string.cd_video_progress)
+    val progressStateDescription = stringResource(
+        R.string.video_position_of_duration,
+        formattedPosition,
+        formattedDuration
+    )
+
+    Slider(
+        value = playbackProgressFraction(positionMs, durationMs),
+        onValueChange = { fraction ->
+            playbackState.startScrubbing()
+            playbackState.updateScrubPosition((fraction * durationMs).toLong())
+        },
+        onValueChangeFinished = playbackState::finishScrubbing,
+        enabled = durationMs > 0L,
+        valueRange = 0f..1f,
+        colors = SliderDefaults.colors(
+            thumbColor = Color.White,
+            activeTrackColor = BrandBlue,
+            inactiveTrackColor = Color.White.copy(alpha = 0.35f),
+            disabledThumbColor = Color.White.copy(alpha = 0.5f),
+            disabledActiveTrackColor = Color.White.copy(alpha = 0.35f),
+            disabledInactiveTrackColor = Color.White.copy(alpha = 0.2f)
+        ),
+        modifier = modifier.semantics {
+            contentDescription = progressDescription
+            stateDescription = progressStateDescription
+        }
+    )
+}
+
+@Composable
+private fun VideoTimeLabel(
+    playbackState: VideoPlaybackState,
+    durationMs: Long
+) {
+    val positionMs = playbackState.positionMs
+    Text(
+        text = stringResource(
+            R.string.video_position_of_duration,
+            formatMediaDuration(positionMs),
+            formatMediaDuration(durationMs)
+        ),
+        color = Color.White,
+        style = MaterialTheme.typography.labelMedium,
+        maxLines = 1,
+        modifier = Modifier.clearAndSetSemantics { }
+    )
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+fun VideoPlayer(
+    player: ExoPlayer,
+    isActive: Boolean,
+    onTap: () -> Unit
+) {
+    val onTapUpdated by rememberUpdatedState(onTap)
 
     AndroidView(
-        factory = {
-            PlayerView(it).apply {
-                player = exoPlayer
-                useController = true
+        factory = { context ->
+            PlayerView(context).apply {
+                setEnableComposeSurfaceSyncWorkaround(true)
+                useController = false
+
+                val tapDetector = GestureDetector(
+                    context,
+                    object : GestureDetector.SimpleOnGestureListener() {
+                        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                            onTapUpdated()
+                            return true
+                        }
+                    }
+                )
+                val tapListener = View.OnTouchListener { _, event ->
+                    tapDetector.onTouchEvent(event)
+                    false
+                }
+
+                setOnTouchListener(tapListener)
+                getVideoSurfaceView()?.setOnTouchListener(tapListener)
             }
+        },
+        update = { playerView ->
+            playerView.player = if (isActive) player else null
         },
         modifier = Modifier.fillMaxSize()
     )
