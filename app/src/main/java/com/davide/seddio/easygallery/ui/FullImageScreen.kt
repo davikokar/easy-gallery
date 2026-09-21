@@ -2,9 +2,6 @@ package com.davide.seddio.easygallery.ui
 
 import android.content.Intent
 import android.net.Uri
-import android.view.GestureDetector
-import android.view.MotionEvent
-import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -34,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -186,14 +185,15 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(Color.Black),
                     pageSpacing = 16.dp,
                     userScrollEnabled = !isZoomed,
                     key = { index -> if (index < mediaList.size) mediaList[index].uri.toString() else index }
@@ -222,8 +222,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                 AnimatedVisibility(
                     visible = !isImmersive,
                     enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                    modifier = Modifier.align(Alignment.BottomCenter)
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
                     Surface(
                         color = AppBackground,
@@ -290,7 +289,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                 }
                             }
 
-                            if (activeVideo != null) {
+                            if (item.type == MediaType.VIDEO) {
                                 VideoPlaybackControls(
                                     player = exoPlayer,
                                     isPageActive = !isPagerScrolling && isLifecycleStarted
@@ -460,33 +459,25 @@ fun VideoPlayer(
 ) {
     val onTapUpdated by rememberUpdatedState(onTap)
 
-    AndroidView(
-        factory = { context ->
-            PlayerView(context).apply {
-                setEnableComposeSurfaceSyncWorkaround(true)
-                useController = false
-
-                val tapDetector = GestureDetector(
-                    context,
-                    object : GestureDetector.SimpleOnGestureListener() {
-                        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-                            onTapUpdated()
-                            return true
-                        }
-                    }
-                )
-                val tapListener = View.OnTouchListener { _, event ->
-                    tapDetector.onTouchEvent(event)
-                    false
-                }
-
-                setOnTouchListener(tapListener)
-                getVideoSurfaceView()?.setOnTouchListener(tapListener)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onTapUpdated() })
             }
-        },
-        update = { playerView ->
-            playerView.player = if (isActive) player else null
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+    ) {
+        AndroidView(
+            factory = { context ->
+                PlayerView(context).apply {
+                    setEnableComposeSurfaceSyncWorkaround(true)
+                    // Keep PlayerView non-consuming so pager swipe and parent gestures can propagate.
+                    useController = false
+                }
+            },
+            update = { playerView ->
+                playerView.player = if (isActive) player else null
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }
