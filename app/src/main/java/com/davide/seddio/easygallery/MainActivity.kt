@@ -106,12 +106,11 @@ class MainActivity : ComponentActivity() {
                     val isManageExcludedMode by viewModel.isManageExcludedMode.collectAsState()
                     val isSettingsMode by viewModel.isSettingsMode.collectAsState()
                     val selectedFolderPath = selectedFolder?.path
-                    // Screens switch via this if/else (not a back stack), so one can leave composition entirely.
+                    // Non-fullscreen screens switch via if/else (not a back stack), so one can leave composition.
                     // This holder keeps each screen's saveable state (e.g., lazy scroll) from being discarded.
                     // screenKey includes folder path, so a different folder still opens at the top.
                     val saveableStateHolder = rememberSaveableStateHolder()
                     val screenKey = when {
-                        selectedMedia != null -> "full_image"
                         isManageExcludedMode -> "manage_excluded"
                         isSettingsMode -> "settings"
                         selectedFolderPath != null -> "folder_detail:$selectedFolderPath"
@@ -119,29 +118,31 @@ class MainActivity : ComponentActivity() {
                         else -> "permission_denied"
                     }
 
-                    saveableStateHolder.SaveableStateProvider(screenKey) {
-                        if (selectedMedia != null) {
-                            BackHandler {
-                                viewModel.closeMedia()
-                            }
-                            FullImageScreen(viewModel)
-                        } else if (isManageExcludedMode) {
-                            BackHandler {
-                                viewModel.setManageExcludedMode(false)
-                            }
-                            ManageExcludedScreen(viewModel)
-                        } else if (isSettingsMode) {
-                            BackHandler {
-                                viewModel.setSettingsMode(false)
-                            }
-                            SettingsScreen(viewModel, billingViewModel)
-                        } else if (selectedFolder != null) {
-                            FolderDetailScreen(viewModel)
-                        } else if (hasPermission) {
-                            FolderListScreen(viewModel, createFolderViewModel)
-                        } else {
-                            PermissionDeniedScreen {
-                                checkPermissions()
+                    if (selectedMedia != null) {
+                        BackHandler {
+                            viewModel.closeMedia()
+                        }
+                        FullImageScreen(viewModel)
+                    } else {
+                        saveableStateHolder.SaveableStateProvider(screenKey) {
+                            if (isManageExcludedMode) {
+                                BackHandler {
+                                    viewModel.setManageExcludedMode(false)
+                                }
+                                ManageExcludedScreen(viewModel)
+                            } else if (isSettingsMode) {
+                                BackHandler {
+                                    viewModel.setSettingsMode(false)
+                                }
+                                SettingsScreen(viewModel, billingViewModel)
+                            } else if (selectedFolder != null) {
+                                FolderDetailScreen(viewModel)
+                            } else if (hasPermission) {
+                                FolderListScreen(viewModel, createFolderViewModel)
+                            } else {
+                                PermissionDeniedScreen {
+                                    checkPermissions()
+                                }
                             }
                         }
                     }
