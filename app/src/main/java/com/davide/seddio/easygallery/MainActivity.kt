@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,29 +105,44 @@ class MainActivity : ComponentActivity() {
                     val selectedMedia: com.davide.seddio.easygallery.data.MediaItem? by viewModel.selectedMedia.collectAsState()
                     val isManageExcludedMode by viewModel.isManageExcludedMode.collectAsState()
                     val isSettingsMode by viewModel.isSettingsMode.collectAsState()
+                    val selectedFolderPath = selectedFolder?.path
+                    // Screens switch via this if/else (not a back stack), so one can leave composition entirely.
+                    // This holder keeps each screen's saveable state (e.g., lazy scroll) from being discarded.
+                    // screenKey includes folder path, so a different folder still opens at the top.
+                    val saveableStateHolder = rememberSaveableStateHolder()
+                    val screenKey = when {
+                        selectedMedia != null -> "full_image"
+                        isManageExcludedMode -> "manage_excluded"
+                        isSettingsMode -> "settings"
+                        selectedFolderPath != null -> "folder_detail:$selectedFolderPath"
+                        hasPermission -> "folder_list"
+                        else -> "permission_denied"
+                    }
 
-                    if (selectedMedia != null) {
-                        BackHandler {
-                            viewModel.closeMedia()
-                        }
-                        FullImageScreen(viewModel)
-                    } else if (isManageExcludedMode) {
-                        BackHandler {
-                            viewModel.setManageExcludedMode(false)
-                        }
-                        ManageExcludedScreen(viewModel)
-                    } else if (isSettingsMode) {
-                        BackHandler {
-                            viewModel.setSettingsMode(false)
-                        }
-                        SettingsScreen(viewModel, billingViewModel)
-                    } else if (selectedFolder != null) {
-                        FolderDetailScreen(viewModel)
-                    } else if (hasPermission) {
-                        FolderListScreen(viewModel, createFolderViewModel)
-                    } else {
-                        PermissionDeniedScreen {
-                            checkPermissions()
+                    saveableStateHolder.SaveableStateProvider(screenKey) {
+                        if (selectedMedia != null) {
+                            BackHandler {
+                                viewModel.closeMedia()
+                            }
+                            FullImageScreen(viewModel)
+                        } else if (isManageExcludedMode) {
+                            BackHandler {
+                                viewModel.setManageExcludedMode(false)
+                            }
+                            ManageExcludedScreen(viewModel)
+                        } else if (isSettingsMode) {
+                            BackHandler {
+                                viewModel.setSettingsMode(false)
+                            }
+                            SettingsScreen(viewModel, billingViewModel)
+                        } else if (selectedFolder != null) {
+                            FolderDetailScreen(viewModel)
+                        } else if (hasPermission) {
+                            FolderListScreen(viewModel, createFolderViewModel)
+                        } else {
+                            PermissionDeniedScreen {
+                                checkPermissions()
+                            }
                         }
                     }
                 }
