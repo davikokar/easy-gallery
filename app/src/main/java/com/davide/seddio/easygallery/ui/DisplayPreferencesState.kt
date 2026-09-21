@@ -1,145 +1,108 @@
 package com.davide.seddio.easygallery.ui
 
 import com.davide.seddio.easygallery.data.DisplayMode
+import com.davide.seddio.easygallery.data.DisplayPreferencesStore
 import com.davide.seddio.easygallery.data.GroupByType
+import com.davide.seddio.easygallery.data.InMemoryDisplayPreferencesStore
 import com.davide.seddio.easygallery.data.MediaType
+import com.davide.seddio.easygallery.data.PreferenceScope
 import com.davide.seddio.easygallery.data.SortOrder
 import com.davide.seddio.easygallery.data.SortType
+import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Holds user-facing display preferences (search, filtering, sorting, grouping, view type, column
- * counts and the info toggle) shared across the folder and picture screens. Extracted from
- * [GalleryViewModel], which delegates to it and re-exposes these flows unchanged.
+ * Holds user-facing display preferences (filtering, sorting, grouping, view type, column counts and
+ * the info toggle). Each [PreferenceScope] — Folders View, Timeline View and Folder Detail View —
+ * owns an independent [ViewPreferences] bundle, persisted through [DisplayPreferencesStore].
+ *
+ * Search state is scoped the same way but deliberately kept in memory only.
  */
-class DisplayPreferencesState {
+class DisplayPreferencesState(
+    private val store: DisplayPreferencesStore = InMemoryDisplayPreferencesStore()
+) {
 
     private val _displayMode = MutableStateFlow(DisplayMode.GALLERY)
     val displayMode: StateFlow<DisplayMode> = _displayMode.asStateFlow()
 
-    private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+    private val preferenceFlows: Map<PreferenceScope, MutableStateFlow<ViewPreferences>> =
+        PreferenceScope.entries.associateWith { MutableStateFlow(store.load(it)) }
 
-    private val _isSearchActive = MutableStateFlow(false)
-    val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
+    private val searchQueries: Map<PreferenceScope, MutableStateFlow<String>> =
+        PreferenceScope.entries.associateWith { MutableStateFlow("") }
 
-    private val _selectedMediaTypes = MutableStateFlow(MediaType.entries.toSet())
-    val selectedMediaTypes: StateFlow<Set<MediaType>> = _selectedMediaTypes.asStateFlow()
+    private val searchActive: Map<PreferenceScope, MutableStateFlow<Boolean>> =
+        PreferenceScope.entries.associateWith { MutableStateFlow(false) }
 
-    private val _folderSortType = MutableStateFlow(SortType.NAME)
-    val folderSortType: StateFlow<SortType> = _folderSortType.asStateFlow()
+    fun preferences(scope: PreferenceScope): StateFlow<ViewPreferences> =
+        preferenceFlows.getValue(scope)
 
-    private val _pictureSortType = MutableStateFlow(SortType.DATE_TAKEN)
-    val pictureSortType: StateFlow<SortType> = _pictureSortType.asStateFlow()
+    fun searchQuery(scope: PreferenceScope): StateFlow<String> = searchQueries.getValue(scope)
 
-    private val _folderSortOrder = MutableStateFlow(SortOrder.ASCENDING)
-    val folderSortOrder: StateFlow<SortOrder> = _folderSortOrder.asStateFlow()
+    fun isSearchActive(scope: PreferenceScope): StateFlow<Boolean> = searchActive.getValue(scope)
 
-    private val _pictureSortOrder = MutableStateFlow(SortOrder.DESCENDING)
-    val pictureSortOrder: StateFlow<SortOrder> = _pictureSortOrder.asStateFlow()
-
-    private val _folderViewType = MutableStateFlow(ViewType.GRID)
-    val folderViewType: StateFlow<ViewType> = _folderViewType.asStateFlow()
-
-    private val _pictureViewType = MutableStateFlow(ViewType.GRID)
-    val pictureViewType: StateFlow<ViewType> = _pictureViewType.asStateFlow()
-
-    private val _pictureGroupBy = MutableStateFlow(GroupByType.DATE_TAKEN_DAILY)
-    val pictureGroupBy: StateFlow<GroupByType> = _pictureGroupBy.asStateFlow()
-
-    private val _pictureGroupOrder = MutableStateFlow(SortOrder.DESCENDING)
-    val pictureGroupOrder: StateFlow<SortOrder> = _pictureGroupOrder.asStateFlow()
-
-    private val _folderColumns = MutableStateFlow(2)
-    val folderColumns: StateFlow<Int> = _folderColumns.asStateFlow()
-
-    private val _pictureColumns = MutableStateFlow(3)
-    val pictureColumns: StateFlow<Int> = _pictureColumns.asStateFlow()
-
-    private val _showInfo = MutableStateFlow(false)
-    val showInfo: StateFlow<Boolean> = _showInfo.asStateFlow()
-
-    fun increaseColumns(forPictures: Boolean) {
-        if (forPictures) {
-            if (_pictureColumns.value < 20) _pictureColumns.value += 1
-        } else {
-            if (_folderColumns.value < 20) _folderColumns.value += 1
-        }
+    private fun update(scope: PreferenceScope, transform: (ViewPreferences) -> ViewPreferences) {
+        val flow = preferenceFlows.getValue(scope)
+        val updated = transform(flow.value)
+        if (updated == flow.value) return
+        flow.value = updated
+        store.save(scope, updated)
     }
 
-    fun decreaseColumns(forPictures: Boolean) {
-        if (forPictures) {
-            if (_pictureColumns.value > 1) _pictureColumns.value -= 1
-        } else {
-            if (_folderColumns.value > 1) _folderColumns.value -= 1
-        }
+    fun increaseColumns(scope: PreferenceScope) = update(scope) {
+        it.copy(columns = (it.columns + 1).coerceAtMost(ViewPreferences.MAX_COLUMNS))
     }
 
-    fun setColumnsCount(count: Int, forPictures: Boolean) {
-        val safeCount = count.coerceIn(1, 20)
-        if (forPictures) {
-            _pictureColumns.value = safeCount
-        } else {
-            _folderColumns.value = safeCount
-        }
+    fun decreaseColumns(scope: PreferenceScope) = update(scope) {
+        it.copy(columns = (it.columns - 1).coerceAtLeast(ViewPreferences.MIN_COLUMNS))
     }
 
-    fun toggleInfo() {
-        _showInfo.value = !_showInfo.value
+    fun setColumnsCount(count: Int, scope: PreferenceScope) = update(scope) {
+        it.copy(columns = count.coerceIn(ViewPreferences.MIN_COLUMNS, ViewPreferences.MAX_COLUMNS))
     }
+
+    fun toggleInfo(scope: PreferenceScope) = update(scope) { it.copy(showInfo = !it.showInfo) }
 
     fun toggleDisplayMode() {
         _displayMode.value =
             if (_displayMode.value == DisplayMode.GALLERY) DisplayMode.CALENDAR else DisplayMode.GALLERY
     }
 
-    fun setSortType(sortType: SortType, forPictures: Boolean) {
-        if (forPictures) {
-            _pictureSortType.value = sortType
-        } else {
-            _folderSortType.value = sortType
-        }
+    fun setSortType(sortType: SortType, scope: PreferenceScope) = update(scope) {
+        it.copy(sortType = sortType)
     }
 
-    fun setSortOrder(order: SortOrder, forPictures: Boolean) {
-        if (forPictures) {
-            _pictureSortOrder.value = order
-        } else {
-            _folderSortOrder.value = order
-        }
+    fun setSortOrder(order: SortOrder, scope: PreferenceScope) = update(scope) {
+        it.copy(sortOrder = order)
     }
 
-    fun setGroupBy(type: GroupByType) {
-        _pictureGroupBy.value = type
+    fun setGroupBy(type: GroupByType, scope: PreferenceScope) = update(scope) {
+        it.copy(groupBy = type)
     }
 
-    fun setGroupOrder(order: SortOrder) {
-        _pictureGroupOrder.value = order
+    fun setGroupOrder(order: SortOrder, scope: PreferenceScope) = update(scope) {
+        it.copy(groupOrder = order)
     }
 
-    fun setViewType(viewType: ViewType, forPictures: Boolean) {
-        if (forPictures) {
-            _pictureViewType.value = viewType
-        } else {
-            _folderViewType.value = viewType
-        }
+    fun setViewType(viewType: ViewType, scope: PreferenceScope) = update(scope) {
+        it.copy(viewType = viewType)
     }
 
-    fun setSelectedMediaTypes(types: Set<MediaType>) {
-        _selectedMediaTypes.value = types
+    fun setSelectedMediaTypes(types: Set<MediaType>, scope: PreferenceScope) = update(scope) {
+        it.copy(mediaTypes = types)
     }
 
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
+    fun setSearchQuery(query: String, scope: PreferenceScope) {
+        searchQueries.getValue(scope).value = query
     }
 
-    fun setSearchActive(active: Boolean) {
-        _isSearchActive.value = active
+    fun setSearchActive(active: Boolean, scope: PreferenceScope) {
+        searchActive.getValue(scope).value = active
         if (!active) {
-            _searchQuery.value = ""
+            searchQueries.getValue(scope).value = ""
         }
     }
 }

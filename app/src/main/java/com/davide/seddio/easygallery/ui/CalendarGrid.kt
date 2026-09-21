@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.ui
 
+import com.davide.seddio.easygallery.data.PreferenceScope
 import com.davide.seddio.easygallery.data.ViewType
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -34,13 +35,13 @@ fun CalendarGrid(
     columns: Int,
     showInfo: Boolean
 ) {
-    val pictureViewType by viewModel.pictureViewType.collectAsState()
+    val timelinePreferences by viewModel.preferences(PreferenceScope.TIMELINE).collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
 
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
-    if (pictureViewType == ViewType.GRID) {
+    if (timelinePreferences.viewType == ViewType.GRID) {
         var cumulativeScale by remember { mutableFloatStateOf(1f) }
 
         LazyVerticalGrid(
@@ -59,10 +60,10 @@ fun CalendarGrid(
                             if (zoom != 1f) {
                                 cumulativeScale *= zoom
                                 if (cumulativeScale > 1.25f) {
-                                    viewModel.decreaseColumns(forPictures = true)
+                                    viewModel.decreaseColumns(PreferenceScope.TIMELINE)
                                     cumulativeScale = 1f
                                 } else if (cumulativeScale < 0.75f) {
-                                    viewModel.increaseColumns(forPictures = true)
+                                    viewModel.increaseColumns(PreferenceScope.TIMELINE)
                                     cumulativeScale = 1f
                                 }
                                 event.changes.forEach { it.consume() }
