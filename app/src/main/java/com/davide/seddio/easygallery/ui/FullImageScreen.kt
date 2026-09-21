@@ -10,10 +10,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem as Media3Item
@@ -47,6 +51,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
     val context = LocalContext.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isZoomed by remember { mutableStateOf(false) }
+    var showInfo by remember { mutableStateOf(false) }
 
     if (mediaList.isEmpty()) {
         viewModel.closeMedia()
@@ -131,29 +136,72 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                         color = AppBackground,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
                                 .navigationBarsPadding(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            IconButton(onClick = { showDeleteDialog = true }) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
-                            }
-                            IconButton(onClick = {
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = if (item.type == MediaType.VIDEO) "video/*" else "image/*"
-                                    putExtra(Intent.EXTRA_STREAM, item.uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            if (showInfo && !isImmersive) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+                                        .padding(12.dp)
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.properties_name, item.name),
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.properties_path, "${item.folderPath}/${item.name}"),
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_media_title)))
-                            }) {
-                                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share), tint = Color.White)
                             }
-                            if (item.type != MediaType.VIDEO) {
-                                IconButton(onClick = { viewModel.rotatePhoto() }) {
-                                    Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = stringResource(R.string.cd_rotate), tint = Color.White)
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                IconButton(onClick = { showDeleteDialog = true }) {
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
+                                }
+                                IconButton(onClick = {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = if (item.type == MediaType.VIDEO) "video/*" else "image/*"
+                                        putExtra(Intent.EXTRA_STREAM, item.uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_media_title)))
+                                }) {
+                                    Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share), tint = Color.White)
+                                }
+                                if (item.type != MediaType.VIDEO) {
+                                    IconButton(onClick = { viewModel.rotatePhoto() }) {
+                                        Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = stringResource(R.string.cd_rotate), tint = Color.White)
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { showInfo = !showInfo },
+                                    modifier = if (showInfo) Modifier.background(Color.White, CircleShape) else Modifier
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = stringResource(R.string.cd_toggle_info),
+                                        tint = if (showInfo) BrandBlue else Color.White
+                                    )
                                 }
                             }
                         }
