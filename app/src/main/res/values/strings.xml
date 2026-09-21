@@ -40,6 +40,8 @@
     <string name="share_media_title">Share Media</string>
     <string name="cd_share">Share</string>
     <string name="cd_rotate">Rotate</string>
+    <string name="cd_open_in_maps">Open location in maps</string>
+    <string name="maps_app_not_found">No app available to open maps</string>
     <string name="manage_excluded_title">Manage Excluded</string>
     <string name="cd_add_folder">Add Folder</string>
     <string name="no_excluded_folders">No excluded folders</string>
@@ -73,6 +75,7 @@
     <string name="group_by_file_type">File type</string>
     <string name="cd_video">Video</string>
     <string name="properties_date">Date: %1$s</string>
+    <string name="properties_gps">GPS: %1$s</string>
     <string name="cd_exit_selection">Exit Selection</string>
     <string name="cd_more_options">More options</string>
     <string name="menu_copy_to">Copy to</string>

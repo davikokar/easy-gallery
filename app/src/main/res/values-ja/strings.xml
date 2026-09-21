@@ -37,6 +37,8 @@
     <string name="share_media_title">メディアを共有</string>
     <string name="cd_share">共有</string>
     <string name="cd_rotate">回転</string>
+    <string name="cd_open_in_maps">地図で場所を開く</string>
+    <string name="maps_app_not_found">地図を開けるアプリがありません</string>
     <string name="manage_excluded_title">除外設定の管理</string>
     <string name="cd_add_folder">フォルダを追加</string>
     <string name="no_excluded_folders">除外されたフォルダはありません</string>
@@ -70,6 +72,7 @@
     <string name="group_by_file_type">ファイル形式</string>
     <string name="cd_video">動画</string>
     <string name="properties_date">日付: %1$s</string>
+    <string name="properties_gps">GPS: %1$s</string>
     <string name="cd_exit_selection">選択を解除</string>
     <string name="cd_more_options">その他のオプション</string>
     <string name="menu_copy_to">コピー先</string>

@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -25,6 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -35,8 +39,11 @@ import androidx.media3.ui.PlayerView
 import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import com.davide.seddio.easygallery.R
+import com.davide.seddio.easygallery.data.formatCoordinatesForDisplay
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
+import com.davide.seddio.easygallery.ui.components.openMediaLocationInMaps
+import com.davide.seddio.easygallery.ui.components.rememberMediaLocation
 import com.davide.seddio.easygallery.ui.components.ZoomableImage
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
@@ -143,6 +150,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (showInfo && !isImmersive) {
+                                val coordinates = rememberMediaLocation(item)
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -165,6 +173,33 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
+                                        if (coordinates != null) {
+                                            val openInMapsDescription = stringResource(R.string.cd_open_in_maps)
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.properties_gps,
+                                                    formatCoordinatesForDisplay(coordinates)
+                                                ),
+                                                color = BrandBlue,
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    textDecoration = TextDecoration.Underline
+                                                ),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        openMediaLocationInMaps(
+                                                            context = context,
+                                                            coordinates = coordinates,
+                                                            label = item.name
+                                                        )
+                                                    }
+                                                    .semantics {
+                                                        contentDescription = openInMapsDescription
+                                                    }
+                                            )
+                                        }
                                     }
                                 }
                             }

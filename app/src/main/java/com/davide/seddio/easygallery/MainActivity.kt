@@ -71,8 +71,13 @@ class MainActivity : ComponentActivity() {
         hasPermission = allGranted
         if (allGranted) {
             viewModel.loadFolders()
+            requestMediaLocationPermissionIfNeeded()
         }
     }
+
+    private val requestMediaLocationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
@@ -168,9 +173,19 @@ class MainActivity : ComponentActivity() {
         if (allGranted) {
             hasPermission = true
             viewModel.loadFolders()
+            requestMediaLocationPermissionIfNeeded()
         } else {
             requestPermissionsLauncher.launch(permissions)
         }
+    }
+
+    private fun requestMediaLocationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_MEDIA_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+        // ACCESS_MEDIA_LOCATION is intentionally non-gating for app access.
+        requestMediaLocationPermissionLauncher.launch(Manifest.permission.ACCESS_MEDIA_LOCATION)
     }
 }
 
