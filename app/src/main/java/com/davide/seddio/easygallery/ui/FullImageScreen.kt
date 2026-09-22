@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -53,6 +54,8 @@ import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.formatCoordinatesForDisplay
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
+import com.davide.seddio.easygallery.data.OperationType
+import com.davide.seddio.easygallery.ui.components.DestinationFolderPickerDialog
 import com.davide.seddio.easygallery.ui.components.VideoPlaybackState
 import com.davide.seddio.easygallery.ui.components.formatMediaDuration
 import com.davide.seddio.easygallery.ui.components.openMediaLocationInMaps
@@ -70,11 +73,16 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
     val mediaList by viewModel.currentMediaList.collectAsState()
     val isImmersive by viewModel.isImmersiveMode.collectAsState()
     val rotation by viewModel.currentRotation.collectAsState()
+    val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
+    val pendingOperation by viewModel.pendingOperation.collectAsState()
+    val browsingPath by viewModel.browsingPath.collectAsState()
+    val browsingFolders by viewModel.browsingFolders.collectAsState()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isZoomed by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }
+    var showMoreOptionsMenu by remember { mutableStateOf(false) }
 
     if (mediaList.isEmpty()) {
         viewModel.closeMedia()
@@ -207,6 +215,18 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                             Text(stringResource(R.string.action_cancel))
                         }
                     }
+                )
+            }
+
+            if (isDestinationPickerActive) {
+                DestinationFolderPickerDialog(
+                    title = if (pendingOperation == OperationType.MOVE) stringResource(R.string.destination_move_title) else stringResource(R.string.destination_copy_title),
+                    currentPath = browsingPath,
+                    folders = browsingFolders,
+                    onFolderSelected = { folder -> viewModel.updateBrowsingPath(folder.path) },
+                    onBreadcrumbClick = { path -> viewModel.updateBrowsingPath(path) },
+                    onConfirm = { viewModel.performOperationWithPath(browsingPath) },
+                    onDismiss = { viewModel.cancelOperation() }
                 )
             }
 
@@ -354,6 +374,36 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                         contentDescription = stringResource(R.string.cd_toggle_info),
                                         tint = if (showInfo) BrandBlue else Color.White
                                     )
+                                }
+                                Box {
+                                    IconButton(onClick = { showMoreOptionsMenu = true }) {
+                                        Icon(
+                                            Icons.Default.MoreVert,
+                                            contentDescription = stringResource(R.string.cd_more_options),
+                                            tint = Color.White
+                                        )
+                                    }
+                                    DropdownMenu(
+                                        expanded = showMoreOptionsMenu,
+                                        onDismissRequest = { showMoreOptionsMenu = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.menu_copy_to)) },
+                                            onClick = {
+                                                showMoreOptionsMenu = false
+                                                val operationTarget = mediaList.getOrNull(pagerState.currentPage) ?: item
+                                                viewModel.startOperationForMedia(operationTarget, OperationType.COPY)
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(stringResource(R.string.menu_move_to)) },
+                                            onClick = {
+                                                showMoreOptionsMenu = false
+                                                val operationTarget = mediaList.getOrNull(pagerState.currentPage) ?: item
+                                                viewModel.startOperationForMedia(operationTarget, OperationType.MOVE)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

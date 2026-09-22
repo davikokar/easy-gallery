@@ -7,6 +7,7 @@ class FakeMediaRepository : MediaRepository {
     var mediaItems = listOf<MediaItem>()
     val deletedUris = mutableListOf<Uri>()
     val movedUris = mutableListOf<Pair<List<Uri>, String>>()
+    val copiedFiles = mutableListOf<Triple<String, String, String>>()
     var shouldThrowSecurityException = false
 
     override suspend fun getFolders(): List<Folder> = folders
@@ -18,7 +19,9 @@ class FakeMediaRepository : MediaRepository {
 
     override suspend fun copyFolderContents(sourcePath: String, targetParentPath: String) {}
 
-    override suspend fun copyFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) {}
+    override suspend fun copyFile(sourceFolderPath: String, fileName: String, targetFolderPath: String) {
+        copiedFiles.add(Triple(sourceFolderPath, fileName, targetFolderPath))
+    }
 
     override suspend fun deleteMediaItems(uris: List<Uri>) {
         if (shouldThrowSecurityException) throw SecurityException("Mock security exception")
