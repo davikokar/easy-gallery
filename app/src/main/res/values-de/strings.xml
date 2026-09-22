@@ -82,6 +82,8 @@
     <string name="cd_more_options">Weitere Optionen</string>
     <string name="menu_copy_to">Kopieren nach</string>
     <string name="menu_move_to">Verschieben nach</string>
+    <string name="menu_use_as_wallpaper">Als Hintergrund festlegen</string>
+    <string name="wallpaper_app_not_found">Keine App zum Festlegen des Hintergrundbilds verfügbar</string>
     <string name="menu_select_all">Alle auswählen</string>
     <string name="search_placeholder">Suchen…</string>
     <string name="cd_cancel_search">Suche abbrechen</string>

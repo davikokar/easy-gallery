@@ -85,6 +85,8 @@
     <string name="cd_more_options">More options</string>
     <string name="menu_copy_to">Copy to</string>
     <string name="menu_move_to">Move to</string>
+    <string name="menu_use_as_wallpaper">Use as background</string>
+    <string name="wallpaper_app_not_found">No app available to set the wallpaper</string>
     <string name="menu_select_all">Select all</string>
     <string name="search_placeholder">Search...</string>
     <string name="cd_cancel_search">Cancel Search</string>

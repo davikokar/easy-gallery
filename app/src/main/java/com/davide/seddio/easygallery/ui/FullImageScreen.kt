@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -62,6 +63,8 @@ import com.davide.seddio.easygallery.ui.components.openMediaLocationInMaps
 import com.davide.seddio.easygallery.ui.components.playbackProgressFraction
 import com.davide.seddio.easygallery.ui.components.rememberMediaLocation
 import com.davide.seddio.easygallery.ui.components.rememberVideoPlaybackState
+import com.davide.seddio.easygallery.ui.components.setImageAsWallpaper
+import com.davide.seddio.easygallery.ui.components.supportsWallpaper
 import com.davide.seddio.easygallery.ui.components.ZoomableImage
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
@@ -387,20 +390,36 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                         expanded = showMoreOptionsMenu,
                                         onDismissRequest = { showMoreOptionsMenu = false }
                                     ) {
+                                        val overflowTarget = mediaList.getOrNull(pagerState.currentPage) ?: item
+
+                                        if (supportsWallpaper(overflowTarget.type)) {
+                                            DropdownMenuItem(
+                                                text = { Text(stringResource(R.string.menu_use_as_wallpaper)) },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Image,
+                                                        contentDescription = null
+                                                    )
+                                                },
+                                                onClick = {
+                                                    showMoreOptionsMenu = false
+                                                    setImageAsWallpaper(context, overflowTarget.uri)
+                                                }
+                                            )
+                                        }
+
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.menu_copy_to)) },
                                             onClick = {
                                                 showMoreOptionsMenu = false
-                                                val operationTarget = mediaList.getOrNull(pagerState.currentPage) ?: item
-                                                viewModel.startOperationForMedia(operationTarget, OperationType.COPY)
+                                                viewModel.startOperationForMedia(overflowTarget, OperationType.COPY)
                                             }
                                         )
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.menu_move_to)) },
                                             onClick = {
                                                 showMoreOptionsMenu = false
-                                                val operationTarget = mediaList.getOrNull(pagerState.currentPage) ?: item
-                                                viewModel.startOperationForMedia(operationTarget, OperationType.MOVE)
+                                                viewModel.startOperationForMedia(overflowTarget, OperationType.MOVE)
                                             }
                                         )
                                     }
