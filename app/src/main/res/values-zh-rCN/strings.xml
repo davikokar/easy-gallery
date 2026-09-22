@@ -3,7 +3,9 @@
     <string name="cd_back">返回</string>
     <string name="cd_toggle_info">切换信息</string>
     <string name="delete_media_title">删除媒体</string>
-    <string name="delete_media_message">您确定要删除选定的项目吗？此操作无法撤消。</string>
+    <plurals name="delete_media_message_count">
+        <item quantity="other">您确定要删除选定的 %1$d 个项目吗？此操作无法撤消。</item>
+    </plurals>
     <string name="action_delete">删除</string>
     <string name="action_cancel">取消</string>
     <string name="properties_title">属性</string>

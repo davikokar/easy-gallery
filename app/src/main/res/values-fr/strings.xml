@@ -3,7 +3,10 @@
     <string name="cd_back">Retour</string>
     <string name="cd_toggle_info">Afficher/masquer les infos</string>
     <string name="delete_media_title">Supprimer le média</string>
-    <string name="delete_media_message">Êtes-vous sûr de vouloir supprimer les éléments sélectionnés ? Cette action est irréversible.</string>
+    <plurals name="delete_media_message_count">
+        <item quantity="one">Êtes-vous sûr de vouloir supprimer %1$d élément sélectionné ? Cette action est irréversible.</item>
+        <item quantity="other">Êtes-vous sûr de vouloir supprimer %1$d éléments sélectionnés ? Cette action est irréversible.</item>
+    </plurals>
     <string name="action_delete">Supprimer</string>
     <string name="action_cancel">Annuler</string>
     <string name="properties_title">Propriétés</string>

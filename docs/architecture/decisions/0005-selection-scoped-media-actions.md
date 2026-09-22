@@ -44,6 +44,10 @@ mode**, gated by cardinality and media type rather than by screen.
 selection.** The same Material icons are used at both call sites, so an action is visually
 identical wherever it appears.
 
+> **Amended 2026-09-22 — see Amendment 1 below.** As originally written, this point left
+> "mirrors" ambiguous and was implemented as placement parity with the viewer. It now means the
+> same *action set* and the same *icons*; it does **not** mean the same physical placement.
+
 **2. Gating is by cardinality and media type, not by screen.**
 
 - **Use as background** renders only when exactly one item is selected *and*
@@ -80,6 +84,89 @@ inconsistency this record removes. Required parameters make an omission a compil
 `remember(selectedMediaItems)` and that single value feeds both the "Use as background" visibility
 gate and its click handler. This is ADR-0004's trap applied to a new surface: gating on one read
 of the selection and acting on a later read allows the selection to change in between.
+
+## Amendment 1 — 2026-09-22 — All selection-mode actions live in the overflow menu
+
+This amendment narrows **decision point 1** only. The record stays `Active`; decision points 2
+through 6, the Alternatives Considered and the Relationship to Existing ADRs sections below are
+unchanged and continue to govern. Nothing above has been removed — the original text remains as
+written, with the pointer note added in place.
+
+This is recorded as an amendment rather than a superseding ADR because the governing decision has
+not stopped applying. The action set, the cardinality and media-type gating, the single-source
+intent helpers and the required-parameter rule are all intact. What changed is the presentation of
+an action set inside one composable — local and easily reversible, and so below this project's own
+threshold for a new record — plus a correction to wording that a reader could reasonably have
+taken as a placement rule.
+
+### What changed
+
+Originally, selection mode split its actions the way the viewer does: Delete, Share and Info as
+icon buttons in the top bar, with Use as background, Copy to, Move to and Select all in the
+`MoreVert` overflow.
+
+**In media multi-selection mode, every media action now lives in the three-dot overflow menu.**
+The top bar retains only the close affordance, the selection count and the overflow button.
+Delete, Share and Info move into the dropdown alongside Use as background, Copy to, Move to and
+Select all.
+
+### Why "mirrors the viewer" no longer implies placement
+
+The two surfaces are not the same kind of surface. The viewer is a persistent, single-item screen
+with room for direct actions, so it keeps its bar-button layout. The selection bar is a transient,
+contextual bar that appears over the grid and disappears when the selection is cleared. Parity
+between them is parity of *meaning* — the same actions, named and iconed the same way — not parity
+of physical layout.
+
+### Rationale
+
+- **The bar is transient and contextual, and the action set is growing.** This change series took
+  it from four actions to seven. Keeping the bar visually quiet avoids crowding as that set grows.
+- **Icon-only buttons are ambiguous for destructive and metadata actions.** A bare trash or info
+  glyph asks the user to guess. Dropdown items pair each icon with a label, which is clearer and
+  is already how Copy to and Move to were presented.
+- **Discoverability is unified.** In selection mode there is now exactly one place to look for
+  what can be done with the selection, rather than two.
+
+### Constraints preserved
+
+- **Rotate is still never offered in selection mode** (decision point 2). Moving the other actions
+  into the overflow does not make the overflow a home for viewer-only affordances.
+- **Use as background is still gated to exactly one selected item that supports wallpaper**
+  (decision point 2). Placement does not relax cardinality.
+- **The same Material icons are still used for an action wherever it appears** (decision point 1).
+  An action's icon does not change because its container did.
+- **The `delete_button` test tag must survive the move.** The tag travels from the bar's
+  `IconButton` onto the corresponding `DropdownMenuItem`, so the instrumented contract is retained
+  rather than dropped.
+
+### Consequences of this amendment
+
+#### Positive
+
+- The selection bar is less crowded, and stays legible as further actions are added.
+- Every action is labelled rather than icon-only.
+- One discovery point for everything the selection can do.
+
+#### Negative
+
+- **Every action now costs an extra tap**, including Delete, which was previously reachable in
+  one. Frequency of use was traded for clarity and room to grow.
+- **Regression risk to the existing instrumented tests** that located Delete, Share and Info in
+  the bar. `mediaSelectionModeShowsDeleteButton` and `mediaSelectionModeShowsShareAction` in
+  `FolderDetailContentTest` assert those nodes are displayed without opening the overflow, and
+  must now open it first — as `rotateOptionIsMissingFromSelectionMenu` in the same file already
+  does. `selectionModeShowsDeleteButton` in `FolderListContentTest` is **not** affected: it
+  exercises `isSelectionMode`, which renders the folder-selection `SelectionTopBar`, a separate
+  component that carries its own `delete_button` tag.
+
+#### Neutral
+
+- **No API or parameter change to `MediaSelectionTopBar`.** The same required callbacks —
+  `onDelete`, `onShare`, `onInfoClick` — are simply rendered in a different place. Decision point
+  5's required-parameter rule is unaffected.
+- **Both call sites are unaffected.** Folder Detail View and Timeline View pass exactly what they
+  passed before.
 
 ## Alternatives Considered
 
@@ -194,6 +281,11 @@ This record supersedes nothing. ADR-0001 through ADR-0004 all remain `Active`.
   the transient state that keeps Rotate viewer-only
 - `app/src/main/java/com/davide/seddio/easygallery/ui/components/MediaPropertiesDialog.kt` — the
   `media.size == 1` branch that preserves ADR-0001's constraint
+- `app/src/androidTest/java/com/davide/seddio/easygallery/ui/FolderDetailContentTest.kt` — the
+  instrumented `delete_button` / Share / overflow assertions affected by Amendment 1
+- `app/src/main/java/com/davide/seddio/easygallery/ui/components/SelectionTopBar.kt` — the
+  folder-selection bar, a distinct component that also carries a `delete_button` tag and is **not**
+  covered by this record
 - `Intent.ACTION_SEND`, `Intent.ACTION_SEND_MULTIPLE`, `Intent.EXTRA_STREAM`,
   `Intent.FLAG_GRANT_READ_URI_PERMISSION`, `ClipData`
 - [ADR-0001](0001-on-demand-media-location-metadata.md) — on-demand location metadata; still

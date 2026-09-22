@@ -59,6 +59,8 @@ class FolderDetailContentTest {
             )
         }
 
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
         composeTestRule.onNodeWithTag("delete_button", useUnmergedTree = true).assertIsDisplayed()
     }
 
@@ -72,7 +74,10 @@ class FolderDetailContentTest {
             )
         }
 
-        composeTestRule.onNodeWithContentDescription("Share").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText("Share").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Properties").assertIsDisplayed()
     }
 
     @Test

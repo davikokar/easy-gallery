@@ -45,19 +45,6 @@ fun MediaSelectionTopBar(
             }
         },
         actions = {
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.testTag("delete_button")
-            ) {
-                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
-            }
-            IconButton(onClick = onShare) {
-                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share), tint = Color.White)
-            }
-            IconButton(onClick = onInfoClick) {
-                Icon(Icons.Default.Info, contentDescription = stringResource(R.string.properties_title), tint = Color.White)
-            }
-
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = Color.White)
@@ -66,6 +53,46 @@ fun MediaSelectionTopBar(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_delete)) },
+                        modifier = Modifier.testTag("delete_button"),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.cd_share)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            onShare()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.properties_title)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            onInfoClick()
+                        }
+                    )
                     if (canUseAsBackground) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.menu_use_as_wallpaper)) },

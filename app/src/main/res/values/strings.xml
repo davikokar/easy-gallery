@@ -6,7 +6,10 @@
     <string name="cd_back">Back</string>
     <string name="cd_toggle_info">Toggle Info</string>
     <string name="delete_media_title">Delete Media</string>
-    <string name="delete_media_message">Are you sure you want to delete the selected items? This action cannot be undone.</string>
+    <plurals name="delete_media_message_count">
+        <item quantity="one">Are you sure you want to delete %1$d selected item? This action cannot be undone.</item>
+        <item quantity="other">Are you sure you want to delete %1$d selected items? This action cannot be undone.</item>
+    </plurals>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
     <string name="properties_title">Properties</string>

@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -227,7 +228,15 @@ fun FolderDetailContent(
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 title = { Text(stringResource(R.string.delete_media_title)) },
-                text = { Text(stringResource(R.string.delete_media_message)) },
+                text = {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.delete_media_message_count,
+                            selectedMediaItems.size,
+                            selectedMediaItems.size
+                        )
+                    )
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         onDeleteSelectedMedia()
