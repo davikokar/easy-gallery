@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem as Media3Item
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -122,6 +123,13 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                     Lifecycle.Event.ON_START -> isLifecycleStarted = true
                     Lifecycle.Event.ON_STOP -> {
                         isLifecycleStarted = false
+                        boundVideoUri?.let { videoUri ->
+                            viewModel.recordVideoPlaybackPosition(
+                                uri = videoUri,
+                                positionMs = exoPlayer.currentPosition,
+                                playWhenReady = exoPlayer.playWhenReady
+                            )
+                        }
                         exoPlayer.pause()
                     }
                     else -> Unit
@@ -150,16 +158,33 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                 return@LaunchedEffect
             }
 
+            val savedPlayback = viewModel.consumeVideoPlaybackPosition(activeVideo.uri)
+            val savedPositionMs = savedPlayback?.positionMs
+            val currentDurationMs = if (boundVideoUri == activeVideo.uri) exoPlayer.duration else C.TIME_UNSET
+            val restoredPositionMs = when {
+                savedPositionMs == null -> null
+                currentDurationMs != C.TIME_UNSET && savedPositionMs >= currentDurationMs -> null
+                else -> savedPositionMs
+            }
+
             if (boundVideoUri != activeVideo.uri) {
                 exoPlayer.stop()
                 exoPlayer.clearMediaItems()
-                exoPlayer.setMediaItem(Media3Item.fromUri(activeVideo.uri))
+                val mediaItem = Media3Item.fromUri(activeVideo.uri)
+                if (restoredPositionMs != null) {
+                    exoPlayer.setMediaItem(mediaItem, restoredPositionMs)
+                } else {
+                    exoPlayer.setMediaItem(mediaItem)
+                }
                 exoPlayer.prepare()
                 boundVideoUri = activeVideo.uri
             }
 
-            exoPlayer.playWhenReady = true
-            exoPlayer.play()
+            val shouldPlay = savedPlayback?.playWhenReady ?: true
+            exoPlayer.playWhenReady = shouldPlay
+            if (shouldPlay) {
+                exoPlayer.play()
+            }
         }
 
         val item = currentItem

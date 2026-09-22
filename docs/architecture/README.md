@@ -19,3 +19,4 @@ for the required format and status rules.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [ADR-0001](decisions/0001-on-demand-media-location-metadata.md) | On-demand media location metadata | Active | 2026-09-21 |
+| [ADR-0002](decisions/0002-viewmodel-owned-transient-viewer-state.md) | ViewModel-owned transient viewer state across configuration changes | Active | 2026-09-21 |

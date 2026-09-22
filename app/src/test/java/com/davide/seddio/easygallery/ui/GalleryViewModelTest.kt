@@ -137,6 +137,34 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `recording and consuming video playback position delegates through view model`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+
+        viewModel.selectMedia(item)
+        viewModel.recordVideoPlaybackPosition(mockUri1, 3_000L, playWhenReady = true)
+
+        val remembered = viewModel.consumeVideoPlaybackPosition(mockUri1)
+
+        assertNotNull(remembered)
+        assertEquals(mockUri1, remembered?.uri)
+        assertEquals(3_000L, remembered?.positionMs)
+        assertEquals(true, remembered?.playWhenReady)
+    }
+
+    @Test
+    fun `closing media clears remembered video playback position`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val item = createMediaItem(mockUri1, "/path")
+
+        viewModel.selectMedia(item)
+        viewModel.recordVideoPlaybackPosition(mockUri1, 1_500L, playWhenReady = false)
+        viewModel.closeMedia()
+
+        assertNull(viewModel.consumeVideoPlaybackPosition(mockUri1))
+    }
+
+    @Test
     fun `exiting media selection clears selected media`() = runTest {
         val viewModel = GalleryViewModel(application, repository, permissionHandler)
         val item = createMediaItem(mockUri1, "/path")
