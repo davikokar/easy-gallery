@@ -82,6 +82,8 @@
     <string name="cd_more_options">その他のオプション</string>
     <string name="menu_copy_to">コピー先</string>
     <string name="menu_move_to">移動先</string>
+    <string name="menu_use_as_wallpaper">壁紙に設定</string>
+    <string name="wallpaper_app_not_found">壁紙を設定できるアプリがありません</string>
     <string name="menu_select_all">すべて選択</string>
     <string name="search_placeholder">検索…</string>
     <string name="cd_cancel_search">検索をキャンセル</string>

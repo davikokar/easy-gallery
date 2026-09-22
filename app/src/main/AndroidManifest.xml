@@ -8,6 +8,13 @@
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />
     <uses-permission android:name="com.android.vending.BILLING" />
 
+    <queries>
+        <intent>
+            <action android:name="android.service.wallpaper.CROP_AND_SET_WALLPAPER" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
     <application
         android:name=".EasyGalleryApp"
         android:allowBackup="true"

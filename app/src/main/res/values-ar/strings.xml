@@ -82,6 +82,8 @@
     <string name="cd_more_options">مزيد من الخيارات</string>
     <string name="menu_copy_to">نسخ إلى</string>
     <string name="menu_move_to">نقل إلى</string>
+    <string name="menu_use_as_wallpaper">تعيين كخلفية</string>
+    <string name="wallpaper_app_not_found">لا يتوفر تطبيق لتعيين الخلفية</string>
     <string name="menu_select_all">اختيار الكل</string>
     <string name="search_placeholder">بحث…</string>
     <string name="cd_cancel_search">إلغاء البحث</string>

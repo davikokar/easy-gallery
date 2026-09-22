@@ -82,6 +82,8 @@
     <string name="cd_more_options">更多选项</string>
     <string name="menu_copy_to">复制到</string>
     <string name="menu_move_to">移动到</string>
+    <string name="menu_use_as_wallpaper">设为壁纸</string>
+    <string name="wallpaper_app_not_found">没有可用于设置壁纸的应用</string>
     <string name="menu_select_all">全选</string>
     <string name="search_placeholder">搜索…</string>
     <string name="cd_cancel_search">取消搜索</string>

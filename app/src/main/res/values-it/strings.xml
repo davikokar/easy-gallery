@@ -82,6 +82,8 @@
     <string name="cd_more_options">Altre opzioni</string>
     <string name="menu_copy_to">Copia in</string>
     <string name="menu_move_to">Muovi in</string>
+    <string name="menu_use_as_wallpaper">Imposta come sfondo</string>
+    <string name="wallpaper_app_not_found">Nessuna app disponibile per impostare lo sfondo</string>
     <string name="menu_select_all">Seleziona tutto</string>
     <string name="search_placeholder">Cerca…</string>
     <string name="cd_cancel_search">Annulla ricerca</string>
