@@ -18,7 +18,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
+import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FolderCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
@@ -410,6 +412,12 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
 
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.menu_copy_to)) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.FolderCopy,
+                                                    contentDescription = null
+                                                )
+                                            },
                                             onClick = {
                                                 showMoreOptionsMenu = false
                                                 viewModel.startOperationForMedia(overflowTarget, OperationType.COPY)
@@ -417,6 +425,12 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                         )
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.menu_move_to)) },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.DriveFileMove,
+                                                    contentDescription = null
+                                                )
+                                            },
                                             onClick = {
                                                 showMoreOptionsMenu = false
                                                 viewModel.startOperationForMedia(overflowTarget, OperationType.MOVE)
