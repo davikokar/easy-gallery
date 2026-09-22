@@ -20,3 +20,4 @@ for the required format and status rules.
 |-----|-------|--------|------|
 | [ADR-0001](decisions/0001-on-demand-media-location-metadata.md) | On-demand media location metadata | Active | 2026-09-21 |
 | [ADR-0002](decisions/0002-viewmodel-owned-transient-viewer-state.md) | ViewModel-owned transient viewer state across configuration changes | Active | 2026-09-21 |
+| [ADR-0003](decisions/0003-explicit-media-operation-target.md) | Explicit operation target for copy and move | Active | 2026-09-22 |

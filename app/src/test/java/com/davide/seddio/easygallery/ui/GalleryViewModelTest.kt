@@ -265,6 +265,107 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `copy initiated from viewer copies only viewed item and keeps viewer open`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
+            .copy(name = "viewed.jpg")
+        val destinationPath = "/storage/emulated/0/Pictures/Target"
+
+        viewModel.selectMedia(viewedItem)
+        viewModel.startOperationForMedia(viewedItem, OperationType.COPY)
+        viewModel.performOperationWithPath(destinationPath)
+
+        assertEquals(1, repository.copiedFiles.size)
+        assertEquals(
+            Triple(viewedItem.folderPath, viewedItem.name, destinationPath),
+            repository.copiedFiles.single()
+        )
+        assertEquals(viewedItem.uri, viewModel.selectedMedia.value?.uri)
+    }
+
+    @Test
+    fun `move initiated from viewer moves only viewed item and closes viewer`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
+        val destinationPath = "/storage/emulated/0/Pictures/Target"
+
+        viewModel.selectMedia(viewedItem)
+        viewModel.startOperationForMedia(viewedItem, OperationType.MOVE)
+        viewModel.performOperationWithPath(destinationPath)
+
+        assertEquals(1, repository.movedUris.size)
+        assertEquals(listOf(viewedItem.uri), repository.movedUris.single().first)
+        assertEquals("Pictures/Target/", repository.movedUris.single().second)
+        assertNull(viewModel.selectedMedia.value)
+    }
+
+    @Test
+    fun `viewer operation does not enter media selection mode or change selected media items`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
+
+        viewModel.selectMedia(viewedItem)
+        viewModel.startOperationForMedia(viewedItem, OperationType.COPY)
+        viewModel.performOperationWithPath("/storage/emulated/0/Pictures/Target")
+
+        assertFalse(viewModel.isMediaSelectionMode.value)
+        assertTrue(viewModel.selectedMediaItems.value.isEmpty())
+    }
+
+    @Test
+    fun `cancel operation clears explicit target so next selection copy does not include old viewer item`() = runTest {
+        val viewerItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Viewer")
+            .copy(name = "viewer.jpg")
+        val selectedItem = createMediaItem(mockUri2, "/storage/emulated/0/Pictures/Selection")
+            .copy(name = "selected.jpg")
+        repository.mediaItems = listOf(viewerItem, selectedItem)
+
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        viewModel.loadFolders()
+
+        viewModel.selectMedia(viewerItem)
+        viewModel.startOperationForMedia(viewerItem, OperationType.COPY)
+        viewModel.cancelOperation()
+
+        viewModel.enterMediaSelectionMode(selectedItem)
+        viewModel.startOperation(OperationType.COPY)
+        viewModel.performOperationWithPath("/storage/emulated/0/Pictures/Target")
+
+        assertEquals(1, repository.copiedFiles.size)
+        assertEquals(
+            Triple(selectedItem.folderPath, selectedItem.name, "/storage/emulated/0/Pictures/Target"),
+            repository.copiedFiles.single()
+        )
+    }
+
+    @Test
+    fun `copying viewed item into same folder is ignored`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
+
+        viewModel.selectMedia(viewedItem)
+        viewModel.startOperationForMedia(viewedItem, OperationType.COPY)
+        viewModel.performOperationWithPath("/storage/emulated/0/Pictures/Source")
+
+        assertTrue(repository.copiedFiles.isEmpty())
+        assertEquals(viewedItem.uri, viewModel.selectedMedia.value?.uri)
+    }
+
+    @Test
+    fun `viewer copy to invalid path outside root does nothing`() = runTest {
+        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
+
+        viewModel.selectMedia(viewedItem)
+        viewModel.startOperationForMedia(viewedItem, OperationType.COPY)
+        viewModel.performOperationWithPath("/data/user/0/invalid")
+
+        assertTrue(repository.copiedFiles.isEmpty())
+        assertEquals(OperationType.COPY, viewModel.pendingOperation.value)
+        assertTrue(viewModel.isDestinationPickerActive.value)
+    }
+
+    @Test
     fun `moving selected folders moves all contained media`() = runTest {
         val media = listOf(
             createMediaItem(mockUri1, "/storage/emulated/0/A"),

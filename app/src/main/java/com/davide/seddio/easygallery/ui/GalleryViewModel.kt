@@ -95,6 +95,8 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _pendingOperation = MutableStateFlow<OperationType?>(null)
     val pendingOperation: StateFlow<OperationType?> = _pendingOperation.asStateFlow()
 
+    private val _explicitOperationTarget = MutableStateFlow<List<MediaItem>>(emptyList())
+
     private val _browsingPath = MutableStateFlow(Environment.getExternalStorageDirectory().absolutePath)
     val browsingPath: StateFlow<String> = _browsingPath.asStateFlow()
 
@@ -380,6 +382,16 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun startOperation(type: OperationType) {
+        _explicitOperationTarget.value = emptyList()
+        activateDestinationPicker(type)
+    }
+
+    fun startOperationForMedia(item: MediaItem, type: OperationType) {
+        _explicitOperationTarget.value = listOf(item)
+        activateDestinationPicker(type)
+    }
+
+    private fun activateDestinationPicker(type: OperationType) {
         _pendingOperation.value = type
         _isDestinationPickerActive.value = true
     }
@@ -388,6 +400,7 @@ class GalleryViewModel @JvmOverloads constructor(
         _pendingOperation.value = null
         _isDestinationPickerActive.value = false
         _browsingPath.value = Environment.getExternalStorageDirectory().absolutePath
+        _explicitOperationTarget.value = emptyList()
     }
 
     fun updateBrowsingPath(path: String) {
@@ -409,13 +422,18 @@ class GalleryViewModel @JvmOverloads constructor(
         val relativePath = GalleryTransformations.absoluteToRelativePath(path, rootPath) ?: return
         
         viewModelScope.launch {
-            val urisToMove = if (_isMediaSelectionMode.value) {
-                _selectedMediaItems.value.toList()
-            } else {
-                val selectedPaths = _selectedFolders.value
-                _allMedia.value
-                    .filter { selectedPaths.contains(it.folderPath) }
-                    .map { it.uri }
+            val explicitTarget = _explicitOperationTarget.value
+            val useExplicitTarget = explicitTarget.isNotEmpty()
+
+            val urisToMove = when {
+                useExplicitTarget -> explicitTarget.map { it.uri }
+                _isMediaSelectionMode.value -> _selectedMediaItems.value.toList()
+                else -> {
+                    val selectedPaths = _selectedFolders.value
+                    _allMedia.value
+                        .filter { selectedPaths.contains(it.folderPath) }
+                        .map { it.uri }
+                }
             }
 
             if (urisToMove.isEmpty()) {
@@ -424,14 +442,40 @@ class GalleryViewModel @JvmOverloads constructor(
             }
 
             if (operation == OperationType.MOVE) {
-                tryMoveMedia(urisToMove, relativePath)
+                tryMoveMedia(urisToMove, relativePath, useExplicitTarget)
             } else {
-                if (_isMediaSelectionMode.value) {
-                    val selectedMedia = getSelectedMediaData()
-                    selectedMedia.forEach { item ->
-                        repository.copyFile(item.folderPath, item.name, path)
+                if (useExplicitTarget || _isMediaSelectionMode.value) {
+                    val selectedMedia = if (useExplicitTarget) explicitTarget else getSelectedMediaData()
+                    val mediaToCopy = if (useExplicitTarget) {
+                        selectedMedia.filterNot { item ->
+                            isSameFolderPath(item.folderPath, path)
+                        }
+                    } else {
+                        selectedMedia
                     }
-                    exitMediaSelectionMode()
+
+                    if (mediaToCopy.isEmpty()) {
+                        cancelOperation()
+                        return@launch
+                    }
+
+                    try {
+                        mediaToCopy.forEach { item ->
+                            repository.copyFile(item.folderPath, item.name, path)
+                        }
+                    } catch (e: Exception) {
+                        if (useExplicitTarget) {
+                            _uiState.value = GalleryUiState.Error(
+                                e.message ?: LocaleHelper.wrap(getApplication<Application>()).getString(R.string.error_unknown)
+                            )
+                        }
+                        cancelOperation()
+                        return@launch
+                    }
+
+                    if (!useExplicitTarget) {
+                        exitMediaSelectionMode()
+                    }
                 } else {
                     val selectedFoldersData = getSelectedFoldersData()
                     selectedFoldersData.forEach { folder ->
@@ -445,16 +489,32 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }
 
-    private suspend fun tryMoveMedia(uris: List<android.net.Uri>, targetRelativePath: String) {
+    private fun isSameFolderPath(sourceFolderPath: String, destinationFolderPath: String): Boolean {
+        val normalizedSource = File(sourceFolderPath).absolutePath.trimEnd(File.separatorChar)
+        val normalizedDestination = File(destinationFolderPath).absolutePath.trimEnd(File.separatorChar)
+        return normalizedSource == normalizedDestination
+    }
+
+    private suspend fun tryMoveMedia(
+        uris: List<android.net.Uri>,
+        targetRelativePath: String,
+        useExplicitTarget: Boolean
+    ) {
         try {
             repository.updateMediaRelativePath(uris, targetRelativePath)
             _pendingMoveOperation.value = null
-            exitMediaSelectionMode()
-            exitSelectionMode()
+
+            if (useExplicitTarget) {
+                closeMedia()
+            } else {
+                exitMediaSelectionMode()
+                exitSelectionMode()
+            }
+
             cancelOperation()
             loadFolders()
         } catch (e: SecurityException) {
-            _pendingMoveOperation.value = MoveOperation(uris, targetRelativePath)
+            _pendingMoveOperation.value = MoveOperation(uris, targetRelativePath, useExplicitTarget)
             permissionHandler.createWriteRequest(getApplication<Application>().contentResolver, uris)?.let {
                 _pendingWriteRequest.value = PendingMediaPermissionRequest(it)
             } ?: permissionHandler.getIntentSenderFromException(e)?.let {
@@ -468,7 +528,7 @@ class GalleryViewModel @JvmOverloads constructor(
             val pending = _pendingMoveOperation.value
             if (pending != null) {
                 viewModelScope.launch {
-                    tryMoveMedia(pending.uris, pending.targetRelativePath)
+                    tryMoveMedia(pending.uris, pending.targetRelativePath, pending.useExplicitTarget)
                 }
             } else {
                 loadFolders()
@@ -602,5 +662,6 @@ class GalleryViewModel @JvmOverloads constructor(
 
 data class MoveOperation(
     val uris: List<android.net.Uri>,
-    val targetRelativePath: String
+    val targetRelativePath: String,
+    val useExplicitTarget: Boolean
 )
