@@ -4,8 +4,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.FolderCopy
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -22,7 +27,10 @@ fun MediaSelectionTopBar(
     totalCount: Int,
     onClose: () -> Unit,
     onDelete: () -> Unit,
+    onShare: () -> Unit,
     onInfoClick: () -> Unit,
+    canUseAsBackground: Boolean,
+    onUseAsBackground: () -> Unit,
     onCopyTo: () -> Unit,
     onMoveTo: () -> Unit,
     onSelectAll: () -> Unit
@@ -37,16 +45,19 @@ fun MediaSelectionTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onInfoClick) {
-                Icon(Icons.Default.Info, contentDescription = stringResource(R.string.properties_title), tint = Color.White)
-            }
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier.testTag("delete_button")
             ) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
             }
-            
+            IconButton(onClick = onShare) {
+                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share), tint = Color.White)
+            }
+            IconButton(onClick = onInfoClick) {
+                Icon(Icons.Default.Info, contentDescription = stringResource(R.string.properties_title), tint = Color.White)
+            }
+
             Box {
                 IconButton(onClick = { showMenu = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.cd_more_options), tint = Color.White)
@@ -55,8 +66,29 @@ fun MediaSelectionTopBar(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
+                    if (canUseAsBackground) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_use_as_wallpaper)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Image,
+                                    contentDescription = null
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onUseAsBackground()
+                            }
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.menu_copy_to)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.FolderCopy,
+                                contentDescription = null
+                            )
+                        },
                         onClick = {
                             showMenu = false
                             onCopyTo()
@@ -65,6 +97,12 @@ fun MediaSelectionTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.menu_move_to)) },
                         modifier = Modifier.testTag("move_to_button"),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.DriveFileMove,
+                                contentDescription = null
+                            )
+                        },
                         onClick = {
                             showMenu = false
                             onMoveTo()
@@ -72,6 +110,12 @@ fun MediaSelectionTopBar(
                     )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.menu_select_all)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.SelectAll,
+                                contentDescription = null
+                            )
+                        },
                         onClick = {
                             showMenu = false
                             onSelectAll()

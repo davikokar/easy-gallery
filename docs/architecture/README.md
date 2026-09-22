@@ -22,3 +22,4 @@ for the required format and status rules.
 | [ADR-0002](decisions/0002-viewmodel-owned-transient-viewer-state.md) | ViewModel-owned transient viewer state across configuration changes | Active | 2026-09-21 |
 | [ADR-0003](decisions/0003-explicit-media-operation-target.md) | Explicit operation target for copy and move | Active | 2026-09-22 |
 | [ADR-0004](decisions/0004-delegate-wallpaper-setting-to-system-cropper.md) | Delegate wallpaper setting to the system crop-and-set activity | Active | 2026-09-22 |
+| [ADR-0005](decisions/0005-selection-scoped-media-actions.md) | Selection-scoped media actions mirror the full-screen viewer | Active | 2026-09-22 |

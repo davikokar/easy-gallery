@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.davide.seddio.easygallery.R
 import coil3.compose.AsyncImage
@@ -149,6 +150,10 @@ fun FolderDetailContent(
 ) {
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val context = LocalContext.current
+    val resolvedSelectedMedia = remember(selectedMediaItems) { getSelectedMediaData() }
+    val wallpaperEligibleMedia = resolvedSelectedMedia.singleOrNull()
+        ?.takeIf { supportsWallpaper(it.type) }
 
     if (isMediaSelectionMode) {
         BackHandler { onExitMediaSelectionMode() }
@@ -172,7 +177,12 @@ fun FolderDetailContent(
                     totalCount = media.size,
                     onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
+                    onShare = { shareMedia(context, resolvedSelectedMedia) },
                     onInfoClick = { showPropertiesDialog = true },
+                    canUseAsBackground = wallpaperEligibleMedia != null,
+                    onUseAsBackground = {
+                        wallpaperEligibleMedia?.let { setImageAsWallpaper(context, it.uri) }
+                    },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
                     onSelectAll = { onSelectAllMedia() }

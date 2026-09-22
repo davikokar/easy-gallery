@@ -46,6 +46,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -217,8 +218,12 @@ fun FolderListContent(
 ) {
     val activePreferences =
         if (displayMode == DisplayMode.GALLERY) folderPreferences else timelinePreferences
+    val context = LocalContext.current
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val selectedMediaForActions = remember(selectedMediaItems) { getSelectedMediaData() }
+    val selectedMediaForWallpaper = selectedMediaForActions.singleOrNull()
+    val canUseAsBackground = selectedMediaForWallpaper?.let { supportsWallpaper(it.type) } == true
 
     if (isMediaSelectionMode) {
         BackHandler { onExitMediaSelectionMode() }
@@ -245,7 +250,12 @@ fun FolderListContent(
                     totalCount = if (displayMode == DisplayMode.CALENDAR) groupedAllMedia.values.flatten().size else 0,
                     onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
+                    onShare = { shareMedia(context, selectedMediaForActions) },
                     onInfoClick = { showPropertiesDialog = true },
+                    canUseAsBackground = canUseAsBackground,
+                    onUseAsBackground = {
+                        selectedMediaForWallpaper?.let { setImageAsWallpaper(context, it.uri) }
+                    },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
                     onSelectAll = { onSelectAllMedia() }
