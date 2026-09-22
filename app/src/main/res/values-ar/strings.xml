@@ -3,7 +3,14 @@
     <string name="cd_back">رجوع</string>
     <string name="cd_toggle_info">تبديل المعلومات</string>
     <string name="delete_media_title">حذف الوسائط</string>
-    <string name="delete_media_message">هل أنت متأكد أنك تريد حذف العناصر المختارة؟ لا يمكن التراجع عن هذا الإجراء.</string>
+    <plurals name="delete_media_message_count">
+        <item quantity="zero">هل أنت متأكد أنك تريد حذف 0 عنصر محدد؟ لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="one">هل أنت متأكد أنك تريد حذف عنصر واحد محدد؟ لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="two">هل أنت متأكد أنك تريد حذف عنصرين محددين؟ لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="few">هل أنت متأكد أنك تريد حذف %1$d عناصر محددة؟ لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="many">هل أنت متأكد أنك تريد حذف %1$d عنصرًا محددًا؟ لا يمكن التراجع عن هذا الإجراء.</item>
+        <item quantity="other">هل أنت متأكد أنك تريد حذف %1$d عنصر محدد؟ لا يمكن التراجع عن هذا الإجراء.</item>
+    </plurals>
     <string name="action_delete">حذف</string>
     <string name="action_cancel">إلغاء</string>
     <string name="properties_title">الخصائص</string>

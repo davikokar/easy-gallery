@@ -3,7 +3,10 @@
     <string name="cd_back">Zurück</string>
     <string name="cd_toggle_info">Info umschalten</string>
     <string name="delete_media_title">Medien löschen</string>
-    <string name="delete_media_message">Sind Sie sicher, dass Sie die ausgewählten Elemente löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <plurals name="delete_media_message_count">
+        <item quantity="one">Sind Sie sicher, dass Sie %1$d ausgewähltes Element löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.</item>
+        <item quantity="other">Sind Sie sicher, dass Sie %1$d ausgewählte Elemente löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.</item>
+    </plurals>
     <string name="action_delete">Löschen</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="properties_title">Eigenschaften</string>

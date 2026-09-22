@@ -3,7 +3,10 @@
     <string name="cd_back">Atrás</string>
     <string name="cd_toggle_info">Alternar información</string>
     <string name="delete_media_title">Eliminar multimedia</string>
-    <string name="delete_media_message">¿Estás seguro de que quieres eliminar los elementos seleccionados? Esta acción no se puede deshacer.</string>
+    <plurals name="delete_media_message_count">
+        <item quantity="one">¿Estás seguro de que quieres eliminar %1$d elemento seleccionado? Esta acción no se puede deshacer.</item>
+        <item quantity="other">¿Estás seguro de que quieres eliminar %1$d elementos seleccionados? Esta acción no se puede deshacer.</item>
+    </plurals>
     <string name="action_delete">Eliminar</string>
     <string name="action_cancel">Cancelar</string>
     <string name="properties_title">Propiedades</string>

@@ -3,7 +3,9 @@
     <string name="cd_back">戻る</string>
     <string name="cd_toggle_info">情報の切り替え</string>
     <string name="delete_media_title">メディアを削除</string>
-    <string name="delete_media_message">選択したアイテムを削除してもよろしいですか？この操作は取り消せません。</string>
+    <plurals name="delete_media_message_count">
+        <item quantity="other">選択した%1$d件のアイテムを削除してもよろしいですか？この操作は取り消せません。</item>
+    </plurals>
     <string name="action_delete">削除</string>
     <string name="action_cancel">キャンセル</string>
     <string name="properties_title">プロパティ</string>

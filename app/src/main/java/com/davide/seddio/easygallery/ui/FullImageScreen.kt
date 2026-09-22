@@ -1,6 +1,5 @@
 package com.davide.seddio.easygallery.ui
 
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -66,6 +65,7 @@ import com.davide.seddio.easygallery.ui.components.playbackProgressFraction
 import com.davide.seddio.easygallery.ui.components.rememberMediaLocation
 import com.davide.seddio.easygallery.ui.components.rememberVideoPlaybackState
 import com.davide.seddio.easygallery.ui.components.setImageAsWallpaper
+import com.davide.seddio.easygallery.ui.components.shareMedia
 import com.davide.seddio.easygallery.ui.components.supportsWallpaper
 import com.davide.seddio.easygallery.ui.components.ZoomableImage
 import com.davide.seddio.easygallery.ui.theme.AppBackground
@@ -356,12 +356,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                     Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
                                 }
                                 IconButton(onClick = {
-                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = if (item.type == MediaType.VIDEO) "video/*" else "image/*"
-                                        putExtra(Intent.EXTRA_STREAM, item.uri)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    }
-                                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_media_title)))
+                                    shareMedia(context, listOf(item))
                                 }) {
                                     Icon(Icons.Default.Share, contentDescription = stringResource(R.string.cd_share), tint = Color.White)
                                 }

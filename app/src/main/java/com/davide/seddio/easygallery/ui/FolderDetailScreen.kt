@@ -35,11 +35,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.davide.seddio.easygallery.R
 import coil3.compose.AsyncImage
@@ -149,6 +151,10 @@ fun FolderDetailContent(
 ) {
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val context = LocalContext.current
+    val resolvedSelectedMedia = remember(selectedMediaItems) { getSelectedMediaData() }
+    val wallpaperEligibleMedia = resolvedSelectedMedia.singleOrNull()
+        ?.takeIf { supportsWallpaper(it.type) }
 
     if (isMediaSelectionMode) {
         BackHandler { onExitMediaSelectionMode() }
@@ -172,7 +178,12 @@ fun FolderDetailContent(
                     totalCount = media.size,
                     onClose = { onExitMediaSelectionMode() },
                     onDelete = { showDeleteDialog = true },
+                    onShare = { shareMedia(context, resolvedSelectedMedia) },
                     onInfoClick = { showPropertiesDialog = true },
+                    canUseAsBackground = wallpaperEligibleMedia != null,
+                    onUseAsBackground = {
+                        wallpaperEligibleMedia?.let { setImageAsWallpaper(context, it.uri) }
+                    },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
                     onSelectAll = { onSelectAllMedia() }
@@ -217,7 +228,15 @@ fun FolderDetailContent(
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 title = { Text(stringResource(R.string.delete_media_title)) },
-                text = { Text(stringResource(R.string.delete_media_message)) },
+                text = {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.delete_media_message_count,
+                            selectedMediaItems.size,
+                            selectedMediaItems.size
+                        )
+                    )
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         onDeleteSelectedMedia()
