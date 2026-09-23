@@ -71,6 +71,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.exifinterface)
+    // Declared only to override the outdated fragment version appcompat pulls in via Coil.
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
