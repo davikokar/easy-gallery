@@ -5,10 +5,18 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ViewColumn
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -110,6 +118,12 @@ fun SearchTopBar(
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.sort_by_title)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Sort,
+                                    contentDescription = null
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onSortClick?.invoke()
@@ -117,6 +131,12 @@ fun SearchTopBar(
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.column_count_title)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.ViewColumn,
+                                    contentDescription = null
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onColumnCountClick?.invoke()
@@ -125,6 +145,12 @@ fun SearchTopBar(
                         if (onGroupByClick != null) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.group_by_title)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Category,
+                                        contentDescription = null
+                                    )
+                                },
                                 onClick = {
                                     showMenu = false
                                     onGroupByClick.invoke()
@@ -133,6 +159,12 @@ fun SearchTopBar(
                         }
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.menu_show_excluded)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Visibility,
+                                    contentDescription = null
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onShowExcludedClick?.invoke()
@@ -140,6 +172,12 @@ fun SearchTopBar(
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.filter_media_title)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.FilterAlt,
+                                    contentDescription = null
+                                )
+                            },
                             modifier = Modifier.testTag("filter_media_button"),
                             onClick = {
                                 showMenu = false
@@ -148,6 +186,12 @@ fun SearchTopBar(
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.change_view_type_title)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.GridView,
+                                    contentDescription = null
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onViewTypeClick?.invoke()
@@ -171,6 +215,12 @@ fun SearchTopBar(
                         if (onCreateFolderClick != null) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.menu_create_folder)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CreateNewFolder,
+                                        contentDescription = null
+                                    )
+                                },
                                 modifier = Modifier.testTag("create_folder_button"),
                                 onClick = {
                                     showMenu = false
@@ -180,6 +230,12 @@ fun SearchTopBar(
                         }
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.settings_title)) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = null
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 onSettingsClick?.invoke()
