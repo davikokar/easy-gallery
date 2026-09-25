@@ -89,6 +89,9 @@
     <string name="menu_copy_to">Copier vers</string>
     <string name="menu_move_to">Déplacer vers</string>
     <string name="menu_use_as_wallpaper">Définir comme fond d\'écran</string>
+    <string name="menu_change_folder_thumbnail">Modifier l\'image de couverture du dossier</string>
+    <string name="menu_reset_folder_thumbnail">Réinitialiser l\'image de couverture du dossier</string>
+    <string name="thumbnail_picker_title">Choisir l\'image de couverture du dossier</string>
     <string name="wallpaper_app_not_found">Aucune application disponible pour définir le fond d\'écran</string>
     <string name="menu_select_all">Tout sélectionner</string>
     <string name="search_placeholder">Rechercher…</string>

@@ -24,3 +24,4 @@ for the required format and status rules.
 | [ADR-0004](decisions/0004-delegate-wallpaper-setting-to-system-cropper.md) | Delegate wallpaper setting to the system crop-and-set activity | Active | 2026-09-22 |
 | [ADR-0005](decisions/0005-selection-scoped-media-actions.md) | Selection-scoped media actions mirror the full-screen viewer | Active | 2026-09-22 |
 | [ADR-0006](decisions/0006-per-folder-display-preference-overrides.md) | Per-folder display preference overrides layered over global defaults | Active | 2026-09-25 |
+| [ADR-0007](decisions/0007-persisted-folder-thumbnail-override.md) | Persisted per-folder thumbnail override resolved against live media | Active | 2026-09-25 |

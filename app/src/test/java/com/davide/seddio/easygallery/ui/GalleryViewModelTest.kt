@@ -64,8 +64,15 @@ class GalleryViewModelTest {
     )
 
     private fun createViewModel(
-        folderViewPreferencesStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore()
-    ) = GalleryViewModel(application, repository, permissionHandler, folderViewPreferencesStore)
+        folderViewPreferencesStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore(),
+        folderThumbnailStore: FolderThumbnailStore = SharedPreferencesFolderThumbnailStore(application)
+    ) = GalleryViewModel(
+        application,
+        repository,
+        permissionHandler,
+        folderViewPreferencesStore,
+        folderThumbnailStore
+    )
 
     @Test
     fun `long-pressing a folder enters selection mode`() = runTest {
@@ -189,6 +196,185 @@ class GalleryViewModelTest {
         
         assertFalse(viewModel.isSelectionMode.value)
         assertTrue(viewModel.selectedFolders.value.isEmpty())
+    }
+
+    @Test
+    fun `enterThumbnailPickerMode is no-op when no folder is selected`() = runTest {
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+
+        viewModel.enterSelectionMode("/storage/emulated/0/Pictures")
+        viewModel.enterThumbnailPickerMode()
+
+        assertFalse(viewModel.isThumbnailPickerMode.value)
+        assertTrue(viewModel.isSelectionMode.value)
+    }
+
+    @Test
+    fun `enterThumbnailPickerMode with selected folder activates picker and exits selection modes`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        val selectedMediaItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(selectedMediaItem)
+
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterSelectionMode(folderPath)
+        viewModel.enterThumbnailPickerMode()
+
+        assertTrue(viewModel.isThumbnailPickerMode.value)
+        assertFalse(viewModel.isSelectionMode.value)
+        assertFalse(viewModel.isMediaSelectionMode.value)
+
+        viewModel.enterMediaSelectionMode(selectedMediaItem)
+        viewModel.enterThumbnailPickerMode()
+
+        assertTrue(viewModel.isThumbnailPickerMode.value)
+        assertFalse(viewModel.isMediaSelectionMode.value)
+    }
+
+    @Test
+    fun `selectMedia in thumbnail picker mode sets folder thumbnail exits picker and keeps viewer closed`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri2, path = folderPath)
+        val thumbnailItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(thumbnailItem)
+
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+        val overrideJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.selectedFolderThumbnailOverrideUri.collect {}
+        }
+        val customFlagJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.hasSelectedFolderCustomThumbnail.collect {}
+        }
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+        viewModel.selectMedia(thumbnailItem)
+
+        assertFalse(viewModel.isThumbnailPickerMode.value)
+        assertEquals(mockUri, viewModel.selectedFolderThumbnailOverrideUri.value)
+        assertTrue(viewModel.hasSelectedFolderCustomThumbnail.value)
+        assertNull(viewModel.selectedMedia.value)
+
+        overrideJob.cancel()
+        customFlagJob.cancel()
+    }
+
+    @Test
+    fun `selectMedia when not in thumbnail picker mode still opens viewer`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val item = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(item)
+
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+        viewModel.selectMedia(item)
+
+        assertEquals(item.uri, viewModel.selectedMedia.value?.uri)
+    }
+
+    @Test
+    fun `filteredFolders reflects selected custom thumbnail for folder`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri2, path = folderPath)
+        val originalFolderItem = createMediaItem(mockUri2, folderPath)
+        val customThumbnailItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(originalFolderItem, customThumbnailItem)
+
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+        val filteredFoldersJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredFolders.collect {}
+        }
+
+        viewModel.loadFolders()
+        viewModel.selectFolder(selectedFolder)
+        viewModel.setCurrentFolderThumbnail(customThumbnailItem)
+
+        val uiState = viewModel.filteredFolders.value as GalleryUiState.Success
+        val folder = uiState.folders.first { it.path == folderPath }
+        assertEquals(customThumbnailItem.uri, folder.thumbnailUri)
+
+        filteredFoldersJob.cancel()
+    }
+
+    @Test
+    fun `clearCurrentFolderThumbnail restores automatic thumbnail and clears custom flag`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri2, path = folderPath)
+        val originalFolderItem = createMediaItem(mockUri2, folderPath)
+        val customThumbnailItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(originalFolderItem, customThumbnailItem)
+
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+        val filteredFoldersJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredFolders.collect {}
+        }
+        val overrideJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.selectedFolderThumbnailOverrideUri.collect {}
+        }
+        val customFlagJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.hasSelectedFolderCustomThumbnail.collect {}
+        }
+
+        viewModel.loadFolders()
+        viewModel.selectFolder(selectedFolder)
+        viewModel.setCurrentFolderThumbnail(customThumbnailItem)
+        viewModel.clearCurrentFolderThumbnail()
+
+        val uiState = viewModel.filteredFolders.value as GalleryUiState.Success
+        val folder = uiState.folders.first { it.path == folderPath }
+        assertEquals(mockUri2, folder.thumbnailUri)
+        assertNull(viewModel.selectedFolderThumbnailOverrideUri.value)
+        assertFalse(viewModel.hasSelectedFolderCustomThumbnail.value)
+
+        filteredFoldersJob.cancel()
+        overrideJob.cancel()
+        customFlagJob.cancel()
+    }
+
+    @Test
+    fun `folder thumbnail override persists across view model instances with same in-memory store`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri2, path = folderPath)
+        val originalFolderItem = createMediaItem(mockUri2, folderPath)
+        val customThumbnailItem = createMediaItem(mockUri1, "/storage/emulated/0/Download")
+        repository.mediaItems = listOf(originalFolderItem, customThumbnailItem)
+        val folderThumbnailStore = InMemoryFolderThumbnailStore()
+
+        val firstViewModel = createViewModel(folderThumbnailStore = folderThumbnailStore)
+        firstViewModel.selectFolder(selectedFolder)
+        firstViewModel.setCurrentFolderThumbnail(customThumbnailItem)
+
+        val secondViewModel = createViewModel(folderThumbnailStore = folderThumbnailStore)
+        val overrideJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            secondViewModel.selectedFolderThumbnailOverrideUri.collect {}
+        }
+        val customFlagJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            secondViewModel.hasSelectedFolderCustomThumbnail.collect {}
+        }
+
+        secondViewModel.selectFolder(selectedFolder)
+
+        assertEquals(mockUri, secondViewModel.selectedFolderThumbnailOverrideUri.value)
+        assertTrue(secondViewModel.hasSelectedFolderCustomThumbnail.value)
+
+        overrideJob.cancel()
+        customFlagJob.cancel()
+    }
+
+    @Test
+    fun `backToFolders exits thumbnail picker mode`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, folderPath))
+
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+        viewModel.backToFolders()
+
+        assertFalse(viewModel.isThumbnailPickerMode.value)
     }
 
     @Test

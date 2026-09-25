@@ -13,10 +13,16 @@ object GalleryTransformations {
         order: SortOrder,
         excluded: Set<String>,
         showExcluded: Boolean,
-        types: Set<MediaType>
+        types: Set<MediaType>,
+        thumbnailOverrides: Map<String, String> = emptyMap()
     ): List<Folder> {
         val foldersMap = mutableMapOf<String, Folder>()
+        val resolvedOverrides = mutableMapOf<String, android.net.Uri>()
         allMedia.forEach { item ->
+            if (thumbnailOverrides[item.folderPath] == item.uri.toString()) {
+                resolvedOverrides[item.folderPath] = item.uri
+            }
+
             val isExcluded = excluded.contains(item.folderPath)
             if ((showExcluded || !isExcluded) && types.contains(item.type)) {
                 val existing = foldersMap[item.folderPath]
@@ -42,7 +48,14 @@ object GalleryTransformations {
             }
         }
 
-        val foldersList = foldersMap.values.toList()
+        val foldersList = foldersMap.values.map { folder ->
+            val overrideUri = resolvedOverrides[folder.path]
+            if (overrideUri != null) {
+                folder.copy(thumbnailUri = overrideUri)
+            } else {
+                folder
+            }
+        }
 
         val sorted = when (sort) {
             SortType.NAME -> foldersList.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,6 +34,8 @@ fun SearchTopBar(
     onColumnCountClick: (() -> Unit)? = null,
     onGroupByClick: (() -> Unit)? = null,
     onViewTypeClick: (() -> Unit)? = null,
+    onChangeThumbnailClick: (() -> Unit)? = null,
+    onResetThumbnailClick: (() -> Unit)? = null,
     onFilterMediaClick: (() -> Unit)? = null,
     onShowExcludedClick: (() -> Unit)? = null,
     onCreateFolderClick: (() -> Unit)? = null,
@@ -152,6 +155,36 @@ fun SearchTopBar(
                                 onViewTypeClick?.invoke()
                             }
                         )
+                        if (onChangeThumbnailClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_change_folder_thumbnail)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Image,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onChangeThumbnailClick.invoke()
+                                }
+                            )
+                        }
+                        if (onResetThumbnailClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_reset_folder_thumbnail)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Replay,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onResetThumbnailClick.invoke()
+                                }
+                            )
+                        }
                         if (onCreateFolderClick != null) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.menu_create_folder)) },

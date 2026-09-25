@@ -89,6 +89,9 @@
     <string name="menu_copy_to">Copiar para</string>
     <string name="menu_move_to">Mover para</string>
     <string name="menu_use_as_wallpaper">Definir como papel de parede</string>
+    <string name="menu_change_folder_thumbnail">Alterar miniatura da pasta</string>
+    <string name="menu_reset_folder_thumbnail">Redefinir miniatura da pasta</string>
+    <string name="thumbnail_picker_title">Escolher miniatura da pasta</string>
     <string name="wallpaper_app_not_found">Nenhum aplicativo disponível para definir o papel de parede</string>
     <string name="menu_select_all">Selecionar tudo</string>
     <string name="search_placeholder">Pesquisar…</string>

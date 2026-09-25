@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.test.platform.app.InstrumentationRegistry
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -37,6 +39,8 @@ class FolderDetailContentTest {
         name = "video.mp4",
         type = MediaType.VIDEO
     )
+
+    private val appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test
     fun selectedMediaDisplaysCheckmark() {
@@ -196,11 +200,82 @@ class FolderDetailContentTest {
         }
     }
 
+    @Test
+    fun overflowMenuShowsChangeFolderThumbnailItem() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia))
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_folder_thumbnail))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun overflowMenuHidesResetFolderThumbnailWhenNoCustomThumbnail() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                hasSelectedFolderCustomThumbnail = false
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_reset_folder_thumbnail))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun overflowMenuShowsResetFolderThumbnailWhenCustomThumbnailExists() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                hasSelectedFolderCustomThumbnail = true
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_reset_folder_thumbnail))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun thumbnailPickerModeShowsPickerTopBarAndHidesSearchAndOverflow() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isThumbnailPickerMode = true
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.thumbnail_picker_title))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_search))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .assertDoesNotExist()
+    }
+
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
+        isThumbnailPickerMode: Boolean = false,
+        hasSelectedFolderCustomThumbnail: Boolean = false,
+        currentThumbnailUri: Uri? = null,
+        onEnterThumbnailPickerMode: () -> Unit = {},
+        onExitThumbnailPickerMode: () -> Unit = {},
+        onClearCurrentFolderThumbnail: () -> Unit = {},
         onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit = { _, _, _ -> }
     ) {
         FolderDetailContent(
@@ -211,6 +286,9 @@ class FolderDetailContentTest {
             isSearchActive = false,
             groupedMedia = emptyMap(),
             isMediaSelectionMode = isMediaSelectionMode,
+            isThumbnailPickerMode = isThumbnailPickerMode,
+            hasSelectedFolderCustomThumbnail = hasSelectedFolderCustomThumbnail,
+            currentThumbnailUri = currentThumbnailUri,
             selectedMediaItems = selectedMediaItems,
             isDestinationPickerActive = false,
             pendingOperation = null,
@@ -222,6 +300,9 @@ class FolderDetailContentTest {
             onSelectAllMedia = {},
             onSetSearchQuery = {},
             onSetSearchActive = {},
+            onEnterThumbnailPickerMode = onEnterThumbnailPickerMode,
+            onExitThumbnailPickerMode = onExitThumbnailPickerMode,
+            onClearCurrentFolderThumbnail = onClearCurrentFolderThumbnail,
             onCommitColumnsPreference = { _, _ -> },
             onCommitMediaTypesPreference = { _, _ -> },
             onCommitSortPreference = onCommitSortPreference,
