@@ -2,11 +2,15 @@ package com.davide.seddio.easygallery.ui.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.FolderCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -62,6 +66,9 @@ fun SelectionTopBar(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.FolderCopy, contentDescription = null)
+                        },
                         text = { Text(stringResource(R.string.menu_copy_to)) },
                         onClick = {
                             showMenu = false
@@ -69,6 +76,9 @@ fun SelectionTopBar(
                         }
                     )
                     DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.DriveFileMove, contentDescription = null)
+                        },
                         text = { Text(stringResource(R.string.menu_move_to)) },
                         modifier = Modifier.testTag("move_to_button"),
                         onClick = {
@@ -77,6 +87,9 @@ fun SelectionTopBar(
                         }
                     )
                     DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Block, contentDescription = null)
+                        },
                         text = { Text(stringResource(R.string.action_exclude)) },
                         onClick = {
                             showMenu = false
@@ -84,6 +97,9 @@ fun SelectionTopBar(
                         }
                     )
                     DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.SelectAll, contentDescription = null)
+                        },
                         text = { Text(stringResource(R.string.menu_select_all)) },
                         onClick = {
                             showMenu = false
