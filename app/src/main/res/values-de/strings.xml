@@ -90,7 +90,6 @@
     <string name="menu_move_to">Verschieben nach</string>
     <string name="menu_use_as_wallpaper">Als Hintergrund festlegen</string>
     <string name="menu_change_folder_thumbnail">Ordnervorschaubild ändern</string>
-    <string name="menu_reset_folder_thumbnail">Ordnervorschaubild zurücksetzen</string>
     <string name="thumbnail_picker_title">Ordnervorschaubild auswählen</string>
     <string name="wallpaper_app_not_found">Keine App zum Festlegen des Hintergrundbilds verfügbar</string>
     <string name="menu_select_all">Alle auswählen</string>

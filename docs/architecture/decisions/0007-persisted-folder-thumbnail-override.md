@@ -58,8 +58,197 @@ The choice is made through a dedicated, ViewModel-owned picking mode in the Fold
 instead of opening the full-screen viewer. The mode flag lives in `GalleryViewModel`, alongside
 `isMediaSelectionMode`, not in screen-local `remember` state.
 
+> **Amended 2026-09-25 — see Amendment 1 below.** The picking mode, its ViewModel ownership and its
+> interception of the tap before the viewer all still govern. What no longer holds is that a tap
+> *assigns and exits*: a tap now sets a draft, and a separate confirm action commits it.
+
 A reset affordance is required: without it the user can replace the cover but can never return the
 folder to automatic selection.
+
+> **Withdrawn 2026-09-25 — see Amendment 1 below.** This requirement no longer holds. The reset
+> menu item has been removed from the product, and with it `clearCurrentFolderThumbnail` and
+> `hasSelectedFolderCustomThumbnail`. The original text is kept here deliberately so the record
+> shows that the requirement existed and was reversed.
+
+## Amendment 1 — 2026-09-25 — Draft-and-commit picking, and withdrawal of the reset affordance
+
+This amendment narrows the **UI interaction** paragraph of the Decision and **withdraws** the reset
+paragraph. Everything else in the record is unchanged and continues to govern: the `folder_thumbnails`
+`SharedPreferences` file, the `FolderThumbnailStore` interface plus in-memory fake, the
+`Folder.path -> uri` key shape, merge-on-read inside `GalleryTransformations.filterAndSortFolders`,
+resolution **before** the media-type filter, validating-by-construction fallback, no garbage
+collection of orphans, and all three `MediaType`s being selectable.
+
+This is recorded as an amendment rather than a superseding ADR because the persistence and
+resolution architecture — the part of ADR-0007 with lasting structural impact — has not stopped
+applying. Disabling ADR-0007 and writing ADR-0008 would retire a decision that still governs, and
+restating it in a new record would duplicate it. What changed is confined to one screen
+(`FolderDetailScreen`), one top bar (`ThumbnailPickerTopBar`), one dropdown item (`SearchTopBar`)
+and the mode-state members of `GalleryViewModel`. Both changes are visible in this record rather
+than concealed: the two superseded paragraphs above are annotated in place and left intact.
+
+### What changed
+
+**1. Picking is draft-and-commit, not commit-on-tap.**
+
+- Entering the mode selects nothing. The top bar shows a close (X) icon and the
+  `thumbnail_picker_title` title.
+- A tap on a media item sets a **draft** and does nothing else. It does not persist, does not exit
+  the mode, and does not open the full-screen viewer. Tapping a different item moves the draft.
+  Tapping the drafted item again is a no-op, not a deselect — there is no state in which the user
+  can be left with an empty draft after having made one.
+- Once a draft exists the top bar's close icon becomes a back arrow. That arrow is the **commit**:
+  it persists the draft and exits the mode.
+- The close icon, shown only while there is no draft, exits without writing anything.
+
+**2. The draft lives in `GalleryViewModel`, not in the screen.** `folderThumbnailDraftUri:
+StateFlow<Uri?>` sits next to `isThumbnailPickerMode`. This is ADR-0002's rule applied to a second
+surface: `MainActivity` is a plain `if`/`else if` chain with no back stack, so a screen leaving the
+composition is destroyed and screen-local `remember` — including `rememberSaveable` outside the
+`SaveableStateHolder` — is discarded. A draft held in `FolderDetailContent` would be silently lost
+on any navigation or configuration change while the picker is open, and would additionally
+desynchronise from `isThumbnailPickerMode`, which is already ViewModel-owned. The draft is cleared
+wherever the mode flag is cleared: entering the mode, cancelling, committing, `selectFolder`,
+`backToFolders`, and both selection-mode entry points.
+
+**3. System back does what the top-bar button does.** With a draft, system back commits; without
+one, it cancels. The navigation icon in that state *is* a back arrow, so having the arrow and the
+back gesture disagree would give one affordance two meanings. The usual "back cancels" convention
+protects the user from losing work; there is nothing to lose here, because the committed value is
+a single reversible preference that the same two taps can change again, and the automatic
+thumbnail it replaces is recomputed, not stored.
+
+**4. There is no pre-selection of the existing custom thumbnail.** Seeding the draft from the
+persisted override would mean a draft exists the instant the mode opens, so the bar would show the
+commit arrow immediately and the cancel affordance would be unreachable — directly contradicting
+point 1. It would also make "open the picker and press back" silently rewrite the stored value
+with itself. The cost is that the current cover is not highlighted when the picker opens; that is
+accepted, and it is the same information the user just saw on the folder tile.
+
+**5. The draft is rendered with the existing selection checkmark, not a new affordance.**
+`MediaGridItem` already draws `Icons.Default.CheckCircle` at `Alignment.TopEnd`, tinted
+`MaterialTheme.colorScheme.primary` — which this app's theme pins to `BrandBlue` (`0xFF017DDF`) for
+both light and dark — over a white circle, plus a 30% black scrim, tagged `selected_checkmark`.
+That is already "a blue check in the top-right corner"; adding a picker-specific badge would put a
+second, near-identical glyph in the codebase. The draft is therefore passed into the existing
+`selectedItems: Set<Uri>` parameter as `setOfNotNull(draftUri)`, which also means grid, list and
+grouped rendering all get the affordance without touching any of them.
+
+**6. List view keeps its own existing placement.** `MediaListItem` draws the same icon, the same
+tint and the same `selected_checkmark` tag, but centred on its 64 dp thumbnail rather than in the
+tile's top-right corner, and it additionally tints the row `primaryContainer`. It is **not**
+changed to match the grid: that component is shared with media multi-selection in Folder Detail
+View and Timeline View, so re-aligning it for the picker would silently restyle multi-selection
+everywhere, and a corner badge on a 64 dp thumbnail is cramped. "Top-right" is therefore a
+statement about the grid tile, which is the configuration the request describes.
+
+### Alternatives considered in this amendment
+
+**Keep commit-on-tap and add an undo snackbar.** Rejected: a snackbar is a timed affordance layered
+over a grid the user is still scrolling, it needs its own host in a screen that has none, and it
+still writes the preference first and repairs it afterwards. Not writing until the user confirms is
+simpler and has no timeout.
+
+**Hold the draft in `remember`/`rememberSaveable` inside `FolderDetailContent`.** Rejected on
+existing precedent, not on taste. ADR-0002 records that `MainActivity`'s `if`/`else if` navigation
+destroys the outgoing screen, and the `SaveableStateHolder` added for scroll retention keys on
+`"folder_detail:$path"` — it would not survive `backToFolders`, and it would let the draft and
+`isThumbnailPickerMode` disagree, since the flag is ViewModel-owned.
+
+**Add a confirm action separate from the navigation icon** (a checkmark in the bar's `actions`
+slot, or a floating button). Rejected: it leaves two controls visible at once — cancel and confirm —
+and the request specifies that the single navigation icon changes meaning. A separate confirm also
+has to define what the still-present X does after a draft exists, which reintroduces the ambiguity
+the icon swap removes.
+
+**Introduce a picker-specific badge composable rather than reusing `selectedItems`.** Rejected: the
+existing checkmark is already a blue `CheckCircle` in the grid tile's top-right corner over a white
+circle, and reusing the parameter means `MediaGrid`, `MediaList` and `GroupedMediaContent` need no
+changes at all. A parallel badge would be a second near-identical glyph to keep in sync.
+
+**Keep the reset item but disable it instead of hiding it when no override exists.** Moot once the
+item is removed, and there is no disabled-`DropdownMenuItem` precedent anywhere in this repo.
+
+**Make tapping the drafted item clear the draft (toggle).** Rejected: it would flip the bar back
+from the commit arrow to the X, so a single repeated gesture would silently change what the
+navigation icon does. Selection-mode toggling exists because a *set* can shrink; a single cover
+image cannot be "none".
+
+### Constraints preserved
+
+- **The tap interception stays the first branch of `selectMedia`**, so the picker can never open
+  the viewer or mutate the media selection.
+- **Mode exclusivity stays bidirectional.** Entering the picker exits both selection modes, and
+  entering either selection mode clears the picker *and now also the draft*.
+- **The long-press handler stays inert while picking**, so a long press cannot swap in
+  `MediaSelectionTopBar` and leave the picker flag set.
+- **`SearchTopBar`'s thumbnail parameters remain nullable with `null` defaults**, which is what
+  keeps the `FolderListScreen` call site and `FolderListContentTest` untouched.
+- **No new string resources.** `thumbnail_picker_title` and `cd_exit_selection` are already used by
+  this bar; the commit arrow reuses `cd_back`, which exists in all 10 locales. Only
+  `menu_reset_folder_thumbnail` is deleted, from all 10.
+
+### Why the reset affordance was withdrawn
+
+The original argument was that without a reset the user can never return a folder to automatic
+selection. That is now judged to overstate the problem: the automatic thumbnail is not a stored
+value that can be lost, it is recomputed from `allMedia` on every rebuild of `filteredFolders`, and
+the override is one entry the user can overwrite at any time from the same menu. The reset item
+also occupied a permanent slot in an already long overflow menu while being useful at most once per
+folder, and it was the only conditionally-*hidden* item in that menu, so the menu's contents changed
+shape depending on hidden state.
+
+The cost is stated plainly below rather than argued away: **a user who has set a custom cover can no
+longer restore the automatic one.** This is a deliberate capability removal, not an oversight.
+
+### Consequences of this amendment
+
+#### Positive
+
+- A mis-tap no longer writes a preference. Under commit-on-tap, the first tap was final and also
+  closed the mode, so correcting it meant reopening the picker.
+- The bar's icon carries the state: X means "nothing chosen", back-arrow means "choice made, go
+  back". The user is told whether a selection has registered, which commit-on-tap never did — the
+  old flow's only feedback was the mode closing.
+- The draft survives rotation, process-level configuration changes and any navigation, because it
+  is ViewModel-owned.
+- `GalleryViewModel` gets **smaller**: `selectedFolderThumbnailOverrideUri`,
+  `hasSelectedFolderCustomThumbnail`, `setCurrentFolderThumbnail` and `clearCurrentFolderThumbnail`
+  are removed and replaced by one draft flow and one commit method, against a record that already
+  lists the god-class growth as a negative.
+- `FolderDetailContent` loses a parameter on balance, and the `selectedItems` reuse means no
+  rendering component changes at all.
+
+#### Negative
+
+- **Automatic thumbnail selection is no longer recoverable through the UI** once a folder has a
+  custom cover. Clearing app data or choosing a different item are the only routes.
+- **Committing costs one more tap than before.** Choosing a cover is now tap-then-confirm.
+- **System back commits rather than cancels**, which inverts the platform's usual reading of the
+  gesture. Mitigated by the icon matching the behaviour, and by the action being trivially
+  reversible, but a user who expects back to abandon will instead save.
+- **The mode has two exits with different outcomes**, distinguished only by an icon. A user who
+  taps an image and then wants to abandon has no cancel affordance left — they must commit and
+  re-pick.
+- **A third piece of ViewModel state is now coupled to picker mode** (`isThumbnailPickerMode`,
+  `folderThumbnailDraftUri`, `_folderThumbnailOverrides`), and the draft must be cleared at every
+  site that clears the mode flag. Missing one leaves a stale draft that pre-selects an item — the
+  very pre-selection point 4 rules out — the next time the picker opens.
+- **The draft is not itself persisted across process death.** `onSaveInstanceState` is not involved;
+  a ViewModel survives configuration changes, not a process kill. An in-progress, uncommitted choice
+  is lost if the process is killed while backgrounded. Accepted: persisting a draft would mean
+  writing the very value the draft exists to avoid writing.
+
+### Test impact of this amendment
+
+- `FolderDetailContentTest`: the two `menu_reset_folder_thumbnail` assertions are deleted with the
+  feature; the picker-mode test gains draft/no-draft cases asserting the icon swap and the
+  `selected_checkmark`.
+- `GalleryViewModelTest`: the commit-on-tap case becomes a draft case (mode stays active, store
+  untouched), a commit case and a cancel-discards-draft case are added, and the
+  `clearCurrentFolderThumbnail` case is deleted.
+- `GalleryTransformationsTest` and `FolderThumbnailStoreTest` are untouched — nothing below the
+  ViewModel changed.
 
 ## Alternatives Considered
 
@@ -120,11 +309,24 @@ second menu, then choose". Multi-select is also meaningless for a single cover i
 
 ## References
 
+- ADR-0002: ViewModel-owned transient viewer state across configuration changes. Still `Active`.
+  Amendment 1 applies its rule to the picker draft: `MainActivity` has no back stack, so screen-local
+  `remember` does not survive navigation and transient mode state belongs in `GalleryViewModel`.
 - ADR-0005: Selection-scoped media actions mirror the full-screen viewer (single-item action gating
-  precedent).
+  precedent, and the precedent for amending an `Active` record in place rather than superseding it).
 - ADR-0006: Per-folder display preference overrides layered over global defaults (path-keyed sparse
   overrides merged on read; orphan-entry precedent). Not superseded by this record.
 - `app/src/main/java/com/davide/seddio/easygallery/data/GalleryTransformations.kt`
 - `app/src/main/java/com/davide/seddio/easygallery/data/FolderThumbnailStore.kt`
 - `app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt`
 - `app/src/main/java/com/davide/seddio/easygallery/ui/FolderDetailScreen.kt`
+- `app/src/main/java/com/davide/seddio/easygallery/ui/components/ThumbnailPickerTopBar.kt` — the
+  picker bar whose navigation icon swaps between cancel and commit (Amendment 1)
+- `app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt` — the overflow
+  menu the reset item was removed from (Amendment 1)
+- `app/src/main/java/com/davide/seddio/easygallery/ui/components/MediaGridItem.kt`,
+  `app/src/main/java/com/davide/seddio/easygallery/ui/components/MediaListItem.kt` — the existing
+  `selected_checkmark` affordance reused to render the draft (Amendment 1)
+- `app/src/main/java/com/davide/seddio/easygallery/ui/theme/Color.kt`,
+  `app/src/main/java/com/davide/seddio/easygallery/ui/theme/Theme.kt` — `BrandBlue` is bound to
+  `colorScheme.primary`, which is what makes the existing checkmark the brand blue (Amendment 1)

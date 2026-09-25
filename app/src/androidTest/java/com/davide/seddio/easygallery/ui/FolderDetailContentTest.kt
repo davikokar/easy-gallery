@@ -214,38 +214,6 @@ class FolderDetailContentTest {
     }
 
     @Test
-    fun overflowMenuHidesResetFolderThumbnailWhenNoCustomThumbnail() {
-        composeTestRule.setContent {
-            FolderDetailContentWrapper(
-                media = listOf(fakeMedia),
-                hasSelectedFolderCustomThumbnail = false
-            )
-        }
-
-        composeTestRule.onNodeWithContentDescription("More options").performClick()
-
-        composeTestRule
-            .onNodeWithText(appContext.getString(R.string.menu_reset_folder_thumbnail))
-            .assertDoesNotExist()
-    }
-
-    @Test
-    fun overflowMenuShowsResetFolderThumbnailWhenCustomThumbnailExists() {
-        composeTestRule.setContent {
-            FolderDetailContentWrapper(
-                media = listOf(fakeMedia),
-                hasSelectedFolderCustomThumbnail = true
-            )
-        }
-
-        composeTestRule.onNodeWithContentDescription("More options").performClick()
-
-        composeTestRule
-            .onNodeWithText(appContext.getString(R.string.menu_reset_folder_thumbnail))
-            .assertIsDisplayed()
-    }
-
-    @Test
     fun thumbnailPickerModeShowsPickerTopBarAndHidesSearchAndOverflow() {
         composeTestRule.setContent {
             FolderDetailContentWrapper(
@@ -263,6 +231,85 @@ class FolderDetailContentTest {
         composeTestRule
             .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
             .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_back))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithTag("selected_checkmark", useUnmergedTree = true)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun thumbnailPickerModeWithDraftShowsBackAndSelectedCheckmark() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isThumbnailPickerMode = true,
+                draftThumbnailUri = mockUri
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_back))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithTag("selected_checkmark", useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun thumbnailPickerBackIconCommitsDraftSelection() {
+        var commitCalls = 0
+        var exitCalls = 0
+
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isThumbnailPickerMode = true,
+                draftThumbnailUri = mockUri,
+                onCommitThumbnailPickerSelection = { commitCalls++ },
+                onExitThumbnailPickerMode = { exitCalls++ }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_back))
+            .performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals(1, commitCalls)
+            assertEquals(0, exitCalls)
+        }
+    }
+
+    @Test
+    fun thumbnailPickerCloseIconExitsWithoutCommitWhenNoDraft() {
+        var commitCalls = 0
+        var exitCalls = 0
+
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isThumbnailPickerMode = true,
+                onCommitThumbnailPickerSelection = { commitCalls++ },
+                onExitThumbnailPickerMode = { exitCalls++ }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals(0, commitCalls)
+            assertEquals(1, exitCalls)
+        }
     }
 
     @Composable
@@ -271,11 +318,10 @@ class FolderDetailContentTest {
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         isThumbnailPickerMode: Boolean = false,
-        hasSelectedFolderCustomThumbnail: Boolean = false,
-        currentThumbnailUri: Uri? = null,
+        draftThumbnailUri: Uri? = null,
         onEnterThumbnailPickerMode: () -> Unit = {},
         onExitThumbnailPickerMode: () -> Unit = {},
-        onClearCurrentFolderThumbnail: () -> Unit = {},
+        onCommitThumbnailPickerSelection: () -> Unit = {},
         onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit = { _, _, _ -> }
     ) {
         FolderDetailContent(
@@ -287,8 +333,7 @@ class FolderDetailContentTest {
             groupedMedia = emptyMap(),
             isMediaSelectionMode = isMediaSelectionMode,
             isThumbnailPickerMode = isThumbnailPickerMode,
-            hasSelectedFolderCustomThumbnail = hasSelectedFolderCustomThumbnail,
-            currentThumbnailUri = currentThumbnailUri,
+            draftThumbnailUri = draftThumbnailUri,
             selectedMediaItems = selectedMediaItems,
             isDestinationPickerActive = false,
             pendingOperation = null,
@@ -302,7 +347,7 @@ class FolderDetailContentTest {
             onSetSearchActive = {},
             onEnterThumbnailPickerMode = onEnterThumbnailPickerMode,
             onExitThumbnailPickerMode = onExitThumbnailPickerMode,
-            onClearCurrentFolderThumbnail = onClearCurrentFolderThumbnail,
+            onCommitThumbnailPickerSelection = onCommitThumbnailPickerSelection,
             onCommitColumnsPreference = { _, _ -> },
             onCommitMediaTypesPreference = { _, _ -> },
             onCommitSortPreference = onCommitSortPreference,

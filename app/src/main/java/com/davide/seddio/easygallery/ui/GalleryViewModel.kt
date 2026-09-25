@@ -89,6 +89,9 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _isThumbnailPickerMode = MutableStateFlow(false)
     val isThumbnailPickerMode: StateFlow<Boolean> = _isThumbnailPickerMode.asStateFlow()
 
+    private val _folderThumbnailDraftUri = MutableStateFlow<android.net.Uri?>(null)
+    val folderThumbnailDraftUri: StateFlow<android.net.Uri?> = _folderThumbnailDraftUri.asStateFlow()
+
     private val _isManageExcludedMode = MutableStateFlow(false)
     val isManageExcludedMode: StateFlow<Boolean> = _isManageExcludedMode.asStateFlow()
 
@@ -142,21 +145,6 @@ class GalleryViewModel @JvmOverloads constructor(
     val browsingFolders: StateFlow<List<Folder>> = combine(_browsingPath, _selectedFolders) { path, selected ->
         repository.getSubdirectories(path).filter { !selected.contains(it.path) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    val selectedFolderThumbnailOverrideUri: StateFlow<android.net.Uri?> = combine(
-        _selectedFolder,
-        _folderThumbnailOverrides
-    ) { folder, overrides ->
-        overrides[folder?.path]?.let(android.net.Uri::parse)
-    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
-
-    val hasSelectedFolderCustomThumbnail: StateFlow<Boolean> = combine(
-        _selectedFolder,
-        _folderThumbnailOverrides
-    ) { folder, overrides ->
-        val selectedFolderPath = folder?.path
-        selectedFolderPath != null && overrides.containsKey(selectedFolderPath)
-    }.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     val filteredFolders: StateFlow<GalleryUiState> = combine(
         _allMedia,
@@ -260,7 +248,7 @@ class GalleryViewModel @JvmOverloads constructor(
 
     fun selectFolder(folder: Folder) {
         _showExcludedTemporarily.value = false
-        _isThumbnailPickerMode.value = false
+        clearThumbnailPickerState()
         if (_isSelectionMode.value) {
             toggleSelection(folder.path)
         } else {
@@ -274,7 +262,7 @@ class GalleryViewModel @JvmOverloads constructor(
     fun backToFolders() {
         _selectedFolder.value = null
         _mediaInFolder.value = emptyList()
-        _isThumbnailPickerMode.value = false
+        clearThumbnailPickerState()
         setSearchActive(false, PreferenceScope.FOLDER_DETAIL)
     }
 
@@ -284,7 +272,7 @@ class GalleryViewModel @JvmOverloads constructor(
 
     fun selectMedia(item: MediaItem) {
         if (_isThumbnailPickerMode.value) {
-            setCurrentFolderThumbnail(item)
+            _folderThumbnailDraftUri.value = item.uri
             return
         }
 
@@ -314,7 +302,7 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun enterMediaSelectionMode(item: MediaItem) {
-        _isThumbnailPickerMode.value = false
+        clearThumbnailPickerState()
         exitSelectionMode()
         _isMediaSelectionMode.value = true
         _selectedMediaItems.value = setOf(item.uri)
@@ -329,32 +317,26 @@ class GalleryViewModel @JvmOverloads constructor(
         if (_selectedFolder.value == null) return
         exitSelectionMode()
         exitMediaSelectionMode()
+        _folderThumbnailDraftUri.value = null
         _isThumbnailPickerMode.value = true
     }
 
     fun exitThumbnailPickerMode() {
-        _isThumbnailPickerMode.value = false
+        clearThumbnailPickerState()
     }
 
-    fun setCurrentFolderThumbnail(item: MediaItem) {
-        val folderPath = _selectedFolder.value?.path ?: return
-        val uriString = item.uri.toString()
-        folderThumbnailStore.save(folderPath, uriString)
+    fun commitFolderThumbnailDraft() {
+        val folderPath = _selectedFolder.value?.path
+        val draftUri = _folderThumbnailDraftUri.value
+        if (folderPath != null && draftUri != null) {
+            val uriString = draftUri.toString()
+            folderThumbnailStore.save(folderPath, uriString)
 
-        val updated = _folderThumbnailOverrides.value.toMutableMap()
-        updated[folderPath] = uriString
-        _folderThumbnailOverrides.value = updated
-
-        _isThumbnailPickerMode.value = false
-    }
-
-    fun clearCurrentFolderThumbnail() {
-        val folderPath = _selectedFolder.value?.path ?: return
-        folderThumbnailStore.clear(folderPath)
-
-        val updated = _folderThumbnailOverrides.value.toMutableMap()
-        updated.remove(folderPath)
-        _folderThumbnailOverrides.value = updated
+            val updated = _folderThumbnailOverrides.value.toMutableMap()
+            updated[folderPath] = uriString
+            _folderThumbnailOverrides.value = updated
+        }
+        clearThumbnailPickerState()
     }
 
     fun selectAllMedia() {
@@ -775,7 +757,7 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun enterSelectionMode(folderPath: String) {
-        _isThumbnailPickerMode.value = false
+        clearThumbnailPickerState()
         _isSelectionMode.value = true
         _selectedFolders.value = setOf(folderPath)
         setSearchActive(false, PreferenceScope.FOLDERS)
@@ -827,6 +809,11 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     private fun currentFolderPath(): String? = _selectedFolder.value?.path
+
+    private fun clearThumbnailPickerState() {
+        _isThumbnailPickerMode.value = false
+        _folderThumbnailDraftUri.value = null
+    }
 
     private fun setColumnsForCurrentFolder(columns: Int) {
         val boundedColumns = columns.coerceIn(ViewPreferences.MIN_COLUMNS, ViewPreferences.MAX_COLUMNS)
