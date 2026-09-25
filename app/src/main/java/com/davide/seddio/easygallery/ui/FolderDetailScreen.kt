@@ -64,6 +64,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
     val isThumbnailPickerMode by viewModel.isThumbnailPickerMode.collectAsState()
     val folderThumbnailDraftUri by viewModel.folderThumbnailDraftUri.collectAsState()
+    val folderThumbnailPreselectedUri by viewModel.folderThumbnailPreselectedUri.collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
     val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
     val pendingOperation by viewModel.pendingOperation.collectAsState()
@@ -80,6 +81,7 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         isMediaSelectionMode = isMediaSelectionMode,
         isThumbnailPickerMode = isThumbnailPickerMode,
         draftThumbnailUri = folderThumbnailDraftUri,
+        preselectedThumbnailUri = folderThumbnailPreselectedUri,
         selectedMediaItems = selectedMediaItems,
         isDestinationPickerActive = isDestinationPickerActive,
         pendingOperation = pendingOperation,
@@ -136,6 +138,7 @@ fun FolderDetailContent(
     isMediaSelectionMode: Boolean,
     isThumbnailPickerMode: Boolean,
     draftThumbnailUri: android.net.Uri?,
+    preselectedThumbnailUri: android.net.Uri?,
     selectedMediaItems: Set<android.net.Uri>,
     isDestinationPickerActive: Boolean,
     pendingOperation: OperationType?,
@@ -172,7 +175,7 @@ fun FolderDetailContent(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val context = LocalContext.current
     val displayedSelectedItems = if (isThumbnailPickerMode) {
-        setOfNotNull(draftThumbnailUri)
+        setOfNotNull(draftThumbnailUri ?: preselectedThumbnailUri)
     } else {
         selectedMediaItems
     }

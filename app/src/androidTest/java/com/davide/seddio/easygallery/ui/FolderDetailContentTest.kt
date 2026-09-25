@@ -264,6 +264,27 @@ class FolderDetailContentTest {
     }
 
     @Test
+    fun thumbnailPickerModeWithPreselectionShowsCheckmarkAndCloseOnly() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isThumbnailPickerMode = true,
+                preselectedThumbnailUri = mockUri
+            )
+        }
+
+        composeTestRule
+            .onNodeWithTag("selected_checkmark", useUnmergedTree = true)
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_back))
+            .assertDoesNotExist()
+    }
+
+    @Test
     fun thumbnailPickerBackIconCommitsDraftSelection() {
         var commitCalls = 0
         var exitCalls = 0
@@ -312,6 +333,31 @@ class FolderDetailContentTest {
         }
     }
 
+    @Test
+    fun thumbnailPickerCloseWithPreselectionExitsWithoutCommit() {
+        var commitCalls = 0
+        var exitCalls = 0
+
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isThumbnailPickerMode = true,
+                preselectedThumbnailUri = mockUri,
+                onCommitThumbnailPickerSelection = { commitCalls++ },
+                onExitThumbnailPickerMode = { exitCalls++ }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals(0, commitCalls)
+            assertEquals(1, exitCalls)
+        }
+    }
+
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
@@ -319,6 +365,7 @@ class FolderDetailContentTest {
         selectedMediaItems: Set<Uri> = emptySet(),
         isThumbnailPickerMode: Boolean = false,
         draftThumbnailUri: Uri? = null,
+        preselectedThumbnailUri: Uri? = null,
         onEnterThumbnailPickerMode: () -> Unit = {},
         onExitThumbnailPickerMode: () -> Unit = {},
         onCommitThumbnailPickerSelection: () -> Unit = {},
@@ -334,6 +381,7 @@ class FolderDetailContentTest {
             isMediaSelectionMode = isMediaSelectionMode,
             isThumbnailPickerMode = isThumbnailPickerMode,
             draftThumbnailUri = draftThumbnailUri,
+            preselectedThumbnailUri = preselectedThumbnailUri,
             selectedMediaItems = selectedMediaItems,
             isDestinationPickerActive = false,
             pendingOperation = null,

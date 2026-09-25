@@ -245,6 +245,85 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `enterThumbnailPickerMode seeds pre-selection from persisted override without seeding draft or writing`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 2, thumbnailUri = mockUri2, path = folderPath)
+        val overrideItem = createMediaItem(mockUri1, folderPath)
+        val otherItem = createMediaItem(mockUri2, folderPath)
+        repository.mediaItems = listOf(otherItem, overrideItem)
+        val folderThumbnailStore = InMemoryFolderThumbnailStore()
+        folderThumbnailStore.save(folderPath, overrideItem.uri.toString())
+        val storeBeforeEnter = folderThumbnailStore.loadAll()
+
+        val viewModel = createViewModel(folderThumbnailStore = folderThumbnailStore)
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+
+        assertEquals(overrideItem.uri, viewModel.folderThumbnailPreselectedUri.value)
+        assertNull(viewModel.folderThumbnailDraftUri.value)
+        assertEquals(storeBeforeEnter, folderThumbnailStore.loadAll())
+    }
+
+    @Test
+    fun `enterThumbnailPickerMode leaves pre-selection null when selected folder has no persisted override`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        val mediaItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(mediaItem)
+
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+
+        assertNull(viewModel.folderThumbnailPreselectedUri.value)
+        assertNull(viewModel.folderThumbnailDraftUri.value)
+    }
+
+    @Test
+    fun `enterThumbnailPickerMode leaves pre-selection null when persisted override is stale for current folder media`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        val mediaItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(mediaItem)
+        val folderThumbnailStore = InMemoryFolderThumbnailStore()
+        folderThumbnailStore.save(folderPath, mockUri2.toString())
+
+        val viewModel = createViewModel(folderThumbnailStore = folderThumbnailStore)
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+
+        assertNull(viewModel.folderThumbnailPreselectedUri.value)
+        assertNull(viewModel.folderThumbnailDraftUri.value)
+    }
+
+    @Test
+    fun `enterThumbnailPickerMode refreshes pre-selection from persisted override after commit`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 2, thumbnailUri = mockUri2, path = folderPath)
+        val committedItem = createMediaItem(mockUri1, folderPath)
+        val originalItem = createMediaItem(mockUri2, folderPath)
+        repository.mediaItems = listOf(originalItem, committedItem)
+        val folderThumbnailStore = InMemoryFolderThumbnailStore()
+
+        val viewModel = createViewModel(folderThumbnailStore = folderThumbnailStore)
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+        viewModel.selectMedia(committedItem)
+        viewModel.commitFolderThumbnailDraft()
+
+        viewModel.enterThumbnailPickerMode()
+
+        assertTrue(viewModel.isThumbnailPickerMode.value)
+        assertEquals(committedItem.uri, viewModel.folderThumbnailPreselectedUri.value)
+        assertNull(viewModel.folderThumbnailDraftUri.value)
+        assertEquals(committedItem.uri.toString(), folderThumbnailStore.loadAll()[folderPath])
+    }
+
+    @Test
     fun `selectMedia in thumbnail picker mode sets draft keeps picker active writes nothing and keeps viewer closed`() = runTest {
         val folderPath = "/storage/emulated/0/Pictures/Camera"
         val selectedFolder = Folder(name = "Camera", imageCount = 2, thumbnailUri = mockUri2, path = folderPath)
@@ -347,6 +426,30 @@ class GalleryViewModelTest {
         assertFalse(viewModel.isThumbnailPickerMode.value)
         assertNull(viewModel.folderThumbnailDraftUri.value)
         assertTrue(folderThumbnailStore.loadAll().isEmpty())
+    }
+
+    @Test
+    fun `exitThumbnailPickerMode clears pre-selection and writes nothing`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        val mediaItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(mediaItem)
+        val folderThumbnailStore = InMemoryFolderThumbnailStore()
+        folderThumbnailStore.save(folderPath, mediaItem.uri.toString())
+        val storeBeforeExit = folderThumbnailStore.loadAll()
+
+        val viewModel = createViewModel(folderThumbnailStore = folderThumbnailStore)
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+        assertEquals(mediaItem.uri, viewModel.folderThumbnailPreselectedUri.value)
+
+        viewModel.exitThumbnailPickerMode()
+
+        assertFalse(viewModel.isThumbnailPickerMode.value)
+        assertNull(viewModel.folderThumbnailPreselectedUri.value)
+        assertNull(viewModel.folderThumbnailDraftUri.value)
+        assertEquals(storeBeforeExit, folderThumbnailStore.loadAll())
     }
 
     @Test
@@ -519,6 +622,37 @@ class GalleryViewModelTest {
 
         assertFalse(viewModel.isThumbnailPickerMode.value)
         assertNull(viewModel.folderThumbnailDraftUri.value)
+    }
+
+    @Test
+    fun `backToFolders and enterMediaSelectionMode clear thumbnail pre-selection`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val selectedFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        val mediaItem = createMediaItem(mockUri1, folderPath)
+        repository.mediaItems = listOf(mediaItem)
+        val folderThumbnailStore = InMemoryFolderThumbnailStore()
+        folderThumbnailStore.save(folderPath, mediaItem.uri.toString())
+
+        val viewModel = createViewModel(folderThumbnailStore = folderThumbnailStore)
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+        assertEquals(mediaItem.uri, viewModel.folderThumbnailPreselectedUri.value)
+
+        viewModel.backToFolders()
+
+        assertFalse(viewModel.isThumbnailPickerMode.value)
+        assertNull(viewModel.folderThumbnailPreselectedUri.value)
+
+        viewModel.selectFolder(selectedFolder)
+        viewModel.enterThumbnailPickerMode()
+        assertEquals(mediaItem.uri, viewModel.folderThumbnailPreselectedUri.value)
+
+        viewModel.enterMediaSelectionMode(mediaItem)
+
+        assertFalse(viewModel.isThumbnailPickerMode.value)
+        assertTrue(viewModel.isMediaSelectionMode.value)
+        assertNull(viewModel.folderThumbnailPreselectedUri.value)
     }
 
     @Test

@@ -125,6 +125,12 @@ point 1. It would also make "open the picker and press back" silently rewrite th
 with itself. The cost is that the current cover is not highlighted when the picker opens; that is
 accepted, and it is the same information the user just saw on the folder tile.
 
+> **Reversed 2026-09-25 — see Amendment 2 below.** The existing custom thumbnail **is** now
+> pre-selected. The two objections raised here were both real, and both were consequences of
+> *seeding the draft*, not of pre-selection itself; Amendment 2 keeps the draft meaning exactly
+> what it means here and adds a separate display-only flow. The paragraph is kept intact so the
+> record shows the position that was held and why it no longer applies.
+
 **5. The draft is rendered with the existing selection checkmark, not a new affordance.**
 `MediaGridItem` already draws `Icons.Default.CheckCircle` at `Alignment.TopEnd`, tinted
 `MaterialTheme.colorScheme.primary` — which this app's theme pins to `BrandBlue` (`0xFF017DDF`) for
@@ -197,6 +203,132 @@ the override is one entry the user can overwrite at any time from the same menu.
 also occupied a permanent slot in an already long overflow menu while being useful at most once per
 folder, and it was the only conditionally-*hidden* item in that menu, so the menu's contents changed
 shape depending on hidden state.
+
+## Amendment 2 — 2026-09-25 — The existing custom thumbnail is pre-selected, via a display-only flow
+
+This amendment **reverses point 4 of Amendment 1** ("There is no pre-selection of the existing
+custom thumbnail"). That paragraph is annotated in place above and left intact. Nothing else in
+this record changes: the `folder_thumbnails` `SharedPreferences` file, the `FolderThumbnailStore`
+interface and in-memory fake, the `Folder.path -> uri` key shape, merge-on-read inside
+`GalleryTransformations.filterAndSortFolders`, resolution before the media-type filter,
+validating-by-construction fallback, no garbage collection of orphans, all three `MediaType`s being
+selectable, draft-and-commit interaction, the icon swap, system back mirroring the navigation icon,
+and reuse of the existing `selected_checkmark` all continue to govern verbatim.
+
+This is recorded as a second in-place amendment for the same reason as the first: the persistence
+and resolution architecture — the structural part of ADR-0007 — has not stopped applying. What
+changes is one initialisation in `GalleryViewModel.enterThumbnailPickerMode()` and one expression in
+`FolderDetailContent`.
+
+### What changed
+
+**1. Opening the picker pre-selects the folder's persisted custom thumbnail.** If
+`folderThumbnailOverrides[selectedFolder.path]` holds a URI, the item with that URI renders the
+existing blue `CheckCircle` the moment the picker opens. If the folder has no override, nothing is
+pre-selected and the screen is exactly as it is today.
+
+**2. Only the persisted override is pre-selected — never the automatic thumbnail.** When a folder
+has no override, the tile shows whichever item `filterAndSortFolders` encountered first while
+walking `allMedia`. That is a derived display value, not a choice the user made, and the picker has
+exactly one visual vocabulary — the selection checkmark — which asserts "this is selected". Marking
+a system-derived item as selected would misattribute it, and there is no second affordance
+available to distinguish "your cover" from "what is currently displayed". The narrower rule also
+removes the need to re-derive the effective thumbnail anywhere outside `filterAndSortFolders`; see
+"Why the effective thumbnail is not the seed" below.
+
+**3. The pre-selection is a separate, display-only flow; the draft is untouched.**
+`folderThumbnailPreselectedUri: StateFlow<Uri?>` is added next to `folderThumbnailDraftUri`. It is
+seeded in `enterThumbnailPickerMode()`, never written by `selectMedia`, never read by
+`commitFolderThumbnailDraft()`, and cleared by the same `clearThumbnailPickerState()` that clears
+the mode flag and the draft. `folderThumbnailDraftUri` keeps its existing meaning exactly: non-null
+if and only if the user has tapped an item in this picker session.
+
+This state shape is what dissolves both objections recorded in Amendment 1 point 4, rather than
+accepting them as costs:
+
+- The navigation icon still keys off `folderThumbnailDraftUri != null`, so it is still a close (X)
+  when the picker opens over a folder that already has a custom cover. The cancel affordance is not
+  lost.
+- "Open the picker and press back" still takes the no-draft branch and writes nothing. The stored
+  value is not rewritten with itself, and — the sharper version of the same hazard — a folder whose
+  thumbnail is currently automatic cannot be frozen into an explicit persisted override merely by
+  opening the picker and leaving.
+
+The grid renders `setOfNotNull(draftThumbnailUri ?: preselectedThumbnailUri)`: the pre-selection is
+shown until the user taps, after which the draft wins permanently for that session.
+
+### Why the effective thumbnail is not the seed
+
+`Folder.thumbnailUri` on `selectedFolder` does carry the effective (override-or-automatic) URI at
+the instant the folder is opened — `FolderListScreen` collects `viewModel.filteredFolders`, which
+applies the overrides, and passes those `Folder` instances straight into `selectFolder`. It is
+nonetheless the wrong source, because `_selectedFolder` is a frozen snapshot: it is assigned only in
+`selectFolder` and nulled only in `backToFolders`. `commitFolderThumbnailDraft()` updates
+`_folderThumbnailOverrides` but not `_selectedFolder`, so the second time the picker is opened
+within one Folder Detail session it would pre-select the *previous* cover rather than the one just
+committed. Deleting media from inside Folder Detail can invalidate it the same way.
+`_folderThumbnailOverrides` is authoritative and is updated at commit, so it is read directly.
+
+### Alternatives considered in this amendment
+
+**Seed the draft itself from the override and add a boolean "the user has picked something" flow to
+drive the top bar.** Behaviourally identical to what was chosen, and rejected on blast radius:
+`folderThumbnailDraftUri` would stop meaning "the user picked this", so every existing reader of it
+would have to be re-audited — the top bar's `hasDraft` parameter would become a misnomer and need
+renaming, `FolderDetailContent`'s `BackHandler` condition would have to be repointed, and
+`commitFolderThumbnailDraft()` would become a method that writes whenever a draft exists while
+relying entirely on its call sites to be gated. The chosen shape adds one flow and changes one
+expression, and leaves every existing member's meaning intact.
+
+**Derive "the user has picked something" by comparing the draft to the seeded value instead of
+storing it.** Rejected: tapping item A and then tapping back to the original cover would compare
+equal and flip the navigation icon from the commit arrow back to the X. That is the same defect
+recorded in Amendment 1 against toggle-to-deselect — a repeated gesture silently changing what the
+navigation icon does. It also saves no state, since the seed has to be retained to compare against.
+
+**Pre-select the effective thumbnail (override if present, otherwise the automatic one), so the
+picker always opens with exactly one item checked.** Rejected for the misattribution in point 2
+above, and because the implementation would have to reproduce `filterAndSortFolders`' resolution
+rules — including the FOLDERS-scope media-type filter that selects the automatic item — inside
+`GalleryViewModel`, where it would be free to drift from the single pure function that ADR-0007
+made the sole owner of that logic. Reading the effective value out of `filteredFolders.value`
+instead was also rejected: that flow applies the Folders View search query and the
+`showExcludedTemporarily` flag, which `selectFolder` resets, so the current folder can legitimately
+be absent from it, and it is `SharingStarted.Lazily`, so its `.value` is the `Loading` sentinel
+until something collects it.
+
+**Scroll the grid to the pre-selected item so it is always visible.** Rejected: it would fight the
+grid scroll position that `MainActivity`'s `SaveableStateHolder` deliberately retains per folder,
+and it would move the viewport without the user asking.
+
+### Consequences
+
+Positive:
+
+- The picker answers "which one is the cover?" without the user having to leave the screen and read
+  the folder tile.
+- Re-picking becomes a comparison rather than a recall task, and the state after opening the picker
+  now matches the state after committing.
+- Nothing is written on open, on cancel, or on back-without-a-tap, so the picker remains free to
+  enter and leave.
+
+Negative:
+
+- The pre-selected item may not be rendered at all. The picker grid is `filteredMedia`, which
+  applies the FOLDER_DETAIL media-type filter and search query, while the override is resolved
+  against `allMedia`; a folder filtered to videos with a still image as its cover shows no
+  checkmark. A stale override whose item has been deleted behaves the same way. This is **accepted
+  and deliberately unhandled**: the alternatives are to override the user's own active filter or to
+  scroll the viewport unbidden, both more surprising than a missing checkmark, and the degraded
+  behaviour is exactly the pre-amendment behaviour — no checkmark, no error state, cancel still
+  writes nothing.
+- A folder with no override still opens with nothing checked, so the picker is not uniformly
+  "always one item selected". That asymmetry is the point: it is the only signal distinguishing a
+  chosen cover from an automatic one.
+- One more flow must be cleared in `clearThumbnailPickerState()`. The six sites that clear picker
+  state all route through it, so the risk is contained to that one function, but forgetting it
+  leaves a stale checkmark in the next folder's picker.
+
 
 The cost is stated plainly below rather than argued away: **a user who has set a custom cover can no
 longer restore the automatic one.** This is a deliberate capability removal, not an oversight.

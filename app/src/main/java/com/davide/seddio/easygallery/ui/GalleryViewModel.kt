@@ -92,6 +92,9 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _folderThumbnailDraftUri = MutableStateFlow<android.net.Uri?>(null)
     val folderThumbnailDraftUri: StateFlow<android.net.Uri?> = _folderThumbnailDraftUri.asStateFlow()
 
+    private val _folderThumbnailPreselectedUri = MutableStateFlow<android.net.Uri?>(null)
+    val folderThumbnailPreselectedUri: StateFlow<android.net.Uri?> = _folderThumbnailPreselectedUri.asStateFlow()
+
     private val _isManageExcludedMode = MutableStateFlow(false)
     val isManageExcludedMode: StateFlow<Boolean> = _isManageExcludedMode.asStateFlow()
 
@@ -318,6 +321,11 @@ class GalleryViewModel @JvmOverloads constructor(
         exitSelectionMode()
         exitMediaSelectionMode()
         _folderThumbnailDraftUri.value = null
+        _folderThumbnailPreselectedUri.value = _selectedFolder.value?.let { folder ->
+            _folderThumbnailOverrides.value[folder.path]?.let { stored ->
+                _mediaInFolder.value.firstOrNull { it.uri.toString() == stored }?.uri
+            }
+        }
         _isThumbnailPickerMode.value = true
     }
 
@@ -813,6 +821,7 @@ class GalleryViewModel @JvmOverloads constructor(
     private fun clearThumbnailPickerState() {
         _isThumbnailPickerMode.value = false
         _folderThumbnailDraftUri.value = null
+        _folderThumbnailPreselectedUri.value = null
     }
 
     private fun setColumnsForCurrentFolder(columns: Int) {
