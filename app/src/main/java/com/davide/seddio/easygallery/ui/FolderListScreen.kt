@@ -124,10 +124,14 @@ fun FolderListScreen(
         onSetSearchQuery = { viewModel.setSearchQuery(it, activeScope) },
         onSetSearchActive = { viewModel.setSearchActive(it, activeScope) },
         onToggleDisplayMode = { viewModel.toggleDisplayMode() },
-        onSetSortType = { viewModel.setSortType(it, activeScope) },
-        onSetSortOrder = { viewModel.setSortOrder(it, activeScope) },
-        onSetGroupBy = { viewModel.setGroupBy(it, PreferenceScope.TIMELINE) },
-        onSetGroupOrder = { viewModel.setGroupOrder(it, PreferenceScope.TIMELINE) },
+        onSetSort = { sortType, sortOrder ->
+            viewModel.setSortType(sortType, activeScope)
+            viewModel.setSortOrder(sortOrder, activeScope)
+        },
+        onSetGroupByAndOrder = { groupBy, groupOrder ->
+            viewModel.setGroupBy(groupBy, PreferenceScope.TIMELINE)
+            viewModel.setGroupOrder(groupOrder, PreferenceScope.TIMELINE)
+        },
         onSetColumnsCount = { viewModel.setColumnsCount(it, activeScope) },
         onSetViewType = { viewModel.setViewType(it, activeScope) },
         onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it, activeScope) },
@@ -192,10 +196,8 @@ fun FolderListContent(
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
     onToggleDisplayMode: () -> Unit,
-    onSetSortType: (SortType) -> Unit,
-    onSetSortOrder: (SortOrder) -> Unit,
-    onSetGroupBy: (GroupByType) -> Unit,
-    onSetGroupOrder: (SortOrder) -> Unit,
+    onSetSort: (SortType, SortOrder) -> Unit,
+    onSetGroupByAndOrder: (GroupByType, SortOrder) -> Unit,
     onSetColumnsCount: (Int) -> Unit,
     onSetViewType: (ViewType) -> Unit,
     onSetSelectedMediaTypes: (Set<MediaType>) -> Unit,
@@ -358,11 +360,9 @@ fun FolderListContent(
             SortDialog(
                 currentSort = activePreferences.sortType,
                 currentOrder = activePreferences.sortOrder,
-                onSortSelected = {
-                    onSetSortType(it)
-                },
-                onOrderSelected = {
-                    onSetSortOrder(it)
+                onConfirm = { sortType, sortOrder, _ ->
+                    onSetSort(sortType, sortOrder)
+                    showSortDialog = false
                 },
                 onDismiss = { showSortDialog = false }
             )
@@ -372,8 +372,10 @@ fun FolderListContent(
             GroupByDialog(
                 currentGroupBy = timelinePreferences.groupBy,
                 currentOrder = timelinePreferences.groupOrder,
-                onGroupBySelected = { onSetGroupBy(it) },
-                onOrderSelected = { onSetGroupOrder(it) },
+                onConfirm = { groupBy, groupOrder, _ ->
+                    onSetGroupByAndOrder(groupBy, groupOrder)
+                    showGroupByDialog = false
+                },
                 onDismiss = { showGroupByDialog = false }
             )
         }
@@ -381,8 +383,8 @@ fun FolderListContent(
         if (showColumnCountDialog) {
             ColumnCountDialog(
                 currentCount = activePreferences.columns,
-                onCountSelected = {
-                    onSetColumnsCount(it)
+                onConfirm = { count, _ ->
+                    onSetColumnsCount(count)
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
@@ -392,8 +394,8 @@ fun FolderListContent(
         if (showViewTypeDialog) {
             ViewTypeDialog(
                 currentViewType = activePreferences.viewType,
-                onViewTypeSelected = {
-                    onSetViewType(it)
+                onConfirm = { viewType, _ ->
+                    onSetViewType(viewType)
                     showViewTypeDialog = false
                 },
                 onDismiss = { showViewTypeDialog = false }
@@ -417,8 +419,8 @@ fun FolderListContent(
         if (showFilterDialog) {
             FilterMediaDialog(
                 initialSelectedTypes = activePreferences.mediaTypes,
-                onConfirm = {
-                    onSetSelectedMediaTypes(it)
+                onConfirm = { selectedTypes, _ ->
+                    onSetSelectedMediaTypes(selectedTypes)
                     showFilterDialog = false
                 },
                 onDismiss = { showFilterDialog = false }

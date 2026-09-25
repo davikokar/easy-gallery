@@ -75,6 +75,9 @@
     <string name="no_subfolders">Nessuna sottocartella qui.</string>
     <string name="internal_storage">Memoria interna</string>
     <string name="group_by_title">Raggruppa per</string>
+    <string name="apply_only_to_this_folder">Applica solo a questa cartella</string>
+    <string name="apply_to_all_folders_title">Applicare a tutte le cartelle?</string>
+    <string name="apply_to_all_folders_message">«%1$s» verrà applicato a tutte le cartelle. Le preferenze salvate per le singole cartelle andranno perse.</string>
     <string name="group_by_none">Non raggruppare</string>
     <string name="group_by_file_type">Tipo di file</string>
     <string name="cd_video">Video</string>

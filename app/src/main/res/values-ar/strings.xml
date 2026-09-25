@@ -79,6 +79,9 @@
     <string name="no_subfolders">لا توجد مجلدات فرعية هنا.</string>
     <string name="internal_storage">التخزين الداخلي</string>
     <string name="group_by_title">تجميع حسب</string>
+    <string name="apply_only_to_this_folder">تطبيق على هذا المجلد فقط</string>
+    <string name="apply_to_all_folders_title">هل تريد التطبيق على جميع المجلدات؟</string>
+    <string name="apply_to_all_folders_message">سيتم تطبيق «%1$s» على جميع المجلدات. ستُفقد الإعدادات التي حفظتها لكل مجلد على حدة.</string>
     <string name="group_by_none">عدم التجميع</string>
     <string name="group_by_file_type">نوع الملف</string>
     <string name="cd_video">فيديو</string>

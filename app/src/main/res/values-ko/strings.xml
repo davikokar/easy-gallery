@@ -74,6 +74,9 @@
     <string name="no_subfolders">하위 폴더가 없습니다. </string>
     <string name="internal_storage">내부 저장소</string>
     <string name="group_by_title">그룹화 기준</string>
+    <string name="apply_only_to_this_folder">이 폴더에만 적용</string>
+    <string name="apply_to_all_folders_title">모든 폴더에 적용할까요?</string>
+    <string name="apply_to_all_folders_message">‘%1$s’ 설정이 모든 폴더에 적용됩니다. 폴더별로 저장한 설정은 사라집니다.</string>
     <string name="group_by_none">그룹화 안 함</string>
     <string name="group_by_file_type">파일 형식</string>
     <string name="cd_video">동영상</string>

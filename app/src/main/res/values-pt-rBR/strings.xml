@@ -75,6 +75,9 @@
     <string name="no_subfolders">Nenhuma subpasta aqui.</string>
     <string name="internal_storage">Armazenamento interno</string>
     <string name="group_by_title">Agrupar por</string>
+    <string name="apply_only_to_this_folder">Aplicar somente a esta pasta</string>
+    <string name="apply_to_all_folders_title">Aplicar a todas as pastas?</string>
+    <string name="apply_to_all_folders_message">“%1$s” será aplicado a todas as pastas. As preferências salvas para cada pasta serão perdidas.</string>
     <string name="group_by_none">Não agrupar</string>
     <string name="group_by_file_type">Tipo de arquivo</string>
     <string name="cd_video">Vídeo</string>

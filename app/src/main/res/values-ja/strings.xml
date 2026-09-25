@@ -74,6 +74,9 @@
     <string name="no_subfolders">ここにサブフォルダはありません。</string>
     <string name="internal_storage">内部ストレージ</string>
     <string name="group_by_title">グループ化</string>
+    <string name="apply_only_to_this_folder">このフォルダにのみ適用</string>
+    <string name="apply_to_all_folders_title">すべてのフォルダに適用しますか？</string>
+    <string name="apply_to_all_folders_message">「%1$s」はすべてのフォルダに適用されます。フォルダごとに保存した設定は失われます。</string>
     <string name="group_by_none">グループ化しない</string>
     <string name="group_by_file_type">ファイル形式</string>
     <string name="cd_video">動画</string>

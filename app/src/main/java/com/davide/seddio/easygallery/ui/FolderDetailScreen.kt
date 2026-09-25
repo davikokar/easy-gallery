@@ -9,6 +9,7 @@ import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.OperationType
 import com.davide.seddio.easygallery.data.GroupByType
+import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -86,13 +87,21 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         onSelectAllMedia = { viewModel.selectAllMedia() },
         onSetSearchQuery = { viewModel.setSearchQuery(it, scope) },
         onSetSearchActive = { viewModel.setSearchActive(it, scope) },
-        onSetColumnsCount = { viewModel.setColumnsCount(it, scope) },
-        onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it, scope) },
-        onSetSortType = { viewModel.setSortType(it, scope) },
-        onSetSortOrder = { viewModel.setSortOrder(it, scope) },
-        onSetGroupBy = { viewModel.setGroupBy(it, scope) },
-        onSetGroupOrder = { viewModel.setGroupOrder(it, scope) },
-        onSetViewType = { viewModel.setViewType(it, scope) },
+        onCommitColumnsPreference = { columns, applyTarget ->
+            viewModel.commitFolderColumnsPreference(columns, applyTarget)
+        },
+        onCommitMediaTypesPreference = { mediaTypes, applyTarget ->
+            viewModel.commitFolderMediaTypesPreference(mediaTypes, applyTarget)
+        },
+        onCommitSortPreference = { sortType, sortOrder, applyTarget ->
+            viewModel.commitFolderSortPreference(sortType, sortOrder, applyTarget)
+        },
+        onCommitGroupByPreference = { groupBy, groupOrder, applyTarget ->
+            viewModel.commitFolderGroupByPreference(groupBy, groupOrder, applyTarget)
+        },
+        onCommitViewTypePreference = { viewType, applyTarget ->
+            viewModel.commitFolderViewTypePreference(viewType, applyTarget)
+        },
         onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
         onSetSettingsMode = { viewModel.setSettingsMode(it) },
         onBackToFolders = { viewModel.backToFolders() },
@@ -129,13 +138,11 @@ fun FolderDetailContent(
     onSelectAllMedia: () -> Unit,
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
-    onSetColumnsCount: (Int) -> Unit,
-    onSetSelectedMediaTypes: (Set<com.davide.seddio.easygallery.data.MediaType>) -> Unit,
-    onSetSortType: (SortType) -> Unit,
-    onSetSortOrder: (SortOrder) -> Unit,
-    onSetGroupBy: (GroupByType) -> Unit,
-    onSetGroupOrder: (SortOrder) -> Unit,
-    onSetViewType: (ViewType) -> Unit,
+    onCommitColumnsPreference: (Int, PreferenceApplyTarget) -> Unit,
+    onCommitMediaTypesPreference: (Set<com.davide.seddio.easygallery.data.MediaType>, PreferenceApplyTarget) -> Unit,
+    onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit,
+    onCommitGroupByPreference: (GroupByType, SortOrder, PreferenceApplyTarget) -> Unit,
+    onCommitViewTypePreference: (ViewType, PreferenceApplyTarget) -> Unit,
     onSetShowExcludedTemporarily: (Boolean) -> Unit,
     onSetSettingsMode: (Boolean) -> Unit,
     onBackToFolders: () -> Unit,
@@ -263,8 +270,9 @@ fun FolderDetailContent(
         if (showColumnCountDialog) {
             ColumnCountDialog(
                 currentCount = preferences.columns,
-                onCountSelected = {
-                    onSetColumnsCount(it)
+                settingLabel = R.string.column_count_title,
+                onConfirm = { count, applyTarget ->
+                    onCommitColumnsPreference(count, applyTarget)
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
@@ -274,8 +282,9 @@ fun FolderDetailContent(
         if (showFilterDialog) {
             FilterMediaDialog(
                 initialSelectedTypes = preferences.mediaTypes,
-                onConfirm = {
-                    onSetSelectedMediaTypes(it)
+                settingLabel = R.string.filter_media_title,
+                onConfirm = { selectedTypes, applyTarget ->
+                    onCommitMediaTypesPreference(selectedTypes, applyTarget)
                     showFilterDialog = false
                 },
                 onDismiss = { showFilterDialog = false }
@@ -286,11 +295,10 @@ fun FolderDetailContent(
             SortDialog(
                 currentSort = preferences.sortType,
                 currentOrder = preferences.sortOrder,
-                onSortSelected = {
-                    onSetSortType(it)
-                },
-                onOrderSelected = {
-                    onSetSortOrder(it)
+                settingLabel = R.string.sort_by_title,
+                onConfirm = { sortType, sortOrder, applyTarget ->
+                    onCommitSortPreference(sortType, sortOrder, applyTarget)
+                    showSortDialog = false
                 },
                 onDismiss = { showSortDialog = false }
             )
@@ -300,8 +308,11 @@ fun FolderDetailContent(
             GroupByDialog(
                 currentGroupBy = preferences.groupBy,
                 currentOrder = preferences.groupOrder,
-                onGroupBySelected = { onSetGroupBy(it) },
-                onOrderSelected = { onSetGroupOrder(it) },
+                settingLabel = R.string.group_by_title,
+                onConfirm = { groupBy, groupOrder, applyTarget ->
+                    onCommitGroupByPreference(groupBy, groupOrder, applyTarget)
+                    showGroupByDialog = false
+                },
                 onDismiss = { showGroupByDialog = false }
             )
         }
@@ -309,8 +320,9 @@ fun FolderDetailContent(
         if (showViewTypeDialog) {
             ViewTypeDialog(
                 currentViewType = preferences.viewType,
-                onViewTypeSelected = {
-                    onSetViewType(it)
+                settingLabel = R.string.change_view_type_title,
+                onConfirm = { viewType, applyTarget ->
+                    onCommitViewTypePreference(viewType, applyTarget)
                     showViewTypeDialog = false
                 },
                 onDismiss = { showViewTypeDialog = false }
