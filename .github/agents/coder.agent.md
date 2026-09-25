@@ -1,8 +1,9 @@
 ---
 name: Coder
 description: Writes code following mandatory coding principles and active Architecture Decision Records (ADRs). Use when implementing features, fixes, refactors, or approved architectural decisions.
+tools: ['vscode', 'execute', 'read', 'context7/*', 'github/*', 'edit', 'search', 'web', 'vscode/memory', 'todo']
+agents: []
 model: GPT-5.3-Codex (copilot)
-tools: ['vscode', 'execute', 'read', 'agent', 'context7/*', 'github/*', 'edit', 'search', 'web', 'vscode/memory', 'todo']
 ---
 
 ALWAYS use #context7 MCP Server to read relevant documentation. Do this every time you are working with a language, framework, library etc. Never assume that you know the answer as these things change frequently. Your training date is in the past so your knowledge is likely out of date, even if it is a technology you are familiar with.
@@ -44,7 +45,7 @@ These coding principles are mandatory:
 
 8. Modifications
 - When extending/refactoring, follow existing patterns.
-- Prefer full-file rewrites over micro-edits unless told otherwise.
+- Make the smallest coherent edit that solves the task. Preserve unrelated work and public APIs unless the task requires a change.
 
 9. Quality
 - Favor deterministic, testable behavior.

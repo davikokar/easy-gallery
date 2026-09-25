@@ -1,8 +1,9 @@
 ---
 name: Orchestrator
 description: Coordinates Planner, Coder, and Designer work, including Architecture Decision Record (ADR) review and maintenance for changes with lasting architectural impact.
-model: Claude Opus 5 (copilot)
 tools: ['read/readFile', 'agent', 'vscode/memory']
+agents: [Planner, Coder, Designer]
+model: Claude Opus 5 (copilot)
 ---
 
 <!-- Note: Memory is experimental at the moment. You'll need to be in VS Code Insiders and toggle on memory in settings -->
@@ -57,7 +58,7 @@ For each phase:
 4. **Report progress** — After each phase, summarize what was completed
 
 ### Step 4: Verify and Report
-After all phases complete, verify the work hangs together, confirm any required ADR was updated, and report results.
+After all implementation phases complete, delegate a final verification task to Coder. Require Coder to run the applicable checks from `AGENTS.md`, inspect the integrated changes, and report failures without broadening the task. Confirm any required ADR was updated, then report the results.
 
 ## Architecture Decision Coordination
 
