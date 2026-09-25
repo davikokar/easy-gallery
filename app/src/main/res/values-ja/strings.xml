@@ -88,6 +88,8 @@
     <string name="menu_copy_to">コピー先</string>
     <string name="menu_move_to">移動先</string>
     <string name="menu_use_as_wallpaper">壁紙に設定</string>
+    <string name="menu_change_folder_thumbnail">フォルダのサムネイルを変更</string>
+    <string name="thumbnail_picker_title">フォルダのサムネイルを選択</string>
     <string name="wallpaper_app_not_found">壁紙を設定できるアプリがありません</string>
     <string name="menu_select_all">すべて選択</string>
     <string name="search_placeholder">検索…</string>

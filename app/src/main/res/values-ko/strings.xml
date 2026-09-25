@@ -88,6 +88,8 @@
     <string name="menu_copy_to">다음으로 복사</string>
     <string name="menu_move_to">다음으로 이동</string>
     <string name="menu_use_as_wallpaper">배경화면으로 설정</string>
+    <string name="menu_change_folder_thumbnail">폴더 대표 이미지 변경</string>
+    <string name="thumbnail_picker_title">폴더 대표 이미지 선택</string>
     <string name="wallpaper_app_not_found">배경화면을 설정할 수 있는 앱이 없습니다</string>
     <string name="menu_select_all">전체 선택</string>
     <string name="search_placeholder">검색…</string>

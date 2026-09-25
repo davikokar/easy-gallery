@@ -89,6 +89,8 @@
     <string name="menu_copy_to">Copiar a</string>
     <string name="menu_move_to">Mover a</string>
     <string name="menu_use_as_wallpaper">Establecer como fondo de pantalla</string>
+    <string name="menu_change_folder_thumbnail">Cambiar miniatura de la carpeta</string>
+    <string name="thumbnail_picker_title">Elegir miniatura de la carpeta</string>
     <string name="wallpaper_app_not_found">No hay ninguna aplicación disponible para establecer el fondo de pantalla</string>
     <string name="menu_select_all">Seleccionar todo</string>
     <string name="search_placeholder">Buscar…</string>

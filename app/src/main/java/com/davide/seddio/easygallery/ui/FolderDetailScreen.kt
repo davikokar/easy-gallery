@@ -62,6 +62,9 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
     val isSearchActive by viewModel.isSearchActive(scope).collectAsState()
     val groupedMedia by viewModel.groupedFolderMedia.collectAsState()
     val isMediaSelectionMode by viewModel.isMediaSelectionMode.collectAsState()
+    val isThumbnailPickerMode by viewModel.isThumbnailPickerMode.collectAsState()
+    val folderThumbnailDraftUri by viewModel.folderThumbnailDraftUri.collectAsState()
+    val folderThumbnailPreselectedUri by viewModel.folderThumbnailPreselectedUri.collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
     val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
     val pendingOperation by viewModel.pendingOperation.collectAsState()
@@ -76,6 +79,9 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         isSearchActive = isSearchActive,
         groupedMedia = groupedMedia,
         isMediaSelectionMode = isMediaSelectionMode,
+        isThumbnailPickerMode = isThumbnailPickerMode,
+        draftThumbnailUri = folderThumbnailDraftUri,
+        preselectedThumbnailUri = folderThumbnailPreselectedUri,
         selectedMediaItems = selectedMediaItems,
         isDestinationPickerActive = isDestinationPickerActive,
         pendingOperation = pendingOperation,
@@ -87,6 +93,9 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         onSelectAllMedia = { viewModel.selectAllMedia() },
         onSetSearchQuery = { viewModel.setSearchQuery(it, scope) },
         onSetSearchActive = { viewModel.setSearchActive(it, scope) },
+        onEnterThumbnailPickerMode = { viewModel.enterThumbnailPickerMode() },
+        onExitThumbnailPickerMode = { viewModel.exitThumbnailPickerMode() },
+        onCommitThumbnailPickerSelection = { viewModel.commitFolderThumbnailDraft() },
         onCommitColumnsPreference = { columns, applyTarget ->
             viewModel.commitFolderColumnsPreference(columns, applyTarget)
         },
@@ -127,6 +136,9 @@ fun FolderDetailContent(
     isSearchActive: Boolean,
     groupedMedia: Map<String, List<MediaItem>>,
     isMediaSelectionMode: Boolean,
+    isThumbnailPickerMode: Boolean,
+    draftThumbnailUri: android.net.Uri?,
+    preselectedThumbnailUri: android.net.Uri?,
     selectedMediaItems: Set<android.net.Uri>,
     isDestinationPickerActive: Boolean,
     pendingOperation: OperationType?,
@@ -138,6 +150,9 @@ fun FolderDetailContent(
     onSelectAllMedia: () -> Unit,
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
+    onEnterThumbnailPickerMode: () -> Unit,
+    onExitThumbnailPickerMode: () -> Unit,
+    onCommitThumbnailPickerSelection: () -> Unit,
     onCommitColumnsPreference: (Int, PreferenceApplyTarget) -> Unit,
     onCommitMediaTypesPreference: (Set<com.davide.seddio.easygallery.data.MediaType>, PreferenceApplyTarget) -> Unit,
     onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit,
@@ -159,11 +174,29 @@ fun FolderDetailContent(
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val context = LocalContext.current
+    val displayedSelectedItems = if (isThumbnailPickerMode) {
+        setOfNotNull(draftThumbnailUri ?: preselectedThumbnailUri)
+    } else {
+        selectedMediaItems
+    }
+    val onMediaLongClick: (MediaItem) -> Unit = if (isThumbnailPickerMode) {
+        {}
+    } else {
+        { onEnterMediaSelectionMode(it) }
+    }
     val resolvedSelectedMedia = remember(selectedMediaItems) { getSelectedMediaData() }
     val wallpaperEligibleMedia = resolvedSelectedMedia.singleOrNull()
         ?.takeIf { supportsWallpaper(it.type) }
 
-    if (isMediaSelectionMode) {
+    if (isThumbnailPickerMode) {
+        BackHandler {
+            if (draftThumbnailUri != null) {
+                onCommitThumbnailPickerSelection()
+            } else {
+                onExitThumbnailPickerMode()
+            }
+        }
+    } else if (isMediaSelectionMode) {
         BackHandler { onExitMediaSelectionMode() }
     } else {
         BackHandler { onBackToFolders() }
@@ -179,7 +212,13 @@ fun FolderDetailContent(
     
     Scaffold(
         topBar = {
-            if (isMediaSelectionMode) {
+            if (isThumbnailPickerMode) {
+                ThumbnailPickerTopBar(
+                    hasDraft = draftThumbnailUri != null,
+                    onCancel = { onExitThumbnailPickerMode() },
+                    onConfirm = { onCommitThumbnailPickerSelection() }
+                )
+            } else if (isMediaSelectionMode) {
                 MediaSelectionTopBar(
                     selectedCount = selectedMediaItems.size,
                     totalCount = media.size,
@@ -207,6 +246,7 @@ fun FolderDetailContent(
                     onSortClick = { showSortDialog = true },
                     onGroupByClick = { showGroupByDialog = true },
                     onViewTypeClick = { showViewTypeDialog = true },
+                    onChangeThumbnailClick = { onEnterThumbnailPickerMode() },
                     onShowExcludedClick = { onSetShowExcludedTemporarily(true) },
                     onSettingsClick = { onSetSettingsMode(true) },
                     navigationIcon = {
@@ -354,9 +394,9 @@ fun FolderDetailContent(
                         columns = preferences.columns,
                         state = gridState,
                         showInfo = preferences.showInfo,
-                        selectedItems = selectedMediaItems,
+                        selectedItems = displayedSelectedItems,
                         onItemClick = { onSelectMedia(it) },
-                        onItemLongClick = { onEnterMediaSelectionMode(it) },
+                        onItemLongClick = onMediaLongClick,
                         onZoomIn = { onDecreaseColumns() },
                         onZoomOut = { onIncreaseColumns() }
                     )
@@ -365,9 +405,9 @@ fun FolderDetailContent(
                         media = media,
                         state = listState,
                         showInfo = preferences.showInfo,
-                        selectedItems = selectedMediaItems,
+                        selectedItems = displayedSelectedItems,
                         onItemClick = { onSelectMedia(it) },
-                        onItemLongClick = { onEnterMediaSelectionMode(it) }
+                        onItemLongClick = onMediaLongClick
                     )
                 }
             } else {
@@ -378,9 +418,9 @@ fun FolderDetailContent(
                     gridState = gridState,
                     listState = listState,
                     showInfo = preferences.showInfo,
-                    selectedItems = selectedMediaItems,
+                    selectedItems = displayedSelectedItems,
                     onItemClick = { onSelectMedia(it) },
-                    onItemLongClick = { onEnterMediaSelectionMode(it) },
+                    onItemLongClick = onMediaLongClick,
                     onZoomIn = { onDecreaseColumns() },
                     onZoomOut = { onIncreaseColumns() }
                 )

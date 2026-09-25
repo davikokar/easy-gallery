@@ -92,6 +92,8 @@
     <string name="menu_copy_to">Copy to</string>
     <string name="menu_move_to">Move to</string>
     <string name="menu_use_as_wallpaper">Use as background</string>
+    <string name="menu_change_folder_thumbnail">Change folder thumbnail</string>
+    <string name="thumbnail_picker_title">Choose folder thumbnail</string>
     <string name="wallpaper_app_not_found">No app available to set the wallpaper</string>
     <string name="menu_select_all">Select all</string>
     <string name="search_placeholder">Search...</string>

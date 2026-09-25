@@ -33,6 +33,7 @@ fun SearchTopBar(
     onColumnCountClick: (() -> Unit)? = null,
     onGroupByClick: (() -> Unit)? = null,
     onViewTypeClick: (() -> Unit)? = null,
+    onChangeThumbnailClick: (() -> Unit)? = null,
     onFilterMediaClick: (() -> Unit)? = null,
     onShowExcludedClick: (() -> Unit)? = null,
     onCreateFolderClick: (() -> Unit)? = null,
@@ -152,6 +153,21 @@ fun SearchTopBar(
                                 onViewTypeClick?.invoke()
                             }
                         )
+                        if (onChangeThumbnailClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_change_folder_thumbnail)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Image,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onChangeThumbnailClick.invoke()
+                                }
+                            )
+                        }
                         if (onCreateFolderClick != null) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.menu_create_folder)) },
