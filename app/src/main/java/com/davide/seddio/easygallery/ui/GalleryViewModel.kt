@@ -20,7 +20,9 @@ import java.io.File
 class GalleryViewModel @JvmOverloads constructor(
     application: Application,
     private val repository: MediaRepository = MediaStoreDataSource(application),
-    private val permissionHandler: MediaPermissionHandler = DefaultMediaPermissionHandler()
+    private val permissionHandler: MediaPermissionHandler = DefaultMediaPermissionHandler(),
+    folderViewPreferencesStore: FolderViewPreferencesStore =
+        SharedPreferencesFolderViewPreferencesStore(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
@@ -50,10 +52,12 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     private val prefs = DisplayPreferencesState(SharedPreferencesDisplayStore(application))
+    private val folderViewPrefs = FolderViewPreferencesState(folderViewPreferencesStore)
     private val folderStore: FolderPreferencesStore = SharedPreferencesFolderStore(application)
     val displayMode: StateFlow<DisplayMode> = prefs.displayMode
 
-    fun preferences(scope: PreferenceScope): StateFlow<ViewPreferences> = prefs.preferences(scope)
+    fun preferences(scope: PreferenceScope): StateFlow<ViewPreferences> =
+        if (scope == PreferenceScope.FOLDER_DETAIL) effectiveFolderDetailPrefs else prefs.preferences(scope)
     fun searchQuery(scope: PreferenceScope): StateFlow<String> = prefs.searchQuery(scope)
     fun isSearchActive(scope: PreferenceScope): StateFlow<Boolean> = prefs.isSearchActive(scope)
 
@@ -109,6 +113,16 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _selectedFolder = MutableStateFlow<Folder?>(null)
     val selectedFolder: StateFlow<Folder?> = _selectedFolder.asStateFlow()
 
+    private val effectiveFolderDetailPrefs: StateFlow<ViewPreferences> = combine(
+        folderDetailPrefs,
+        _selectedFolder,
+        folderViewPrefs.overrides
+    ) { globalPrefs, selectedFolder, overrides ->
+        val folderPath = selectedFolder?.path
+        val folderOverrides = overrides[folderPath]
+        folderOverrides?.applyTo(globalPrefs) ?: globalPrefs
+    }.stateIn(viewModelScope, SharingStarted.Lazily, folderDetailPrefs.value)
+
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
     val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
@@ -148,7 +162,7 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
     val filteredMedia: StateFlow<List<MediaItem>> = combine(
-        _mediaInFolder, folderDetailPrefs, prefs.searchQuery(PreferenceScope.FOLDER_DETAIL)
+        _mediaInFolder, effectiveFolderDetailPrefs, prefs.searchQuery(PreferenceScope.FOLDER_DETAIL)
     ) { media, viewPrefs, query ->
         val filtered = GalleryTransformations.filterMedia(media, query, viewPrefs.mediaTypes)
         GalleryTransformations.sortMedia(filtered, viewPrefs.sortType, viewPrefs.sortOrder)
@@ -170,7 +184,7 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredMedia, folderDetailPrefs, _localeTrigger
+        filteredMedia, effectiveFolderDetailPrefs, _localeTrigger
     ) { media, viewPrefs, _ ->
         GalleryTransformations.groupMedia(
             media, viewPrefs.groupBy, viewPrefs.groupOrder, todayLabel, yesterdayLabel, fileTypeLabels
@@ -198,11 +212,21 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     fun increaseColumns(scope: PreferenceScope) {
-        prefs.increaseColumns(scope)
+        if (scope == PreferenceScope.FOLDER_DETAIL && _selectedFolder.value != null) {
+            val currentColumns = effectiveFolderDetailPrefs.value.columns
+            setColumnsForCurrentFolder(currentColumns + 1)
+        } else {
+            prefs.increaseColumns(scope)
+        }
     }
 
     fun decreaseColumns(scope: PreferenceScope) {
-        prefs.decreaseColumns(scope)
+        if (scope == PreferenceScope.FOLDER_DETAIL && _selectedFolder.value != null) {
+            val currentColumns = effectiveFolderDetailPrefs.value.columns
+            setColumnsForCurrentFolder(currentColumns - 1)
+        } else {
+            prefs.decreaseColumns(scope)
+        }
     }
 
     fun setColumnsCount(count: Int, scope: PreferenceScope) {
@@ -586,6 +610,84 @@ class GalleryViewModel @JvmOverloads constructor(
         prefs.setSelectedMediaTypes(types, scope)
     }
 
+    fun commitFolderSortPreference(
+        sortType: SortType,
+        sortOrder: SortOrder,
+        applyTarget: PreferenceApplyTarget
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> {
+                folderViewPrefs.setSort(currentFolderPath(), sortType, sortOrder)
+            }
+
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                prefs.setSortType(sortType, PreferenceScope.FOLDER_DETAIL)
+                prefs.setSortOrder(sortOrder, PreferenceScope.FOLDER_DETAIL)
+                folderViewPrefs.clear(OverridablePreference.SORT)
+            }
+        }
+    }
+
+    fun commitFolderColumnsPreference(columns: Int, applyTarget: PreferenceApplyTarget) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> {
+                setColumnsForCurrentFolder(columns)
+            }
+
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                prefs.setColumnsCount(columns, PreferenceScope.FOLDER_DETAIL)
+                folderViewPrefs.clear(OverridablePreference.COLUMNS)
+            }
+        }
+    }
+
+    fun commitFolderGroupByPreference(
+        groupBy: GroupByType,
+        groupOrder: SortOrder,
+        applyTarget: PreferenceApplyTarget
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> {
+                folderViewPrefs.setGroupBy(currentFolderPath(), groupBy, groupOrder)
+            }
+
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                prefs.setGroupBy(groupBy, PreferenceScope.FOLDER_DETAIL)
+                prefs.setGroupOrder(groupOrder, PreferenceScope.FOLDER_DETAIL)
+                folderViewPrefs.clear(OverridablePreference.GROUP_BY)
+            }
+        }
+    }
+
+    fun commitFolderMediaTypesPreference(
+        mediaTypes: Set<MediaType>,
+        applyTarget: PreferenceApplyTarget
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> {
+                folderViewPrefs.setMediaTypes(currentFolderPath(), mediaTypes)
+            }
+
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                prefs.setSelectedMediaTypes(mediaTypes, PreferenceScope.FOLDER_DETAIL)
+                folderViewPrefs.clear(OverridablePreference.MEDIA_TYPES)
+            }
+        }
+    }
+
+    fun commitFolderViewTypePreference(viewType: ViewType, applyTarget: PreferenceApplyTarget) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> {
+                folderViewPrefs.setViewType(currentFolderPath(), viewType)
+            }
+
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                prefs.setViewType(viewType, PreferenceScope.FOLDER_DETAIL)
+                folderViewPrefs.clear(OverridablePreference.VIEW_TYPE)
+            }
+        }
+    }
+
     fun setSearchQuery(query: String, scope: PreferenceScope) {
         prefs.setSearchQuery(query, scope)
     }
@@ -656,6 +758,13 @@ class GalleryViewModel @JvmOverloads constructor(
         _excludedFolders.value = currentExcluded
         folderStore.saveExcluded(currentExcluded)
         exitSelectionMode()
+    }
+
+    private fun currentFolderPath(): String? = _selectedFolder.value?.path
+
+    private fun setColumnsForCurrentFolder(columns: Int) {
+        val boundedColumns = columns.coerceIn(ViewPreferences.MIN_COLUMNS, ViewPreferences.MAX_COLUMNS)
+        folderViewPrefs.setColumns(currentFolderPath(), boundedColumns)
     }
 
 }

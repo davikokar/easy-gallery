@@ -74,6 +74,9 @@
     <string name="no_subfolders">这里没有子文件夹。</string>
     <string name="internal_storage">内部存储</string>
     <string name="group_by_title">分组方式</string>
+    <string name="apply_only_to_this_folder">仅应用于此文件夹</string>
+    <string name="apply_to_all_folders_title">应用于所有文件夹？</string>
+    <string name="apply_to_all_folders_message">“%1$s”将应用于所有文件夹。为各个文件夹保存的偏好设置将会丢失。</string>
     <string name="group_by_none">不分组</string>
     <string name="group_by_file_type">文件类型</string>
     <string name="cd_video">视频</string>

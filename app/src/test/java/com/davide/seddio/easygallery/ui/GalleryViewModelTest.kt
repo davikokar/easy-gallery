@@ -63,9 +63,13 @@ class GalleryViewModelTest {
         folderPath = folderPath
     )
 
+    private fun createViewModel(
+        folderViewPreferencesStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore()
+    ) = GalleryViewModel(application, repository, permissionHandler, folderViewPreferencesStore)
+
     @Test
     fun `long-pressing a folder enters selection mode`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val folderPath = "/storage/emulated/0/Pictures"
         
         viewModel.enterSelectionMode(folderPath)
@@ -76,7 +80,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `selecting a second folder adds it to selection`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val folder1 = "/path/1"
         val folder2 = "/path/2"
         
@@ -88,7 +92,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `selecting the last selected folder exits selection mode`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val folderPath = "/path/1"
         
         viewModel.enterSelectionMode(folderPath)
@@ -106,7 +110,7 @@ class GalleryViewModelTest {
         )
         repository.mediaItems = media
         
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         
         // Start collecting filteredFolders to activate stateIn
         val job = launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -127,7 +131,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `selected media uses Uri identity`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         
         viewModel.enterMediaSelectionMode(item)
@@ -138,7 +142,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `recording and consuming video playback position delegates through view model`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
 
         viewModel.selectMedia(item)
@@ -154,7 +158,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `closing media clears remembered video playback position`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
 
         viewModel.selectMedia(item)
@@ -166,7 +170,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `exiting media selection clears selected media`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         
         viewModel.enterMediaSelectionMode(item)
@@ -178,7 +182,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `exiting folder selection clears selected folders`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         
         viewModel.enterSelectionMode("/path")
         viewModel.exitSelectionMode()
@@ -189,7 +193,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `deleteMedia calls repository and reloads folders`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         
         viewModel.deleteMedia(item)
@@ -201,7 +205,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `deleteSelectedMedia deletes all selected media Uris`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item1 = createMediaItem(mockUri1, "/path1")
         val item2 = createMediaItem(mockUri2, "/path2")
         
@@ -222,7 +226,7 @@ class GalleryViewModelTest {
             createMediaItem(mockk(), "/path/C")
         )
         repository.mediaItems = media
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         viewModel.loadFolders()
         
         viewModel.enterSelectionMode("/path/A")
@@ -236,7 +240,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `SecurityException in deletion emits pending permission request`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         val mockIntentSender = mockk<android.content.IntentSender>()
         
@@ -251,7 +255,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `moving selected media calls repository with correct parameters`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         val destPath = "/storage/emulated/0/NewFolder"
         
@@ -266,7 +270,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `copy initiated from viewer copies only viewed item and keeps viewer open`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
             .copy(name = "viewed.jpg")
         val destinationPath = "/storage/emulated/0/Pictures/Target"
@@ -285,7 +289,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `move initiated from viewer moves only viewed item and closes viewer`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
         val destinationPath = "/storage/emulated/0/Pictures/Target"
 
@@ -301,7 +305,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `viewer operation does not enter media selection mode or change selected media items`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
 
         viewModel.selectMedia(viewedItem)
@@ -320,7 +324,7 @@ class GalleryViewModelTest {
             .copy(name = "selected.jpg")
         repository.mediaItems = listOf(viewerItem, selectedItem)
 
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         viewModel.loadFolders()
 
         viewModel.selectMedia(viewerItem)
@@ -340,7 +344,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `copying viewed item into same folder is ignored`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
 
         viewModel.selectMedia(viewedItem)
@@ -353,7 +357,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `viewer copy to invalid path outside root does nothing`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val viewedItem = createMediaItem(mockUri1, "/storage/emulated/0/Pictures/Source")
 
         viewModel.selectMedia(viewedItem)
@@ -373,7 +377,7 @@ class GalleryViewModelTest {
             createMediaItem(mockk(), "/storage/emulated/0/B")
         )
         repository.mediaItems = media
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         viewModel.loadFolders()
         
         viewModel.enterSelectionMode("/storage/emulated/0/A")
@@ -387,7 +391,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `successful move cleans up UI state`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         
         viewModel.enterMediaSelectionMode(item)
@@ -401,7 +405,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `move to invalid path outside root does nothing`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         
         viewModel.enterMediaSelectionMode(item)
@@ -414,7 +418,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `SecurityException during move stores pending operation and emits request`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         val mockIntentSender = mockk<android.content.IntentSender>()
         
@@ -433,7 +437,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `onWriteRequestResult true retries pending move`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         
         // 1. Simulate SecurityException to set up pending operation
@@ -454,7 +458,7 @@ class GalleryViewModelTest {
 
     @Test
     fun `onWriteRequestResult false clears pending move`() = runTest {
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")
         
         repository.shouldThrowSecurityException = true
@@ -480,7 +484,7 @@ class GalleryViewModelTest {
 
         repository.mediaItems = listOf(movedItem, stayItem)
 
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
 
         // Start collecting flows to activate stateIn
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -524,7 +528,7 @@ class GalleryViewModelTest {
         repository.mediaItems = media
         repository.folders = listOf(Folder(name = folderName, imageCount = 1, thumbnailUri = mockUri1, path = folderPath))
         
-        val viewModel = GalleryViewModel(application, repository, permissionHandler)
+        val viewModel = createViewModel()
         
         val job = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.filteredFolders.collect {}
@@ -559,5 +563,378 @@ class GalleryViewModelTest {
             (uiStateIncluded as GalleryUiState.Success).folders.any { it.path == folderPath })
             
         job.cancel()
+    }
+
+    @Test
+    fun `folder detail preferences with no selected folder use global values and current-folder commits are no-ops`() = runTest {
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.setSortType(SortType.DATE_TAKEN, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSortOrder(SortOrder.DESCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setColumnsCount(5, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupBy(GroupByType.DATE_TAKEN_MONTHLY, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupOrder(SortOrder.ASCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSelectedMediaTypes(setOf(MediaType.IMAGE, MediaType.VIDEO), PreferenceScope.FOLDER_DETAIL)
+        viewModel.setViewType(ViewType.LIST, PreferenceScope.FOLDER_DETAIL)
+
+        val globalBefore = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+
+        viewModel.commitFolderSortPreference(SortType.NAME, SortOrder.ASCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderColumnsPreference(9, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderGroupByPreference(GroupByType.FILE_TYPE, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderMediaTypesPreference(setOf(MediaType.GIF), PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderViewTypePreference(ViewType.GRID, PreferenceApplyTarget.CURRENT_FOLDER)
+
+        val globalAfter = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(globalBefore, globalAfter)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `folder detail preferences resolve to override for selected folder and back to global for others`() = runTest {
+        val folderAPath = "/storage/emulated/0/Pictures/FolderA"
+        val folderBPath = "/storage/emulated/0/Pictures/FolderB"
+        val folderA = Folder(name = "FolderA", imageCount = 1, thumbnailUri = mockUri1, path = folderAPath)
+        val folderB = Folder(name = "FolderB", imageCount = 1, thumbnailUri = mockUri2, path = folderBPath)
+
+        repository.mediaItems = listOf(
+            createMediaItem(mockUri1, folderAPath),
+            createMediaItem(mockUri2, folderBPath)
+        )
+
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.setSortType(SortType.NAME, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSortOrder(SortOrder.ASCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setColumnsCount(4, PreferenceScope.FOLDER_DETAIL)
+
+        val globalBefore = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderSortPreference(SortType.DATE_TAKEN, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderColumnsPreference(7, PreferenceApplyTarget.CURRENT_FOLDER)
+
+        val folderAPrefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.DATE_TAKEN, folderAPrefs.sortType)
+        assertEquals(SortOrder.DESCENDING, folderAPrefs.sortOrder)
+        assertEquals(7, folderAPrefs.columns)
+        assertEquals(globalBefore.viewType, folderAPrefs.viewType)
+
+        viewModel.selectFolder(folderB)
+        val folderBPrefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(globalBefore.sortType, folderBPrefs.sortType)
+        assertEquals(globalBefore.sortOrder, folderBPrefs.sortOrder)
+        assertEquals(globalBefore.columns, folderBPrefs.columns)
+
+        viewModel.selectFolder(folderA)
+        val folderAResolvedAgain = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.DATE_TAKEN, folderAResolvedAgain.sortType)
+        assertEquals(SortOrder.DESCENDING, folderAResolvedAgain.sortOrder)
+        assertEquals(7, folderAResolvedAgain.columns)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `current-folder folder detail commits only affect selected folder and keep global untouched`() = runTest {
+        val folderAPath = "/storage/emulated/0/Pictures/FolderA"
+        val folderBPath = "/storage/emulated/0/Pictures/FolderB"
+        val folderA = Folder(name = "FolderA", imageCount = 1, thumbnailUri = mockUri1, path = folderAPath)
+        val folderB = Folder(name = "FolderB", imageCount = 1, thumbnailUri = mockUri2, path = folderBPath)
+
+        repository.mediaItems = listOf(
+            createMediaItem(mockUri1, folderAPath),
+            createMediaItem(mockUri2, folderBPath)
+        )
+
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.setSortType(SortType.NAME, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSortOrder(SortOrder.ASCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setColumnsCount(4, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupBy(GroupByType.NONE, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupOrder(SortOrder.DESCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSelectedMediaTypes(MediaType.entries.toSet(), PreferenceScope.FOLDER_DETAIL)
+        viewModel.setViewType(ViewType.GRID, PreferenceScope.FOLDER_DETAIL)
+        val globalBefore = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderSortPreference(SortType.LAST_MODIFIED, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderColumnsPreference(8, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderGroupByPreference(GroupByType.DATE_TAKEN_DAILY, SortOrder.ASCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderMediaTypesPreference(setOf(MediaType.VIDEO), PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderViewTypePreference(ViewType.LIST, PreferenceApplyTarget.CURRENT_FOLDER)
+
+        val folderAPrefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.LAST_MODIFIED, folderAPrefs.sortType)
+        assertEquals(SortOrder.DESCENDING, folderAPrefs.sortOrder)
+        assertEquals(8, folderAPrefs.columns)
+        assertEquals(GroupByType.DATE_TAKEN_DAILY, folderAPrefs.groupBy)
+        assertEquals(SortOrder.ASCENDING, folderAPrefs.groupOrder)
+        assertEquals(setOf(MediaType.VIDEO), folderAPrefs.mediaTypes)
+        assertEquals(ViewType.LIST, folderAPrefs.viewType)
+
+        viewModel.selectFolder(folderB)
+        val folderBPrefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(globalBefore, folderBPrefs)
+
+        viewModel.backToFolders()
+        assertEquals(globalBefore, viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `all-folders folder detail commits update global clear matching overrides and preserve other override groups`() = runTest {
+        val folderAPath = "/storage/emulated/0/Pictures/FolderA"
+        val folderBPath = "/storage/emulated/0/Pictures/FolderB"
+        val folderA = Folder(name = "FolderA", imageCount = 1, thumbnailUri = mockUri1, path = folderAPath)
+        val folderB = Folder(name = "FolderB", imageCount = 1, thumbnailUri = mockUri2, path = folderBPath)
+
+        repository.mediaItems = listOf(
+            createMediaItem(mockUri1, folderAPath),
+            createMediaItem(mockUri2, folderBPath)
+        )
+
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.setSortType(SortType.NAME, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSortOrder(SortOrder.ASCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setColumnsCount(4, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupBy(GroupByType.NONE, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupOrder(SortOrder.DESCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSelectedMediaTypes(MediaType.entries.toSet(), PreferenceScope.FOLDER_DETAIL)
+        viewModel.setViewType(ViewType.GRID, PreferenceScope.FOLDER_DETAIL)
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderSortPreference(SortType.DATE_TAKEN, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderColumnsPreference(8, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderGroupByPreference(GroupByType.DATE_TAKEN_MONTHLY, SortOrder.ASCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderMediaTypesPreference(setOf(MediaType.VIDEO), PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderViewTypePreference(ViewType.LIST, PreferenceApplyTarget.CURRENT_FOLDER)
+
+        viewModel.selectFolder(folderB)
+        viewModel.commitFolderSortPreference(SortType.LAST_MODIFIED, SortOrder.ASCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderColumnsPreference(6, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderGroupByPreference(GroupByType.LAST_MODIFIED_DAILY, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderMediaTypesPreference(setOf(MediaType.IMAGE), PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderViewTypePreference(ViewType.LIST, PreferenceApplyTarget.CURRENT_FOLDER)
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderSortPreference(SortType.RANDOM, SortOrder.ASCENDING, PreferenceApplyTarget.ALL_FOLDERS)
+        val folderASortCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.RANDOM, folderASortCleared.sortType)
+        assertEquals(SortOrder.ASCENDING, folderASortCleared.sortOrder)
+        assertEquals(8, folderASortCleared.columns)
+
+        viewModel.selectFolder(folderB)
+        val folderBSortCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.RANDOM, folderBSortCleared.sortType)
+        assertEquals(SortOrder.ASCENDING, folderBSortCleared.sortOrder)
+        assertEquals(6, folderBSortCleared.columns)
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderColumnsPreference(3, PreferenceApplyTarget.ALL_FOLDERS)
+        val folderAColumnsCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(3, folderAColumnsCleared.columns)
+        assertEquals(GroupByType.DATE_TAKEN_MONTHLY, folderAColumnsCleared.groupBy)
+
+        viewModel.selectFolder(folderB)
+        val folderBColumnsCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(3, folderBColumnsCleared.columns)
+        assertEquals(GroupByType.LAST_MODIFIED_DAILY, folderBColumnsCleared.groupBy)
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderGroupByPreference(GroupByType.FILE_TYPE, SortOrder.ASCENDING, PreferenceApplyTarget.ALL_FOLDERS)
+        val folderAGroupCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(GroupByType.FILE_TYPE, folderAGroupCleared.groupBy)
+        assertEquals(SortOrder.ASCENDING, folderAGroupCleared.groupOrder)
+        assertEquals(setOf(MediaType.VIDEO), folderAGroupCleared.mediaTypes)
+
+        viewModel.selectFolder(folderB)
+        val folderBGroupCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(GroupByType.FILE_TYPE, folderBGroupCleared.groupBy)
+        assertEquals(SortOrder.ASCENDING, folderBGroupCleared.groupOrder)
+        assertEquals(setOf(MediaType.IMAGE), folderBGroupCleared.mediaTypes)
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderMediaTypesPreference(setOf(MediaType.GIF), PreferenceApplyTarget.ALL_FOLDERS)
+        val folderAMediaTypesCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(setOf(MediaType.GIF), folderAMediaTypesCleared.mediaTypes)
+        assertEquals(ViewType.LIST, folderAMediaTypesCleared.viewType)
+
+        viewModel.selectFolder(folderB)
+        val folderBMediaTypesCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(setOf(MediaType.GIF), folderBMediaTypesCleared.mediaTypes)
+        assertEquals(ViewType.LIST, folderBMediaTypesCleared.viewType)
+
+        viewModel.selectFolder(folderA)
+        viewModel.commitFolderViewTypePreference(ViewType.GRID, PreferenceApplyTarget.ALL_FOLDERS)
+        val folderAViewTypeCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(ViewType.GRID, folderAViewTypeCleared.viewType)
+
+        viewModel.selectFolder(folderB)
+        val folderBViewTypeCleared = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(ViewType.GRID, folderBViewTypeCleared.viewType)
+
+        viewModel.backToFolders()
+        val globalFinal = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.RANDOM, globalFinal.sortType)
+        assertEquals(SortOrder.ASCENDING, globalFinal.sortOrder)
+        assertEquals(3, globalFinal.columns)
+        assertEquals(GroupByType.FILE_TYPE, globalFinal.groupBy)
+        assertEquals(SortOrder.ASCENDING, globalFinal.groupOrder)
+        assertEquals(setOf(MediaType.GIF), globalFinal.mediaTypes)
+        assertEquals(ViewType.GRID, globalFinal.viewType)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `folder media derived flows react to per-folder-only override changes`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/FolderA"
+        val folder = Folder(name = "FolderA", imageCount = 2, thumbnailUri = mockUri1, path = folderPath)
+        val first = createMediaItem(mockUri1, folderPath).copy(
+            name = "b.jpg",
+            dateAdded = 1_000L,
+            dateModified = 1_000L,
+            type = MediaType.IMAGE
+        )
+        val second = createMediaItem(mockUri2, folderPath).copy(
+            name = "a.jpg",
+            dateAdded = 2_000_000L,
+            dateModified = 2_000_000L,
+            type = MediaType.VIDEO
+        )
+        repository.mediaItems = listOf(first, second)
+
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+        val filteredMediaJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredMedia.collect {}
+        }
+        val groupedMediaJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.groupedFolderMedia.collect {}
+        }
+
+        viewModel.setSortType(SortType.NAME, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSortOrder(SortOrder.ASCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupBy(GroupByType.NONE, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupOrder(SortOrder.DESCENDING, PreferenceScope.FOLDER_DETAIL)
+
+        viewModel.selectFolder(folder)
+        assertEquals(listOf("a.jpg", "b.jpg"), viewModel.filteredMedia.value.map { it.name })
+        assertEquals(setOf(""), viewModel.groupedFolderMedia.value.keys)
+
+        viewModel.commitFolderSortPreference(SortType.NAME, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        assertEquals(listOf("b.jpg", "a.jpg"), viewModel.filteredMedia.value.map { it.name })
+
+        viewModel.commitFolderGroupByPreference(GroupByType.DATE_TAKEN_DAILY, SortOrder.ASCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        assertTrue(viewModel.groupedFolderMedia.value.keys.size >= 2)
+
+        viewModel.backToFolders()
+        val globalAfter = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.NAME, globalAfter.sortType)
+        assertEquals(SortOrder.ASCENDING, globalAfter.sortOrder)
+        assertEquals(GroupByType.NONE, globalAfter.groupBy)
+
+        prefsJob.cancel()
+        filteredMediaJob.cancel()
+        groupedMediaJob.cancel()
+    }
+
+    @Test
+    fun `pinch zoom columns in folder detail write per-folder override not global`() = runTest {
+        val folderAPath = "/storage/emulated/0/Pictures/FolderA"
+        val folderBPath = "/storage/emulated/0/Pictures/FolderB"
+        val folderA = Folder(name = "FolderA", imageCount = 1, thumbnailUri = mockUri1, path = folderAPath)
+        val folderB = Folder(name = "FolderB", imageCount = 1, thumbnailUri = mockUri2, path = folderBPath)
+
+        repository.mediaItems = listOf(
+            createMediaItem(mockUri1, folderAPath),
+            createMediaItem(mockUri2, folderBPath)
+        )
+
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.setColumnsCount(4, PreferenceScope.FOLDER_DETAIL)
+
+        viewModel.selectFolder(folderA)
+        viewModel.increaseColumns(PreferenceScope.FOLDER_DETAIL)
+        val folderAAfterIncrease = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(5, folderAAfterIncrease.columns)
+
+        viewModel.backToFolders()
+        val globalAfterIncrease = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(4, globalAfterIncrease.columns)
+
+        viewModel.selectFolder(folderB)
+        val folderBPrefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(4, folderBPrefs.columns)
+
+        viewModel.selectFolder(folderA)
+        viewModel.decreaseColumns(PreferenceScope.FOLDER_DETAIL)
+        val folderAAfterDecrease = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(4, folderAAfterDecrease.columns)
+
+        viewModel.backToFolders()
+        val globalAfterDecrease = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(4, globalAfterDecrease.columns)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `folder overrides do not affect folders or timeline preference scopes`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/FolderA"
+        val folder = Folder(name = "FolderA", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, folderPath))
+
+        val viewModel = createViewModel()
+        val folderDetailPrefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.setSortType(SortType.PATH, PreferenceScope.FOLDERS)
+        viewModel.setColumnsCount(6, PreferenceScope.FOLDERS)
+        viewModel.setGroupBy(GroupByType.LAST_MODIFIED_MONTHLY, PreferenceScope.TIMELINE)
+        viewModel.setSortOrder(SortOrder.ASCENDING, PreferenceScope.TIMELINE)
+
+        val foldersBefore = viewModel.preferences(PreferenceScope.FOLDERS).value
+        val timelineBefore = viewModel.preferences(PreferenceScope.TIMELINE).value
+
+        viewModel.selectFolder(folder)
+        viewModel.commitFolderSortPreference(SortType.DATE_TAKEN, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderColumnsPreference(9, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderGroupByPreference(GroupByType.DATE_TAKEN_DAILY, SortOrder.ASCENDING, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderMediaTypesPreference(setOf(MediaType.VIDEO), PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderViewTypePreference(ViewType.LIST, PreferenceApplyTarget.CURRENT_FOLDER)
+        viewModel.commitFolderSortPreference(SortType.RANDOM, SortOrder.ASCENDING, PreferenceApplyTarget.ALL_FOLDERS)
+
+        val foldersAfter = viewModel.preferences(PreferenceScope.FOLDERS).value
+        val timelineAfter = viewModel.preferences(PreferenceScope.TIMELINE).value
+
+        assertEquals(foldersBefore, foldersAfter)
+        assertEquals(timelineBefore, timelineAfter)
+
+        folderDetailPrefsJob.cancel()
     }
 }

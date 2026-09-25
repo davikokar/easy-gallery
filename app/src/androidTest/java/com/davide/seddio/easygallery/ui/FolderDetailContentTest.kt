@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.davide.seddio.easygallery.data.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -150,11 +152,56 @@ class FolderDetailContentTest {
         composeTestRule.onNodeWithText("Move to").assertIsDisplayed()
     }
 
+    @Test
+    fun sortDialogShowsApplyOnlyToThisFolderCheckedByDefault() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia))
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText("Sort by").performClick()
+
+        composeTestRule
+            .onNode(
+                isToggleable() and hasText("Apply only to this folder"),
+                useUnmergedTree = true
+            )
+            .assertIsOn()
+    }
+
+    @Test
+    fun sortDialogSelectionCommitsOnlyAfterOk() {
+        var committedSort: SortType? = null
+
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                onCommitSortPreference = { sortType, _, _ ->
+                    committedSort = sortType
+                }
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText("Sort by").performClick()
+
+        composeTestRule.onNodeWithText("Size").performClick()
+        composeTestRule.runOnIdle {
+            assertNull(committedSort)
+        }
+
+        composeTestRule.onNodeWithText("OK").performClick()
+        composeTestRule.runOnIdle {
+            assertEquals(SortType.SIZE, committedSort)
+        }
+    }
+
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
         isMediaSelectionMode: Boolean = false,
-        selectedMediaItems: Set<Uri> = emptySet()
+        selectedMediaItems: Set<Uri> = emptySet(),
+        onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit = { _, _, _ -> }
     ) {
         FolderDetailContent(
             media = media,
@@ -175,13 +222,11 @@ class FolderDetailContentTest {
             onSelectAllMedia = {},
             onSetSearchQuery = {},
             onSetSearchActive = {},
-            onSetColumnsCount = {},
-            onSetSelectedMediaTypes = {},
-            onSetSortType = {},
-            onSetSortOrder = {},
-            onSetGroupBy = {},
-            onSetGroupOrder = {},
-            onSetViewType = {},
+            onCommitColumnsPreference = { _, _ -> },
+            onCommitMediaTypesPreference = { _, _ -> },
+            onCommitSortPreference = onCommitSortPreference,
+            onCommitGroupByPreference = { _, _, _ -> },
+            onCommitViewTypePreference = { _, _ -> },
             onSetShowExcludedTemporarily = {},
             onSetSettingsMode = {},
             onBackToFolders = {},

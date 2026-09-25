@@ -75,6 +75,9 @@
     <string name="no_subfolders">Keine Unterordner vorhanden.</string>
     <string name="internal_storage">Interner Speicher</string>
     <string name="group_by_title">Gruppieren nach</string>
+    <string name="apply_only_to_this_folder">Nur auf diesen Ordner anwenden</string>
+    <string name="apply_to_all_folders_title">Auf alle Ordner anwenden?</string>
+    <string name="apply_to_all_folders_message">„%1$s“ wird auf alle Ordner angewendet. Die für einzelne Ordner gespeicherten Einstellungen gehen verloren.</string>
     <string name="group_by_none">Nicht gruppieren</string>
     <string name="group_by_file_type">Dateityp</string>
     <string name="cd_video">Video</string>

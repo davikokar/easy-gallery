@@ -187,6 +187,20 @@ class FolderListContentTest {
         composeTestRule.onNodeWithTag("selected_checkmark", useUnmergedTree = true).assertIsDisplayed()
     }
 
+    @Test
+    fun sortDialogDoesNotShowApplyOnlyToThisFolderOption() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                uiState = GalleryUiState.Success(listOf(fakeFolder))
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText("Sort by").performClick()
+
+        composeTestRule.onNodeWithText("Apply only to this folder").assertDoesNotExist()
+    }
+
     @Composable
     private fun FolderListContentWrapper(
         uiState: GalleryUiState = GalleryUiState.Success(emptyList()),
@@ -228,10 +242,8 @@ class FolderListContentTest {
             onSetSearchQuery = {},
             onSetSearchActive = {},
             onToggleDisplayMode = {},
-            onSetSortType = {},
-            onSetSortOrder = {},
-            onSetGroupBy = {},
-            onSetGroupOrder = {},
+            onSetSort = { _, _ -> },
+            onSetGroupByAndOrder = { _, _ -> },
             onSetColumnsCount = {},
             onSetViewType = {},
             onSetSelectedMediaTypes = {},
