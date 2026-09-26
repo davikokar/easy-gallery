@@ -25,3 +25,4 @@ for the required format and status rules.
 | [ADR-0005](decisions/0005-selection-scoped-media-actions.md) | Selection-scoped media actions mirror the full-screen viewer | Active | 2026-09-22 |
 | [ADR-0006](decisions/0006-per-folder-display-preference-overrides.md) | Per-folder display preference overrides layered over global defaults | Active | 2026-09-25 |
 | [ADR-0007](decisions/0007-persisted-folder-thumbnail-override.md) | Persisted per-folder thumbnail override resolved against live media | Active | 2026-09-25 |
+| [ADR-0008](decisions/0008-camera-folder-default-sort-order.md) | Implicit camera-folder sort default resolved beneath explicit preferences | Active | 2026-09-26 |

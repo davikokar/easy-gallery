@@ -24,7 +24,8 @@ class GalleryViewModel @JvmOverloads constructor(
     folderViewPreferencesStore: FolderViewPreferencesStore =
         SharedPreferencesFolderViewPreferencesStore(application),
     private val folderThumbnailStore: FolderThumbnailStore =
-        SharedPreferencesFolderThumbnailStore(application)
+        SharedPreferencesFolderThumbnailStore(application),
+    displayPreferencesStore: DisplayPreferencesStore = SharedPreferencesDisplayStore(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
@@ -53,7 +54,7 @@ class GalleryViewModel @JvmOverloads constructor(
         )
     }
 
-    private val prefs = DisplayPreferencesState(SharedPreferencesDisplayStore(application))
+    private val prefs = DisplayPreferencesState(displayPreferencesStore)
     private val folderViewPrefs = FolderViewPreferencesState(folderViewPreferencesStore)
     private val folderStore: FolderPreferencesStore = SharedPreferencesFolderStore(application)
     val displayMode: StateFlow<DisplayMode> = prefs.displayMode
@@ -66,6 +67,7 @@ class GalleryViewModel @JvmOverloads constructor(
     private val foldersPrefs = prefs.preferences(PreferenceScope.FOLDERS)
     private val timelinePrefs = prefs.preferences(PreferenceScope.TIMELINE)
     private val folderDetailPrefs = prefs.preferences(PreferenceScope.FOLDER_DETAIL)
+    private val folderDetailSortUserDefined = prefs.isSortUserDefined(PreferenceScope.FOLDER_DETAIL)
 
     private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
     val allMedia: StateFlow<List<MediaItem>> = _allMedia.asStateFlow()
@@ -129,11 +131,18 @@ class GalleryViewModel @JvmOverloads constructor(
     private val effectiveFolderDetailPrefs: StateFlow<ViewPreferences> = combine(
         folderDetailPrefs,
         _selectedFolder,
-        folderViewPrefs.overrides
-    ) { globalPrefs, selectedFolder, overrides ->
+        folderViewPrefs.overrides,
+        folderDetailSortUserDefined
+    ) { globalPrefs, selectedFolder, overrides, sortUserDefined ->
         val folderPath = selectedFolder?.path
-        val folderOverrides = overrides[folderPath]
-        folderOverrides?.applyTo(globalPrefs) ?: globalPrefs
+        val implicitDefaults = if (sortUserDefined) {
+            FolderViewOverrides()
+        } else {
+            CameraFolder.implicitDefaultsForFolder(folderPath)
+        }
+        val explicitOverrides = overrides[folderPath] ?: FolderViewOverrides()
+
+        explicitOverrides.applyTo(implicitDefaults.applyTo(globalPrefs))
     }.stateIn(viewModelScope, SharingStarted.Lazily, folderDetailPrefs.value)
 
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
@@ -678,6 +687,7 @@ class GalleryViewModel @JvmOverloads constructor(
             PreferenceApplyTarget.ALL_FOLDERS -> {
                 prefs.setSortType(sortType, PreferenceScope.FOLDER_DETAIL)
                 prefs.setSortOrder(sortOrder, PreferenceScope.FOLDER_DETAIL)
+                prefs.markSortUserDefined(PreferenceScope.FOLDER_DETAIL)
                 folderViewPrefs.clear(OverridablePreference.SORT)
             }
         }

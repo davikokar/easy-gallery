@@ -37,12 +37,17 @@ class DisplayPreferencesState(
     private val searchActive: Map<PreferenceScope, MutableStateFlow<Boolean>> =
         PreferenceScope.entries.associateWith { MutableStateFlow(false) }
 
+    private val sortUserDefined: Map<PreferenceScope, MutableStateFlow<Boolean>> =
+        PreferenceScope.entries.associateWith { MutableStateFlow(store.loadSortUserDefined(it)) }
+
     fun preferences(scope: PreferenceScope): StateFlow<ViewPreferences> =
         preferenceFlows.getValue(scope)
 
     fun searchQuery(scope: PreferenceScope): StateFlow<String> = searchQueries.getValue(scope)
 
     fun isSearchActive(scope: PreferenceScope): StateFlow<Boolean> = searchActive.getValue(scope)
+
+    fun isSortUserDefined(scope: PreferenceScope): StateFlow<Boolean> = sortUserDefined.getValue(scope)
 
     private fun update(scope: PreferenceScope, transform: (ViewPreferences) -> ViewPreferences) {
         val flow = preferenceFlows.getValue(scope)
@@ -104,5 +109,12 @@ class DisplayPreferencesState(
         if (!active) {
             searchQueries.getValue(scope).value = ""
         }
+    }
+
+    fun markSortUserDefined(scope: PreferenceScope) {
+        val flow = sortUserDefined.getValue(scope)
+        if (flow.value) return
+        flow.value = true
+        store.saveSortUserDefined(scope, true)
     }
 }
