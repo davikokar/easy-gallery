@@ -64,6 +64,7 @@ class GalleryViewModelTest {
     )
 
     private fun createViewModel(
+        displayPreferencesStore: DisplayPreferencesStore = InMemoryDisplayPreferencesStore(),
         folderViewPreferencesStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore(),
         folderThumbnailStore: FolderThumbnailStore = SharedPreferencesFolderThumbnailStore(application)
     ) = GalleryViewModel(
@@ -71,7 +72,8 @@ class GalleryViewModelTest {
         repository,
         permissionHandler,
         folderViewPreferencesStore,
-        folderThumbnailStore
+        folderThumbnailStore,
+        displayPreferencesStore
     )
 
     @Test
@@ -1400,5 +1402,154 @@ class GalleryViewModelTest {
         assertEquals(timelineBefore, timelineAfter)
 
         folderDetailPrefsJob.cancel()
+    }
+
+    @Test
+    fun `camera folder with no overrides resolves to date taken descending`() = runTest {
+        val cameraFolderPath = "/storage/emulated/0/DCIM/Camera"
+        val cameraFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = cameraFolderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, cameraFolderPath))
+
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.selectFolder(cameraFolder)
+
+        val prefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.DATE_TAKEN, prefs.sortType)
+        assertEquals(SortOrder.DESCENDING, prefs.sortOrder)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `non-camera folder keeps name ascending default`() = runTest {
+        val nonCameraFolderPath = "/storage/emulated/0/Pictures/Camera"
+        val nonCameraFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = nonCameraFolderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, nonCameraFolderPath))
+
+        val viewModel = createViewModel()
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.selectFolder(nonCameraFolder)
+
+        val prefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.NAME, prefs.sortType)
+        assertEquals(SortOrder.ASCENDING, prefs.sortOrder)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `explicit per-folder sort override wins over implicit camera default`() = runTest {
+        val cameraFolderPath = "/storage/emulated/0/DCIM/Camera"
+        val cameraFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = cameraFolderPath)
+        val folderViewPreferencesStore = InMemoryFolderViewPreferencesStore().apply {
+            save(
+                cameraFolderPath,
+                FolderViewOverrides(
+                    sortType = SortType.LAST_MODIFIED,
+                    sortOrder = SortOrder.ASCENDING
+                )
+            )
+        }
+        repository.mediaItems = listOf(createMediaItem(mockUri1, cameraFolderPath))
+
+        val viewModel = createViewModel(folderViewPreferencesStore = folderViewPreferencesStore)
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.selectFolder(cameraFolder)
+
+        val prefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.LAST_MODIFIED, prefs.sortType)
+        assertEquals(SortOrder.ASCENDING, prefs.sortOrder)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `all-folders sort commit disables camera implicit default on reselection`() = runTest {
+        val cameraFolderPath = "/storage/emulated/0/DCIM/Camera"
+        val cameraFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = cameraFolderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, cameraFolderPath))
+
+        val viewModel = createViewModel(displayPreferencesStore = InMemoryDisplayPreferencesStore())
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.selectFolder(cameraFolder)
+        assertEquals(SortType.DATE_TAKEN, viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value.sortType)
+        assertEquals(SortOrder.DESCENDING, viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value.sortOrder)
+
+        viewModel.commitFolderSortPreference(SortType.NAME, SortOrder.ASCENDING, PreferenceApplyTarget.ALL_FOLDERS)
+        viewModel.backToFolders()
+        viewModel.selectFolder(cameraFolder)
+
+        val prefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.NAME, prefs.sortType)
+        assertEquals(SortOrder.ASCENDING, prefs.sortOrder)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `implicit camera default only affects sort fields`() = runTest {
+        val cameraFolderPath = "/storage/emulated/0/DCIM/Camera"
+        val cameraFolder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = cameraFolderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, cameraFolderPath))
+
+        val viewModel = createViewModel(displayPreferencesStore = InMemoryDisplayPreferencesStore())
+        val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.preferences(PreferenceScope.FOLDER_DETAIL).collect {}
+        }
+
+        viewModel.setColumnsCount(5, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupBy(GroupByType.FILE_TYPE, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setGroupOrder(SortOrder.ASCENDING, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setViewType(ViewType.LIST, PreferenceScope.FOLDER_DETAIL)
+        viewModel.setSelectedMediaTypes(setOf(MediaType.VIDEO), PreferenceScope.FOLDER_DETAIL)
+
+        viewModel.selectFolder(cameraFolder)
+
+        val prefs = viewModel.preferences(PreferenceScope.FOLDER_DETAIL).value
+        assertEquals(SortType.DATE_TAKEN, prefs.sortType)
+        assertEquals(SortOrder.DESCENDING, prefs.sortOrder)
+        assertEquals(5, prefs.columns)
+        assertEquals(GroupByType.FILE_TYPE, prefs.groupBy)
+        assertEquals(SortOrder.ASCENDING, prefs.groupOrder)
+        assertEquals(ViewType.LIST, prefs.viewType)
+        assertEquals(setOf(MediaType.VIDEO), prefs.mediaTypes)
+
+        prefsJob.cancel()
+    }
+
+    @Test
+    fun `filtered media in camera folder is date added descending by default`() = runTest {
+        val cameraFolderPath = "/storage/emulated/0/DCIM/Camera"
+        val cameraFolder = Folder(name = "Camera", imageCount = 3, thumbnailUri = mockUri1, path = cameraFolderPath)
+        val mockUri3 = mockk<Uri>(relaxed = true)
+        repository.mediaItems = listOf(
+            createMediaItem(mockUri1, cameraFolderPath).copy(name = "z.jpg", dateAdded = 1_000L),
+            createMediaItem(mockUri2, cameraFolderPath).copy(name = "a.jpg", dateAdded = 5_000L),
+            createMediaItem(mockUri3, cameraFolderPath).copy(name = "m.jpg", dateAdded = 3_000L)
+        )
+
+        val viewModel = createViewModel()
+        val filteredMediaJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredMedia.collect {}
+        }
+
+        viewModel.selectFolder(cameraFolder)
+
+        assertEquals(listOf(5_000L, 3_000L, 1_000L), viewModel.filteredMedia.value.map { it.dateAdded })
+
+        filteredMediaJob.cancel()
     }
 }
