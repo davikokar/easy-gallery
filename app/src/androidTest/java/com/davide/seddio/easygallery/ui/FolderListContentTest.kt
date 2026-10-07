@@ -5,9 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.davide.seddio.easygallery.data.*
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 
@@ -226,6 +228,17 @@ class FolderListContentTest {
     }
 
     @Test
+    fun mainViewSwitcherShowsAppIcon() {
+        composeTestRule.setContent {
+            FolderListContentWrapper()
+        }
+
+        composeTestRule
+            .onNodeWithTag("main_view_app_icon", useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
     fun albumsViewShowsFavouritesAndManualAlbums() {
         val album = AlbumListItem(
             id = 7L,
@@ -262,6 +275,120 @@ class FolderListContentTest {
         composeTestRule.onNodeWithText("New album").assertIsDisplayed()
         composeTestRule.onNodeWithText("Temporarily show excluded").assertDoesNotExist()
         composeTestRule.onNodeWithText("Filter media").assertDoesNotExist()
+    }
+
+    @Test
+    fun addAlbumButtonIsShownOnlyInAlbumsView() {
+        var displayMode by mutableStateOf(DisplayMode.ALBUMS)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = displayMode)
+        }
+
+        composeTestRule.onNodeWithTag("add_album_button").assertIsDisplayed()
+
+        displayMode = DisplayMode.FOLDERS
+        composeTestRule.onNodeWithTag("add_album_button").assertDoesNotExist()
+
+        displayMode = DisplayMode.TIMELINE
+        composeTestRule.onNodeWithTag("add_album_button").assertDoesNotExist()
+    }
+
+    @Test
+    fun addAlbumButtonOpensSameCreateAlbumDialogAsOverflowAction() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
+        }
+
+        composeTestRule.onNodeWithTag("add_album_button").performClick()
+        composeTestRule.onNodeWithText("Create album").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText("New album").performClick()
+        composeTestRule.onNodeWithText("Create album").assertIsDisplayed()
+    }
+
+    @Test
+    fun albumsGridLastAlbumDoesNotOverlapAddAlbumButtonAtBottom() {
+        val albums = (1L..40L).map { index ->
+            AlbumListItem(
+                id = index,
+                name = "Album $index",
+                createdAt = index,
+                cover = null,
+                isCoverFallback = false,
+                resolvedMemberCount = index.toInt(),
+                storedMemberCount = index.toInt(),
+                hiddenMemberCount = 0,
+                storedMembershipCount = index.toInt()
+            )
+        }
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = albums,
+                albumsViewType = ViewType.GRID
+            )
+        }
+
+        composeTestRule.onNodeWithTag("album_grid").performScrollToIndex(albums.lastIndex)
+
+        val lastAlbumBounds = composeTestRule
+            .onNodeWithTag("album_tile_${albums.last().id}")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val addAlbumButtonBounds = composeTestRule
+            .onNodeWithTag("add_album_button")
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        assertFalse(
+            "Expected the last album tile to remain uncovered by the add album button in grid layout",
+            boundsOverlap(lastAlbumBounds, addAlbumButtonBounds)
+        )
+    }
+
+    @Test
+    fun albumsListLastAlbumDoesNotOverlapAddAlbumButtonAtBottom() {
+        val albums = (1L..40L).map { index ->
+            AlbumListItem(
+                id = index,
+                name = "Album $index",
+                createdAt = index,
+                cover = null,
+                isCoverFallback = false,
+                resolvedMemberCount = index.toInt(),
+                storedMemberCount = index.toInt(),
+                hiddenMemberCount = 0,
+                storedMembershipCount = index.toInt()
+            )
+        }
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = albums,
+                albumsViewType = ViewType.LIST
+            )
+        }
+
+        composeTestRule.onNodeWithTag("album_list").performScrollToIndex(albums.lastIndex)
+
+        val lastAlbumBounds = composeTestRule
+            .onNodeWithTag("album_tile_${albums.last().id}")
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val addAlbumButtonBounds = composeTestRule
+            .onNodeWithTag("add_album_button")
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        assertFalse(
+            "Expected the last album row to remain uncovered by the add album button in list layout",
+            boundsOverlap(lastAlbumBounds, addAlbumButtonBounds)
+        )
     }
 
     @Test
@@ -324,6 +451,7 @@ class FolderListContentTest {
         isSelectionMode: Boolean = false,
         selectedFolders: Set<String> = emptySet(),
         folderViewType: ViewType = ViewType.GRID,
+        albumsViewType: ViewType = ViewType.GRID,
         displayMode: DisplayMode = DisplayMode.FOLDERS,
         albums: List<AlbumListItem> = emptyList(),
         favouritesAvailable: Boolean = false,
@@ -337,7 +465,8 @@ class FolderListContentTest {
                 .copy(viewType = folderViewType),
             timelinePreferences = ViewPreferences.defaultFor(PreferenceScope.TIMELINE)
                 .copy(groupBy = GroupByType.NONE),
-            albumsPreferences = ViewPreferences.defaultFor(PreferenceScope.ALBUMS),
+            albumsPreferences = ViewPreferences.defaultFor(PreferenceScope.ALBUMS)
+                .copy(viewType = albumsViewType),
             searchQuery = "",
             isSearchActive = false,
             isSelectionMode = isSelectionMode,
@@ -404,5 +533,12 @@ class FolderListContentTest {
             onEnterMediaSelectionMode = {},
             calendarContent = {}
         )
+    }
+
+    private fun boundsOverlap(first: Rect, second: Rect): Boolean {
+        return first.left < second.right &&
+            first.right > second.left &&
+            first.top < second.bottom &&
+            first.bottom > second.top
     }
 }

@@ -144,6 +144,7 @@
     <string name="album_empty">此相册中没有项目</string>
     <string name="album_hidden_items_notice">部分项目暂时不可用。文件恢复可用后，它们会重新显示在此相册中。</string>
     <string name="favourites_title">收藏</string>
+    <string name="cd_favourite_indicator">已收藏</string>
     <string name="cd_favourite">添加到收藏</string>
     <string name="cd_unfavourite">取消收藏</string>
     <string name="menu_favourite">添加到收藏</string>

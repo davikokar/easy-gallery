@@ -154,6 +154,7 @@
     <string name="album_empty">لا توجد عناصر في هذا الألبوم</string>
     <string name="album_hidden_items_notice">بعض العناصر غير متاحة مؤقتًا. ستظهر مجددًا في هذا الألبوم عندما تصبح الملفات متاحة.</string>
     <string name="favourites_title">المفضلة</string>
+    <string name="cd_favourite_indicator">مفضلة</string>
     <string name="cd_favourite">إضافة إلى المفضلة</string>
     <string name="cd_unfavourite">إزالة من المفضلة</string>
     <string name="menu_favourite">إضافة إلى المفضلة</string>

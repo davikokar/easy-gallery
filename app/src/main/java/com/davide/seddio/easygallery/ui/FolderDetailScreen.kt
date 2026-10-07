@@ -206,6 +206,7 @@ fun FolderDetailContent(
         ?.takeIf { supportsWallpaper(it.type) }
     val allSelectedAreFavourite = resolvedSelectedMedia.isNotEmpty() &&
         resolvedSelectedMedia.all { it.uri in favouriteUris }
+    val visibleFavouriteUris = if (favouritesAvailable) favouriteUris else emptySet()
 
     if (isThumbnailPickerMode) {
         BackHandler {
@@ -421,6 +422,7 @@ fun FolderDetailContent(
                         state = gridState,
                         showInfo = preferences.showInfo,
                         selectedItems = displayedSelectedItems,
+                        favouriteUris = visibleFavouriteUris,
                         onItemClick = { onSelectMedia(it) },
                         onItemLongClick = onMediaLongClick,
                         onZoomIn = { onDecreaseColumns() },
@@ -432,6 +434,7 @@ fun FolderDetailContent(
                         state = listState,
                         showInfo = preferences.showInfo,
                         selectedItems = displayedSelectedItems,
+                        favouriteUris = visibleFavouriteUris,
                         onItemClick = { onSelectMedia(it) },
                         onItemLongClick = onMediaLongClick
                     )
@@ -445,6 +448,7 @@ fun FolderDetailContent(
                     listState = listState,
                     showInfo = preferences.showInfo,
                     selectedItems = displayedSelectedItems,
+                    favouriteUris = visibleFavouriteUris,
                     onItemClick = { onSelectMedia(it) },
                     onItemLongClick = onMediaLongClick,
                     onZoomIn = { onDecreaseColumns() },
@@ -464,6 +468,7 @@ fun GroupedMediaContent(
     listState: androidx.compose.foundation.lazy.LazyListState,
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
+    favouriteUris: Set<android.net.Uri> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
     onZoomIn: () -> Unit,
@@ -512,6 +517,7 @@ fun GroupedMediaContent(
                         item = item,
                         showInfo = showInfo,
                         isSelected = selectedItems.contains(item.uri),
+                        isFavourite = favouriteUris.contains(item.uri),
                         onClick = { onItemClick(item) },
                         onLongClick = { onItemLongClick(item) }
                     )
@@ -536,6 +542,7 @@ fun GroupedMediaContent(
                         item = item,
                         showInfo = showInfo,
                         isSelected = selectedItems.contains(item.uri),
+                        isFavourite = favouriteUris.contains(item.uri),
                         onClick = { onItemClick(item) },
                         onLongClick = { onItemLongClick(item) }
                     )
@@ -582,6 +589,7 @@ fun MediaGrid(
     state: androidx.compose.foundation.lazy.grid.LazyGridState,
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
+    favouriteUris: Set<android.net.Uri> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
     onZoomIn: () -> Unit,
@@ -622,6 +630,7 @@ fun MediaGrid(
                 item = item,
                 showInfo = showInfo,
                 isSelected = selectedItems.contains(item.uri),
+                isFavourite = favouriteUris.contains(item.uri),
                 onClick = { onItemClick(item) },
                 onLongClick = { onItemLongClick(item) }
             )
@@ -635,6 +644,7 @@ fun MediaList(
     showInfo: Boolean,
     state: androidx.compose.foundation.lazy.LazyListState,
     selectedItems: Set<android.net.Uri>,
+    favouriteUris: Set<android.net.Uri> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit
 ) {
@@ -648,6 +658,7 @@ fun MediaList(
                 item = item,
                 showInfo = showInfo,
                 isSelected = selectedItems.contains(item.uri),
+                isFavourite = favouriteUris.contains(item.uri),
                 onClick = { onItemClick(item) },
                 onLongClick = { onItemLongClick(item) }
             )

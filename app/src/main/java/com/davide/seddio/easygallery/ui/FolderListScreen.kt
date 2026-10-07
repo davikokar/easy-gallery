@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PushPin
@@ -308,6 +309,12 @@ fun FolderListContent(
     var albumToRename by remember { mutableStateOf<AlbumListItem?>(null) }
     var albumToDelete by remember { mutableStateOf<AlbumListItem?>(null) }
     var albumNameDraft by remember { mutableStateOf("") }
+    val showAddAlbumButton =
+        displayMode == DisplayMode.ALBUMS &&
+            !isSelectionMode &&
+            !isMediaSelectionMode &&
+            albumForActions == null
+    val addAlbumDescription = stringResource(R.string.menu_new_album)
 
     BackHandler(enabled = albumForActions != null) {
         albumForActions = null
@@ -611,6 +618,11 @@ fun FolderListContent(
                     selectedAlbumId = albumForActions?.id,
                     gridState = gridState,
                     listState = listState,
+                    contentPadding = if (showAddAlbumButton) {
+                        PaddingValues(bottom = 88.dp)
+                    } else {
+                        PaddingValues(0.dp)
+                    },
                     onSelectAlbum = onSelectAlbum,
                     onSelectFavourites = onSelectFavourites,
                     onAlbumLongClick = { albumForActions = it },
@@ -654,6 +666,24 @@ fun FolderListContent(
                 }
                 }
             }
+
+            if (showAddAlbumButton) {
+                FloatingActionButton(
+                    onClick = { showCreateAlbumDialog = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                        .testTag("add_album_button")
+                        .semantics {
+                            contentDescription = addAlbumDescription
+                        }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null
+                    )
+                }
+            }
         }
     }
 }
@@ -668,6 +698,7 @@ private fun AlbumsViewBody(
     selectedAlbumId: Long?,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    contentPadding: PaddingValues,
     onSelectAlbum: (Long) -> Unit,
     onSelectFavourites: () -> Unit,
     onAlbumLongClick: (AlbumListItem) -> Unit,
@@ -704,6 +735,7 @@ private fun AlbumsViewBody(
         LazyVerticalGrid(
             columns = GridCells.Fixed(preferences.columns),
             state = gridState,
+            contentPadding = contentPadding,
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("album_grid")
@@ -754,6 +786,7 @@ private fun AlbumsViewBody(
     } else {
         LazyColumn(
             state = listState,
+            contentPadding = contentPadding,
             modifier = Modifier
                 .fillMaxSize()
                 .testTag("album_list")

@@ -3,8 +3,11 @@ package com.davide.seddio.easygallery.ui.components
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,6 +30,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -111,6 +115,16 @@ fun SearchTopBar(
                                 .semantics { contentDescription = switchViewDescription }
                                 .clickable { showViewMenu = true }
                         ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_title_logo),
+                                contentDescription = null,
+                                // Asset carries alpha only; the cream is the app icon's own colour.
+                                tint = Color(0xFFF7EFDD),
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .testTag("main_view_app_icon")
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = title,
                                 color = Color.White,

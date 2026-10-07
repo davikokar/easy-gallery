@@ -149,6 +149,7 @@
     <string name="album_empty">No items in this album</string>
     <string name="album_hidden_items_notice">Some items are temporarily unavailable. They will reappear in this album when the files are available again.</string>
     <string name="favourites_title">Favourites</string>
+    <string name="cd_favourite_indicator">Favourite</string>
     <string name="cd_favourite">Add to Favourites</string>
     <string name="cd_unfavourite">Remove from Favourites</string>
     <string name="menu_favourite">Add to Favourites</string>

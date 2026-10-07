@@ -144,6 +144,7 @@
     <string name="album_empty">このアルバムにはアイテムがありません</string>
     <string name="album_hidden_items_notice">一部のアイテムは一時的に利用できません。ファイルが再び利用可能になると、このアルバムに再表示されます。</string>
     <string name="favourites_title">お気に入り</string>
+    <string name="cd_favourite_indicator">お気に入り</string>
     <string name="cd_favourite">お気に入りに追加</string>
     <string name="cd_unfavourite">お気に入りを解除</string>
     <string name="menu_favourite">お気に入りに追加</string>

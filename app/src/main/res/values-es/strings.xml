@@ -146,6 +146,7 @@
     <string name="album_empty">No hay elementos en este álbum</string>
     <string name="album_hidden_items_notice">Algunos elementos no están disponibles temporalmente. Volverán a aparecer en este álbum cuando los archivos estén disponibles de nuevo.</string>
     <string name="favourites_title">Favoritos</string>
+    <string name="cd_favourite_indicator">Favorito</string>
     <string name="cd_favourite">Agregar a Favoritos</string>
     <string name="cd_unfavourite">Quitar de Favoritos</string>
     <string name="menu_favourite">Agregar a Favoritos</string>

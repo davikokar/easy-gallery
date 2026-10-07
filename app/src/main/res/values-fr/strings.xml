@@ -146,6 +146,7 @@
     <string name="album_empty">Cet album est vide</string>
     <string name="album_hidden_items_notice">Certains éléments sont temporairement indisponibles. Ils réapparaîtront dans cet album lorsque les fichiers seront de nouveau disponibles.</string>
     <string name="favourites_title">Favoris</string>
+    <string name="cd_favourite_indicator">Favori</string>
     <string name="cd_favourite">Ajouter aux favoris</string>
     <string name="cd_unfavourite">Retirer des favoris</string>
     <string name="menu_favourite">Ajouter aux favoris</string>

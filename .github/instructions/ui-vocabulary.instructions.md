@@ -136,6 +136,9 @@ Shared parts:
 - **Selection checkmark**: The check drawn on a selected item, tagged `selected_checkmark`. On a
   Media tile it sits in the top-right corner; on a Media row it is centred. These are
   deliberately different — do not align them.
+- **Favourite indicator**: The filled heart that marks a favourite Media tile or Media row in
+  Folder Detail View, tagged `favourite_indicator`. It is a read-only state indicator, not the
+  interactive **Favourite heart** action in the Full-screen viewer or selection overflow menus.
 - **Duration badge**: The running time drawn on a video's Media tile.
 - **Folder thumbnail picker**: The mode, entered from the browse overflow menu, in which tapping
   an item chooses the folder's cover. It is **draft and commit**: a tap only drafts, the top-bar
@@ -155,6 +158,9 @@ Shared parts:
 - **Album cover** (`AlbumCover`): The media thumbnail representing an Album. It is selected at
   random when the Album first gains a member and persisted; removing that member reselects it.
   Empty or fully unavailable Albums show the placeholder. There is no Album cover picker.
+- **Add album button** (tagged `add_album_button`): The circular bottom-right Albums View
+  control that opens **Create album dialog**. It is shown only in Albums View while
+  **Album selection mode** is not active, and mirrors the **New album** overflow action.
 - **Favourites** (`FavouritesAlbumGridItem`, `FavouritesAlbumListItem`): The fixed, system-backed
   collection of media marked with `MediaStore.IS_FAVORITE`. It cannot be created, renamed, or
   deleted, and is unavailable on API 28–29.

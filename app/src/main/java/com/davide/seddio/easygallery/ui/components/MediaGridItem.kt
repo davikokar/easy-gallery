@@ -34,6 +34,7 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
     item: MediaItem,
     showInfo: Boolean,
     isSelected: Boolean = false,
+    isFavourite: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {}
 ) {
@@ -73,6 +74,14 @@ fun androidx.compose.foundation.lazy.grid.LazyGridItemScope.MediaGridItem(
                         .padding(4.dp)
                         .testTag("selected_checkmark")
                         .background(Color.White, CircleShape)
+                )
+            }
+
+            if (isFavourite) {
+                FavouriteIndicator(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
                 )
             }
 

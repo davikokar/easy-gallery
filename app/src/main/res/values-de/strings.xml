@@ -146,6 +146,7 @@
     <string name="album_empty">Dieses Album ist leer</string>
     <string name="album_hidden_items_notice">Einige Elemente sind vorübergehend nicht verfügbar. Sie erscheinen wieder in diesem Album, sobald die Dateien wieder verfügbar sind.</string>
     <string name="favourites_title">Favoriten</string>
+    <string name="cd_favourite_indicator">Favorit</string>
     <string name="cd_favourite">Zu Favoriten hinzufügen</string>
     <string name="cd_unfavourite">Aus Favoriten entfernen</string>
     <string name="menu_favourite">Zu Favoriten hinzufügen</string>
