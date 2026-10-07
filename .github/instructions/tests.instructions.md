@@ -5,6 +5,10 @@ applyTo: "app/src/test/**/*.kt, app/src/androidTest/**/*.kt"
 
 # Test conventions
 
+> **Maintenance — owner: Planner. Mode: routed.**
+> If a convention or tool here is wrong or missing, say so in your report and name the section;
+> do not edit it yourself. Conventions bind every test in the repo, so they change deliberately.
+
 These rules apply only to test files. They complement the project-wide rules in
 [AGENTS.md](../../AGENTS.md).
 

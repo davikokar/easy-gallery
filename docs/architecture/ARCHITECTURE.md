@@ -106,9 +106,9 @@ plain JVM without Robolectric.
 
 ### `ui/`
 
-- **`GalleryViewModel`** (`AndroidViewModel`, ~850 lines) — the central state hub. It loads data,
-  owns selection and file operations, and exposes the derived flows. It is large; prefer a new
-  state holder or a feature ViewModel over adding to its body.
+- **`GalleryViewModel`** (`AndroidViewModel`) — the central state hub. It loads data,
+  owns selection and file operations, and exposes the derived flows. It is the largest file in the
+  app; prefer a new state holder or a feature ViewModel over adding to its body.
 - **`DisplayPreferencesState`** — one `ViewPreferences` bundle per `PreferenceScope`, plus
   per-scope search state and the global `DisplayMode`.
 - **`FolderViewPreferencesState`** — the sparse per-folder overrides, keyed by folder path.
@@ -320,9 +320,9 @@ Versions are centralised in `gradle/libs.versions.toml`; app config in `app/buil
 
 ## 11. Known debt
 
-- **`GalleryViewModel` is ~850 lines** and still growing. The established escape hatches are a new
-  state holder (`DisplayPreferencesState`, `FolderViewPreferencesState`, `MediaViewerState`) or a
-  feature ViewModel (`CreateFolderViewModel`, `BillingViewModel`).
+- **`GalleryViewModel` is around 850 lines** as of 2026-10-07, and still growing. The established
+  escape hatches are a new state holder (`DisplayPreferencesState`, `FolderViewPreferencesState`,
+  `MediaViewerState`) or a feature ViewModel (`CreateFolderViewModel`, `BillingViewModel`).
 - **View names lag the canonical ones** — see the caveat in §1.
 - **`SortType.DATE_TAKEN` does not read EXIF.** `MediaItem` has no `dateTaken`; the transformation
   maps it to `dateAdded` and the data source never queries `DATE_TAKEN`.

@@ -29,6 +29,10 @@ and no database — media comes live from `MediaStore`. Read these before you wr
    name the stale section in your report and let the Orchestrator route the edit.
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical names for views, screens,
    areas, and controls. Use them in code, tests, and your report.
+5. `docs/design/albums.md` — the albums epic, if your work touches albums, favourites, the media
+   index, or app-owned data. Check its §7 progress table first: most of it is **not implemented**,
+   so do not read it as a description of the current app. The **Planner owns it** — do not edit it.
+   If your work contradicts it or reveals it to be wrong, name the section in your report.
 
 You are a subagent and start with no memory of earlier phases. Spend the time to read.
 

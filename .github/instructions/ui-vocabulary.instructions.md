@@ -5,6 +5,13 @@ applyTo: "app/src/**/ui/**/*.kt, app/src/**/MainActivity.kt"
 
 # UI vocabulary
 
+> **Maintenance — owner: Designer. Mode: in-change.**
+> If you **add** a named screen, view, area, dialog, or control, name it here in the same change.
+> You built it, you know it, and a vocabulary file that lags the UI misleads every agent it is
+> injected into. **Renaming, removing, or resolving a collision between existing terms is the
+> Designer's** — those need the whole vocabulary in view, not one entry. Album terms live in
+> [docs/design/albums.md](../../docs/design/albums.md) until Stage 1 lands.
+
 Use these canonical names when discussing, implementing, and testing Easy Gallery's UI.
 Prefer the product-facing name in prose and include the Kotlin symbol when extra precision is
 useful. Preserve these meanings when adding new UI terms.

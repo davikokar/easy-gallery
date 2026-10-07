@@ -8,6 +8,9 @@ state is owned or how the views are composed. It is maintained by the Planner an
 same change as the work it describes; the trigger list is in
 [the architecture documentation instructions](../../.github/instructions/architecture-docs.instructions.md).
 
+In-progress epics are specified under [../design/](../design/). Those documents describe work that
+may not exist yet; ARCHITECTURE.md describes only what has actually shipped.
+
 ## Architecture Decision Records
 
 Architecture Decision Records (ADRs) live in [decisions/](decisions/) and capture choices with
@@ -32,3 +35,8 @@ for the required format and status rules.
 | [ADR-0006](decisions/0006-per-folder-display-preference-overrides.md) | Per-folder display preference overrides layered over global defaults | Active | 2026-09-25 |
 | [ADR-0007](decisions/0007-persisted-folder-thumbnail-override.md) | Persisted per-folder thumbnail override resolved against live media | Active | 2026-09-25 |
 | [ADR-0008](decisions/0008-camera-folder-default-sort-order.md) | Implicit camera-folder sort default resolved beneath explicit preferences | Active | 2026-09-26 |
+| [ADR-0009](decisions/0009-room-as-first-owned-datastore.md) | Room as the app's first owned datastore | Active | 2026-10-07 |
+| [ADR-0010](decisions/0010-album-membership-dual-key-identity.md) | Album membership identifies media by a self-healing dual key | Active | 2026-10-07 |
+| [ADR-0011](decisions/0011-favourites-backed-by-mediastore.md) | Favourites is MediaStore-backed with a version-tiered write path | Active | 2026-10-07 |
+| [ADR-0012](decisions/0012-one-album-type-rule-additions-exclusions.md) | One album type — rule, additions, and exclusions | Active | 2026-10-07 |
+| [ADR-0013](decisions/0013-albums-as-third-display-mode.md) | Albums is a third display mode, and the navigation chain stays | Active | 2026-10-07 |

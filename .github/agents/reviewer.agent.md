@@ -22,11 +22,13 @@ review against are:
 
 1. `AGENTS.md` — conventions, package layout, state ownership, preference stores, localisation,
    the definition of done, and the list of changes that require the user's approval.
-2. `docs/architecture/decisions/` — the eight active ADRs. An active decision is binding.
+2. `docs/architecture/decisions/` — the ADRs. Every one marked `Active` is binding.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview.
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names.
-5. `.github/instructions/tests.instructions.md` — test conventions.
-6. Repository memory at `/memories/repo/easy-gallery-exploration.md` — records traps this
+5. `docs/design/albums.md` — the albums epic, where the change belongs to it. Its §7 progress
+   table and exit criteria are what "this stage is done" means.
+6. `.github/instructions/tests.instructions.md` — test conventions.
+7. Repository memory at `/memories/repo/easy-gallery-exploration.md` — records traps this
    codebase has already paid for. Check whether the change re-introduces one.
 
 ## Scope
@@ -71,6 +73,10 @@ Does the code conform to this repo's documented standards?
   a new preference store, a new screen in the navigation chain — was
   `docs/architecture/ARCHITECTURE.md` updated to match? That file is required reading for every
   agent, so letting it drift is a real finding.
+- Epic progress: if the change belongs to an epic with a design document under `docs/design/`, does
+  its progress table still tell the truth? A change that satisfies the last exit criterion of a
+  stage must also mark that stage Complete and add a stage-log line. A change that claims to
+  complete a stage whose criteria are not all met is a hard violation.
 - Claims: does the report claim device-verified behaviour? There is no emulator here, so it
   cannot have been.
 

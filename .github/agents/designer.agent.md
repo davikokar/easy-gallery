@@ -29,6 +29,9 @@ schemes. Read these before designing anything:
    than covering the media, that the grid and list selection checkmarks are deliberately placed
    differently, and that dropdown leading icons must carry no tint and a null content
    description.
+5. `docs/design/albums.md` — the albums epic, if your work touches albums or favourites. Check its
+   §7 progress table first: most of it is **not implemented**. The **Planner owns it** — do not
+   edit it; report anything your design contradicts.
 
 You are a subagent and start with no memory of earlier phases. Spend the time to read.
 

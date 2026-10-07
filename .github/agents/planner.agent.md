@@ -20,11 +20,14 @@ from `MediaStore`. Read these before planning:
    localisation rules, the definition of done, and the list of things that require the user's
    approval (new or upgraded dependencies, new permissions, new architectural patterns). A plan
    that silently includes one of those is a broken plan: surface it as an open question instead.
-2. `docs/architecture/README.md` and `docs/architecture/decisions/` — the eight active ADRs.
-   They are binding.
+2. `docs/architecture/README.md` and `docs/architecture/decisions/` — the ADR index and the
+   decisions themselves. Every one marked `Active` is binding.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview.
-4. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names. Use them in plans.
-5. Repository memory at `/memories/repo/easy-gallery-exploration.md` — a long log of traps
+4. `docs/design/albums.md` — the albums epic. Mandatory if your work touches albums, favourites,
+   the media index, or anything that owns app-side data. Check its §7 progress table first: most
+   of what it describes is **not implemented**.
+5. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names. Use them in plans.
+6. Repository memory at `/memories/repo/easy-gallery-exploration.md` — a long log of traps
    already paid for. Search it for your feature area before planning; it frequently records why
    an obvious approach was already tried and rejected.
 
@@ -64,6 +67,22 @@ afterthought.
   plan can only schedule the update — never pre-write its content.
 - If your research finds the overview already inaccurate, say so in the plan even when your
   feature did not cause it.
+
+## Epic progress
+
+Where an epic has a design document under `docs/design/`, you own **the whole document**, not only
+its progress table — for the albums epic that is `docs/design/albums.md`. The rules are in
+`.github/instructions/architecture-docs.instructions.md`.
+
+- Read it before planning. It states which stage is current and what that stage's exit criteria
+  are; a plan that ignores them is planning the wrong work.
+- A plan whose work starts a stage must include moving that stage to **In progress**. A plan that
+  completes one must include checking every exit criterion and, if they all hold, moving it to
+  **Complete** and adding a line to the stage log.
+- Never mark a stage Complete on the strength of the implementation reports alone. Check the
+  criteria against the repository.
+- A decision taken, an open question answered, or a new question found all belong in the document
+  in the same change that produced them.
 
 ## Output
 
