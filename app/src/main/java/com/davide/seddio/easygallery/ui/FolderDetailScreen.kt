@@ -53,7 +53,14 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FolderDetailScreen(viewModel: GalleryViewModel) {
+fun FolderDetailScreen(
+    viewModel: GalleryViewModel,
+    favouritesAvailable: Boolean,
+    favouriteUris: Set<android.net.Uri>,
+    isFavouritePending: Boolean,
+    onToggleFavourites: (Collection<android.net.Uri>) -> Unit,
+    onAddToAlbum: (List<MediaItem>) -> Unit
+) {
     val scope = PreferenceScope.FOLDER_DETAIL
     val media by viewModel.filteredMedia.collectAsState()
     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
@@ -83,6 +90,9 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         draftThumbnailUri = folderThumbnailDraftUri,
         preselectedThumbnailUri = folderThumbnailPreselectedUri,
         selectedMediaItems = selectedMediaItems,
+        favouritesAvailable = favouritesAvailable,
+        favouriteUris = favouriteUris,
+        isFavouritePending = isFavouritePending,
         isDestinationPickerActive = isDestinationPickerActive,
         pendingOperation = pendingOperation,
         browsingPath = browsingPath,
@@ -91,6 +101,8 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         onDeleteSelectedMedia = { viewModel.deleteSelectedMedia() },
         onStartOperation = { viewModel.startOperation(it) },
         onSelectAllMedia = { viewModel.selectAllMedia() },
+        onToggleFavourites = onToggleFavourites,
+        onAddToAlbum = onAddToAlbum,
         onSetSearchQuery = { viewModel.setSearchQuery(it, scope) },
         onSetSearchActive = { viewModel.setSearchActive(it, scope) },
         onEnterThumbnailPickerMode = { viewModel.enterThumbnailPickerMode() },
@@ -140,6 +152,9 @@ fun FolderDetailContent(
     draftThumbnailUri: android.net.Uri?,
     preselectedThumbnailUri: android.net.Uri?,
     selectedMediaItems: Set<android.net.Uri>,
+    favouritesAvailable: Boolean,
+    favouriteUris: Set<android.net.Uri>,
+    isFavouritePending: Boolean,
     isDestinationPickerActive: Boolean,
     pendingOperation: OperationType?,
     browsingPath: String,
@@ -148,6 +163,8 @@ fun FolderDetailContent(
     onDeleteSelectedMedia: () -> Unit,
     onStartOperation: (OperationType) -> Unit,
     onSelectAllMedia: () -> Unit,
+    onToggleFavourites: (Collection<android.net.Uri>) -> Unit,
+    onAddToAlbum: (List<MediaItem>) -> Unit,
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
     onEnterThumbnailPickerMode: () -> Unit,
@@ -187,6 +204,8 @@ fun FolderDetailContent(
     val resolvedSelectedMedia = remember(selectedMediaItems) { getSelectedMediaData() }
     val wallpaperEligibleMedia = resolvedSelectedMedia.singleOrNull()
         ?.takeIf { supportsWallpaper(it.type) }
+    val allSelectedAreFavourite = resolvedSelectedMedia.isNotEmpty() &&
+        resolvedSelectedMedia.all { it.uri in favouriteUris }
 
     if (isThumbnailPickerMode) {
         BackHandler {
@@ -230,6 +249,13 @@ fun FolderDetailContent(
                     onUseAsBackground = {
                         wallpaperEligibleMedia?.let { setImageAsWallpaper(context, it.uri) }
                     },
+                    favouritesAvailable = favouritesAvailable,
+                    allSelectedAreFavourite = allSelectedAreFavourite,
+                    isFavouritePending = isFavouritePending,
+                    onToggleFavourite = {
+                        onToggleFavourites(resolvedSelectedMedia.map { it.uri })
+                    },
+                    onAddToAlbum = { onAddToAlbum(resolvedSelectedMedia) },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
                     onSelectAll = { onSelectAllMedia() }

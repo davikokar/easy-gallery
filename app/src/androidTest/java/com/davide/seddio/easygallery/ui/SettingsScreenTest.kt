@@ -35,8 +35,8 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("Share app").assertIsDisplayed()
         composeTestRule.onNodeWithText("Rate app").assertIsDisplayed()
         composeTestRule.onNodeWithText("Privacy & Policy").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Terms").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Customer Support").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Terms").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Customer Support").performScrollTo().assertIsDisplayed()
     }
 
     @Test

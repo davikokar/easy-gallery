@@ -17,8 +17,9 @@ or Designer.
 ## Project context
 
 This is **Easy Gallery**, an Android image and video gallery app in Kotlin with Jetpack Compose,
-Material 3, MVVM, and Coroutines/Flow, with no DI framework and no database. The standards you
-review against are:
+Material 3, MVVM, and Coroutines/Flow, with no DI framework. Media is a live `MediaStore` query the
+app never copies; the only data it owns is a small Room database of albums (ADR-0009), alongside
+five `SharedPreferences` files. The standards you review against are:
 
 1. `AGENTS.md` — conventions, package layout, state ownership, preference stores, localisation,
    the definition of done, and the list of changes that require the user's approval.
@@ -57,6 +58,11 @@ Does the code conform to this repo's documented standards?
   `*Content` composable left stateless and driven by plain values and callbacks?
 - Preference stores: does a new store have both a `SharedPreferences*` and an `InMemory*`
   implementation, and its own prefs file rather than keys squeezed into an existing one?
+- The database: does album data go through the `AlbumStore` interface — production and `InMemory*`,
+  the same shape as the preference stores — rather than a DAO reached directly? Does a schema
+  change carry a version bump, a committed JSON under `app/schemas/`, and a migration? This is the
+  one class of mistake here the user cannot recover from: it loses or corrupts their data rather
+  than failing a build.
 - Testability: is pure logic in an Android-free file? An `android.*` call on a unit-tested path
   throws "not mocked" because the module does not set `isReturnDefaultValues`.
 - Localisation: is every new user-facing string in all 10 locales, with the right CLDR plural
@@ -77,8 +83,10 @@ Does the code conform to this repo's documented standards?
   its progress table still tell the truth? A change that satisfies the last exit criterion of a
   stage must also mark that stage Complete and add a stage-log line. A change that claims to
   complete a stage whose criteria are not all met is a hard violation.
-- Claims: does the report claim device-verified behaviour? There is no emulator here, so it
-  cannot have been.
+- Claims: does the report claim device-verified behaviour, and does it say how? A device may or
+  may not have been attached, so the claim is only as good as the run behind it. A report that
+  says `connectedDebugAndroidTest` passed is fine; one that asserts behaviour on hardware without
+  naming the run it came from is not.
 
 Alongside the documented standards, flag these as judgement calls, never hard violations
 (a documented repo standard always overrides them):

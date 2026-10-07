@@ -13,8 +13,9 @@ You create plans and maintain ADRs. You do not write implementation code.
 ## Project context
 
 This is **Easy Gallery**, an Android image and video gallery app in Kotlin with Jetpack Compose,
-Material 3, MVVM, and Coroutines/Flow. It has no DI framework and no database — media comes live
-from `MediaStore`. Read these before planning:
+Material 3, MVVM, and Coroutines/Flow. It has no DI framework. Media comes live from `MediaStore`
+and is never copied; the only data the app owns is a small Room database of albums (ADR-0009),
+alongside five `SharedPreferences` files. Read these before planning:
 
 1. `AGENTS.md` — tech stack, package layout, state-ownership rules, preference stores,
    localisation rules, the definition of done, and the list of things that require the user's
@@ -111,5 +112,7 @@ integrated change, in its own final phase.
 - Note uncertainties—don't hide them
 - Match existing codebase patterns
 - Anything `AGENTS.md` says to ask about belongs in Open questions, not in a step
-- Behaviour that can only be confirmed on a device cannot be planned as verified. There is no
-  emulator here; say so rather than planning a check that cannot run.
+- Behaviour that can only be confirmed on a device must be planned as a run on a device, not
+  assumed. A device may or may not be attached here; `adb devices` settles it, and
+  `connectedDebugAndroidTest` does work when one is. If none is attached, say that the check
+  falls back to compile-verification rather than planning a claim that cannot be supported.

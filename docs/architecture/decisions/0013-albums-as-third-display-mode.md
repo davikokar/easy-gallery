@@ -24,6 +24,10 @@ of Folder Detail View and is a genuine new branch.
 
 So Stage 1 adds **one** branch, not two.
 
+> **Amended 2026-10-07 — see Amendment 1 below.** Stage 1 added **two** branches and the chain is
+> now seven, because Favourites has no album id to select by and needed a branch of its own. The
+> decision this reasoning supports is unaffected; only the count was wrong.
+
 There is also a specific hazard in adopting Navigation Compose here. It performs its own saveable
 state scoping per destination, which overlaps with the `rememberSaveableStateHolder` that ADR-0002
 depends on — and ADR-0002's constraint is subtle: `FullImageScreen` must be rendered *outside* the
@@ -114,6 +118,7 @@ remains the upgrade.
 ### Positive
 
 - Stage 1 adds one branch to the chain, and the chain is still legible at six.
+  (**Amended 2026-10-07:** two branches, and seven. See Amendment 1.)
 - Albums inherits search, sort, grouping, filtering, selection, and the saveable scroll state
   without new code.
 - ADR-0002's viewer placement is untouched, so its regression stays fixed.
@@ -156,3 +161,49 @@ remains the upgrade.
 - `app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt` — the branch chain
 - `docs/architecture/ARCHITECTURE.md` §1 and §4 — the main views and the chain, both of which this
   changes
+
+## Amendment 1 — 2026-10-07 — Stage 1 added two branches, not one; the chain is seven
+
+This amendment corrects **one arithmetic claim** in Context and in Consequences → Positive. The
+decision is unchanged and continues to govern: Albums View is a third `DisplayMode` on
+`FolderListScreen`, Album Detail View is a branch in `MainActivity`'s `if / else if` chain, and no
+navigation library is adopted for Stage 1. Only the count moved.
+
+It is recorded as an amendment rather than a superseding ADR, following ADR-0005 Amendment 1,
+ADR-0007 Amendments 1 and 2, ADR-0010 Amendment 1, and ADR-0011 Amendment 1. The original
+sentences are left intact.
+
+**What this record predicted.** "So Stage 1 adds **one** branch, not two," and "the chain is still
+legible at six."
+
+**What landed.** Two branches, and a chain of seven:
+
+```
+isManageExcludedMode     → ManageExcludedScreen
+isSettingsMode           → SettingsScreen
+selectedFolder != null   → FolderDetailScreen
+selectedAlbumId != null  → AlbumDetailScreen
+isFavouritesSelected     → AlbumDetailScreen        (isFavouritesAlbum = true)
+hasPermission            → FolderListScreen
+else                     → PermissionDeniedScreen
+```
+
+**Why.** The record assumed Favourites and an Album would reach Album Detail View through the same
+branch. They cannot, because the selector differs in kind. An Album is selected by its database
+id, and `AlbumsViewModel.selectedAlbumId` holds it. Favourites has no row in the album database at
+all — it is a `MediaStore` column (ADR-0011) — so there is nothing to put in that field, and the
+selection is a `rememberSaveable` boolean in `MainActivity` instead. One `Long?` cannot carry both
+without a sentinel value, and a magic id for a record that does not exist is worse than a branch.
+The two branches render the same screen with `isFavouritesAlbum` differing, and the
+`SaveableStateProvider` keys differ for the same reason: `album_detail:$albumId` against the
+literal `album_detail:favourites`.
+
+**What this does not change.** Six was offered as evidence that the chain stays legible without a
+navigation library. Seven does not overturn that — the branches are flat, mutually exclusive, and
+read top to bottom — but it does spend the headroom faster than this record assumed. The judgement
+that Stage 3 is the moment to revisit the chain stands, and is now slightly more urgent, not less.
+
+The sibling claim in Consequences → Negative that `GalleryViewModel` "is already ~850 lines" is
+left as written, as a record of what was true when the decision was taken. Do not read a line
+count out of an ADR; `docs/architecture/ARCHITECTURE.md` §11 carries the current state of that
+debt without restating a number.

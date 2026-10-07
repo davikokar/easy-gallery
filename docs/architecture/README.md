@@ -2,8 +2,9 @@
 
 This directory holds the architectural documentation for Easy Gallery.
 
-[ARCHITECTURE.md](ARCHITECTURE.md) describes the current system: the three main views, the MVVM
-data flow, the layer responsibilities, and the project structure. Read it before changing how
+[ARCHITECTURE.md](ARCHITECTURE.md) describes the current system: the five main views carried by
+three screens, the MVVM data flow, the layer responsibilities, and the project structure. Read it
+before changing how
 state is owned or how the views are composed. It is maintained by the Planner and updated in the
 same change as the work it describes; the trigger list is in
 [the architecture documentation instructions](../../.github/instructions/architecture-docs.instructions.md).
@@ -40,3 +41,5 @@ for the required format and status rules.
 | [ADR-0011](decisions/0011-favourites-backed-by-mediastore.md) | Favourites is MediaStore-backed with a version-tiered write path | Active | 2026-10-07 |
 | [ADR-0012](decisions/0012-one-album-type-rule-additions-exclusions.md) | One album type — rule, additions, and exclusions | Active | 2026-10-07 |
 | [ADR-0013](decisions/0013-albums-as-third-display-mode.md) | Albums is a third display mode, and the navigation chain stays | Active | 2026-10-07 |
+| [ADR-0014](decisions/0014-album-database-included-in-auto-backup.md) | The album database is included in Android auto-backup | Active | 2026-10-07 |
+| [ADR-0015](decisions/0015-album-cover-persisted-random-member.md) | An album's cover is a persisted member, chosen at random once | Active | 2026-10-07 |

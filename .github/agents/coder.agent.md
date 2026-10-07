@@ -11,8 +11,10 @@ ALWAYS use #context7 MCP Server to read relevant documentation. Do this every ti
 ## Project context
 
 This is **Easy Gallery**, an Android image and video gallery app written in Kotlin with Jetpack
-Compose, Material 3, MVVM, Coroutines/Flow, Coil 3, and Media3 ExoPlayer. It has no DI framework
-and no database — media comes live from `MediaStore`. Read these before you write anything:
+Compose, Material 3, MVVM, Coroutines/Flow, Coil 3, and Media3 ExoPlayer. It has no DI framework.
+Media comes live from `MediaStore` and is never copied; the only data the app owns is a small Room
+database of albums (ADR-0009), alongside five `SharedPreferences` files. Read these before you
+write anything:
 
 1. `AGENTS.md` — tech stack, package layout, state-ownership rules, the preference stores, the
    localisation rules, the definition of done, and the list of things to ask about before doing
@@ -76,6 +78,11 @@ These coding principles are mandatory:
   reads; a `*Screen` composable reads the ViewModel and a `*Content` composable stays stateless.
 - Keep pure logic in Android-free files so it can be unit tested on a plain JVM. The module does
   not set `isReturnDefaultValues`, so an `android.*` call in testable code throws "not mocked".
+- Persistence has one shape: an interface, a production implementation, and an `InMemory*` one for
+  tests. Albums go through `AlbumStore`, never a DAO reached directly, and the database singleton
+  lives on `EasyGalleryApp` — never construct a second. A schema change needs a version bump, a
+  committed JSON under `app/schemas/`, and a migration; getting one wrong corrupts a user's data
+  instead of failing the build.
 - Every new user-facing string lands in all 10 locales in the same change as its `R.string`
   reference.
 
@@ -90,12 +97,14 @@ These coding principles are mandatory:
 
 ## Definition of done
 
-Taken from `AGENTS.md`. A task is not complete until all four hold:
+Taken from `AGENTS.md`. A task is not complete until all five hold:
 
 1. Code compiles: `./gradlew compileDebugKotlin`
 2. Unit tests compile and pass: `./gradlew compileDebugUnitTestKotlin testDebugUnitTest`
 3. Instrumented tests compile: `./gradlew compileDebugAndroidTestKotlin`
-4. New logic has at least one test.
+4. Instrumented tests run if a device is attached — `adb devices`, then
+   `./gradlew connectedDebugAndroidTest`. If no device is listed, step 3 is the fallback.
+5. New logic has at least one test.
 
 ### Running Gradle
 
@@ -109,8 +118,10 @@ Taken from `AGENTS.md`. A task is not complete until all four hold:
   is no `local.properties` in the repo. A `cd` left over from an earlier command makes
   `./gradlew` fail with "No such file or directory", which a grep-filtered pipeline reports as a
   clean build. Treat totally empty Gradle output as suspicious, not as success.
-- There is no emulator or device on this machine. Instrumented tests can only be
-  compile-verified. Never claim device-verified behaviour.
+- A device may or may not be attached to this machine; `adb devices` settles it in one command.
+  With a device, `connectedDebugAndroidTest` runs and instrumented behaviour can be verified for
+  real. Without one, compile-verification is the fallback. Report which of the two you did, and
+  claim device-verified behaviour only for what you ran and observed.
 
 ## Reporting
 

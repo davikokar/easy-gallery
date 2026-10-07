@@ -25,7 +25,7 @@ class DisplayPreferencesState(
     private val store: DisplayPreferencesStore = InMemoryDisplayPreferencesStore()
 ) {
 
-    private val _displayMode = MutableStateFlow(DisplayMode.GALLERY)
+    private val _displayMode = MutableStateFlow(DisplayMode.FOLDERS)
     val displayMode: StateFlow<DisplayMode> = _displayMode.asStateFlow()
 
     private val preferenceFlows: Map<PreferenceScope, MutableStateFlow<ViewPreferences>> =
@@ -71,9 +71,8 @@ class DisplayPreferencesState(
 
     fun toggleInfo(scope: PreferenceScope) = update(scope) { it.copy(showInfo = !it.showInfo) }
 
-    fun toggleDisplayMode() {
-        _displayMode.value =
-            if (_displayMode.value == DisplayMode.GALLERY) DisplayMode.CALENDAR else DisplayMode.GALLERY
+    fun setDisplayMode(mode: DisplayMode) {
+        _displayMode.value = mode
     }
 
     fun setSortType(sortType: SortType, scope: PreferenceScope) = update(scope) {

@@ -94,7 +94,6 @@
     <string name="menu_select_all">全选</string>
     <string name="search_placeholder">搜索…</string>
     <string name="cd_cancel_search">取消搜索</string>
-    <string name="cd_toggle_display_mode">切换显示模式</string>
     <string name="cd_search">搜索</string>
     <string name="menu_show_excluded">暂时显示排除项</string>
     <string name="menu_create_folder">创建新文件夹</string>
@@ -124,4 +123,32 @@
     <string name="settings_legal">法律</string>
     <string name="settings_about">关于</string>
     <string name="about_version">版本 %1$s</string>
+    <string name="folders_title">文件夹</string>
+    <string name="albums_title">相册</string>
+    <string name="cd_switch_view">切换视图</string>
+    <string name="albums_empty">暂无相册</string>
+    <string name="menu_new_album">新建相册</string>
+    <plurals name="album_item_count">
+        <item quantity="other">%1$d 个项目</item>
+    </plurals>
+    <string name="album_create_title">创建相册</string>
+    <string name="album_name_hint">相册名称</string>
+    <string name="album_rename_title">重命名相册</string>
+    <string name="album_delete_title">删除相册</string>
+    <string name="album_delete_message">要删除此相册吗？不会删除任何照片或视频。</string>
+    <string name="album_name_duplicate">已存在同名相册</string>
+    <string name="album_name_blank">相册名称不能为空</string>
+    <string name="menu_add_to_album">添加到相册</string>
+    <string name="menu_remove_from_album">从此相册中移除</string>
+    <string name="album_add_to_title">添加到相册</string>
+    <string name="album_empty">此相册中没有项目</string>
+    <string name="album_hidden_items_notice">部分项目暂时不可用。文件恢复可用后，它们会重新显示在此相册中。</string>
+    <string name="favourites_title">收藏</string>
+    <string name="cd_favourite">添加到收藏</string>
+    <string name="cd_unfavourite">取消收藏</string>
+    <string name="menu_favourite">添加到收藏</string>
+    <string name="manage_media_rationale_title">无需确认即可管理媒体？</string>
+    <string name="manage_media_rationale_message">Android 通常会要求您确认每项更改。允许 Easy Gallery 管理媒体可避免这些提示。即使不授予此权限，所有功能仍可正常使用。</string>
+    <string name="manage_media_not_now">暂不</string>
+    <string name="manage_media_open_settings">打开设置</string>
 </resources>

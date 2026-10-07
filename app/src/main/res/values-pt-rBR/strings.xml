@@ -95,7 +95,6 @@
     <string name="menu_select_all">Selecionar tudo</string>
     <string name="search_placeholder">Pesquisar…</string>
     <string name="cd_cancel_search">Cancelar pesquisa</string>
-    <string name="cd_toggle_display_mode">Alternar modo de exibição</string>
     <string name="cd_search">Pesquisar</string>
     <string name="menu_show_excluded">Mostrar excluídos temporariamente</string>
     <string name="menu_create_folder">Criar nova pasta</string>
@@ -125,4 +124,33 @@
     <string name="settings_legal">Jurídico</string>
     <string name="settings_about">Sobre</string>
     <string name="about_version">Versão %1$s</string>
+    <string name="folders_title">Pastas</string>
+    <string name="albums_title">Álbuns</string>
+    <string name="cd_switch_view">Mudar visualização</string>
+    <string name="albums_empty">Nenhum álbum ainda</string>
+    <string name="menu_new_album">Novo álbum</string>
+    <plurals name="album_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d itens</item>
+    </plurals>
+    <string name="album_create_title">Criar álbum</string>
+    <string name="album_name_hint">Nome do álbum</string>
+    <string name="album_rename_title">Renomear álbum</string>
+    <string name="album_delete_title">Excluir álbum</string>
+    <string name="album_delete_message">Excluir este álbum? As fotos e os vídeos não serão excluídos.</string>
+    <string name="album_name_duplicate">Já existe um álbum com esse nome</string>
+    <string name="album_name_blank">O nome do álbum não pode ficar em branco</string>
+    <string name="menu_add_to_album">Adicionar a um álbum</string>
+    <string name="menu_remove_from_album">Remover deste álbum</string>
+    <string name="album_add_to_title">Adicionar a um álbum</string>
+    <string name="album_empty">Este álbum está vazio</string>
+    <string name="album_hidden_items_notice">Alguns itens estão temporariamente indisponíveis. Eles reaparecerão neste álbum quando os arquivos estiverem disponíveis novamente.</string>
+    <string name="favourites_title">Favoritos</string>
+    <string name="cd_favourite">Adicionar aos favoritos</string>
+    <string name="cd_unfavourite">Remover dos favoritos</string>
+    <string name="menu_favourite">Adicionar aos favoritos</string>
+    <string name="manage_media_rationale_title">Gerenciar mídia sem confirmações?</string>
+    <string name="manage_media_rationale_message">O Android normalmente pede confirmação para cada alteração. Permita que o Easy Gallery gerencie mídia para evitar esses avisos. Todos os recursos continuam disponíveis sem essa permissão.</string>
+    <string name="manage_media_not_now">Agora não</string>
+    <string name="manage_media_open_settings">Abrir configurações</string>
 </resources>

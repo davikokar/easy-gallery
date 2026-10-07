@@ -1,18 +1,23 @@
 package com.davide.seddio.easygallery.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewColumn
@@ -23,6 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.DisplayMode
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
@@ -36,7 +45,7 @@ fun SearchTopBar(
     displayMode: DisplayMode? = null,
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
-    onToggleDisplayMode: (() -> Unit)? = null,
+    onDisplayModeChange: ((DisplayMode) -> Unit)? = null,
     onSortClick: (() -> Unit)? = null,
     onColumnCountClick: (() -> Unit)? = null,
     onGroupByClick: (() -> Unit)? = null,
@@ -45,11 +54,13 @@ fun SearchTopBar(
     onFilterMediaClick: (() -> Unit)? = null,
     onShowExcludedClick: (() -> Unit)? = null,
     onCreateFolderClick: (() -> Unit)? = null,
+    onCreateAlbumClick: (() -> Unit)? = null,
     onSettingsClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showViewMenu by remember { mutableStateOf(false) }
 
     if (isSearchActive) {
         TopAppBar(
@@ -89,18 +100,72 @@ fun SearchTopBar(
         )
     } else {
         TopAppBar(
-            title = { Text(title, color = Color.White) },
+            title = {
+                if (displayMode != null && onDisplayModeChange != null) {
+                    val switchViewDescription = stringResource(R.string.cd_switch_view)
+                    Box {
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            modifier = Modifier
+                                .heightIn(min = 48.dp)
+                                .semantics { contentDescription = switchViewDescription }
+                                .clickable { showViewMenu = true }
+                        ) {
+                            Text(
+                                text = title,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showViewMenu,
+                            onDismissRequest = { showViewMenu = false }
+                        ) {
+                            DisplayMode.entries.forEach { mode ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            when (mode) {
+                                                DisplayMode.FOLDERS -> stringResource(R.string.folders_title)
+                                                DisplayMode.TIMELINE -> stringResource(R.string.timeline_title)
+                                                DisplayMode.ALBUMS -> stringResource(R.string.albums_title)
+                                            }
+                                        )
+                                    },
+                                    trailingIcon = if (mode == displayMode) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    } else null,
+                                    onClick = {
+                                        showViewMenu = false
+                                        onDisplayModeChange(mode)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            },
             navigationIcon = navigationIcon ?: {},
             actions = {
-                if (onToggleDisplayMode != null && displayMode != null) {
-                    IconButton(onClick = onToggleDisplayMode) {
-                        Icon(
-                            imageVector = if (displayMode == DisplayMode.GALLERY) Icons.Default.CalendarMonth else Icons.Default.Image,
-                            contentDescription = stringResource(R.string.cd_toggle_display_mode),
-                            tint = Color.White
-                        )
-                    }
-                }
                 IconButton(onClick = { onSearchActiveChange(true) }) {
                     Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search), tint = Color.White)
                 }
@@ -157,33 +222,37 @@ fun SearchTopBar(
                                 }
                             )
                         }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.menu_show_excluded)) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Visibility,
-                                    contentDescription = null
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onShowExcludedClick?.invoke()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.filter_media_title)) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.FilterAlt,
-                                    contentDescription = null
-                                )
-                            },
-                            modifier = Modifier.testTag("filter_media_button"),
-                            onClick = {
-                                showMenu = false
-                                onFilterMediaClick?.invoke()
-                            }
-                        )
+                        if (onShowExcludedClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_show_excluded)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Visibility,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onShowExcludedClick.invoke()
+                                }
+                            )
+                        }
+                        if (onFilterMediaClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.filter_media_title)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.FilterAlt,
+                                        contentDescription = null
+                                    )
+                                },
+                                modifier = Modifier.testTag("filter_media_button"),
+                                onClick = {
+                                    showMenu = false
+                                    onFilterMediaClick.invoke()
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.change_view_type_title)) },
                             leadingIcon = {
@@ -225,6 +294,22 @@ fun SearchTopBar(
                                 onClick = {
                                     showMenu = false
                                     onCreateFolderClick()
+                                }
+                            )
+                        }
+                        if (onCreateAlbumClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_new_album)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoAlbum,
+                                        contentDescription = null
+                                    )
+                                },
+                                modifier = Modifier.testTag("create_album_button"),
+                                onClick = {
+                                    showMenu = false
+                                    onCreateAlbumClick()
                                 }
                             )
                         }

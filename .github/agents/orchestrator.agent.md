@@ -13,7 +13,9 @@ You are a project orchestrator. You break down complex requests into tasks and d
 ## Project context
 
 This is **Easy Gallery**, an Android image and video gallery app in Kotlin with Jetpack Compose,
-Material 3, MVVM, and Coroutines/Flow, with no DI framework and no database. Read `AGENTS.md`
+Material 3, MVVM, and Coroutines/Flow, with no DI framework. Media comes live from `MediaStore`
+and is never copied; the only data the app owns is a small Room database of albums (ADR-0009),
+alongside five `SharedPreferences` files. Read `AGENTS.md`
 before planning any delegation — in particular its definition of done and its list of changes
 that require the user's approval (new or upgraded third-party dependencies, new Android
 permissions, new architectural patterns). If the Planner's plan contains one of those and the
@@ -90,8 +92,9 @@ Tell every parallel implementation agent explicitly that it must **not** run Gra
 Verification is its own phase and runs **alone**, after all implementation phases are finished.
 Delegate it to Coder with this brief: run the checks from `AGENTS.md`
 (`compileDebugKotlin`, `compileDebugUnitTestKotlin`, `testDebugUnitTest`,
-`compileDebugAndroidTestKotlin`), inspect the integrated change, and report results without
-broadening the task. There is no emulator, so no phase can report device-verified behaviour.
+`compileDebugAndroidTestKotlin`, and `connectedDebugAndroidTest` if `adb devices` lists one),
+inspect the integrated change, and report results without broadening the task. A phase may report
+device-verified behaviour only when it names the connected run that produced it.
 
 ### Step 5: Document
 If the change hit any trigger in `.github/instructions/architecture-docs.instructions.md` —

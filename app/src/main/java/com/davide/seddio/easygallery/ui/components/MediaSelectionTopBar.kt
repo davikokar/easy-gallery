@@ -1,14 +1,18 @@
 package com.davide.seddio.easygallery.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FolderCopy
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -17,6 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
@@ -31,6 +38,11 @@ fun MediaSelectionTopBar(
     onInfoClick: () -> Unit,
     canUseAsBackground: Boolean,
     onUseAsBackground: () -> Unit,
+    favouritesAvailable: Boolean,
+    allSelectedAreFavourite: Boolean,
+    isFavouritePending: Boolean,
+    onToggleFavourite: () -> Unit,
+    onAddToAlbum: () -> Unit,
     onCopyTo: () -> Unit,
     onMoveTo: () -> Unit,
     onSelectAll: () -> Unit
@@ -53,6 +65,11 @@ fun MediaSelectionTopBar(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
+                    val favouriteDescription = stringResource(
+                        if (allSelectedAreFavourite) R.string.cd_unfavourite else R.string.cd_favourite
+                    )
+                    val addToAlbumDescription = stringResource(R.string.menu_add_to_album)
+
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.action_delete)) },
                         modifier = Modifier.testTag("delete_button"),
@@ -108,6 +125,52 @@ fun MediaSelectionTopBar(
                             }
                         )
                     }
+                    if (favouritesAvailable) {
+                        DropdownMenuItem(
+                            text = { Text(favouriteDescription) },
+                            modifier = Modifier.semantics {
+                                contentDescription = favouriteDescription
+                            },
+                            leadingIcon = {
+                                if (isFavouritePending) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = if (allSelectedAreFavourite) {
+                                            Icons.Default.Favorite
+                                        } else {
+                                            Icons.Default.FavoriteBorder
+                                        },
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            enabled = !isFavouritePending,
+                            onClick = {
+                                showMenu = false
+                                onToggleFavourite()
+                            }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(addToAlbumDescription) },
+                        modifier = Modifier.semantics {
+                            contentDescription = addToAlbumDescription
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.PhotoAlbum,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            onAddToAlbum()
+                        }
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.menu_copy_to)) },
                         leadingIcon = {

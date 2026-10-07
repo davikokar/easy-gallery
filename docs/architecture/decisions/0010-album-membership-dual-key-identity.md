@@ -43,6 +43,12 @@ Store **two keys** per membership row and resolve them in order, healing as a si
   projection `MediaStoreDataSource` uses, so capturing them costs no extra query columns and no
   file reads.
 
+> **Amended 2026-10-07 — see Amendment 1 below.** Wherever this section names the `MediaStore`
+> `_ID` as the primary key — the bullet above and steps 1 and 2 below — read **the full content
+> URI string** instead. `_ID` is not unique in this app, because images and videos are queried as
+> two separate collections with independent `_ID` spaces. The healing key and the three-step
+> resolve → heal → orphan behaviour are unchanged. The original text is left intact.
+
 Resolution of a membership proceeds:
 
 1. Look up by `_ID`. A hit resolves immediately. This is the overwhelmingly common path and carries
@@ -114,3 +120,93 @@ it would make a reasonable third tier if evidence later supports it.
 - ADR-0009 — the datastore these rows live in
 - `app/src/main/java/com/davide/seddio/easygallery/data/MediaStoreDataSource.kt` — the existing
   cursor projection that already supplies the healing key columns
+
+## Amendment 1 — 2026-10-07 — The stored primary key is the content URI, not the `_ID`
+
+This amendment corrects **one bullet and two steps** of the Decision: what the primary key is, and
+what healing rewrites. Everything else in the record is unchanged and continues to govern — the
+healing key and its three columns, the resolve → heal → orphan order, orphans being retained and
+never deleted, orphans being re-checked on later resolutions, the proactive re-heal pass on a
+`MediaStore.getVersion()` change, and every alternative rejected in Alternatives Considered.
+
+It is recorded as an amendment rather than a superseding ADR, following ADR-0005 Amendment 1 and
+ADR-0007 Amendments 1 and 2. The decision with lasting structural impact — a dual key, self-healing
+on miss, never deleting — has not stopped applying. What changed is which string the primary key
+is. Disabling this record and restating it in a new one would retire a decision that still governs.
+The superseded sentence in the Decision is annotated in place and left intact.
+
+### The defect
+
+The original record assumed the `MediaStore` `_ID` identifies a media item within this app. **It
+does not.** `MediaStoreDataSource.queryMedia` is invoked twice, once against
+`MediaStore.Images.Media.EXTERNAL_CONTENT_URI` and once against
+`MediaStore.Video.Media.EXTERNAL_CONTENT_URI`, and each collection has its own `_ID` space. Image
+24 and video 24 are different files that coexist on every device. A membership row holding the bare
+integer `24` cannot say which one it means.
+
+This was invisible at the model level, which is why it survived into the record: `MediaItem`
+exposes only a `Uri` and never the raw ID, so nothing in the code the ADR was written against ever
+shows the two ID spaces side by side. The collection is chosen in the data source and then
+disappears into the URI.
+
+### What changed
+
+- **The stored primary key is the full `MediaStore` content URI string** — for example
+  `content://media/external/images/media/24`. It encodes the volume, the collection and the ID, and
+  is therefore unique across the whole of what this app queries. It is also exactly what
+  `MediaItem.uri` already holds, built by `ContentUris.withAppendedId`, so the stored form is
+  canonical and needs no normalisation before comparison.
+- **Healing rewrites the stored URI**, not an ID. Step 2 is otherwise identical: healing-key hit,
+  rewrite, resolve.
+- The common path keeps the same cost. It is a string equality instead of an integer equality,
+  against a column that is indexed either way.
+
+Storing a URI string as a media reference is already the repository's practice: ADR-0007 persists
+`Folder.path -> MediaItem.uri.toString()` for folder thumbnail overrides. This amendment makes
+album membership consistent with it rather than inventing a second convention.
+
+### Resolution must never call `Uri.parse`
+
+**Resolve by comparing the stored `String` against `item.uri.toString()`, and then use the live
+`MediaItem`'s own `Uri` instance.** Never reconstruct a `Uri` from the stored string.
+
+Two independent reasons, and the first is a hard one:
+
+- `android.net.Uri.parse` is a stubbed platform method. This module does not set
+  `isReturnDefaultValues`, so calling it in ViewModel or test code throws
+  `java.lang.RuntimeException: Method parse in android.net.Uri not mocked`. Repository memory
+  records this costing a full session already, during ADR-0007 Amendment 2, which reached the same
+  rule for the same reason.
+- Reusing the live item's `Uri` instance keeps identity comparisons working. Set and map lookups
+  keyed on `Uri` match by identity against MockK-produced instances in unit tests; a freshly parsed
+  equivalent `Uri` does not.
+
+### Consequences of this amendment
+
+**Positive**
+
+- The primary key is actually unique, which is what the original record believed it was.
+- No parsing anywhere on the resolution path — the comparison is between two strings the app
+  already holds.
+- Consistent with the only existing precedent in the repository for persisting a media reference.
+
+**Negative**
+
+- A membership row is wider than it would be with a bare integer. Negligible against the three
+  healing-key columns it already carries.
+- A content URI embeds the volume name. Media on a removable volume whose name changes misses the
+  primary lookup even though the file is unchanged, and falls through to the healing key. That is
+  the designed path and it resolves correctly, but it means the card-remount case is now more
+  likely to heal than to hit directly. The user still sees nothing.
+- After a backup restore (ADR-0014) every stored URI misses at once, because the whole key space is
+  device-local. That is the case ADR-0014 exists to reason about, and healing is what makes it
+  survivable.
+
+### References added by this amendment
+
+- ADR-0007 Amendment 2 — the same `Uri.parse` prohibition, reached independently
+- ADR-0014 — backup and restore, which turns "the primary key is device-local" into a whole-library
+  heal
+- ADR-0015 — the album cover column, which stores no key of its own: it is a foreign key to the
+  membership row holding this one, and so heals when that row does
+- `/memories/repo/easy-gallery-exploration.md` — the "not mocked" trap, recorded after it was hit

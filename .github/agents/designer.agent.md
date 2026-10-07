@@ -14,7 +14,8 @@ Own the design outcome while collaborating with implementation agents. Escalate 
 
 This is **Easy Gallery**, an Android image and video gallery app built with Jetpack Compose and
 Material 3. The brand colour is `BrandBlue` (`0xFF017DDF`), pinned in both the light and dark
-schemes. Read these before designing anything:
+schemes. Media is a live `MediaStore` query the app never copies; albums are the one thing it owns,
+in a small Room database (ADR-0009). Read these before designing anything:
 
 1. `AGENTS.md` — tech stack, package layout, and the localisation rules you must design within.
 2. `.github/instructions/ui-vocabulary.instructions.md` — the canonical names for the three main
@@ -52,8 +53,9 @@ You are a subagent and start with no memory of earlier phases. Spend the time to
 - Navigation is a plain branch chain with no back stack, and switching views drops the previous
   one from composition. A design that depends on state surviving navigation has to say where that
   state lives.
-- There is no emulator on this machine, so nothing you design can be visually verified here. Flag
-  anything whose success depends on seeing it rendered.
+- Visual verification here depends on whether a device is attached — `adb devices` settles it, and
+  only an implementer running the instrumented suite can confirm it. Flag anything whose success
+  depends on seeing it rendered, so it is checked on hardware rather than assumed.
 
 ## Reporting
 

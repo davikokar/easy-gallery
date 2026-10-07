@@ -6,39 +6,50 @@ Guidance for AI agents working in this repository.
 
 **Easy Gallery** is a native Android image and video gallery app. It browses the media already
 present on the device through the Android `MediaStore`, organised by folder, and lets the user
-view, sort, group, filter, search, and manage that media. It keeps no copy of the user's media and
-has no local database. The one exception to "no network, no account" is the optional tip jar,
+view, sort, group, filter, search, and manage that media. It keeps no copy of the user's media;
+the one thing it owns is a small Room database of albums, which stores references and user intent
+rather than media. The one exception to "no network, no account" is the optional tip jar,
 which uses Google Play Billing. Prefer clear, conventional code over clever abstractions, and
 explain non-obvious decisions in short commit messages.
 
 ## Tech stack
 
-- **Language:** Kotlin 2.1.0 (Java 11 bytecode, Gradle daemon on JDK 17)
+- **Language:** Kotlin (Java 11 bytecode, Gradle daemon on JDK 17)
 - **UI:** Jetpack Compose + Material 3 (`material-icons-extended`)
 - **Architecture:** MVVM with a unidirectional data flow (UI state exposed as `StateFlow` from a
   `ViewModel`, derived state built with `combine`)
-- **Persistence:** none of its own — media comes live from `MediaStore`. `SharedPreferences` holds
-  only the language override and user preferences (see *Preference stores* below).
+- **Persistence:** media comes live from `MediaStore` and is never copied. The app owns a Room
+  database holding albums only (ADR-0009), plus five `SharedPreferences` files for the language
+  override and user preferences (see *Preference stores* below). The two sit alongside each other;
+  the preference stores were deliberately not migrated.
 - **Dependency injection:** none. Components are instantiated directly so tests can pass fakes.
 - **Image loading:** Coil 3 (`coil-compose`, `-gif`, `-video`, `-network-okhttp`)
 - **Video playback:** AndroidX Media3 ExoPlayer, pinned at **1.5.0**
+- **Database:** Room, processed by KSP. This needs `android.disallowKotlinSourceSets=false` in
+  `gradle.properties`, because the project uses AGP 9's built-in Kotlin and applies no
+  `kotlin-android` plugin. Removing that line breaks the build with an error that never mentions
+  KSP.
 - **Billing:** Google Play Billing (`billing-ktx`), used only by the tip jar in Settings
 - **Async:** Kotlin Coroutines + Flow
-- **Build:** Gradle (Kotlin DSL, `.gradle.kts`), versions centralised in `gradle/libs.versions.toml`
-- **SDK:** minSdk 28, target/compile 36
+- **Build:** Gradle (Kotlin DSL, `.gradle.kts`). **Every version lives in
+  `gradle/libs.versions.toml` and `app/build.gradle.kts` — read them rather than restating one
+  here.**
+- **SDK:** minSdk 28, targetSdk 36, compileSdk 36.1
 - **Tests:** JUnit4, MockK, Turbine, coroutines-test, and Robolectric for the `data/`
-  Android-boundary tests (unit); Compose UI test + Espresso (instrumented)
+  Android-boundary tests, plus `room-testing` with `inMemoryDatabaseBuilder` for the DAO (unit);
+  Compose UI test + Espresso (instrumented)
 
 ## Module / package layout
 
 ```
 app/
+  schemas/              # Room exported schemas, one JSON per version
   src/main/java/com/davide/seddio/easygallery/
-    EasyGalleryApp.kt   # Application: Coil ImageLoader + locale
+    EasyGalleryApp.kt   # Application: Coil ImageLoader + locale + database singleton
     MainActivity.kt     # Compose host, permissions, IntentSender launchers
     LocaleHelper.kt     # Per-app language persistence and Context wrapping
     data/               # Repository interface, MediaStore data source, models,
-                        # pure transformations, preference stores
+                        # pure transformations, preference stores, Room database
     ui/                 # ViewModels, state holders, screens
       components/       # Reusable top bars, dialogs, media items
       theme/            # Material 3 theme
@@ -47,8 +58,9 @@ app/
 ```
 
 There is no `domain/` module. Pure, Android-free logic lives in `data/`
-(`GalleryTransformations`, `MediaLocation`, `CameraFolder`) and in `ui/components/` helper files
-(`MediaDuration`, `ShareIntents`, `WallpaperIntents`) so it can be unit tested on a plain JVM.
+(`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `AlbumMembership`, `Favourites`) and
+in `ui/components/` helper files (`MediaDuration`, `ShareIntents`, `WallpaperIntents`) so it can
+be unit tested on a plain JVM.
 
 ## Documentation
 
@@ -60,11 +72,13 @@ rather than nobody's.
 |---|---|---|---|
 | [AGENTS.md](AGENTS.md) | Planner | routed | a convention, dependency, or project fact changes |
 | [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | Planner | routed | the structure it describes changes — see its trigger list |
-| [docs/architecture/decisions/](docs/architecture/decisions/) | Planner | routed | never edited; superseded by a new ADR |
+| [docs/architecture/README.md](docs/architecture/README.md) | Planner | routed | an ADR is added, or one changes status |
+| [docs/architecture/decisions/](docs/architecture/decisions/) | Planner | routed | never edited; superseded by a new ADR, or amended in place when only a detail changed |
 | [docs/design/albums.md](docs/design/albums.md) | Planner | routed | a stage changes status, a decision is taken, a question is answered |
 | [.github/instructions/ui-vocabulary.instructions.md](.github/instructions/ui-vocabulary.instructions.md) | Designer | **in-change** | you add, rename, or remove a named screen, view, area, or control |
 | [.github/instructions/tests.instructions.md](.github/instructions/tests.instructions.md) | Planner | routed | a test convention or tool changes |
 | [.github/instructions/architecture-docs.instructions.md](.github/instructions/architecture-docs.instructions.md) | Planner | routed | the documentation process itself changes |
+| [.github/prompts/docs-audit.prompt.md](.github/prompts/docs-audit.prompt.md) | Planner | routed | the audit's scope or categories change |
 | `.github/agents/*.agent.md` | Planner | routed | an agent's role, tools, or required reading changes |
 | `/memories/repo/easy-gallery-exploration.md` | anyone | append-only | you learn something that would have saved you time |
 
@@ -76,6 +90,12 @@ wrong while someone else works from it. The UI vocabulary is the only one, and o
 *additions*: naming something you just built is yours, but **renaming, removing, or resolving a
 collision between existing terms is routed to the Designer**, because those need the whole
 vocabulary in view.
+
+When a project-wide fact changes, **this table is the checklist** — walk every row. The list of
+affected documents inside the ADR or plan that prompted the change is only a snapshot of what its
+author could see; the table is maintained. `.github/agents/*.agent.md` is the row most easily
+missed, and the costliest: an agent definition is injected before the agent reads anything else,
+so a stale fact there is believed rather than discovered.
 
 ### Two rules that matter more than the table
 
@@ -105,16 +125,16 @@ the audit is for the rest.
   An ADR is written *before* the work; the overview is updated *after*, so it describes what
   actually landed.
 - For UI work or references to named screens, areas, and controls, read
-  [the UI vocabulary](.github/instructions/ui-vocabulary.instructions.md). It also covers
-  `MainActivity.kt`, which holds the navigation chain and `PermissionDeniedScreen` but sits
-  outside the instruction file's `applyTo` glob.
+  [the UI vocabulary](.github/instructions/ui-vocabulary.instructions.md). Its `applyTo` glob
+  covers `MainActivity.kt` as well as `ui/`, because that file holds the navigation chain and
+  `PermissionDeniedScreen`.
 - The albums epic is specified in [docs/design/albums.md](docs/design/albums.md). Read it before
   touching albums, favourites, the media index, or anything that owns app-side data. Its §7
   progress table is the single source of truth for which stages exist and which are done — check
   it before assuming any of the document is implemented. The **Planner maintains it**, under the
   same rules as the ADRs and the overview; everyone else reports drift rather than editing it.
-  It also holds the album vocabulary until Stage 1 lands, at which point that moves into the UI
-  vocabulary instructions.
+  The album vocabulary used to live there and moved into the UI vocabulary instructions when
+  Stage 1's screens landed.
 - For tests — unit **and** instrumented — follow
   [the test conventions](.github/instructions/tests.instructions.md).
 - Tracked files have mixed line endings and there is no `.gitattributes`. Match the file you are
@@ -131,8 +151,9 @@ the audit is for the rest.
   those that fits, not in the ViewModel body.
 - **`GalleryViewModel` is the largest file in the app by a wide margin.** Treat that as a reason
   to extract, not a licence to add. The two established escapes are a new state holder like the
-  three above, or a feature-scoped ViewModel — `CreateFolderViewModel` and `BillingViewModel` are
-  the precedent.
+  three above, or a feature-scoped ViewModel — `CreateFolderViewModel`, `BillingViewModel`,
+  `AlbumsViewModel`, and `FavouritesViewModel` are the precedent. Albums added **no album state**
+  to `GalleryViewModel`; it only reuses the viewer delegate and the selection machinery.
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -140,7 +161,8 @@ the audit is for the rest.
   screens removes the previous screen from composition, so plain `remember` in a screen does not
   survive navigation. State that must survive belongs in a ViewModel or inside the
   `SaveableStateProvider` in `MainActivity` — except the full-screen viewer, which ADR-0002
-  deliberately keeps outside it.
+  deliberately keeps outside it. ADR-0013 keeps the chain as it is: Albums View is a third
+  `DisplayMode` on `FolderListScreen`, not a fourth screen.
 - Screens are stateless where practical: the `*Screen` composable reads the ViewModel and passes
   plain values plus callbacks to a `*Content` composable, which is what the instrumented tests
   drive.
@@ -151,7 +173,7 @@ Each store owns its own `SharedPreferences` file; do not merge them.
 
 | File | Holds | Store |
 |---|---|---|
-| `app_settings` | language override | `LocaleHelper` |
+| `app_settings` | language override; the `MediaStore.getVersion()` watermark | `LocaleHelper`, `MediaStoreVersionStore` |
 | `display_preferences` | per-view `ViewPreferences` | `DisplayPreferencesStore` |
 | `folder_preferences` | pinned and excluded folder paths | `FolderPreferencesStore` |
 | `folder_display_preferences` | per-folder preference overrides | `FolderViewPreferencesStore` |
@@ -159,6 +181,25 @@ Each store owns its own `SharedPreferences` file; do not merge them.
 
 Every store is an interface with a `SharedPreferences*` production implementation and an
 `InMemory*` implementation for tests. Add both when you add a store.
+
+The album watermark shares `app_settings` deliberately, to avoid a sixth preferences file for one
+scalar. Another scalar may join it; anything structured belongs in Room.
+
+### The album database
+
+Room owns albums and nothing else — ADR-0009. It sits alongside the preference stores above,
+which were deliberately **not** migrated.
+
+- The singleton lives on `EasyGalleryApp`. Never construct a second one; Room's invalidation
+  tracking depends on there being one.
+- Access goes through the `AlbumStore` interface, with `RoomAlbumStore` for production and
+  `InMemoryAlbumStore` for tests — the same shape as the preference stores. DAO-level tests use
+  `inMemoryDatabaseBuilder`.
+- Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
+  committed.
+- Membership identity, healing, and orphan retention are ADR-0010's; read it before touching
+  `AlbumMembership.kt`. Favourites are **not** in this database — they are a `MediaStore` column
+  (ADR-0011), unavailable below API 30.
 
 ### Strings and localisation
 
@@ -178,7 +219,16 @@ Before claiming a task is complete:
 1. Code compiles: `./gradlew compileDebugKotlin`
 2. Unit tests compile and pass: `./gradlew compileDebugUnitTestKotlin testDebugUnitTest`
 3. Instrumented tests compile: `./gradlew compileDebugAndroidTestKotlin`
-4. New logic has at least one test.
+4. Instrumented tests **run, if a device is attached**. Check with `adb devices`. If one is
+   listed, `./gradlew connectedDebugAndroidTest` is part of done. If none is, step 3 stands as
+   the fallback. Either way, say in your report which of the two you did.
+5. New logic has at least one test.
+
+Step 4 is conditional on purpose. Whether a device is plugged in is a property of the machine,
+not of the change, so making the run unconditional would leave the definition of done
+unsatisfiable half the time — and a gate that cannot be met gets ignored rather than met. Step 3
+is kept unconditionally even when step 4 runs, because it is fast and it is what fails loudly
+when a `*Content` signature changes.
 
 ### Running Gradle
 
@@ -198,9 +248,12 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   empty Gradle output as suspicious, not as success.
 - `--offline` does not work (not everything is cached).
 - `lintDebug` is configured with `abortOnError = false`, so it is informational, not a gate.
-- **There is no emulator or connected device on this machine.** `connectedDebugAndroidTest`
-  cannot run here; instrumented tests can only be compile-verified. Never claim device-verified
-  behaviour.
+- **A device may or may not be attached. `adb devices` settles it; do not assume either way.**
+  When one is listed, `connectedDebugAndroidTest` runs here and instrumented behaviour can be
+  genuinely verified — the suite has run on hardware, so "it cannot run" is not a safe
+  assumption. When none is listed, `compileDebugAndroidTestKotlin` is the fallback, not the
+  ceiling. Claim device-verified behaviour only for what you actually ran and observed, and say
+  which of the two you did.
 
 ## What to ask before doing
 

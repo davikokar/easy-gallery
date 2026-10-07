@@ -99,7 +99,6 @@
     <string name="menu_select_all">اختيار الكل</string>
     <string name="search_placeholder">بحث…</string>
     <string name="cd_cancel_search">إلغاء البحث</string>
-    <string name="cd_toggle_display_mode">تبديل وضع العرض</string>
     <string name="cd_search">بحث</string>
     <string name="menu_show_excluded">إظهار المجلدات المستبعدة مؤقتًا</string>
     <string name="menu_create_folder">إنشاء مجلد جديد</string>
@@ -129,4 +128,37 @@
     <string name="settings_legal">قانوني</string>
     <string name="settings_about">حول</string>
     <string name="about_version">الإصدار %1$s</string>
+    <string name="folders_title">المجلدات</string>
+    <string name="albums_title">الألبومات</string>
+    <string name="cd_switch_view">تبديل العرض</string>
+    <string name="albums_empty">لا توجد ألبومات بعد</string>
+    <string name="menu_new_album">ألبوم جديد</string>
+    <plurals name="album_item_count">
+        <item quantity="zero">%1$d عنصر</item>
+        <item quantity="one">%1$d عنصر</item>
+        <item quantity="two">%1$d عنصران</item>
+        <item quantity="few">%1$d عناصر</item>
+        <item quantity="many">%1$d عنصرًا</item>
+        <item quantity="other">%1$d عنصر</item>
+    </plurals>
+    <string name="album_create_title">إنشاء ألبوم</string>
+    <string name="album_name_hint">اسم الألبوم</string>
+    <string name="album_rename_title">إعادة تسمية الألبوم</string>
+    <string name="album_delete_title">حذف الألبوم</string>
+    <string name="album_delete_message">هل تريد حذف هذا الألبوم؟ لن تُحذف أي صور أو فيديوهات.</string>
+    <string name="album_name_duplicate">يوجد ألبوم بهذا الاسم بالفعل</string>
+    <string name="album_name_blank">لا يمكن أن يكون اسم الألبوم فارغًا</string>
+    <string name="menu_add_to_album">إضافة إلى ألبوم</string>
+    <string name="menu_remove_from_album">إزالة من هذا الألبوم</string>
+    <string name="album_add_to_title">إضافة إلى ألبوم</string>
+    <string name="album_empty">لا توجد عناصر في هذا الألبوم</string>
+    <string name="album_hidden_items_notice">بعض العناصر غير متاحة مؤقتًا. ستظهر مجددًا في هذا الألبوم عندما تصبح الملفات متاحة.</string>
+    <string name="favourites_title">المفضلة</string>
+    <string name="cd_favourite">إضافة إلى المفضلة</string>
+    <string name="cd_unfavourite">إزالة من المفضلة</string>
+    <string name="menu_favourite">إضافة إلى المفضلة</string>
+    <string name="manage_media_rationale_title">إدارة الوسائط بدون مطالبات؟</string>
+    <string name="manage_media_rationale_message">يطلب Android عادةً تأكيد كل تغيير. اسمح لـ Easy Gallery بإدارة الوسائط لتجنب هذه المطالبات. يمكنك استخدام جميع الميزات بدون هذا الإذن.</string>
+    <string name="manage_media_not_now">ليس الآن</string>
+    <string name="manage_media_open_settings">فتح الإعدادات</string>
 </resources>

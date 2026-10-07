@@ -157,6 +157,40 @@ class FolderDetailContentTest {
     }
 
     @Test
+    fun selectionMenuShowsFavouriteAndAddToAlbumActions() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(mockUri),
+                favouritesAvailable = true
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText("Add to Favourites").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add to album").assertIsDisplayed()
+    }
+
+    @Test
+    fun pendingFavouriteWriteDisablesSelectionAction() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(mockUri),
+                favouritesAvailable = true,
+                isFavouritePending = true
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText("Add to Favourites").assertIsNotEnabled()
+    }
+
+    @Test
     fun sortDialogShowsApplyOnlyToThisFolderCheckedByDefault() {
         composeTestRule.setContent {
             FolderDetailContentWrapper(media = listOf(fakeMedia))
@@ -167,8 +201,7 @@ class FolderDetailContentTest {
 
         composeTestRule
             .onNode(
-                isToggleable() and hasText("Apply only to this folder"),
-                useUnmergedTree = true
+                isToggleable() and hasText("Apply only to this folder")
             )
             .assertIsOn()
     }
@@ -366,6 +399,9 @@ class FolderDetailContentTest {
         isThumbnailPickerMode: Boolean = false,
         draftThumbnailUri: Uri? = null,
         preselectedThumbnailUri: Uri? = null,
+        favouritesAvailable: Boolean = false,
+        favouriteUris: Set<Uri> = emptySet(),
+        isFavouritePending: Boolean = false,
         onEnterThumbnailPickerMode: () -> Unit = {},
         onExitThumbnailPickerMode: () -> Unit = {},
         onCommitThumbnailPickerSelection: () -> Unit = {},
@@ -383,6 +419,9 @@ class FolderDetailContentTest {
             draftThumbnailUri = draftThumbnailUri,
             preselectedThumbnailUri = preselectedThumbnailUri,
             selectedMediaItems = selectedMediaItems,
+            favouritesAvailable = favouritesAvailable,
+            favouriteUris = favouriteUris,
+            isFavouritePending = isFavouritePending,
             isDestinationPickerActive = false,
             pendingOperation = null,
             browsingPath = "",
@@ -391,6 +430,8 @@ class FolderDetailContentTest {
             onDeleteSelectedMedia = {},
             onStartOperation = {},
             onSelectAllMedia = {},
+            onToggleFavourites = {},
+            onAddToAlbum = {},
             onSetSearchQuery = {},
             onSetSearchActive = {},
             onEnterThumbnailPickerMode = onEnterThumbnailPickerMode,

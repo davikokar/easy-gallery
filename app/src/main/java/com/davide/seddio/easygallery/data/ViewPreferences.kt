@@ -4,7 +4,9 @@ package com.davide.seddio.easygallery.data
 enum class PreferenceScope {
     FOLDERS,
     TIMELINE,
-    FOLDER_DETAIL
+    FOLDER_DETAIL,
+    ALBUMS,
+    ALBUM_DETAIL
 }
 
 data class ViewPreferences(
@@ -43,6 +45,26 @@ data class ViewPreferences(
                 showInfo = false
             )
             PreferenceScope.FOLDER_DETAIL -> ViewPreferences(
+                sortType = SortType.NAME,
+                sortOrder = SortOrder.ASCENDING,
+                viewType = ViewType.GRID,
+                columns = 3,
+                groupBy = GroupByType.NONE,
+                groupOrder = SortOrder.DESCENDING,
+                mediaTypes = MediaType.entries.toSet(),
+                showInfo = false
+            )
+            PreferenceScope.ALBUMS -> ViewPreferences(
+                sortType = SortType.NAME,
+                sortOrder = SortOrder.ASCENDING,
+                viewType = ViewType.GRID,
+                columns = 2,
+                groupBy = GroupByType.NONE,
+                groupOrder = SortOrder.DESCENDING,
+                mediaTypes = MediaType.entries.toSet(),
+                showInfo = false
+            )
+            PreferenceScope.ALBUM_DETAIL -> ViewPreferences(
                 sortType = SortType.NAME,
                 sortOrder = SortOrder.ASCENDING,
                 viewType = ViewType.GRID,

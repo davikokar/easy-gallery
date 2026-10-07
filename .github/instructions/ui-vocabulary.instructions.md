@@ -9,8 +9,7 @@ applyTo: "app/src/**/ui/**/*.kt, app/src/**/MainActivity.kt"
 > If you **add** a named screen, view, area, dialog, or control, name it here in the same change.
 > You built it, you know it, and a vocabulary file that lags the UI misleads every agent it is
 > injected into. **Renaming, removing, or resolving a collision between existing terms is the
-> Designer's** — those need the whole vocabulary in view, not one entry. Album terms live in
-> [docs/design/albums.md](../../docs/design/albums.md) until Stage 1 lands.
+> Designer's** — those need the whole vocabulary in view, not one entry.
 
 Use these canonical names when discussing, implementing, and testing Easy Gallery's UI.
 Prefer the product-facing name in prose and include the Kotlin symbol when extra precision is
@@ -24,23 +23,35 @@ prose; use the real symbol in code.
 
 ## Main views
 
-The app has **three main views**, carried by two screens.
+The app has **five main views**, carried by three screens.
 
-- **Folders View** (`FolderListScreen` with `DisplayMode.GALLERY`): All device folders as a grid
+- **Folders View** (`FolderListScreen` with `DisplayMode.FOLDERS`): All device folders as a grid
   or list, each with a thumbnail and item count. The view the app opens on.
   Aliases: **gallery view**, **folder list**, **buckets**
-- **Timeline View** (`FolderListScreen` with `DisplayMode.CALENDAR`, body drawn by
+- **Timeline View** (`FolderListScreen` with `DisplayMode.TIMELINE`, body drawn by
   `CalendarGrid`): Every image and video on the device, flat across folders and grouped under
   date headers. Aliases: **calendar view**, **all media**
+- **Albums View** (`FolderListScreen` with `DisplayMode.ALBUMS`): The app-owned Albums and
+  Favourites, shown as a grid or list. Aliases: **album list**, **albums grid**
 - **Folder Detail View** (`FolderDetailScreen`): The images and videos inside one folder.
   Aliases: **folder contents**, **media grid**
+- **Album Detail View** (`AlbumDetailScreen`): The images and videos referenced by one Album, or
+  the system-backed media in Favourites. Aliases: **album contents**, **favourites contents**
 
-Folders View and Timeline View are two modes of the same screen, switched by the **View toggle**
-in the top bar rather than by navigation. Folder Detail View is reached by opening a folder.
+Folders View, Timeline View, and Albums View are three modes of the same screen, chosen from the
+**View switcher** in the top bar rather than by navigation. Folder Detail View is reached by
+opening a folder; Album Detail View is reached by opening an Album or Favourites.
 
-> **Naming caveat:** `DisplayMode.GALLERY`/`CALENDAR`, `FolderListScreen`, and `CalendarGrid`
-> predate these names. A rename to `DisplayMode.FOLDERS`/`TIMELINE`, `FoldersScreen`, and
-> `TimelineGrid` is proposed but not done. Do not invent a third set of names in the meantime.
+> **Naming caveat:** `DisplayMode.FOLDERS`/`TIMELINE`/`ALBUMS` now matches the canonical names.
+> `FolderListScreen` and `CalendarGrid` still predate them: `FolderListScreen` now hosts three
+> views, not merely a folder list, and `CalendarGrid` draws Timeline View. Use the canonical names
+> in prose and the real symbols in code; do not invent a third set of names.
+
+> **Album is not Folder.** An **Album** is a virtual, app-owned collection of references; an item
+> can belong to any number of Albums, and deleting an Album never deletes its media. A **folder**
+> is a filesystem / `MediaStore` container; each item belongs to one folder, and deleting the
+> folder deletes files. Folder pinning, exclusion, display overrides, and thumbnail picking do not
+> apply to Albums.
 
 ## Other screens
 
@@ -54,30 +65,34 @@ in the top bar rather than by navigation. Folder Detail View is reached by openi
   retry action shown when media access is refused.
 
 Use **screen** only for a full destination in `MainActivity`'s branch chain. Use **view** for the
-three main views above, **dialog** for modal content, and **area** for a region within a screen.
+five main views above, **dialog** for modal content, and **area** for a region within a screen.
 
 ## Screen structure
 
-Each main view is built as a pair:
+Each detail screen and the shared three-view screen are built as a pair:
 
-- **Screen composable** (`FolderListScreen`, `FolderDetailScreen`): Reads the ViewModel and binds
-  the view's `PreferenceScope`.
-- **Content composable** (`FolderListContent`, `FolderDetailContent`): Stateless, takes plain
-  values plus callbacks. This is what the instrumented tests drive, and every parameter is passed
-  by name there, so adding or renaming one breaks those tests by design.
+- **Screen composable** (`FolderListScreen`, `FolderDetailScreen`, `AlbumDetailScreen`): Reads the
+  ViewModel and binds the view's `PreferenceScope`.
+- **Content composable** (`FolderListContent`, `FolderDetailContent`, `AlbumDetailContent`):
+  Stateless, takes plain values plus callbacks. This is what the instrumented tests drive, and
+  every parameter is passed by name there, so adding or renaming one breaks those tests by design.
 
 ## Top bars
 
 A view shows exactly one top bar at a time. The order it resolves in is given per view.
 
 - **Browse top bar** (`SearchTopBar`): The default top bar. Shows the title, the Search button,
-  the View toggle, and the Overflow menu; in search mode the title is replaced by the
-  **Search field**. Used by all three main views.
+  the View switcher where applicable, and the Overflow menu; in search mode the title is replaced
+  by the **Search field**. Used by all five main views.
 - **Folder selection top bar** (`SelectionTopBar`): Shown while folders are multi-selected in
   Folders View. Carries the selection count and the folder actions.
 - **Media selection top bar** (`MediaSelectionTopBar`): Shown while media items are
   multi-selected in Timeline View or Folder Detail View. Carries a close button, the selection
   count, and an Overflow menu holding **all** media actions.
+- **Album selection top bar** (`AlbumSelectionTopBar`): Shown after long-pressing an Album in
+  Albums View. Carries Rename and Delete; Favourites cannot enter this mode.
+- **Album media selection top bar** (`AlbumMediaSelectionTopBar`): Shown while media items are
+  multi-selected in Album Detail View. Carries album membership and media actions.
 - **Thumbnail picker top bar** (`ThumbnailPickerTopBar`): Shown while the Folder thumbnail picker
   is open in Folder Detail View. Takes precedence over both selection bars.
 
@@ -86,7 +101,8 @@ Shared parts:
 - **Overflow menu**: The three-dot menu in a top bar. Qualify it by bar when needed, such as
   **media selection overflow menu**. Every item carries a leading icon and no tint.
 - **Back button**: The top-bar control that returns to the previous destination.
-- **View toggle**: The browse top bar control that switches between Folders View and Timeline View.
+- **View switcher**: The interactive browse-top-bar title and trailing chevron that open a menu of
+  Folders View, Timeline View, and Albums View. The current view is marked with a check.
 - **Search button** / **Search field**: Open live name filtering, and the field it filters from.
   Search is per view and deliberately not persisted.
 
@@ -127,14 +143,50 @@ Shared parts:
   cancels. The current override is pre-selected for display only and is never re-committed by
   backing out (ADR-0007, Amendments 1 and 2).
 
+## Albums View
+
+- **Album** (`StoredAlbum`): A named, virtual, app-owned collection of media references. Creating,
+  renaming, or deleting one never creates, renames, moves, or deletes media files. An item may
+  belong to any number of Albums. Aliases: **collection**
+- **Album grid** and **Album list**: The two layouts of Albums View, chosen by the View type
+  setting.
+- **Album tile** (`AlbumGridItem`) and **Album row** (`AlbumListItem`): One Album in the grid or
+  list. Both are tagged `album_tile_<id>`.
+- **Album cover** (`AlbumCover`): The media thumbnail representing an Album. It is selected at
+  random when the Album first gains a member and persisted; removing that member reselects it.
+  Empty or fully unavailable Albums show the placeholder. There is no Album cover picker.
+- **Favourites** (`FavouritesAlbumGridItem`, `FavouritesAlbumListItem`): The fixed, system-backed
+  collection of media marked with `MediaStore.IS_FAVORITE`. It cannot be created, renamed, or
+  deleted, and is unavailable on API 28–29.
+
+> **Favourite is not Pinned.** **Favourite / Unfavourite** marks individual media items and
+> controls Favourites. **Pin / Unpin** only changes the ordering of folders in Folders View. Never
+> use either word for the other operation.
+
+## Album Detail View
+
+- **Favourite heart**: The filled or outlined heart that favourites or unfavourites a media item.
+  It is available in the Viewer action row and media-selection overflow menus when Favourites is
+  supported. Aliases: **heart**, **favourite button**
+- **Hidden-members notice** (tagged `album_hidden_items_notice`): The informational notice shown
+  when an Album has stored members that cannot currently be resolved against `MediaStore`, such as
+  after restore or while an SD card is absent. It means those references are retained and waiting;
+  it is never an error, proof of deletion, or data loss. A fully unresolved Album may therefore
+  appear empty while this notice is shown.
+- **Add to album** (`AddToAlbumDialog`): Add the selected media references to an existing Album, or
+  start creating a new Album. This never copies or moves files.
+- **Remove from album**: Remove selected media references from the current Album without deleting
+  the media. In Favourites, the corresponding action is **Unfavourite**, because Favourites is
+  system-backed rather than an app-owned Album.
+
 ## Full-screen viewer
 
 - **Pager**: The horizontal swipe between items in the current media list.
 - **Viewer bottom bar**: The bar below the media, holding the Info overlay, the Video controls
   when the page is a video, and the Viewer action row. It occupies real layout space rather than
   covering the media, and the whole bar collapses in immersive mode.
-- **Viewer action row**: Delete, Share, Rotate (images only), Info, and the **Viewer overflow
-  menu** (Copy to, Move to, Use as background).
+- **Viewer action row**: Delete, Share, Rotate (images only), Info, the Favourite heart when
+  supported, and the **Viewer overflow menu** (Copy to, Move to, Use as background, Add to album).
 - **Immersive mode**: The state in which the Viewer bottom bar is hidden and the media fills the
   screen. Toggled by a single tap on either a photo or a video.
 - **Info overlay**: The name, path, and GPS panel toggled by the Info button. It is transient
@@ -165,6 +217,12 @@ Shared parts:
 - **About dialog** (`AboutDialog`): The app information shown from the Settings screen.
 - **Add excluded folder dialog** (`AddExcludedFolderDialog`): Excludes a folder by browsing to it
   from the Manage excluded screen.
+- **Create album dialog** (`CreateAlbumDialog`): Names a new Album.
+- **Rename album dialog** (`RenameAlbumDialog`): Changes an Album's name, never a folder or file.
+- **Delete album dialog** (`DeleteAlbumDialog`): Confirms deleting an Album and its references;
+  the media files remain untouched.
+- **Add to album dialog** (`AddToAlbumDialog`): Chooses an Album for selected media, with an action
+  to create a new Album.
 - **Delete confirmation**: The only gate before a delete. The media one shows the item count.
 
 The five display-preference dialogs are **draft and commit**: a selection changes nothing until
@@ -193,7 +251,12 @@ OK is pressed (ADR-0006).
 ## Preference scopes
 
 - **Preference scope** (`PreferenceScope`): Which view a display preference belongs to —
-  `FOLDERS`, `TIMELINE`, or `FOLDER_DETAIL`. Each main view owns an independent set.
+  `FOLDERS`, `TIMELINE`, `FOLDER_DETAIL`, `ALBUMS`, or `ALBUM_DETAIL`. Each main view owns an
+  independent set.
+- **Albums preference scope** (`PreferenceScope.ALBUMS`): Sort, layout, and column settings for
+  Albums View only.
+- **Album Detail preference scope** (`PreferenceScope.ALBUM_DETAIL`): Sort, layout, columns,
+  grouping, filtering, and info settings for Album Detail View only.
 - **View preferences** (`ViewPreferences`): The bundle itself — sort type, sort order, view type,
   columns, group by, group order, media types, show info.
 - **Per-folder override** (`FolderViewOverrides`): A sparse set of Folder Detail preferences
@@ -209,6 +272,9 @@ These are mutually exclusive and clearing them is bidirectional. Entering one mu
 - **Browse mode**: The default. The browse top bar is showing.
 - **Folder selection mode**: Folders are multi-selected in Folders View.
 - **Media selection mode**: Media items are multi-selected in Timeline View or Folder Detail View.
+- **Album selection mode**: One Album is selected for Rename or Delete in Albums View. Favourites
+  cannot enter it.
+- **Album media selection mode**: Media items are multi-selected in Album Detail View.
 - **Thumbnail picker mode**: The folder cover is being chosen in Folder Detail View.
 - **Immersive mode**: Viewer chrome is hidden. This one is a viewer state, not a selection mode.
 
@@ -219,10 +285,15 @@ These are mutually exclusive and clearing them is bidirectional. Entering one mu
 - **Pick**: Choose a single thing that is then committed, as in the Folder thumbnail picker or
   the Destination picker.
 - **Pin** / **Unpin**: Move a folder to the top of Folders View, and undo that.
+- **Favourite** / **Unfavourite**: Add or remove a media item from the system-backed Favourites
+  collection. Never use these words for pinning folders.
+- **Add to album**: Add media references to an Album without copying or moving the files.
+- **Remove from album**: Remove media references from an Album without deleting the files.
 - **Exclude** / **Unexclude**: Hide a folder from the gallery, and bring it back.
 - **Copy to** / **Move to**: Duplicate or relocate media into a folder chosen in the Destination
   picker. A viewer-initiated move closes the viewer; a copy leaves it open.
-- **Delete**: Permanently remove media or folders, including the confirmation dialog.
+- **Delete**: Permanently remove media or folders, including the confirmation dialog. Deleting an
+  Album removes only the Album and its references, never its media.
 - **Share**: Hand media to another app.
 - **Rotate**: Turn a photo in the viewer. This is display-only and does not rewrite the file.
 - **Use as background**: Hand an image to the system wallpaper cropper (images only, never GIFs

@@ -23,6 +23,17 @@ class FolderListContentTest {
         path = "/storage/emulated/0/Pictures",
         isPinned = false
     )
+    private val fakeMediaUri = Uri.parse("content://media/external/images/media/1")
+    private val fakeMedia = MediaItem(
+        uri = fakeMediaUri,
+        name = "image.jpg",
+        dateAdded = 1000L,
+        dateModified = 1000L,
+        size = 100L,
+        type = MediaType.IMAGE,
+        bucketName = "Pictures",
+        folderPath = fakeFolder.path
+    )
 
     @Test
     fun pinnedFolderDisplaysPushPinIcon() {
@@ -201,12 +212,124 @@ class FolderListContentTest {
         composeTestRule.onNodeWithText("Apply only to this folder").assertDoesNotExist()
     }
 
+    @Test
+    fun titleSwitcherListsAllThreeViews() {
+        composeTestRule.setContent {
+            FolderListContentWrapper()
+        }
+
+        composeTestRule.onNodeWithContentDescription("Switch view").performClick()
+
+        composeTestRule.onAllNodesWithText("Folders").assertCountEquals(2)
+        composeTestRule.onNodeWithText("Timeline").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Albums").assertIsDisplayed()
+    }
+
+    @Test
+    fun albumsViewShowsFavouritesAndManualAlbums() {
+        val album = AlbumListItem(
+            id = 7L,
+            name = "Trips",
+            createdAt = 1L,
+            cover = null,
+            isCoverFallback = false,
+            resolvedMemberCount = 3,
+            storedMemberCount = 3,
+            hiddenMemberCount = 0,
+            storedMembershipCount = 3
+        )
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                favouritesAvailable = true
+            )
+        }
+
+        composeTestRule.onNodeWithTag("album_tile_favourites").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_tile_7").assertIsDisplayed()
+    }
+
+    @Test
+    fun albumsOverflowShowsNewAlbumAndHidesMediaOnlyActions() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText("New album").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Temporarily show excluded").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Filter media").assertDoesNotExist()
+    }
+
+    @Test
+    fun timelineSelectionMenuShowsFavouriteAndAddToAlbumActions() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.TIMELINE,
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(fakeMediaUri),
+                groupedAllMedia = mapOf("" to listOf(fakeMedia)),
+                favouritesAvailable = true
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText("Add to Favourites").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add to album").assertIsDisplayed()
+    }
+
+    @Test
+    fun albumsViewShowsHiddenMembersNoticeForFullyOrphanedAlbumOnly() {
+        val waitingAlbum = AlbumListItem(
+            id = 9L,
+            name = "Waiting",
+            createdAt = 1L,
+            cover = null,
+            isCoverFallback = true,
+            resolvedMemberCount = 0,
+            storedMemberCount = 5,
+            hiddenMemberCount = 5,
+            storedMembershipCount = 5
+        )
+        val emptyAlbum = AlbumListItem(
+            id = 10L,
+            name = "Empty",
+            createdAt = 2L,
+            cover = null,
+            isCoverFallback = false,
+            resolvedMemberCount = 0,
+            storedMemberCount = 0,
+            hiddenMemberCount = 0,
+            storedMembershipCount = 0
+        )
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(waitingAlbum, emptyAlbum)
+            )
+        }
+
+        composeTestRule.onAllNodesWithTag("album_hidden_items_notice", useUnmergedTree = true)
+            .assertCountEquals(1)
+    }
+
     @Composable
     private fun FolderListContentWrapper(
         uiState: GalleryUiState = GalleryUiState.Success(emptyList()),
         isSelectionMode: Boolean = false,
         selectedFolders: Set<String> = emptySet(),
-        folderViewType: ViewType = ViewType.GRID
+        folderViewType: ViewType = ViewType.GRID,
+        displayMode: DisplayMode = DisplayMode.FOLDERS,
+        albums: List<AlbumListItem> = emptyList(),
+        favouritesAvailable: Boolean = false,
+        isMediaSelectionMode: Boolean = false,
+        selectedMediaItems: Set<Uri> = emptySet(),
+        groupedAllMedia: Map<String, List<MediaItem>> = emptyMap()
     ) {
         FolderListContent(
             uiState = uiState,
@@ -214,14 +337,20 @@ class FolderListContentTest {
                 .copy(viewType = folderViewType),
             timelinePreferences = ViewPreferences.defaultFor(PreferenceScope.TIMELINE)
                 .copy(groupBy = GroupByType.NONE),
+            albumsPreferences = ViewPreferences.defaultFor(PreferenceScope.ALBUMS),
             searchQuery = "",
             isSearchActive = false,
             isSelectionMode = isSelectionMode,
-            isMediaSelectionMode = false,
-            selectedMediaItems = emptySet(),
+            isMediaSelectionMode = isMediaSelectionMode,
+            selectedMediaItems = selectedMediaItems,
             selectedFolders = selectedFolders,
-            displayMode = DisplayMode.GALLERY,
-            groupedAllMedia = emptyMap(),
+            displayMode = displayMode,
+            albums = albums,
+            favouritesAvailable = favouritesAvailable,
+            favouriteMedia = emptyList(),
+            favouriteUris = emptySet(),
+            isFavouritePending = false,
+            groupedAllMedia = groupedAllMedia,
             isDestinationPickerActive = false,
             isCreateFolderDialogOpen = false,
             createFolderError = null,
@@ -236,12 +365,15 @@ class FolderListContentTest {
             onDeleteSelectedFolders = {},
             onPinSelected = {},
             onSelectAllMedia = {},
+            onToggleFavourites = {},
+            onAddToAlbum = {},
             onSelectAllFolders = {},
             onExcludeSelected = {},
             onStartOperation = {},
             onSetSearchQuery = {},
             onSetSearchActive = {},
-            onToggleDisplayMode = {},
+            onSetDisplayMode = {},
+            onBackToFolders = {},
             onSetSort = { _, _ -> },
             onSetGroupByAndOrder = { _, _ -> },
             onSetColumnsCount = {},
@@ -250,6 +382,11 @@ class FolderListContentTest {
             onSetShowExcludedTemporarily = {},
             onSetSettingsMode = {},
             onSetCreateFolderDialogOpen = {},
+            onCreateAlbum = {},
+            onRenameAlbum = { _, _ -> },
+            onDeleteAlbum = {},
+            onSelectAlbum = {},
+            onSelectFavourites = {},
             onCreateFolder = {},
             onUpdateCreateFolderBrowsingPath = {},
             onUpdateBrowsingPath = {},
@@ -259,7 +396,9 @@ class FolderListContentTest {
             onEnterSelectionMode = {},
             onDecreaseColumns = {},
             onIncreaseColumns = {},
-            getSelectedMediaData = { emptyList() },
+            getSelectedMediaData = {
+                groupedAllMedia.values.flatten().filter { it.uri in selectedMediaItems }
+            },
             getSelectedFoldersData = { emptyList() },
             onSelectMedia = {},
             onEnterMediaSelectionMode = {},

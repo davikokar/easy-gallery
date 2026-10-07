@@ -13,7 +13,7 @@ enum class GroupByType {
 }
 
 enum class DisplayMode {
-    GALLERY, CALENDAR
+    FOLDERS, TIMELINE, ALBUMS
 }
 
 enum class OperationType {

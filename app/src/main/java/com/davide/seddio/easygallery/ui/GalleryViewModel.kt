@@ -432,6 +432,10 @@ class GalleryViewModel @JvmOverloads constructor(
         mediaViewer.setCurrent(item)
     }
 
+    fun openMedia(item: MediaItem, mediaList: List<MediaItem>) {
+        mediaViewer.open(item, mediaList)
+    }
+
     fun recordVideoPlaybackPosition(uri: android.net.Uri, positionMs: Long, playWhenReady: Boolean) {
         mediaViewer.record(uri, positionMs, playWhenReady)
     }
@@ -452,9 +456,9 @@ class GalleryViewModel @JvmOverloads constructor(
         mediaViewer.rotate()
     }
 
-    fun toggleDisplayMode() {
+    fun setDisplayMode(mode: DisplayMode) {
         _showExcludedTemporarily.value = false
-        prefs.toggleDisplayMode()
+        prefs.setDisplayMode(mode)
     }
 
     fun setShowExcludedTemporarily(show: Boolean) {
