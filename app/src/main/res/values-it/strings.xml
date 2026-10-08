@@ -145,6 +145,14 @@
     <string name="album_add_to_title">Aggiungi a un album</string>
     <string name="album_empty">Questo album è vuoto</string>
     <string name="album_hidden_items_notice">Alcuni elementi sono temporaneamente non disponibili. Riappariranno in questo album quando i file saranno di nuovo disponibili.</string>
+    <string name="album_default_name">Album %1$d</string>
+    <string name="album_type_title">Nuovo album</string>
+    <string name="album_type_manual_title">Album manuale</string>
+    <string name="album_type_manual_description">Scegli tu le foto e i video.</string>
+    <string name="album_type_automatic_title">Album automatico</string>
+    <string name="album_type_automatic_description">Si riempie da una regola, come un luogo o un intervallo di date.</string>
+    <string name="album_type_not_available">Non ancora disponibile</string>
+    <string name="new_album_select_media">Scegli le foto e i video di questo album</string>
     <string name="favourites_title">Preferiti</string>
     <string name="cd_favourite_indicator">Preferito</string>
     <string name="cd_favourite">Aggiungi ai preferiti</string>

@@ -9,6 +9,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.davide.seddio.easygallery.data.*
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
@@ -295,18 +296,48 @@ class FolderListContentTest {
     }
 
     @Test
-    fun addAlbumButtonOpensSameCreateAlbumDialogAsOverflowAction() {
+    fun addAlbumButtonOpensSameAlbumTypeDialogAsOverflowAction() {
         composeTestRule.setContent {
             FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
         }
 
         composeTestRule.onNodeWithTag("add_album_button").performClick()
-        composeTestRule.onNodeWithText("Create album").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_type_manual").assertIsDisplayed()
         composeTestRule.onNodeWithText("Cancel").performClick()
 
         composeTestRule.onNodeWithContentDescription("More options").performClick()
         composeTestRule.onNodeWithText("New album").performClick()
-        composeTestRule.onNodeWithText("Create album").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_type_manual").assertIsDisplayed()
+    }
+
+    @Test
+    fun albumTypeDialogOffersAutomaticAlbumsAsNotAvailableYet() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
+        }
+
+        composeTestRule.onNodeWithTag("add_album_button").performClick()
+
+        composeTestRule.onNodeWithTag("album_type_automatic").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Not available yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun choosingManualAlbumLeavesTheDialogAndStartsTheNewAlbumFlow() {
+        var manualStarts = 0
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                onStartManualAlbum = { manualStarts++ }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("add_album_button").performClick()
+        composeTestRule.onNodeWithTag("album_type_manual").performClick()
+
+        composeTestRule.onNodeWithTag("album_type_manual").assertDoesNotExist()
+        assertEquals(1, manualStarts)
     }
 
     @Test
@@ -457,7 +488,8 @@ class FolderListContentTest {
         favouritesAvailable: Boolean = false,
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
-        groupedAllMedia: Map<String, List<MediaItem>> = emptyMap()
+        groupedAllMedia: Map<String, List<MediaItem>> = emptyMap(),
+        onStartManualAlbum: () -> Unit = {}
     ) {
         FolderListContent(
             uiState = uiState,
@@ -511,7 +543,7 @@ class FolderListContentTest {
             onSetShowExcludedTemporarily = {},
             onSetSettingsMode = {},
             onSetCreateFolderDialogOpen = {},
-            onCreateAlbum = {},
+            onStartManualAlbum = onStartManualAlbum,
             onRenameAlbum = { _, _ -> },
             onDeleteAlbum = {},
             onSelectAlbum = {},

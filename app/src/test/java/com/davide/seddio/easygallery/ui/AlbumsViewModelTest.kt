@@ -1,7 +1,11 @@
 package com.davide.seddio.easygallery.ui
 
 import android.app.Application
+import android.content.SharedPreferences
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.net.Uri
+import android.os.LocaleList
 import app.cash.turbine.test
 import com.davide.seddio.easygallery.data.AlbumStore
 import com.davide.seddio.easygallery.data.InMemoryAlbumStore
@@ -30,6 +34,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.util.Locale
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlbumsViewModelTest {
@@ -116,6 +121,35 @@ class AlbumsViewModelTest {
     }
 
     @Test
+    fun `an album created with members holds them without a second step`() = runTest {
+        val viewModel = createViewModel()
+
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        viewModel.setAllMedia(listOf(first, second))
+
+        viewModel.createAlbum("Picked", listOf(first, second))
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.albums.value.single().resolvedMemberCount)
+    }
+
+    @Test
+    fun `a rejected name creates no album and no members`() = runTest {
+        val viewModel = createViewModel()
+
+        val item = mediaItem("content://media/external/images/media/1", "1.jpg")
+        viewModel.setAllMedia(listOf(item))
+
+        val accepted = viewModel.createAlbum("   ", listOf(item))
+        advanceUntilIdle()
+
+        assertFalse(accepted)
+        assertTrue(viewModel.albums.value.isEmpty())
+        assertEquals("Album name cannot be blank", viewModel.errorMessage.value)
+    }
+
+    @Test
     fun `cover appears on first member and rerolls when that member is removed`() = runTest {
         val store = InMemoryAlbumStore(random = kotlin.random.Random(1))
         val viewModel = createViewModel(albumStore = store)
@@ -199,11 +233,57 @@ class AlbumsViewModelTest {
         assertEquals(writesAfterFirstHeal, countingStore.writeBackCalls)
     }
 
-    private fun createViewModel(albumStore: AlbumStore = InMemoryAlbumStore()): AlbumsViewModel {
+    @Test
+    fun `suggestAlbumName uses localized format existing names and formatter wiring`() = runTest {
+        val sharedPreferences = mockk<SharedPreferences>(relaxed = true)
+        val resources = mockk<Resources>(relaxed = true)
+        val configuration = mockk<Configuration>(relaxed = true)
+        val locales = mockk<LocaleList>()
+
+        every { application.getSharedPreferences(any(), any()) } returns sharedPreferences
+        every { sharedPreferences.getString(any(), any()) } returns ""
+        every { application.resources } returns resources
+        every { resources.configuration } returns configuration
+        every { configuration.locales } returns locales
+        every { locales[0] } returns Locale.FRANCE
+        every { application.getString(com.davide.seddio.easygallery.R.string.album_default_name) } returns "Album %d"
+
+        val ordinals = mutableListOf<Int>()
+        var capturedLocale: Locale? = null
+        var capturedFormat: String? = null
+
+        val viewModel = createViewModel(
+            albumNameFormatter = { locale, format, ordinal ->
+                capturedLocale = locale
+                capturedFormat = format
+                ordinals += ordinal
+                String.format(locale, format, ordinal)
+            }
+        )
+
+        viewModel.createAlbum("Album 1")
+        viewModel.createAlbum("Album 2")
+        advanceUntilIdle()
+
+        val suggestion = viewModel.suggestAlbumName()
+
+        assertEquals("Album 3", suggestion)
+        assertEquals(Locale.FRANCE, capturedLocale)
+        assertEquals("Album %d", capturedFormat)
+        assertEquals(listOf(1, 2, 3, 3), ordinals)
+    }
+
+    private fun createViewModel(
+        albumStore: AlbumStore = InMemoryAlbumStore(),
+        albumNameFormatter: (Locale, String, Int) -> String = { locale, format, ordinal ->
+            String.format(locale, format, ordinal)
+        }
+    ): AlbumsViewModel {
         return AlbumsViewModel(
             application = application,
             albumStore = albumStore,
             nowProvider = { 1_000L },
+            albumNameFormatter = albumNameFormatter,
             mediaStoreVersionStore = InMemoryMediaStoreVersionStore(),
             mediaStoreVersionProvider = FixedMediaStoreVersionProvider("v1")
         )

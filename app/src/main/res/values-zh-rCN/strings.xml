@@ -143,6 +143,14 @@
     <string name="album_add_to_title">添加到相册</string>
     <string name="album_empty">此相册中没有项目</string>
     <string name="album_hidden_items_notice">部分项目暂时不可用。文件恢复可用后，它们会重新显示在此相册中。</string>
+    <string name="album_default_name">我的相册 %1$d</string>
+    <string name="album_type_title">新建相册</string>
+    <string name="album_type_manual_title">手动相册</string>
+    <string name="album_type_manual_description">由你自己挑选照片和视频。</string>
+    <string name="album_type_automatic_title">自动相册</string>
+    <string name="album_type_automatic_description">按规则自动收集，例如地点或日期范围。</string>
+    <string name="album_type_not_available">尚未支持</string>
+    <string name="new_album_select_media">选择要放入此相册的照片和视频</string>
     <string name="favourites_title">收藏</string>
     <string name="cd_favourite_indicator">已收藏</string>
     <string name="cd_favourite">添加到收藏</string>

@@ -143,6 +143,14 @@
     <string name="album_add_to_title">アルバムに追加</string>
     <string name="album_empty">このアルバムにはアイテムがありません</string>
     <string name="album_hidden_items_notice">一部のアイテムは一時的に利用できません。ファイルが再び利用可能になると、このアルバムに再表示されます。</string>
+    <string name="album_default_name">マイアルバム %1$d</string>
+    <string name="album_type_title">新しいアルバム</string>
+    <string name="album_type_manual_title">手動アルバム</string>
+    <string name="album_type_manual_description">写真と動画を自分で選びます。</string>
+    <string name="album_type_automatic_title">自動アルバム</string>
+    <string name="album_type_automatic_description">場所や期間などのルールに従って自動的に集まります。</string>
+    <string name="album_type_not_available">まだ利用できません</string>
+    <string name="new_album_select_media">このアルバムに入れる写真と動画を選択してください</string>
     <string name="favourites_title">お気に入り</string>
     <string name="cd_favourite_indicator">お気に入り</string>
     <string name="cd_favourite">お気に入りに追加</string>

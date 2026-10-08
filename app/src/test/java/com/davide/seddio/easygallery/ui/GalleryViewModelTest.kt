@@ -1032,6 +1032,37 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `new album folders ignore folders media type filter while filteredFolders still applies it`() = runTest {
+        val imageFolderPath = "/storage/emulated/0/Pictures/Images"
+        val videoFolderPath = "/storage/emulated/0/Movies/Videos"
+        val imageItem = createMediaItem(mockUri1, imageFolderPath).copy(type = MediaType.IMAGE)
+        val videoItem = createMediaItem(mockUri2, videoFolderPath).copy(type = MediaType.VIDEO)
+        repository.mediaItems = listOf(imageItem, videoItem)
+
+        val viewModel = createViewModel()
+        val filteredFoldersJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.filteredFolders.collect {}
+        }
+        val newAlbumFoldersJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.newAlbumFolders.collect {}
+        }
+
+        viewModel.loadFolders()
+        viewModel.setSelectedMediaTypes(setOf(MediaType.IMAGE), PreferenceScope.FOLDERS)
+
+        val foldersViewState = viewModel.filteredFolders.value as GalleryUiState.Success
+        assertTrue(foldersViewState.folders.any { it.path == imageFolderPath })
+        assertFalse(foldersViewState.folders.any { it.path == videoFolderPath })
+
+        val pickerState = viewModel.newAlbumFolders.value as GalleryUiState.Success
+        assertTrue(pickerState.folders.any { it.path == imageFolderPath })
+        assertTrue(pickerState.folders.any { it.path == videoFolderPath })
+
+        filteredFoldersJob.cancel()
+        newAlbumFoldersJob.cancel()
+    }
+
+    @Test
     fun `folder detail preferences with no selected folder use global values and current-folder commits are no-ops`() = runTest {
         val viewModel = createViewModel()
         val prefsJob = launch(UnconfinedTestDispatcher(testScheduler)) {

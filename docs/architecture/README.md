@@ -43,3 +43,4 @@ for the required format and status rules.
 | [ADR-0013](decisions/0013-albums-as-third-display-mode.md) | Albums is a third display mode, and the navigation chain stays | Active | 2026-10-07 |
 | [ADR-0014](decisions/0014-album-database-included-in-auto-backup.md) | The album database is included in Android auto-backup | Active | 2026-10-07 |
 | [ADR-0015](decisions/0015-album-cover-persisted-random-member.md) | An album's cover is a persisted member, chosen at random once | Active | 2026-10-07 |
+| [ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md) | Album creation is a typed choice followed by a dedicated screen | Active | 2026-10-08 |

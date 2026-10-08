@@ -7,6 +7,7 @@ import com.davide.seddio.easygallery.EasyGalleryApp
 import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumMembership
+import com.davide.seddio.easygallery.data.AlbumNaming
 import com.davide.seddio.easygallery.data.AlbumStore
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.MediaItem
@@ -55,6 +56,9 @@ class AlbumsViewModel @JvmOverloads constructor(
     application: Application,
     private val albumStore: AlbumStore = RoomAlbumStore((application as EasyGalleryApp).database),
     private val nowProvider: () -> Long = { System.currentTimeMillis() },
+    private val albumNameFormatter: (Locale, String, Int) -> String = { locale, format, ordinal ->
+        String.format(locale, format, ordinal)
+    },
     private val mediaStoreVersionStore: MediaStoreVersionStore =
         SharedPreferencesMediaStoreVersionStore(application),
     private val mediaStoreVersionProvider: MediaStoreVersionProvider =
@@ -178,18 +182,39 @@ class AlbumsViewModel @JvmOverloads constructor(
         _errorMessage.value = null
     }
 
-    fun createAlbum(name: String) {
+    /** The first unused "My album N", for the New album screen to open on. */
+    fun suggestAlbumName(): String {
+        val context = LocaleHelper.wrap(getApplication())
+        val format = context.getString(R.string.album_default_name)
+        val locale = context.resources.configuration.locales[0]
+        return AlbumNaming.suggestName(albums.value.map { it.name }) { ordinal ->
+            albumNameFormatter(locale, format, ordinal)
+        }
+    }
+
+    /** Returns false, and sets [errorMessage], when the name is blank or already taken. */
+    fun createAlbum(name: String, members: Collection<MediaItem> = emptyList()): Boolean {
         val sanitizedName = sanitizeName(name)
-        if (!validateAlbumName(sanitizedName, ignoreAlbumId = null)) return
+        if (!validateAlbumName(sanitizedName, ignoreAlbumId = null)) return false
 
         viewModelScope.launch {
-            albumStore.createAlbum(
+            val albumId = albumStore.createAlbum(
                 name = sanitizedName,
                 createdAt = nowProvider(),
                 rule = null
             )
+            members.distinctBy { it.uri }.forEach { item ->
+                albumStore.addMember(
+                    albumId = albumId,
+                    mediaUri = item.uri.toString(),
+                    displayName = item.name,
+                    size = item.size,
+                    dateModified = item.dateModified
+                )
+            }
             _errorMessage.value = null
         }
+        return true
     }
 
     fun renameAlbum(albumId: Long, newName: String) {

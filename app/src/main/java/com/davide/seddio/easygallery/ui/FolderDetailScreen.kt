@@ -466,6 +466,7 @@ fun GroupedMediaContent(
     columns: Int,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
     favouriteUris: Set<android.net.Uri> = emptySet(),
@@ -480,6 +481,7 @@ fun GroupedMediaContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = gridState,
+            contentPadding = contentPadding,
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp),
             modifier = Modifier
@@ -529,7 +531,8 @@ fun GroupedMediaContent(
             modifier = Modifier
                 .fillMaxSize()
                 .background(AppBackground),
-            state = listState
+            state = listState,
+            contentPadding = contentPadding
         ) {
             groupedMedia.forEach { (header, items) ->
                 if (header.isNotEmpty()) {
@@ -587,6 +590,7 @@ fun MediaGrid(
     media: List<MediaItem>,
     columns: Int,
     state: androidx.compose.foundation.lazy.grid.LazyGridState,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
     favouriteUris: Set<android.net.Uri> = emptySet(),
@@ -600,6 +604,7 @@ fun MediaGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         state = state,
+        contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier
@@ -643,6 +648,7 @@ fun MediaList(
     media: List<MediaItem>,
     showInfo: Boolean,
     state: androidx.compose.foundation.lazy.LazyListState,
+    contentPadding: PaddingValues = PaddingValues(vertical = 8.dp),
     selectedItems: Set<android.net.Uri>,
     favouriteUris: Set<android.net.Uri> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
@@ -651,7 +657,7 @@ fun MediaList(
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(AppBackground),
         state = state,
-        contentPadding = PaddingValues(vertical = 8.dp)
+        contentPadding = contentPadding
     ) {
         items(media, key = { it.uri.toString() }) { item ->
             MediaListItem(

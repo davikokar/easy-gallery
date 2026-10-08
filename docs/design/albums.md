@@ -85,6 +85,24 @@ must be stored distinctly, or every re-evaluation resurrects the photo the user 
 ### Manual album
 The user names it and picks the items. No rule, no index, no ML.
 
+Creation is a typed choice, not a name prompt: the **Album type dialog** offers Manual and
+Automatic — Automatic disabled and labelled until Stage 2 ships it — and Manual opens a screen
+that picks the members with the name pre-filled and editable above them. Nothing is written until
+Create, so cancelling leaves no empty album. [ADR-0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md).
+
+That screen picks by **browsing, not by searching**. It opens on the same folders the user
+already knows from Folders View, in the order and layout that view uses — but with neither its
+search query nor its media-type filter applied, so a folder the user has filtered out of browsing
+is still there to pick from. Opening one shows its media arranged the way that folder is
+already arranged in Folder Detail View, and that is the only level where items are chosen.
+Selection carries across folders, and a floating tick button commits the album. The reasoning,
+and what it costs for an album whose members genuinely span many folders, is in Amendment 1 of
+the same ADR; the Corrections below it record which inherited filters were removed and why.
+
+The UI therefore shows two kinds where storage has one (§3). That divergence is deliberate: "pick
+the photos" and "describe what you want" are different questions to ask a person, even though the
+answer is stored as the same row with or without a rule.
+
 ### Favourites
 One album, present from first launch, which the user cannot create, rename, or delete. Populated
 by a heart on individual items.
@@ -351,6 +369,10 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-10-07 | Stage 1 UI landed — `AlbumsViewModel`, Albums View, Album Detail View, the title-dropdown switcher, the album dialogs, and Favourite / Add to album on the media surfaces. Album vocabulary migrated into `ui-vocabulary.instructions.md`, closing decision 8. ADR-0011 amended (tier 1 also applies below API 36, via R extension 16). **Stage stayed In progress**: a fully orphaned album did not yet read as empty-and-waiting in Albums View, and two review findings were open. |
 | 2026-10-07 | **Stage 1 complete.** The Albums View orphan gap closed — `album_hidden_items_notice` now renders on the Album tile and the Album row as well as in Album Detail View — the two review findings closed, and the four gradle checks re-run green. The documentation audit was run; its result and the findings it routed elsewhere are recorded under *Documentation audit* above. |
 | 2026-10-07 | **First connected instrumented run, after Stage 1 closed.** `connectedDebugAndroidTest` executed for the first time in this repository, on a Samsung SM-G990B (Android 16, API 36): **49 tests, 49 passing** once three bad tests were fixed. All three were test defects, not product defects — a Compose matcher that could not match in the unmerged tree, an assertion that ignored a deliberate duplicate label, and an assertion on an item below the fold. The run also forced a rename of six backticked test method names in `AlbumDetailContentTest`, which R8/D8 refuses to dex. The repository-wide claim that no device could be attached here was stale and has been corrected in `AGENTS.md`, the five agent definitions, `tests.instructions.md`, and this document. |
+| 2026-10-08 | **Album creation reshaped, within Stage 1.** ADR-0016 adopted: the Add album button now opens the Album type dialog, Automatic is shown disabled until Stage 2, and Manual opens the New album screen — an eighth branch in `MainActivity`'s chain — which names the album and picks its members before writing anything. `AlbumsViewModel.createAlbum` gained an optional members argument so the album and its first members are written together, and `data/AlbumNaming.kt` supplies the pre-filled `My album N`. 230 unit tests and 67 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken, every new string is in all ten locales, and the album vocabulary additions landed in `ui-vocabulary.instructions.md` in the same change. |
+| 2026-10-08 | **New album picker reshaped again, same day.** The flat grid of every item on the device became a two-level browser: folders first, then the media inside the opened folder, with selection accumulating across folders and Create moved to a bottom-right floating tick button. The media level borrows the folder's Folder Detail sort and grouping but not its media-type filter, and the three-layer Folder Detail resolution was extracted from `GalleryViewModel` into pure shared logic in `data/FolderViewOverrides.kt` so it can resolve an arbitrary folder path. ADR-0016 amended in place rather than superseded — the decision to give manual creation a dedicated draft-and-commit screen did not change, only the picking surface inside it. 234 unit tests and 70 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
+| 2026-10-08 | **Picker remediation, closing out the reshape above.** Review found that the reshape had left the picker's *folder* level inheriting Folders View's media-type filter, which is persisted — so a user who once filtered Folders View to images would never see a video-only folder in the picker again. `GalleryViewModel` gained `newAlbumFolders`, which runs the same `filterAndSortFolders` with an empty query and every media type while keeping that view's sort, pinning, exclusion and thumbnail overrides; a unit test now holds it against `filteredFolders`. The inherited *search* query stays, on the narrower argument that it is not persisted. Five smaller findings closed with it: the Create button renders a real disabled state and no longer advertises a click action while announcing itself disabled; instrumented tests now prove a blank or duplicate name creates nothing and check the Create button against the last row at both levels in both layouts; `AlbumsViewModel` takes an injected name formatter so `suggestAlbumName()` is unit-testable; and the album-name field uses a real `label` rather than a `contentDescription`. **236 unit tests and 76 instrumented tests** pass, the latter on the SM-G990B. ADR-0016 Amendment 1 carries the corrections, including that the reason it had recorded for accepting the folder filter did not hold. Stage 1 stays Complete: no exit criterion was broken. |
+| 2026-10-08 | **The New album screen's Create button made to float.** It had not been floating: the screen reserved an empty strip along the bottom of its body so the **Create album action** could never overlap anything, leaving a dead band of background above the button at every scroll position — including the top, where nothing needed clearing. The clearance moved into the lazy containers' `contentPadding`, which is the mechanism Albums View's **Add album button** already used; `FolderGrid`, `FolderList`, `MediaGrid`, `MediaList` and `GroupedMediaContent` each gained an optional `contentPadding` whose default reproduces their previous behaviour exactly, so no other call site changed. ADR-0016 and its Amendment 1 needed nothing: neither ever described the strip, and the decision they record is untouched. The bounds-comparing instrumented tests added by the remediation above had passed throughout, because they prove the last row can be scrolled clear of the button, not that the button floats — so the convention behind both controls was written into `ui-vocabulary.instructions.md`, where both are defined, rather than left to be rediscovered a third time. 236 unit tests and 76 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
 
 ### Who updates this
 
@@ -375,6 +397,7 @@ that record to its end too.
 | [0013](../architecture/decisions/0013-albums-as-third-display-mode.md) | Albums as a third display mode; the navigation chain stays |
 | [0014](../architecture/decisions/0014-album-database-included-in-auto-backup.md) | That the album database is backed up, and why a restore is survivable |
 | [0015](../architecture/decisions/0015-album-cover-persisted-random-member.md) | That an album has a persisted cover, picked at random once |
+| [0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md) | That creating an album starts with choosing its kind, and manual creation gets its own screen |
 
 ---
 
@@ -441,6 +464,16 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     This deliberately diverges from ADR-0007's automatic-with-override folder thumbnails, for the
     reason set out in ADR-0015.
 
+12. **Creating an album asks what kind first, and manual creation gets a screen** (ADR-0016). The
+    name is the wrong first question — the contents are the point, so the name is pre-filled with
+    the first unused `My album N` and edited in place above the picker. The type dialog exists as
+    much for Stages 2–4 as for today: it shows Automatic albums, disabled and labelled, so that
+    when they arrive they fill a slot the user has already seen rather than appearing from
+    nowhere. The accepted costs are a disabled control shipping in the UI, an eighth branch in a
+    navigation chain ADR-0013 deliberately kept, and two creation paths — the type dialog from
+    Albums View, and the existing name dialog from **Add to album**, where the media is already
+    chosen and a picker would be a step backwards.
+
 ---
 
 ## 9. Consequences for the existing app
@@ -452,9 +485,10 @@ Things this epic breaks or strains, which should surprise nobody when they come 
   definitions were corrected afterwards — see *Documentation audit* in §7, where the finding is
   recorded and closed.
 - **Navigation.** `MainActivity`'s `if / else if` chain has no back stack, and albums added two
-  destinations to it. Decided in Stage 1: the chain stays, by
-  [ADR-0013](../architecture/decisions/0013-albums-as-third-display-mode.md). Stage 3 inherits
-  that decision rather than reopening it.
+  destinations to it, then a third when ADR-0016 reshaped creation. Decided in Stage 1: the chain
+  stays, by [ADR-0013](../architecture/decisions/0013-albums-as-third-display-mode.md). Stage 3
+  inherits that decision rather than reopening it, with one more branch of evidence than ADR-0013
+  weighed.
 - **`GalleryViewModel` is the largest file in the app.** None of this belongs in it. Albums get
   their own feature-scoped ViewModel, following the `CreateFolderViewModel` precedent.
 - **Play policy.** `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` are now policy-restricted to declared

@@ -57,6 +57,30 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
 
 - **Full-screen viewer** (`FullImageScreen`): The swipeable single-item viewer for images and
   videos. Aliases: **viewer**, **full image screen**, **fullscreen**
+- **New album screen** (`NewAlbumScreen`): The manual branch of album creation — names the Album
+  and picks its members before it exists. Reached from the **Album type dialog**. Nothing is
+  written until **Create**, so backing out leaves no empty Album behind (ADR-0016). Its parts are
+  the **Album name field** (tagged `new_album_name_field`), the editable title in its top bar,
+  pre-filled with the first unused `My album N`; the **Create album action** (tagged
+  `new_album_create_button`), the bottom-right floating action button with a check icon; and the
+  **New album hint** (tagged `new_album_subtitle`), the line below the top bar that shows the
+  selected count, the prompt to choose media, or the name error. The **Create album action** is
+  the one control whose node type changes with its state: while the name is blank or duplicate it
+  is a disabled circular surface rather than a button, carrying the same tag but no click action.
+  The body has two levels:
+  the **New album folder level**, which lists folders, and the **New album media level**, which
+  shows one folder's media and is the only level that selects. Selection accumulates as the user
+  moves between folders. The **New album folder level** lists every non-excluded folder, in
+  Folders View's order and layout but filtered by neither its search query nor its media-type
+  filter. The top bar shows the **New album close button**
+  (`new_album_close_button`) at folder level and the **New album back button**
+  (`new_album_back_button`) at media level.
+  Its test tags are `new_album_folder_grid` / `new_album_folder_list` once folders have loaded,
+  with `new_album_folder_level` marking only that level's loading and error states; and
+  `new_album_media_level` wrapping the media level, with `new_album_media_grid`,
+  `new_album_media_list`, or `new_album_media_grouped` inside it. There is no tag that is present
+  at the folder level in every state.
+  Aliases: **album picker**, **album creation screen**
 - **Settings screen** (`SettingsScreen`): App preferences, language, support, legal, and the
   tip jar.
 - **Manage excluded screen** (`ManageExcludedScreen`): Lists excluded folders so they can be
@@ -159,8 +183,12 @@ Shared parts:
   random when the Album first gains a member and persisted; removing that member reselects it.
   Empty or fully unavailable Albums show the placeholder. There is no Album cover picker.
 - **Add album button** (tagged `add_album_button`): The circular bottom-right Albums View
-  control that opens **Create album dialog**. It is shown only in Albums View while
+  control that opens the **Album type dialog**. It is shown only in Albums View while
   **Album selection mode** is not active, and mirrors the **New album** overflow action.
+- **Manual album** and **Automatic album**: The two kinds offered by the **Album type dialog**. A
+  Manual album's members are chosen by the user; an Automatic album fills itself from a rule and
+  is **not available yet**, so its option is shown disabled. The distinction is a product one — in
+  storage there is one Album type (ADR-0012).
 - **Favourites** (`FavouritesAlbumGridItem`, `FavouritesAlbumListItem`): The fixed, system-backed
   collection of media marked with `MediaStore.IS_FAVORITE`. It cannot be created, renamed, or
   deleted, and is unavailable on API 28–29.
@@ -168,6 +196,16 @@ Shared parts:
 > **Favourite is not Pinned.** **Favourite / Unfavourite** marks individual media items and
 > controls Favourites. **Pin / Unpin** only changes the ordering of folders in Folders View. Never
 > use either word for the other operation.
+
+> **A floating action button overlays the scrolling content, and its clearance belongs to the
+> scrolling container.** The **Add album button** and the **Create album action** both float over
+> a scrolling body — Album tiles, Folder tiles, and Media tiles pass beneath them — and the
+> clearance that keeps the last row reachable is `contentPadding` on the lazy grid or list, never
+> an empty strip reserved in the body layout. A reserved strip is wrong twice over: the button
+> stops floating over anything, and the band it holds back is dead background at every scroll
+> position, including the top, where nothing needed clearing. Both controls have shipped covering
+> their own last row, so **prove the clearance by comparing bounds**. Asserting that the last item
+> exists, or is displayed, passes whether or not the button is sitting on top of it.
 
 ## Album Detail View
 
@@ -223,7 +261,12 @@ Shared parts:
 - **About dialog** (`AboutDialog`): The app information shown from the Settings screen.
 - **Add excluded folder dialog** (`AddExcludedFolderDialog`): Excludes a folder by browsing to it
   from the Manage excluded screen.
-- **Create album dialog** (`CreateAlbumDialog`): Names a new Album.
+- **Album type dialog** (`AlbumTypeDialog`): Chooses between a **Manual album** and an
+  **Automatic album** before anything is created. Tagged `album_type_manual` and
+  `album_type_automatic`. Opened by the **Add album button** and the **New album** overflow
+  action; Manual leads to the **New album screen**.
+- **Create album dialog** (`CreateAlbumDialog`): Names a new Album. Reached only from **Add to
+  album**, where the media is already chosen; Albums View uses the **Album type dialog** instead.
 - **Rename album dialog** (`RenameAlbumDialog`): Changes an Album's name, never a folder or file.
 - **Delete album dialog** (`DeleteAlbumDialog`): Confirms deleting an Album and its references;
   the media files remain untouched.

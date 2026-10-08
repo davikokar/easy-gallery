@@ -1,15 +1,20 @@
 package com.davide.seddio.easygallery.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -22,8 +27,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -47,6 +56,108 @@ fun CreateAlbumDialog(
         onConfirm = onCreate,
         onDismiss = onDismiss
     )
+}
+
+@Composable
+fun AlbumTypeDialog(
+    onManualSelected: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val cancelLabel = stringResource(R.string.action_cancel)
+    val manualTitle = stringResource(R.string.album_type_manual_title)
+    val automaticTitle = stringResource(R.string.album_type_automatic_title)
+    val notAvailable = stringResource(R.string.album_type_not_available)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.album_type_title)) },
+        text = {
+            Column {
+                AlbumTypeOption(
+                    icon = Icons.Default.PhotoAlbum,
+                    title = manualTitle,
+                    description = stringResource(R.string.album_type_manual_description),
+                    enabled = true,
+                    testTag = "album_type_manual",
+                    onClick = onManualSelected
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                AlbumTypeOption(
+                    icon = Icons.Default.AutoAwesome,
+                    title = automaticTitle,
+                    description = stringResource(R.string.album_type_automatic_description),
+                    enabled = false,
+                    badge = notAvailable,
+                    testTag = "album_type_automatic",
+                    onClick = {}
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.semantics { contentDescription = cancelLabel }
+            ) {
+                Text(cancelLabel)
+            }
+        }
+    )
+}
+
+@Composable
+private fun AlbumTypeOption(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    enabled: Boolean,
+    testTag: String,
+    onClick: () -> Unit,
+    badge: String? = null
+) {
+    val contentColor = if (enabled) {
+        MaterialTheme.colorScheme.onSurface
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.medium)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 8.dp)
+            .testTag(testTag)
+            .semantics {
+                contentDescription = if (badge == null) title else "$title, $badge"
+                if (!enabled) disabled()
+            }
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = contentColor
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = contentColor
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor
+            )
+            if (badge != null) {
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
 }
 
 @Composable

@@ -52,6 +52,7 @@ import com.davide.seddio.easygallery.ui.AlbumsViewModel
 import com.davide.seddio.easygallery.ui.BillingViewModel
 import com.davide.seddio.easygallery.ui.FolderDetailScreen
 import com.davide.seddio.easygallery.ui.FolderListScreen
+import com.davide.seddio.easygallery.ui.NewAlbumScreen
 import com.davide.seddio.easygallery.ui.FavouritesViewModel
 import com.davide.seddio.easygallery.ui.CreateFolderViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
@@ -167,6 +168,8 @@ class MainActivity : ComponentActivity() {
                     var showCreateAlbumDialog by remember { mutableStateOf(false) }
                     var albumNameDraft by remember { mutableStateOf("") }
                     var pendingCreatedAlbumName by remember { mutableStateOf<String?>(null) }
+                    // Non-null means the New album screen is open, holding the name it opened on.
+                    var newAlbumInitialName by rememberSaveable { mutableStateOf<String?>(null) }
 
                     LaunchedEffect(allMedia) {
                         albumsViewModel.setAllMedia(allMedia)
@@ -193,8 +196,18 @@ class MainActivity : ComponentActivity() {
                         selectedFolderPath != null -> "folder_detail:$selectedFolderPath"
                         selectedAlbumId != null -> "album_detail:$selectedAlbumId"
                         isFavouritesSelected -> "album_detail:favourites"
+                        newAlbumInitialName != null -> "new_album"
                         hasPermission -> "folder_list"
                         else -> "permission_denied"
+                    }
+
+                    // The holder retains a key's state after its screen leaves composition, which is
+                    // what every other screen wants and the New album screen must not have: a second
+                    // visit would restore the first visit's name and ticked items.
+                    LaunchedEffect(newAlbumInitialName) {
+                        if (newAlbumInitialName == null) {
+                            saveableStateHolder.removeState("new_album")
+                        }
                     }
 
                     if (selectedMedia != null) {
@@ -265,6 +278,13 @@ class MainActivity : ComponentActivity() {
                                         showAddToAlbumDialog = true
                                     }
                                 )
+                            } else if (newAlbumInitialName != null) {
+                                NewAlbumScreen(
+                                    galleryViewModel = viewModel,
+                                    albumsViewModel = albumsViewModel,
+                                    initialName = newAlbumInitialName.orEmpty(),
+                                    onFinished = { newAlbumInitialName = null }
+                                )
                             } else if (hasPermission) {
                                 FolderListScreen(
                                     viewModel = viewModel,
@@ -277,6 +297,9 @@ class MainActivity : ComponentActivity() {
                                     onAddToAlbum = { media ->
                                         mediaPendingAddToAlbum = media
                                         showAddToAlbumDialog = true
+                                    },
+                                    onStartManualAlbum = {
+                                        newAlbumInitialName = albumsViewModel.suggestAlbumName()
                                     },
                                     onSelectFavourites = { isFavouritesSelected = true }
                                 )

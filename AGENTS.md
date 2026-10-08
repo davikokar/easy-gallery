@@ -58,9 +58,9 @@ app/
 ```
 
 There is no `domain/` module. Pure, Android-free logic lives in `data/`
-(`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `AlbumMembership`, `Favourites`) and
-in `ui/components/` helper files (`MediaDuration`, `ShareIntents`, `WallpaperIntents`) so it can
-be unit tested on a plain JVM.
+(`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
+`AlbumMembership`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper files
+(`MediaDuration`, `ShareIntents`, `WallpaperIntents`) so it can be unit tested on a plain JVM.
 
 ## Documentation
 

@@ -61,8 +61,20 @@ Folders View rather than leaving the app.
 > been renamed and is no longer part of this debt. Do not introduce a third set of names in the
 > meantime.
 
-Beyond the five views there are the **full-screen viewer** (`FullImageScreen`), the **Settings
-screen**, the **Manage excluded screen**, and the **Permission denied screen**.
+Beyond the five views there are the **full-screen viewer** (`FullImageScreen`), the **New album
+screen** (`NewAlbumScreen`), the **Settings screen**, the **Manage excluded screen**, and the
+**Permission denied screen**.
+
+The New album screen is the manual branch of album creation: the **Album type dialog** offers
+Manual and Automatic, Automatic is disabled until Stage 2, and Manual opens a screen that names
+the album and picks its members before anything is written —
+**[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)**. Its body is a
+two-level browser rather than a view of its own: folders first, laid out and ordered as Folders
+View lays them out but filtered by neither that view's search query nor its media-type filter,
+then the media inside the folder the user opens, arranged the way Folder Detail View would
+arrange it. Only the media level selects, and the selection accumulates across folders. The
+screen reads display preferences and never writes them. Amendment 1 of that ADR records the
+reshape and why, and its Corrections record what the picker stopped inheriting.
 
 ---
 
@@ -114,7 +126,7 @@ below every property it reads, or the class does not compile. Do not work around
 | `GalleryModels.kt` | `SortType`, `SortOrder`, `GroupByType`, `DisplayMode`, `ViewType`, `OperationType`, `GalleryUiState`, `MediaPermissionHandler`. |
 | `MediaItem.kt`, `Folder.kt` | The two domain models. |
 | `ViewPreferences.kt` | The per-view preference bundle and `PreferenceScope`. |
-| `FolderViewOverrides.kt` | The sparse per-folder override bundle and its apply/merge logic. |
+| `FolderViewOverrides.kt` | The sparse per-folder override bundle and its apply/merge logic, plus the pure three-layer Folder Detail resolution shared by Folder Detail View and the New album screen. See §5. |
 | `CameraFolder.kt` | The camera-folder path heuristic and the implicit sort default it produces. |
 | `MediaLocation.kt` | GPS parsing, formatting, URI building, and the per-item `MediaLocationReader`. |
 | `DefaultMediaPermissionHandler.kt` | Wraps the Android 11+ `createDeleteRequest`/`createWriteRequest` `IntentSender` APIs so the ViewModel stays free of `Activity` details. |
@@ -124,14 +136,16 @@ below every property it reads, or the class does not compile. Do not work around
 | `AlbumDao.kt` | The album DAO. UI-facing queries return `Flow`. |
 | `AlbumStore.kt` | `AlbumStore` plus `RoomAlbumStore` and `InMemoryAlbumStore`, and the `StoredAlbum` model. |
 | `AlbumMembership.kt` | Pure, Android-free membership resolution and healing — direct URI match, then healing key, then orphan. |
+| `AlbumNaming.kt` | Pure default naming for a new album — the first `My album N` that no existing album uses. |
 | `Favourites.kt` | Pure favourite-tier selection from SDK level, `MANAGE_MEDIA` grant, and R extension version. |
 | `FavouritesDataSource.kt` | The `MediaStore` favourite read/write implementation behind the `FavouritesDataSource` interface. |
 | `DisplayPreferencesStore.kt`, `FolderPreferencesStore.kt`, `FolderViewPreferencesStore.kt`, `FolderThumbnailStore.kt` | Persistence; see *Persistence*. |
 
 There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
-(`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `AlbumMembership`, `Favourites`) and
-in `ui/components/` helper files (`MediaDuration`, `ShareIntents`, `WallpaperIntents`)
-specifically so it can be unit tested on a plain JVM without Robolectric.
+(`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
+`AlbumMembership`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper files
+(`MediaDuration`, `ShareIntents`, `WallpaperIntents`) specifically so it can be unit tested on a
+plain JVM without Robolectric.
 
 ### `ui/`
 
@@ -158,8 +172,8 @@ gained no album state; it still owns selection, media operations, and the viewer
 Album Detail View reuses.
 
 Screens: `FolderListScreen` (with `FolderList`, `FolderGrid`, `FolderDialogs`),
-`FolderDetailScreen`, `AlbumDetailScreen` (with `AlbumDialogs`), `FullImageScreen`, `CalendarGrid`,
-`ManageExcludedScreen`, `SettingsScreen`.
+`FolderDetailScreen`, `AlbumDetailScreen` (with `AlbumDialogs`), `NewAlbumScreen`,
+`FullImageScreen`, `CalendarGrid`, `ManageExcludedScreen`, `SettingsScreen`.
 
 Each main view is a pair: the `*Screen` composable reads the ViewModel and binds the scope; the
 `*Content` composable is stateless and takes plain values plus callbacks. **The `*Content`
@@ -205,6 +219,7 @@ selectedMedia != null        → FullImageScreen          (outside the state hol
     selectedFolder != null   → FolderDetailScreen
     selectedAlbumId != null  → AlbumDetailScreen
     isFavouritesSelected     → AlbumDetailScreen        (isFavouritesAlbum = true)
+    newAlbumInitialName != null → NewAlbumScreen
     hasPermission            → FolderListScreen
     else                     → PermissionDeniedScreen
 ```
@@ -215,16 +230,27 @@ and before `hasPermission`, so a folder still wins over an album and the permiss
 wins over nothing. `selectedAlbumId` lives in `AlbumsViewModel`; `isFavouritesSelected` is a
 `rememberSaveable` flag in `MainActivity`, because Favourites has no row of its own to select.
 
+Album creation added the branch above `hasPermission` —
+**[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)**.
+`newAlbumInitialName` is a `rememberSaveable` nullable `String` in `MainActivity`: non-null means
+the New album screen is open, and the value is the suggested name it opened on. It is reachable
+only from Albums View, so its position relative to the detail branches is not load-bearing.
+
 Switching screens removes the previous one from composition, so a plain `remember` in a screen
 does **not** survive navigation. A `rememberSaveableStateHolder` in `MainActivity` retains each
 non-viewer screen's saveable state (lazy scroll position) under a `screenKey` that includes the
-folder path or album id — `folder_detail:$path`, `album_detail:$albumId`, and the literal
-`album_detail:favourites`.
+folder path or album id — `folder_detail:$path`, `album_detail:$albumId`, the literal
+`album_detail:favourites`, and `new_album`.
 
 `FullImageScreen` is deliberately rendered **outside** that provider, and `MainActivity` carries
 no `android:configChanges`. Both are required by
 **[ADR-0002](decisions/0002-viewmodel-owned-transient-viewer-state.md)** — read it before touching
 either. Albums left both untouched.
+
+The `new_album` entry is the one key `MainActivity` **removes** from the holder, in a
+`LaunchedEffect` once the screen closes. Retention is right for a scroll position and wrong for a
+draft: without the removal the next New album screen would reopen on the previous name — by then a
+duplicate — and the previous selection.
 
 State that must survive navigation therefore belongs either in a ViewModel or inside the
 `SaveableStateProvider`.
@@ -246,6 +272,14 @@ Derived flows in `GalleryViewModel` are bound to the owning scope: `filteredFold
 and filters the album list inside `AlbumsViewBody`, and Album Detail View runs
 `GalleryTransformations` under `remember` inside `AlbumDetailScreen`, because the input is an
 album's resolved member list rather than a `GalleryViewModel` flow.
+
+`newAlbumFolders` is the exception to that scope binding: it reads the `FOLDERS` bundle for sort
+order and layout, and for pinning, exclusion, and thumbnail overrides, but passes an empty search
+query and every `MediaType` to the same `filterAndSortFolders` call that produces
+`filteredFolders`. The New album screen's folder level is a picker, and a browse-state filter —
+especially a persisted one — must not silently hide a folder the user came there to pick. See
+**[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)**, Amendment 1 and
+its Corrections.
 
 | | Folders View | Timeline View | Albums View | Folder Detail View | Album Detail View |
 |---|---|---|---|---|---|
@@ -274,6 +308,15 @@ explicit per-folder override  ⟶ over ⟶  implicit camera default  ⟶ over �
   **[ADR-0008](decisions/0008-camera-folder-default-sort-order.md)**.
 
 The nesting order matters and reversing it still compiles. Read both ADRs before changing this.
+
+The composition itself is **pure, Android-free, and shared**, in `data/FolderViewOverrides.kt`: a
+layer bundle carrying the global preferences, the override map, and whether the sort was set by
+the user, plus a function that resolves it for **any** folder path. `GalleryViewModel` publishes
+the bundle as a `StateFlow` and resolves its own selected folder through that function, which is
+what `preferences(FOLDER_DETAIL)` returns. The **New album screen**'s media level calls the same
+function for whichever folder it has open, so the picker shows a folder the way Folder Detail View
+would — **[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)**,
+Amendment 1. Resolve the layers anywhere else by hand and the three surfaces drift apart.
 
 ADR-0006 also made the five display-preference dialogs **draft-and-commit**, with an "apply only
 to this folder" target chosen at OK rather than on selection.

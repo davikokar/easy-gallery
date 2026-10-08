@@ -31,6 +31,7 @@ import com.davide.seddio.easygallery.ui.theme.AppBackground
 fun FolderList(
     folders: List<Folder>,
     state: androidx.compose.foundation.lazy.LazyListState,
+    contentPadding: PaddingValues = PaddingValues(vertical = 8.dp),
     selectedFolders: Set<String>,
     onFolderClick: (Folder) -> Unit,
     onFolderLongClick: (Folder) -> Unit
@@ -38,7 +39,7 @@ fun FolderList(
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(AppBackground).testTag("folder_list"),
         state = state,
-        contentPadding = PaddingValues(vertical = 8.dp)
+        contentPadding = contentPadding
     ) {
         items(folders, key = { it.path }) { folder ->
             FolderListItem(

@@ -143,6 +143,14 @@
     <string name="album_add_to_title">앨범에 추가</string>
     <string name="album_empty">이 앨범에 항목이 없습니다</string>
     <string name="album_hidden_items_notice">일부 항목을 일시적으로 사용할 수 없습니다. 파일을 다시 사용할 수 있게 되면 이 앨범에 다시 표시됩니다.</string>
+    <string name="album_default_name">내 앨범 %1$d</string>
+    <string name="album_type_title">새 앨범</string>
+    <string name="album_type_manual_title">수동 앨범</string>
+    <string name="album_type_manual_description">사진과 동영상을 직접 선택합니다.</string>
+    <string name="album_type_automatic_title">자동 앨범</string>
+    <string name="album_type_automatic_description">장소나 기간 같은 규칙에 따라 자동으로 채워집니다.</string>
+    <string name="album_type_not_available">아직 사용할 수 없음</string>
+    <string name="new_album_select_media">이 앨범에 넣을 사진과 동영상을 선택하세요</string>
     <string name="favourites_title">즐겨찾기</string>
     <string name="cd_favourite_indicator">즐겨찾기</string>
     <string name="cd_favourite">즐겨찾기에 추가</string>

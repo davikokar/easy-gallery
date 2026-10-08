@@ -37,6 +37,7 @@ fun FolderGrid(
     folders: List<Folder>,
     columns: Int,
     state: androidx.compose.foundation.lazy.grid.LazyGridState,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     selectedFolders: Set<String>,
     onFolderClick: (Folder) -> Unit,
     onFolderLongClick: (Folder) -> Unit,
@@ -48,6 +49,7 @@ fun FolderGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         state = state,
+        contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier

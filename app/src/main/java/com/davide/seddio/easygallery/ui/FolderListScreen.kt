@@ -77,6 +77,7 @@ fun FolderListScreen(
     isFavouritePending: Boolean,
     onToggleFavourites: (Collection<android.net.Uri>) -> Unit,
     onAddToAlbum: (List<com.davide.seddio.easygallery.data.MediaItem>) -> Unit,
+    onStartManualAlbum: () -> Unit = {},
     onSelectFavourites: () -> Unit = {}
 ) {
     val uiState by viewModel.filteredFolders.collectAsState()
@@ -174,7 +175,7 @@ fun FolderListScreen(
         onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
         onSetSettingsMode = { viewModel.setSettingsMode(it) },
         onSetCreateFolderDialogOpen = { createFolderViewModel.setDialogOpen(it) },
-        onCreateAlbum = { albumsViewModel.createAlbum(it) },
+        onStartManualAlbum = onStartManualAlbum,
         onRenameAlbum = { albumId, name -> albumsViewModel.renameAlbum(albumId, name) },
         onDeleteAlbum = { albumsViewModel.deleteAlbum(it) },
         onSelectAlbum = { albumsViewModel.selectAlbum(it) },
@@ -254,7 +255,7 @@ fun FolderListContent(
     onSetShowExcludedTemporarily: (Boolean) -> Unit,
     onSetSettingsMode: (Boolean) -> Unit,
     onSetCreateFolderDialogOpen: (Boolean) -> Unit,
-    onCreateAlbum: (String) -> Unit,
+    onStartManualAlbum: () -> Unit,
     onRenameAlbum: (Long, String) -> Unit,
     onDeleteAlbum: (Long) -> Unit,
     onSelectAlbum: (Long) -> Unit,
@@ -304,7 +305,7 @@ fun FolderListContent(
     var showPropertiesDialog by remember { mutableStateOf(false) }
     var showExcludeDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
-    var showCreateAlbumDialog by remember { mutableStateOf(false) }
+    var showAlbumTypeDialog by remember { mutableStateOf(false) }
     var albumForActions by remember { mutableStateOf<AlbumListItem?>(null) }
     var albumToRename by remember { mutableStateOf<AlbumListItem?>(null) }
     var albumToDelete by remember { mutableStateOf<AlbumListItem?>(null) }
@@ -394,7 +395,7 @@ fun FolderListContent(
                     onFilterMediaClick = if (displayMode == DisplayMode.ALBUMS) null else { { showFilterDialog = true } },
                     onShowExcludedClick = if (displayMode == DisplayMode.ALBUMS) null else { { onSetShowExcludedTemporarily(true) } },
                     onCreateFolderClick = if (displayMode == DisplayMode.ALBUMS) null else { { onSetCreateFolderDialogOpen(true) } },
-                    onCreateAlbumClick = if (displayMode == DisplayMode.ALBUMS) { { showCreateAlbumDialog = true } } else null,
+                    onCreateAlbumClick = if (displayMode == DisplayMode.ALBUMS) { { showAlbumTypeDialog = true } } else null,
                     onSettingsClick = { onSetSettingsMode(true) }
                 )
             }
@@ -530,21 +531,13 @@ fun FolderListContent(
             )
         }
 
-        if (showCreateAlbumDialog) {
-            val duplicate = albums.any { it.name.trim().equals(albumNameDraft.trim(), ignoreCase = true) }
-            CreateAlbumDialog(
-                name = albumNameDraft,
-                isNameDuplicate = duplicate,
-                onNameChange = { albumNameDraft = it },
-                onCreate = {
-                    onCreateAlbum(it)
-                    albumNameDraft = ""
-                    showCreateAlbumDialog = false
+        if (showAlbumTypeDialog) {
+            AlbumTypeDialog(
+                onManualSelected = {
+                    showAlbumTypeDialog = false
+                    onStartManualAlbum()
                 },
-                onDismiss = {
-                    albumNameDraft = ""
-                    showCreateAlbumDialog = false
-                }
+                onDismiss = { showAlbumTypeDialog = false }
             )
         }
 
@@ -669,7 +662,7 @@ fun FolderListContent(
 
             if (showAddAlbumButton) {
                 FloatingActionButton(
-                    onClick = { showCreateAlbumDialog = true },
+                    onClick = { showAlbumTypeDialog = true },
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(16.dp)

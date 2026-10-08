@@ -128,21 +128,31 @@ class GalleryViewModel @JvmOverloads constructor(
 
     private val _folderThumbnailOverrides = MutableStateFlow(folderThumbnailStore.loadAll())
 
-    private val effectiveFolderDetailPrefs: StateFlow<ViewPreferences> = combine(
+    val folderDetailPreferenceLayers: StateFlow<FolderDetailPreferenceLayers> = combine(
         folderDetailPrefs,
-        _selectedFolder,
         folderViewPrefs.overrides,
         folderDetailSortUserDefined
-    ) { globalPrefs, selectedFolder, overrides, sortUserDefined ->
-        val folderPath = selectedFolder?.path
-        val implicitDefaults = if (sortUserDefined) {
-            FolderViewOverrides()
-        } else {
-            CameraFolder.implicitDefaultsForFolder(folderPath)
-        }
-        val explicitOverrides = overrides[folderPath] ?: FolderViewOverrides()
+    ) { globalPrefs, overrides, sortUserDefined ->
+        FolderDetailPreferenceLayers(
+            globalPreferences = globalPrefs,
+            folderOverrides = overrides,
+            isSortUserDefined = sortUserDefined
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        FolderDetailPreferenceLayers(
+            globalPreferences = folderDetailPrefs.value,
+            folderOverrides = folderViewPrefs.overrides.value,
+            isSortUserDefined = folderDetailSortUserDefined.value
+        )
+    )
 
-        explicitOverrides.applyTo(implicitDefaults.applyTo(globalPrefs))
+    private val effectiveFolderDetailPrefs: StateFlow<ViewPreferences> = combine(
+        _selectedFolder,
+        folderDetailPreferenceLayers
+    ) { selectedFolder, layers ->
+        resolveFolderDetailPreferences(selectedFolder?.path, layers)
     }.stateIn(viewModelScope, SharingStarted.Lazily, folderDetailPrefs.value)
 
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
@@ -181,6 +191,33 @@ class GalleryViewModel @JvmOverloads constructor(
                 showExcluded,
                 viewPrefs.mediaTypes,
                 thumbnailOverrides
+            )
+            GalleryUiState.Success(folders)
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
+
+    val newAlbumFolders: StateFlow<GalleryUiState> = combine(
+        _allMedia,
+        foldersPrefs,
+        _pinnedFolders,
+        combine(_excludedFolders, _showExcludedTemporarily, _folderThumbnailOverrides) { excluded, showExcluded, overrides ->
+            Triple(excluded, showExcluded, overrides)
+        }
+    ) { allMedia, viewPrefs, pinned, exclusion ->
+        val (excluded, showExcluded, thumbnailOverrides) = exclusion
+        if (allMedia.isEmpty() && _uiState.value is GalleryUiState.Loading) {
+            GalleryUiState.Loading
+        } else {
+            val folders = GalleryTransformations.filterAndSortFolders(
+                allMedia,
+                query = "",
+                pinned = pinned,
+                sort = viewPrefs.sortType,
+                order = viewPrefs.sortOrder,
+                excluded = excluded,
+                showExcluded = showExcluded,
+                types = MediaType.entries.toSet(),
+                thumbnailOverrides = thumbnailOverrides
             )
             GalleryUiState.Success(folders)
         }
