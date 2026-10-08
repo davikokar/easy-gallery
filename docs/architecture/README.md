@@ -44,3 +44,6 @@ for the required format and status rules.
 | [ADR-0014](decisions/0014-album-database-included-in-auto-backup.md) | The album database is included in Android auto-backup | Active | 2026-10-07 |
 | [ADR-0015](decisions/0015-album-cover-persisted-random-member.md) | An album's cover is a persisted member, chosen at random once | Active | 2026-10-07 |
 | [ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md) | Album creation is a typed choice followed by a dedicated screen | Active | 2026-10-08 |
+| [ADR-0017](decisions/0017-composable-album-rule-representation.md) | An automatic album's rule is a composable predicate | Active | 2026-10-08 |
+| [ADR-0018](decisions/0018-media-index-in-a-second-database.md) | The media index is a second database | Active | 2026-10-08 |
+| [ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md) | Offline reverse geocoding for region albums | Active | 2026-10-08 |

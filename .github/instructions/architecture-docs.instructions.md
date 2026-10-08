@@ -12,7 +12,9 @@ applyTo: "docs/architecture/**/*.md, docs/design/**/*.md"
 > every document, its owner, and its mode — is in [AGENTS.md](../../AGENTS.md).
 
 The project keeps three kinds of long-lived document, and they are maintained differently. All
-three are owned by the **Planner**; Coder and Designer report drift rather than editing them.
+three are owned by the **Planner**; Coder and Designer report drift rather than editing them. A
+fourth kind, the **stage plan**, is deliberately short-lived and is defined at the end of this
+file.
 
 | | [ARCHITECTURE.md](../../docs/architecture/ARCHITECTURE.md) | [decisions/](../../docs/architecture/decisions/) | [design/](../../docs/design/) |
 |---|---|---|---|
@@ -121,10 +123,20 @@ An ADR is written **before** implementation, because it is a decision others mus
 overview is updated **after**, in the same change, because it must describe what actually landed
 rather than what was planned. Do not update it from a plan.
 
+The *lands a new ADR* trigger below obeys the same rule, and it is the one that looks like a miss
+when it is being obeyed. An ADR adopted **ahead** of the work it governs has nothing for the
+overview to describe yet, so its link is added by the change that lands that work, not by the
+change that adopts the decision. When you defer it for that reason, **say so where the deferral is
+visible** — in the stage plan, or in the record of the change that adopted the ADR — and carry the
+link as an exit criterion so it cannot be forgotten. A deferral nobody recorded is
+indistinguishable from a trigger nobody applied.
+
 ## Triggers
 
 Update the overview when a change does any of these. The list is deliberately concrete so that
-"does this need a doc update?" is a lookup, not a judgement call.
+"does this need a doc update?" is a lookup, not a judgement call. The last trigger carries the one
+exception — *Timing* above makes it conditional on whether the ADR was adopted ahead of the work it
+governs. The test is still mechanical, but do not apply that trigger without reading the paragraph.
 
 - Adds, removes, or renames a **state holder** or a **ViewModel** (§3).
 - Adds or removes a **`SharedPreferences` store** (§6).
@@ -175,7 +187,9 @@ The **Planner**, as with ADRs and the overview.
 - **A progress table** that is the single source of truth for where the epic stands, with one
   status per stage.
 - **Exit criteria per stage**, concrete enough that "complete" is checkable rather than a feeling.
-  Write them for a stage when that stage is planned; do not invent them years ahead.
+  Write them for a stage when that stage is planned; do not invent them years ahead. **A stage that
+  has a plan of its own keeps its criteria there while the plan is open**, and they return here
+  when it is archived — see *Stage plans* below. The row for such a stage says where they are.
 - **A stage log** — one line per status change. The table is the present; the log is the history.
 - **Decisions already taken**, so they are not relitigated. Anything with lasting technical weight
   also becomes an ADR; the list here is the index to them plus the product decisions that do not
@@ -203,4 +217,27 @@ design document that was wrong in between, and the window is exactly when someon
 - Never contradict an active ADR. If the document and an ADR disagree, the document is wrong.
 - Do not let it drift into describing the current app. That is the overview's job, and a design
   document that blurs the two will be read as a description of something that does not exist.
+
+## Stage plans
+
+A stage large enough to span several sessions may be given a plan of its own beside the epic
+document, named `<epic>-stage-N.md`. It is the only document here that is deliberately
+short-lived, and it carries exactly what the epic document should not: that stage's step
+breakdown, the stage's exit criteria, and the handoff block the next session starts from. The epic
+document keeps the progress table, the decisions, and the open questions, and the stage plan never
+restates them.
+
+- **Owner: the Planner.** Routed, exactly as the epic document is.
+- The epic document links to the stage plan from the row of the stage in progress, so there is one
+  way in and no second source of truth about where the epic stands.
+- **Archived, when the stage closes, means this.** Everything that outlives the stage — at minimum
+  its exit criteria and the record that each was met — moves into the epic document, and the plan
+  gains an `Archived — Stage N closed YYYY-MM-DD` line beneath its title and stops being
+  maintained. **It is not moved and it is not deleted.** ADRs cite stage plans by path, and an ADR
+  is never edited to chase a file that moved. An archived plan is a finished document at a stable
+  address, which is what a citation needs.
+- **Its row in [AGENTS.md](../../AGENTS.md)'s documentation map goes at the same moment**, because
+  that map registers documents somebody is keeping true and an archived plan is no longer one.
+  Replace the row with the next stage's plan if one is being opened; otherwise remove it. Leaving
+  it listed makes the next reader walk a row that cannot be acted on.
 

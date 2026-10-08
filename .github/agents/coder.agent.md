@@ -35,6 +35,11 @@ write anything:
    index, or app-owned data. Check its §7 progress table first: most of it is **not implemented**,
    so do not read it as a description of the current app. The **Planner owns it** — do not edit it.
    If your work contradicts it or reveals it to be wrong, name the section in your report.
+6. The plan for the stage in progress, if your task is one of its steps. The epic is specified in
+   two documents: §7 of `albums.md` says which stage is current and links to its plan — Stage 2's
+   is `docs/design/albums-stage-2.md` — and that plan holds the step you are building, its exit
+   criteria, and what the last session learned. The **Planner owns it too**; report drift in it
+   rather than editing it, including the handoff block it expects to be rewritten each session.
 
 You are a subagent and start with no memory of earlier phases. Spend the time to read.
 

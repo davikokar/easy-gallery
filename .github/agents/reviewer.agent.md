@@ -27,7 +27,9 @@ five `SharedPreferences` files. The standards you review against are:
 3. `docs/architecture/ARCHITECTURE.md` — the system overview.
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names.
 5. `docs/design/albums.md` — the albums epic, where the change belongs to it. Its §7 progress
-   table and exit criteria are what "this stage is done" means.
+   table and exit criteria are what "this stage is done" means. §7 also links to the plan for the
+   stage in progress — Stage 2's is `docs/design/albums-stage-2.md` — which owns that stage's step
+   breakdown and exit criteria; review a stage change against both.
 6. `.github/instructions/tests.instructions.md` — test conventions.
 7. Repository memory at `/memories/repo/easy-gallery-exploration.md` — records traps this
    codebase has already paid for. Check whether the change re-introduces one.

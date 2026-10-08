@@ -1,7 +1,9 @@
 # Albums — epic design
 
-> **Status: Stage 1 complete; Stage 2 not started.** Current state of every stage is in
+> **Status: Stage 1 complete; Stage 2 in progress.** Current state of every stage is in
 > [§7](#7-staging-and-progress), which is the single source of truth for where this epic stands.
+> Stage 2's step-by-step plan, and the block telling the next session where to start, are in
+> [albums-stage-2.md](albums-stage-2.md).
 > This document is the product narrative for the albums epic. It holds the shape of the feature,
 > the decisions already taken, and the questions still open, so that none of it has to be
 > rediscovered. Binding technical decisions are recorded separately as ADRs in
@@ -200,6 +202,11 @@ Tier A pays for itself outside this epic: it fixes `SortType.DATE_TAKEN`, which 
 EXIF at all and silently sorts by `dateAdded`, and it gives the app its first real answer to "what
 changed on the device".
 
+The index lives in its **own** Room database, separate from the album database and excluded from
+backup, and keeps captured EXIF facts in different columns from the place codes derived from them —
+[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md), which is binding on
+everything in this section.
+
 ### Detecting what changed
 
 The app currently re-reads everything on launch. An incremental indexer needs better, and the
@@ -244,19 +251,26 @@ An automatic album that is quietly incomplete is worse than one that says "still
 photos". Surface last-evaluated state and remaining work. This costs a little UI and buys all of
 the user's trust in the feature.
 
+Staleness cuts both ways, and the second direction is the one that gets missed. An item **deleted**
+from the device stays in the index until the next constrained run, which may be days away, and goes
+on matching automatic albums until then — evaluation running on app open does not rescue it,
+because evaluation reads the index rather than the device. What the user is shown during that
+window is part of §10 question 1, which is open.
+
 ---
 
 ## 7. Staging and progress
 
 Each stage is independently shippable. **This table is the single source of truth for where the
-epic stands.** It is updated when a stage's exit criteria are met — not when work starts feeling
-nearly done.
+epic stands.** It changes when a stage's status changes, and *Who updates this* at the end of this
+section defines when that is: In progress when the stage's first deliverable lands, Complete only
+when every exit criterion holds — not when work starts feeling nearly done.
 
 | Stage | Delivers | Status | Index? | ML? |
 |---|---|---|---|---|
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
-| **2** | The index (Tier A), background pipeline, region/time albums | ⬜ Not started | yes | no |
+| **2** | The index (Tier A), background pipeline, region/time albums — planned in [albums-stage-2.md](albums-stage-2.md) | 🔶 **In progress** — since 2026-10-08 | yes | no |
 | **3** | People albums | ⬜ Not started | Tier C | yes |
 | **4** | Content albums | ⬜ Not started | Tier B | yes |
 
@@ -265,8 +279,10 @@ size of 0–2 combined.
 
 ### Exit criteria
 
-A stage is Complete only when every line holds. Until then it is In progress, however much of it
-is written.
+A stage is Complete only when every line holds — however much of it is written, and however close
+it feels. What a stage that is not yet Complete *is* depends on whether it has started: Not started
+until its first deliverable lands, In progress from that moment onwards, per *Who updates this*
+below.
 
 **Stage 0** — ✅ met 2026-10-07
 - The epic is specified in this document, including the membership model and the known traps.
@@ -307,7 +323,14 @@ is written.
 > re-executed by the change that marked this stage Complete. Stage 2 can assume instrumented
 > tests are runnable; it should still check `adb devices` rather than assume a device is there.
 
-Exit criteria for Stages 2–4 are written when that stage is planned, not now; they depend on
+**Stage 2** — 🔶 in progress since 2026-10-08. Its exit criteria exist and are owned by
+[albums-stage-2.md](albums-stage-2.md), together with the step breakdown they are derived from;
+duplicating them here would create a second copy to keep true. They move into this section when the
+stage closes and that document is archived, so the record outlives the plan — what archiving a
+stage plan means is defined in the
+[architecture documentation instructions](../../.github/instructions/architecture-docs.instructions.md).
+
+Exit criteria for Stages 3–4 are written when that stage is planned, not now; they depend on
 decisions the preceding stage will inform. Every stage carries the documentation-audit line.
 
 ### Documentation audit
@@ -373,13 +396,22 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-10-08 | **New album picker reshaped again, same day.** The flat grid of every item on the device became a two-level browser: folders first, then the media inside the opened folder, with selection accumulating across folders and Create moved to a bottom-right floating tick button. The media level borrows the folder's Folder Detail sort and grouping but not its media-type filter, and the three-layer Folder Detail resolution was extracted from `GalleryViewModel` into pure shared logic in `data/FolderViewOverrides.kt` so it can resolve an arbitrary folder path. ADR-0016 amended in place rather than superseded — the decision to give manual creation a dedicated draft-and-commit screen did not change, only the picking surface inside it. 234 unit tests and 70 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
 | 2026-10-08 | **Picker remediation, closing out the reshape above.** Review found that the reshape had left the picker's *folder* level inheriting Folders View's media-type filter, which is persisted — so a user who once filtered Folders View to images would never see a video-only folder in the picker again. `GalleryViewModel` gained `newAlbumFolders`, which runs the same `filterAndSortFolders` with an empty query and every media type while keeping that view's sort, pinning, exclusion and thumbnail overrides; a unit test now holds it against `filteredFolders`. The inherited *search* query stays, on the narrower argument that it is not persisted. Five smaller findings closed with it: the Create button renders a real disabled state and no longer advertises a click action while announcing itself disabled; instrumented tests now prove a blank or duplicate name creates nothing and check the Create button against the last row at both levels in both layouts; `AlbumsViewModel` takes an injected name formatter so `suggestAlbumName()` is unit-testable; and the album-name field uses a real `label` rather than a `contentDescription`. **236 unit tests and 76 instrumented tests** pass, the latter on the SM-G990B. ADR-0016 Amendment 1 carries the corrections, including that the reason it had recorded for accepting the folder filter did not hold. Stage 1 stays Complete: no exit criterion was broken. |
 | 2026-10-08 | **The New album screen's Create button made to float.** It had not been floating: the screen reserved an empty strip along the bottom of its body so the **Create album action** could never overlap anything, leaving a dead band of background above the button at every scroll position — including the top, where nothing needed clearing. The clearance moved into the lazy containers' `contentPadding`, which is the mechanism Albums View's **Add album button** already used; `FolderGrid`, `FolderList`, `MediaGrid`, `MediaList` and `GroupedMediaContent` each gained an optional `contentPadding` whose default reproduces their previous behaviour exactly, so no other call site changed. ADR-0016 and its Amendment 1 needed nothing: neither ever described the strip, and the decision they record is untouched. The bounds-comparing instrumented tests added by the remediation above had passed throughout, because they prove the last row can be scrolled clear of the button, not that the button floats — so the convention behind both controls was written into `ui-vocabulary.instructions.md`, where both are defined, rather than left to be rediscovered a third time. 236 unit tests and 76 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
+| 2026-10-08 | **Stage 2 started.** Step 2.0 landed: ADR-0017 (an automatic album's rule is a composable predicate), ADR-0018 (the media index is a second database, excluded from backup), and ADR-0019 (offline reverse geocoding for region albums) adopted, and the stage plan written at [albums-stage-2.md](albums-stage-2.md). No code; nothing user-visible. The stage's seven implementation steps and its exit criteria live in that document, and the rule for when a stage becomes In progress was clarified above to say that a binding decision counts as a deliverable. |
 
 ### Who updates this
 
 The **Planner** owns this section, as it owns the rest of this document and the ADRs. Update it in
 the same change that satisfies or breaks an exit criterion — a stage moving to In progress when its
-first implementation lands, and to Complete when every line of its exit criteria holds. The
-Reviewer checks that a change which completes a stage also updated the table and the log.
+**first step's deliverable lands, whether that deliverable is code or a binding decision**, and to
+Complete when every line of its exit criteria holds. The Reviewer checks that a change which
+completes a stage also updated the table and the log.
+
+> **Rule clarified 2026-10-08.** This previously said a stage moves to In progress "when its first
+> implementation lands". That was written when a stage's planning output was a stage of its own —
+> Stage 0 — and it leaves a stage whose ADRs are adopted and whose plan is written reading as
+> *Not started*, which is exactly the state a fresh session must not misread. Stage 2's step 2.0 is
+> three binding ADRs and a stage plan, and it has landed, so Stage 2 has started. Stage 1's rows,
+> criteria and history are unaffected.
 
 ### ADRs binding on Stage 1
 
@@ -474,6 +506,62 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     Albums View, and the existing name dialog from **Add to album**, where the media is already
     chosen and a picker would be a step backwards.
 
+13. **The stage order stands: region and time first, then people, then content.** Region and time
+    is the only automatic family that forces the index and the background pipeline into existence
+    **without also dragging in ML**. It is therefore the cheap rehearsal for the expensive stages:
+    the index, the delta detection, the WorkManager pipeline, the staleness UI and the rule format
+    all get built and shipped against a problem whose correctness can be checked by looking at a
+    photo. Reordering to put people first would mean debugging the pipeline and the model at the
+    same time, with no working example of either.
+
+14. **An automatic album's rule is a composable predicate, not a bespoke set of columns**
+    ([ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)). A rule is
+    stored as a conjunction of typed clauses in the `rule` column that already exists, so Stage 3
+    adds a clause type rather than a migration, and "these two people, in Italy, in 2025" falls out
+    for free. The scope is deliberately narrow — AND only, no OR, no negation, no nesting — and
+    widening it is a new ADR. The case the format is designed around is an **unknown clause type**,
+    which arrives via an ADR-0014 restore onto an older version or a downgrade: such an album is
+    *unevaluatable*, resolves to its manual additions minus its exclusions, says so, and is never
+    rewritten. Dropping a clause you do not understand silently widens the album, permanently.
+
+15. **The media index lives in a second, separate database, excluded from backup**
+    ([ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md)). The decisive
+    argument is a collision ADR-0014 left open: it backs the album database up on purpose, while
+    §8.9 below commits that face data never enters a backup — and **Android backup rules select
+    files, not tables**, so one database file cannot be half backed up. A second file can be
+    excluded outright, and should be: the index is entirely recomputable from the device's own
+    media, so backing it up spends the shared 25 MB quota on data that will be rebuilt anyway and
+    risks taking the albums down with it. The same ADR splits **captured** index data (raw EXIF
+    facts, one file open each) from **derived** data (place codes computed from the stored
+    coordinates), which is what makes the geocoding choice below reversible for the price of a
+    resolve pass rather than a re-index.
+
+16. **Places and dates are picked, never typed, and the names come from a trimmed offline
+    gazetteer** ([ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)).
+    The app already knows which places the user's photos are in, so it offers exactly those —
+    countries with counts, drilling into regions and places — which is the same browse-not-search
+    argument ADR-0016 Amendment 1 made for the manual picker. The consequence is the whole
+    decision: the dataset only ever has to answer **location → name**, never **name → location**,
+    which removes the need for a searchable multilingual gazetteer and with it most of GeoNames'
+    bulk. A trimmed `cities15000` nearest-place table answers country, region and place from one
+    artifact and one code path. Two things to expect rather than discover: **most photos have no
+    GPS at all**, so region albums will cover a minority of many libraries and the UI must say so;
+    and nearest-place misattributes near borders, for which Natural Earth polygons are the recorded
+    upgrade path.
+
+17. **Suggested albums are deferred, not rejected.** "The system notices you have forty photos from
+    Cornwall in June 2026 and offers to make an album of them" is a real future ambition and is
+    **not** a non-goal — do not read §11 as having ruled it out. It is deferred because it needs
+    everything Stage 2 is building (the index, the rule format, and evaluation) plus a clustering
+    heuristic over place and time and a surface for offering something the user did not ask for,
+    and because every one of those is better designed after watching how people use rules they
+    wrote themselves. Nothing in ADR-0017 or ADR-0018 blocks it: a suggestion is a proposed rule,
+    in the format rules are already stored in.
+
+18. **WorkManager is approved as a new dependency**, discharging the `AGENTS.md` ask-before-doing
+    item for it. It is added at step 2.4 of [albums-stage-2.md](albums-stage-2.md), not before, so
+    the pure data-layer steps stay free of it. Recorded here so nobody asks again.
+
 ---
 
 ## 9. Consequences for the existing app
@@ -494,21 +582,52 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 - **Play policy.** `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` are now policy-restricted to declared
   use cases, and `MANAGE_MEDIA` is special access, which Stage 1 shipped. Stage 1 was meant to
   confirm the Play Console declaration before shipping and **no record exists that it was done** —
-  carry it into Stage 2 rather than assuming it.
+  carry it into Stage 2 rather than assuming it. It is now a Stage 2 exit criterion in
+  [albums-stage-2.md](albums-stage-2.md), widened to cover `ACCESS_MEDIA_LOCATION`, which Stage 2
+  makes load-bearing for a user-facing feature for the first time.
 - **ADR-0001** is extended, not superseded: lazy per-item location reads remain correct for the
-  info surfaces; the index becomes a second, amortised path.
+  info surfaces; the index becomes a second, amortised path. Both
+  [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) and
+  [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md) build on
+  it rather than around it, and the indexer reuses its `setRequireOriginal` path rather than
+  reimplementing one.
 
 ---
 
 ## 10. Open questions
 
-1. **What happens to an index entry when a photo is deleted?** `queryDeletedFiles` exists but is
-   API 37, far too new. Reconciliation during scan is the realistic answer.
+1. **When a photo is deleted, is its index row deleted or tombstoned — and what does the user see
+   until the scan notices?** — **Marked Answered and reopened the same day, 2026-10-08.** What was
+   settled stays settled: deletion is **reconciled during the scan**, because `queryDeletedFiles`
+   is API 37 and far out of reach, and step 2.2 of [albums-stage-2.md](albums-stage-2.md) owns that
+   mechanism. But that is the mechanism, not the behaviour, and closing the question on it was
+   premature. The behaviour is **the maintainer's decision, as question 2 below is, and is not to
+   be inferred.** Two halves remain open:
+   - **Delete the row, or tombstone it?** ADR-0010 and ADR-0012 make retain-versus-drop the
+     highest-stakes distinction in this epic, and the index sits between their two answers: a
+     membership is never deleted because it may represent a choice the user made, while an index
+     row is a recomputable fact about a file that no longer exists. A tombstone buys the ability to
+     tell a deleted item from a never-indexed one; a delete keeps the index honestly a cache, which
+     is how [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) treats
+     it.
+   - **The staleness window it opens**, which §6 now records: the indexing schedule means a deleted
+     photo goes on matching automatic albums until the next constrained run, potentially for days.
+     Whichever way the first half goes, the answer has to say what the user sees meanwhile — §6's
+     *be honest about staleness* applies directly, and neither ADR-0017, ADR-0018 nor step 2.2
+     covers it today.
+
+   **Blocks step 2.2**, which cannot write its reconciliation without it.
 2. **Progress notification during indexing?** Needs `POST_NOTIFICATIONS` on API 33+. Avoidable if
    progress lives only in-app, which is the Stage 2 default unless indexing proves slow enough to
-   need it.
+   need it. — **Deliberately still open, 2026-10-08.** It was raised during Stage 2 planning and
+   left open at the maintainer's request, to be discussed rather than inferred; a new runtime
+   permission is an `AGENTS.md` ask-before-doing item in any case. Step 2.4 ships in-app progress
+   only until it is answered.
 3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
+
+Questions scoped to a single stage live in that stage's plan — Stage 2's are in
+[albums-stage-2.md](albums-stage-2.md) — and only arrive here if they outlive it.
 
 ---
 

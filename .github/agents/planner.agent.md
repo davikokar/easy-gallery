@@ -26,7 +26,9 @@ alongside five `SharedPreferences` files. Read these before planning:
 3. `docs/architecture/ARCHITECTURE.md` — the system overview.
 4. `docs/design/albums.md` — the albums epic. Mandatory if your work touches albums, favourites,
    the media index, or anything that owns app-side data. Check its §7 progress table first: most
-   of what it describes is **not implemented**.
+   of what it describes is **not implemented**. §7 also names the stage in progress and links to
+   that stage's plan — Stage 2's is `docs/design/albums-stage-2.md` — which holds the step
+   breakdown, the stage's exit criteria, and the next-session handoff. You own both.
 5. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names. Use them in plans.
 6. Repository memory at `/memories/repo/easy-gallery-exploration.md` — a long log of traps
    already paid for. Search it for your feature area before planning; it frequently records why

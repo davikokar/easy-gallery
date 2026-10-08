@@ -33,6 +33,10 @@ in a small Room database (ADR-0009). Read these before designing anything:
 5. `docs/design/albums.md` — the albums epic, if your work touches albums or favourites. Check its
    §7 progress table first: most of it is **not implemented**. The **Planner owns it** — do not
    edit it; report anything your design contradicts.
+6. The plan for the stage in progress, if your work belongs to it. §7 of `albums.md` says which
+   stage is current and links to its plan — Stage 2's is `docs/design/albums-stage-2.md` — and that
+   plan, not the epic document, holds the step you are designing for and its exit criteria. The
+   **Planner owns it too**; report drift rather than editing it.
 
 You are a subagent and start with no memory of earlier phases. Spend the time to read.
 

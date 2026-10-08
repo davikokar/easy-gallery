@@ -161,6 +161,11 @@ project lock, and the resulting failure is indistinguishable from a real build f
   decided.
 - An implementation agent that reports the overview is now stale has done the right thing. Route
   the edit; do not ask it to fix the file itself.
+- Where an epic has a plan for the stage in progress — Stage 2's is
+  `docs/design/albums-stage-2.md` — it is Planner-owned and routed exactly like the epic document,
+  and it carries the handoff block the next session starts from. Route its update to the Planner in
+  Step 5, alongside the overview, whenever a phase finished a step or learned something that
+  changes the next one.
 
 ## Parallelization Rules
 

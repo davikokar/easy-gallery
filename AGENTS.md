@@ -75,6 +75,7 @@ rather than nobody's.
 | [docs/architecture/README.md](docs/architecture/README.md) | Planner | routed | an ADR is added, or one changes status |
 | [docs/architecture/decisions/](docs/architecture/decisions/) | Planner | routed | never edited; superseded by a new ADR, or amended in place when only a detail changed |
 | [docs/design/albums.md](docs/design/albums.md) | Planner | routed | a stage changes status, a decision is taken, a question is answered |
+| [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md) | Planner | routed | a step changes status, or a session learns something that changes the next one; archived when Stage 2 closes |
 | [.github/instructions/ui-vocabulary.instructions.md](.github/instructions/ui-vocabulary.instructions.md) | Designer | **in-change** | you add, rename, or remove a named screen, view, area, or control |
 | [.github/instructions/tests.instructions.md](.github/instructions/tests.instructions.md) | Planner | routed | a test convention or tool changes |
 | [.github/instructions/architecture-docs.instructions.md](.github/instructions/architecture-docs.instructions.md) | Planner | routed | the documentation process itself changes |
@@ -135,6 +136,12 @@ the audit is for the rest.
   same rules as the ADRs and the overview; everyone else reports drift rather than editing it.
   The album vocabulary used to live there and moved into the UI vocabulary instructions when
   Stage 1's screens landed.
+- **The epic is specified in two documents, not one.** The stage in progress has its own shorter-
+  lived plan beside it — Stage 2's is [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md)
+  — holding that stage's steps, their exit criteria, and the handoff block telling the next session
+  where to start. Read it as well whenever your work is part of that stage. It is Planner-owned and
+  routed like the epic itself, and it is archived when the stage closes, under the rule in the
+  [architecture documentation instructions](.github/instructions/architecture-docs.instructions.md).
 - For tests — unit **and** instrumented — follow
   [the test conventions](.github/instructions/tests.instructions.md).
 - Tracked files have mixed line endings and there is no `.gitattributes`. Match the file you are
