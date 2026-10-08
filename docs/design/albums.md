@@ -212,14 +212,21 @@ everything in this section.
 The app currently re-reads everything on launch. An incremental indexer needs better, and the
 platform provides it:
 
-- **`MediaStore.getVersion()`** — an opaque string. Changed since last run ⇒ assume everything is
-  invalid, resync fully.
+- **`MediaStore.getVersion()`** — an opaque string, and a **per-volume** one. Changed since last
+  run ⇒ assume that volume's indexed data is invalid and resync it. Resyncing the *whole* index on
+  any version change would discard rows for volumes that are merely absent, which is what
+  [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)
+  clause 4 exists to prevent; that clause is binding here.
 - **`MediaStore.getGeneration(volume)`** with the per-row `GENERATION_ADDED` / `GENERATION_MODIFIED`
   columns — monotonically increasing. Keep a watermark; only rows above it need work.
 
 Both are more robust than `DATE_ADDED` / `DATE_MODIFIED`, which move when an app calls
-`setLastModified()` or the user's clock is wrong. Both are API 30+; 28–29 falls back to a date
-watermark and accepts being occasionally wrong.
+`setLastModified()` or the user's clock is wrong. They do not arrive at the same API level, and the
+fallback is narrower than "no delta detection below 30" because of it. `getGeneration` is API 30, so
+on 28–29 the per-row delta falls back to a date watermark and accepts being occasionally wrong. A
+version string is available throughout — `getVersion(Context)` since API 12, the per-volume
+`getVersion(Context, String)` since API 29 — so the coarse "this volume's indexed data is invalid"
+signal survives that fallback, narrowing on 28 to the primary volume alone.
 
 ### Indexing and evaluation are different jobs
 
@@ -251,11 +258,22 @@ An automatic album that is quietly incomplete is worse than one that says "still
 photos". Surface last-evaluated state and remaining work. This costs a little UI and buys all of
 the user's trust in the feature.
 
-Staleness cuts both ways, and the second direction is the one that gets missed. An item **deleted**
-from the device stays in the index until the next constrained run, which may be days away, and goes
-on matching automatic albums until then — evaluation running on app open does not rescue it,
-because evaluation reads the index rather than the device. What the user is shown during that
-window is part of §10 question 1, which is open.
+**Whatever that surface counts, it must say what it is counting.** The index keeps a deleted item's
+row until the next scan, so it over-counts the library the user can actually see; a figure for
+"indexed", "covered", or "left to do" that does not distinguish index rows from live items will
+disagree with the gallery and look like a bug. ADR-0020 records why the over-count exists; this is
+the section that owns the surface which has to be honest about it.
+
+Staleness cuts both ways, and the second direction used to be the one that got missed. It no longer
+exists. An item **deleted** from the device does keep its index row until the next constrained run,
+which may be days away — but an automatic album's displayed contents are not rendered from the
+index. The index supplies the matching keys; those keys are resolved against what `MediaStore`
+currently returns, exactly as album memberships already are, so a deleted photo drops out on the
+next media read rather than at the next scan.
+[ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md) is
+binding here and states what that costs. The staleness that remains is therefore the **addition**
+direction only, which the paragraph above covers: a photo that has not been indexed yet cannot
+match a rule yet, and the user is told so.
 
 ---
 
@@ -562,6 +580,24 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     item for it. It is added at step 2.4 of [albums-stage-2.md](albums-stage-2.md), not before, so
     the pure data-layer steps stay free of it. Recorded here so nobody asks again.
 
+19. **A deleted photo disappears from an automatic album immediately, not at the next scan**
+    ([ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)).
+    This answers open question 1. The mechanism is that an automatic album's contents are **not**
+    rendered from the index: the index supplies matching keys, and those keys are resolved against
+    live `MediaStore` media by the same path album memberships already use, so an item that is gone
+    contributes nothing. Because nothing user-visible then depends on telling "deleted" from "never
+    indexed", **the index row is pure cache and reconciliation deletes it** rather than tombstoning
+    it. Three things the ADR pins down that are easy to get wrong later: the index keys on
+    ADR-0010's identity — the content URI plus the healing key, healed and rewritten in place — so
+    a file another app moves is not mistaken for one deleted; an **unmounted volume is not a
+    deletion**, which is the ADR's own addition rather than part of the question, because
+    discarding a card's rows costs a full re-index when it comes back; and **manual albums do not
+    change**. ADR-0010 keeps retaining an orphaned membership and showing the Hidden-members notice,
+    because that membership may be a choice the user made and a removed card is indistinguishable
+    from a deletion — a rule match carries no such intent. The two behaving differently is correct,
+    and §3's formula means one album can hold both kinds at once: its additions and exclusions
+    follow ADR-0010, its rule matches follow ADR-0020.
+
 ---
 
 ## 9. Consequences for the existing app
@@ -597,26 +633,25 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 ## 10. Open questions
 
 1. **When a photo is deleted, is its index row deleted or tombstoned — and what does the user see
-   until the scan notices?** — **Marked Answered and reopened the same day, 2026-10-08.** What was
-   settled stays settled: deletion is **reconciled during the scan**, because `queryDeletedFiles`
-   is API 37 and far out of reach, and step 2.2 of [albums-stage-2.md](albums-stage-2.md) owns that
-   mechanism. But that is the mechanism, not the behaviour, and closing the question on it was
-   premature. The behaviour is **the maintainer's decision, as question 2 below is, and is not to
-   be inferred.** Two halves remain open:
-   - **Delete the row, or tombstone it?** ADR-0010 and ADR-0012 make retain-versus-drop the
-     highest-stakes distinction in this epic, and the index sits between their two answers: a
-     membership is never deleted because it may represent a choice the user made, while an index
-     row is a recomputable fact about a file that no longer exists. A tombstone buys the ability to
-     tell a deleted item from a never-indexed one; a delete keeps the index honestly a cache, which
-     is how [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) treats
-     it.
-   - **The staleness window it opens**, which §6 now records: the indexing schedule means a deleted
-     photo goes on matching automatic albums until the next constrained run, potentially for days.
-     Whichever way the first half goes, the answer has to say what the user sees meanwhile — §6's
-     *be honest about staleness* applies directly, and neither ADR-0017, ADR-0018 nor step 2.2
-     covers it today.
+   until the scan notices?** — ✅ **Answered 2026-10-08, by
+   [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md).** The
+   decision is summarised as §8 decision 19; the ADR is what binds.
 
-   **Blocks step 2.2**, which cannot write its reconciliation without it.
+   **The history is kept deliberately, because it is worth more than a clean entry.** This question
+   was marked Answered earlier the same day, reopened within hours, and only then answered properly.
+   What was settled first was the *mechanism* — deletion is reconciled during the scan, because
+   `queryDeletedFiles` is far out of reach, as ADR-0020's *Alternatives Considered* records — and
+   closing the question on that was premature: the mechanism does not say what the user sees, and
+   the two halves that remained (delete the row or tombstone it, and what is shown during the
+   staleness window) were the maintainer's to decide rather than anyone's to infer. The lesson
+   generalises: a question about behaviour is not answered by settling the plumbing underneath it.
+
+   The answer dissolves the second half rather than answering it. There is no staleness window in
+   the deletion direction, because the album never displayed the index's view in the first place.
+   §6's *Be honest about staleness* has been corrected to say so; it previously described this as an
+   open problem and pointed here.
+
+   **No longer blocks step 2.2.**
 2. **Progress notification during indexing?** Needs `POST_NOTIFICATIONS` on API 33+. Avoidable if
    progress lives only in-app, which is the Stage 2 default unless indexing proves slow enough to
    need it. — **Deliberately still open, 2026-10-08.** It was raised during Stage 2 planning and

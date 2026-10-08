@@ -53,8 +53,14 @@ the thing under test *is* the Android boundary — which is what every current u
   and shadows, because it exercises `RecoverableSecurityException` and the `IntentSender` APIs.
 - `MediaStoreDataSourceTest` — Robolectric runner plus MockK for `Context`, `ContentResolver`,
   and `Cursor`, and a `TemporaryFolder` rule for the file operations.
-- `AlbumDaoTest` and `AlbumStoreTest` — Robolectric runner plus `Room.inMemoryDatabaseBuilder`,
-  because Room's generated code needs a real `Context` and a working SQLite.
+- `AlbumDaoTest`, `AlbumStoreTest`, `MediaIndexDaoTest` and `MediaIndexStoreTest` — Robolectric
+  runner plus `Room.inMemoryDatabaseBuilder`, because Room's generated code needs a real `Context`
+  and a working SQLite. Both databases are tested this way; it is the pattern for any new DAO or
+  `Room*` store.
+
+The `InMemory*` half of a store is the counter-example: `MediaIndexInMemoryStoreTest` runs plain,
+because an in-memory implementation touches no Android API. Do not put a Robolectric runner on one
+out of symmetry with its Room sibling.
 
 Do not reach for it to avoid extracting pure logic, and do not add it to a test that would
 otherwise run plain.

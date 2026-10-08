@@ -50,12 +50,6 @@ data class AlbumMembershipResolution(
     val orphanStateChanges: List<MembershipOrphanStateChange>
 )
 
-private data class HealingKey(
-    val displayName: String,
-    val size: Long,
-    val dateModified: Long
-)
-
 private data class MembershipMatch(
     val resolvedMediaUri: String,
     val mediaItem: MediaItem,
@@ -69,12 +63,12 @@ object AlbumMembership {
         liveMedia: List<MediaItem>
     ): AlbumMembershipResolution {
         val mediaByUri = HashMap<String, MediaItem>(liveMedia.size)
-        val mediaByHealingKey = HashMap<HealingKey, MediaItem>(liveMedia.size)
+        val mediaByHealingKey = HashMap<MediaHealingKey, MediaItem>(liveMedia.size)
 
         for (item in liveMedia) {
-            val uriString = item.uri.toString()
-            mediaByUri.putIfAbsent(uriString, item)
-            mediaByHealingKey.putIfAbsent(item.toHealingKey(), item)
+            val identity = item.toMediaIdentity()
+            mediaByUri.putIfAbsent(identity.mediaUri, item)
+            mediaByHealingKey.putIfAbsent(identity.healingKey, item)
         }
 
         val resolvedAdditions = mutableListOf<ResolvedMembership>()
@@ -148,7 +142,7 @@ object AlbumMembership {
     private fun resolveMembership(
         membership: StoredMembership,
         mediaByUri: Map<String, MediaItem>,
-        mediaByHealingKey: Map<HealingKey, MediaItem>
+        mediaByHealingKey: Map<MediaHealingKey, MediaItem>
     ): MembershipMatch? {
         val direct = mediaByUri[membership.mediaUri]
         if (direct != null) {
@@ -167,17 +161,9 @@ object AlbumMembership {
         )
     }
 
-    private fun StoredMembership.toHealingKey(): HealingKey {
-        return HealingKey(
+    private fun StoredMembership.toHealingKey(): MediaHealingKey {
+        return MediaHealingKey(
             displayName = displayName,
-            size = size,
-            dateModified = dateModified
-        )
-    }
-
-    private fun MediaItem.toHealingKey(): HealingKey {
-        return HealingKey(
-            displayName = name,
             size = size,
             dateModified = dateModified
         )

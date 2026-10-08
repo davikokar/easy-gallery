@@ -20,28 +20,74 @@
 > before anything else — and then whatever the step itself requires. *Session protocol* below says
 > what that means.
 
-- **Next step: 2.1 — the index database and its schema.**
-- **Depends on:** step 2.0, which is complete. [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md)
-  governs the whole of 2.1 and should be read first; it decides the separate database, the
-  backup exclusion, and the captured/derived column split.
-- **Learned in 2.0 that changes the work:**
+- **Next step: 2.2 — delta detection.**
+- **Depends on:** step 2.1, whose code has landed but which is **not Complete** — see the two
+  outstanding items below. Nothing in them blocks 2.2 from starting.
+  [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md) governs
+  this step and should be read first; clause 4 in particular, which is what makes a resync
+  volume-scoped rather than global. [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md)
+  still governs the schema 2.2 writes into.
+- **Inherited from 2.1, and owned by the maintainer, not by 2.2:**
+  - **Two files sit outside `app/src/` and an `app/src`-scoped `git add` will miss them.** The
+    exported schema JSON for `MediaIndexDatabase` version 1, and
+    [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)
+    itself — which [../architecture/README.md](../architecture/README.md) already lists as
+    `Active`. Step 2.1's work is **entirely uncommitted** as this is written, and neither file is
+    gitignored, so this is a staging hazard rather than damage already done — but it is exactly
+    the hazard the previous handoff block warned about, so stage them by name.
+    **`git ls-files app/schemas` and `git ls-files docs/architecture/decisions` settle it; a
+    `git status` summary does not, because both appear among many other `??` lines.**
+  - **`connectedDebugAndroidTest` is not observed as met.** It passed 76 of 76 twice on 2026-10-08
+    and then went unstable: the instrumentation host was SIGKILLed mid-suite across several runs,
+    failures moved between unrelated tests, and every individually named failing method passed in
+    isolation. One controlled run — device awake, unlocked, charging, nothing else resident, logcat
+    captured from the start — gave **75 of 76**, failing
+    `AlbumDetailContentTest.backButtonReturnsToAlbums` with "No compose hierarchies found in the
+    app", with logcat showing foreground focus churn between the instrumentation activity, Easy
+    Gallery, and `com.davide.seddio.ballooner`. The evidence points at device-level interference
+    rather than a product defect, and `compileDebugAndroidTestKotlin` passes as `AGENTS.md`'s
+    fallback — but the gate is **reported as not met**, because this repository's standard is that
+    a gate is observed or declared unobserved, never assumed. Unit tests are **247 of 247** green
+    on a `--rerun-tasks` run. The triage rule is in repo memory; do not re-derive it.
+- **Learned in 2.1 that changes the work:**
+  - **The `-wal` / `-shm` question is answered: exclude them explicitly.** `media_index.db` and both
+    sidecars are excluded in `backup_rules.xml` and in both the `<cloud-backup>` and
+    `<device-transfer>` sections of `data_extraction_rules.xml`, with no `<include>` added anywhere.
+    The reason is that backup rules are **file-path based** and Room's sidecars are separate files,
+    so naming them removes any dependence on when Room happens to checkpoint the WAL. Recorded in
+    repo memory as well. ADR-0018's open question is closed; it needs no amendment, because it asked
+    for a decision rather than stating one.
+  - **The shared identity exists.** `data/MediaIdentity.kt` holds `MediaIdentity` and
+    `MediaHealingKey`; `AlbumMembership.kt`'s private `HealingKey` was deleted and now uses it, and
+    the index row model is built on it. **2.2 reuses it — there is nothing left to extract**, and
+    ADR-0020 clause 3's "exactly one implementation" is satisfied today. The question the previous
+    handoff block posed is closed.
+  - **Decide the healing lookup deliberately, in 2.2, before writing it.** The index schema has
+    indices on `volumeName`, the captured date-taken, the captured coordinate pair, and the derived
+    place columns — **and none on the healing triple** `(displayName, size, dateModified)`. Heal the
+    way `AlbumMembership` already does, with both sides in memory and joined on a hash map, and no
+    index is wanted. Reach instead for a `SELECT ... WHERE` on those three columns and the index
+    becomes necessary, which is a Room `identityHash` change: version 2, a migration, and a second
+    committed JSON, for a lookup the in-memory join does for free. Pick the in-memory join knowingly.
+- **A note for step 2.6, recorded now because it is cheap now and a migration later:** a row whose
+  coordinates fall outside [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)'s
+  distance cap resolves to null country, null region and null place — which is **indistinguishable
+  from "not yet resolved"**, so a resolve pass that selects on "derived columns are null" would
+  retry those rows on every run, forever. It is not worth a column today: nothing writes the derived
+  columns yet, and ADR-0018's recomputability bounds what a wrong guess costs. It is worth knowing
+  at 2.6, when adding the column would be a migration.
+- **Still true, from earlier sessions:**
+  - **The app's live-media set is already the thing albums resolve against.**
+    `AlbumsViewModel.computeAlbum` joins stored rows against the list `GalleryViewModel` loads and
+    pushes in through `setAllMedia`. ADR-0020's live join is that pattern reused, not a new one —
+    read it before inventing anything, and reconciliation in 2.2 answers to the same shape.
   - **Step 2.5 needs no migration to the album database.** The column ADR-0017 fills already exists
-    and is unused — checked against the committed album schema in 2.0. Do not plan a migration.
-  - **The second database needs no Gradle change.** Room writes one schema directory per database
-    class under the `room.schemaLocation` that is already configured; ADR-0018 says so. What 2.0
-    adds is Stage 1's warning: generation can succeed while the JSON stays untracked, so commit it
-    deliberately rather than assuming it appeared.
-  - **The first real element written into either backup rules file must be an `<exclude>`.**
-    [ADR-0014](../architecture/decisions/0014-album-database-included-in-auto-backup.md) explains
-    what the first `<include>` would do to the album database; ADR-0018 requires the index
-    exclusion and says in how many places.
-  - **Settle the `-wal` / `-shm` question ADR-0018 left open**, and record the answer here and in
-    repo memory.
-  - **WorkManager belongs to step 2.4**, not before — albums.md §8 decision 18. Steps 2.1–2.3 must
-    not pull it in.
-- **Blocked, and needing the maintainer:** albums.md §10 question 1 — delete the index row or
-  tombstone it — **blocks step 2.2**. It does not block 2.1, so this step can start; 2.2 cannot be
-  written without it.
+    and is unused. Do not plan a migration.
+  - **WorkManager belongs to step 2.4**, not before — albums.md §8 decision 18. Steps 2.2 and 2.3
+    must not pull it in.
+- **Blocked, and needing the maintainer:** nothing in 2.2 is blocked. The two inherited items above
+  are the maintainer's, and the first of them is a prerequisite for Stage 2's exit criteria, not for
+  step 2.2.
 - **Open but blocking nothing yet:** the remaining questions at the end of this document.
 
 ---
@@ -51,7 +97,7 @@
 | Step | Delivers | Status |
 |---|---|---|
 | **2.0** | The three Stage 2 ADRs and this document. No code. | ✅ Complete — 2026-10-08 |
-| **2.1** | Index database and schema | ⬜ Not started |
+| **2.1** | Index database and schema | 🔶 In progress — code landed 2026-10-08, two criteria outstanding |
 | **2.2** | Delta detection | ⬜ Not started |
 | **2.3** | Tier A extraction | ⬜ Not started |
 | **2.4** | WorkManager pipeline, "Index now", progress and staleness | ⬜ Not started |
@@ -89,22 +135,36 @@ with a Room-backed implementation and an `InMemory*` implementation, DAO tests o
 
 **Exit criteria**
 
-- A second database class exists with its own file name and version; `EasyGalleryApp` exposes it
-  `by lazy` alongside the album database, and no other code constructs either.
-- Captured and derived columns are distinct columns, per ADR-0018. The derived place columns exist
-  now and are left null until 2.6 — adding them later would be a migration for no reason.
-- The exported schema JSON for version 1 of the new database is **committed** under `app/schemas/`.
-- The index database file is excluded in `backup_rules.xml` and in **both** the `<cloud-backup>` and
-  `<device-transfer>` sections of `data_extraction_rules.xml`, and **no `<include>` element has been
-  added to either file**.
-- The `-wal` / `-shm` question is answered one way or the other, and the answer is written into the
-  *Next session starts here* block and into repo memory.
-- Store interface + `InMemory*` + DAO tests, following the `AlbumStore` shape.
-- **All five `.github/agents/*.agent.md` definitions are corrected in this step.** Each states, in
-  its own words, that the album database is the only data the app owns; this step makes that false.
-  `AGENTS.md`'s documentation map says why that row is the costliest one to miss, and the Stage 1
-  audit found exactly this failure in exactly these files. The stage-closing documentation audit
-  would catch it too, but only after six more steps of agents believing it.
+- [x] A second database class exists with its own file name and version; `EasyGalleryApp` exposes it
+      `by lazy` alongside the album database, and no other code constructs either.
+- [x] Captured and derived columns are distinct columns, per ADR-0018. The derived place columns exist
+      now and are left null until 2.6 — adding them later would be a migration for no reason.
+- [ ] The exported schema JSON for version 1 of the new database is **committed** under `app/schemas/`.
+      **Outstanding.** The JSON is generated and correct, and it is not gitignored, but
+      `git ls-files app/schemas` shows only `.gitkeep` and the album schema. It sits outside
+      `app/src/`, as does the still-untracked ADR-0020 that
+      [../architecture/README.md](../architecture/README.md) already indexes as `Active`, so both
+      have to be staged by name. The maintainer's, not the next session's — see the handoff block
+      above.
+- [x] The index database file is excluded in `backup_rules.xml` and in **both** the `<cloud-backup>` and
+      `<device-transfer>` sections of `data_extraction_rules.xml`, and **no `<include>` element has been
+      added to either file**. Verified against the XML rather than against the implementation report,
+      and the `-wal` / `-shm` sidecars are excluded beside the database file in all three places.
+- [x] The `-wal` / `-shm` question is answered one way or the other, and the answer is written into the
+      *Next session starts here* block and into repo memory.
+- [x] Store interface + `InMemory*` + DAO tests, following the `AlbumStore` shape.
+- [x] **All five `.github/agents/*.agent.md` definitions are corrected in this step.** Each states, in
+      its own words, that the album database is the only data the app owns; this step makes that false.
+      `AGENTS.md`'s documentation map says why that row is the costliest one to miss, and the Stage 1
+      audit found exactly this failure in exactly these files. The stage-closing documentation audit
+      would catch it too, but only after six more steps of agents believing it.
+
+**Not an exit criterion of this step, but unmet and carried forward:** `connectedDebugAndroidTest`
+is **not observed as met** here — the suite went unstable on the one device available and the one
+controlled run gave 75 of 76, on evidence pointing at device-level interference rather than a
+product defect. `AGENTS.md`'s definition of done is a Stage 2 exit criterion, not a per-step one, so
+this does not hold 2.1 open by itself; it is recorded in the handoff block above so that the session
+which closes the stage inherits it rather than rediscovering it.
 
 ### 2.2 — Delta detection
 
@@ -114,19 +174,55 @@ with a Room-backed implementation and an `InMemory*` implementation, DAO tests o
 that have disappeared since the last scan. albums.md §6 describes the mechanism; this step builds
 it.
 
+> **Unblocked 2026-10-08.** albums.md §10 question 1 is answered by
+> [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md), which
+> is binding on this step's reconciliation and should be read before it is written.
+
 **Exit criteria**
 
-- A version/generation watermark is persisted and compared, with a full resync when
-  `getVersion()` has changed. A store for that watermark already exists — `AGENTS.md`'s
-  preference-store table says which — so extend it or sit beside it, and do not add a sixth
-  preferences file without surfacing it, as `AGENTS.md` requires.
+- The watermark — the version string, and the generation number beside it where that exists — is
+  persisted **keyed by volume name** and compared per key, and a change resyncs **only the rows
+  carrying that volume's name**, never the whole index. That rule holds at every supported API
+  level; what changes with the level is only how many keys can be filled. Where the per-volume
+  version call exists, the watermark carries one entry per volume the app can enumerate. Below it,
+  the single observable version is the primary volume's, so it is stored under the primary volume's
+  name and a change resyncs the primary volume alone, leaving every row keyed to another volume
+  untouched. **Fewer observable volumes is not a licence to resync all of them** — the rows nobody
+  can currently see are exactly the ones ADR-0020 clause 4 exists to keep. Which API level each
+  call arrives at is owned by [albums.md](albums.md) §6 and ADR-0020 clause 4; read them there.
+  A store for a watermark already exists — `AGENTS.md`'s preference-store table says which — but it
+  holds a scalar, so establish whether it can carry a key-per-volume shape before reusing it,
+  extend it or sit beside it, and do not add a sixth preferences file without surfacing it, as
+  `AGENTS.md` requires.
+- **Checkable, per branch:** a unit test over a fake volume set, for every API branch this step
+  writes, shows that a changed watermark for one volume resyncs that volume's rows and leaves a
+  second volume's rows in place — including the lowest branch, where the second volume's version is
+  not observable at all and its rows must survive a change to the primary's. This is the same fake
+  volume set the branch tests below use; do not build a second one.
+- **Establish what a mount or unmount does to the version of a volume that is already present**,
+  and record the answer in the handoff block above and in repo memory. ADR-0020 clause 4 says why
+  it matters: a resync that discards every row on a version change throws away exactly the rows
+  that clause preserves, and a card going in or out is the likeliest trigger. It could not be
+  settled from the platform documentation, and no device with removable storage is available here,
+  so report how far you got instead of assuming either answer.
 - The API 28–29 fallback is implemented and its known wrongness is documented where a reader will
   meet it, not only here.
-- **Deletion is reconciled during the scan** — the settled half of albums.md §10 question 1. The
-  open half **blocks this step**: whether reconciliation deletes the index row or tombstones it,
-  and what the user sees until the scan notices, is the maintainer's decision and is not to be
-  inferred. Whichever way it goes, the staleness window albums.md §6 now records has to be handled
-  here rather than discovered later.
+- **Reconciliation deletes the index row. It does not tombstone it** — ADR-0020. There is no
+  staleness window left to handle here, because an automatic album's contents are intersected with
+  live media rather than read from the index; that intersection belongs to 2.5, not to this step.
+- **Index rows carry ADR-0010's identity and heal rather than being deleted on a move.** A stored
+  content URI that misses falls through to the healing key, and a hit rewrites the stored URI in
+  place. ADR-0020 forbids a second, independent copy of that key, so this step shares what
+  `AlbumMembership.kt` already implements — see the handoff block above, which notes it is private
+  today.
+- **A volume that is not currently present is not a deletion.** Reconciliation removes a row only
+  for an item missing from a volume that is mounted. ADR-0020 clause 4 names the platform tools and
+  the API level each one needs; read them there rather than restating them here. The API 28 branch
+  is this step's decision to take: record which rule it settles on in the handoff block and in repo
+  memory, and give **every** branch, API 28 included, a unit test over a fake volume set — the
+  `Favourites.kt` tiering precedent. Those tests are the only evidence this step can produce,
+  because the one device available has no removable storage, so the report says that rather than
+  claiming device verification.
 - Branching by API level is pure and Android-free so every branch is unit-testable on a plain JVM —
   the `Favourites.kt` precedent.
 - The Android boundary is covered by Robolectric tests, as the rest of `data/` is.
@@ -193,6 +289,10 @@ album. **Zero geo risk**: if 2.6 disappoints, Stage 2 still ships a working auto
   step, because the failure it guards against cannot occur on a device that has only moved forward.
 - Evaluation composes with ADR-0012: `(rule matches ∪ additions) − exclusions`, with exclusion
   winning, and tombstones surviving re-evaluation.
+- **The rule's matches are intersected with live media before display** — ADR-0020. The index
+  supplies keys; the album shows items that `MediaStore` currently returns, resolved by the same
+  path `AlbumMembership` already uses. A test proves that an indexed item absent from live media
+  does not appear, and that it needs no scan to disappear.
 - Evaluation runs on app open and after each index batch — **not** under the indexing constraints
   (albums.md §6).
 - Parser and evaluator are pure and unit-tested on a plain JVM.
@@ -282,9 +382,12 @@ change.
   [ui-vocabulary.instructions.md](../../.github/instructions/ui-vocabulary.instructions.md).
 - `docs/architecture/ARCHITECTURE.md` has been updated for everything that triggers it — at minimum
   the new `data/` files, the second database in §6, the WorkManager dependency in §10's tech-stack
-  table, the Known debt item in §11 that step 2.4 resolves, and links to ADRs 0017–0019 in the
-  sections they govern. The last of those was deliberately deferred from step 2.0 and is discharged
-  here.
+  table, the Known debt item in §11 that step 2.4 resolves, and links to ADRs 0017–0020 in the
+  sections they govern. The deferral was recorded for 0017–0019 at step 2.0 and applies to ADR-0020
+  for the same reason — it was adopted ahead of the work it governs — and is discharged here.
+  **Partly discharged at 2.1**: the `data/` files, the second database in §6, and the links to
+  ADR-0018 and ADR-0020 are in. ADR-0017 goes in with 2.5 and ADR-0019 with 2.6, which are the
+  steps that build what each governs; WorkManager and the §11 item remain 2.4's.
 - **The Play Console restricted-permission declaration is confirmed done.** albums.md §9 carries it
   forward from Stage 1 with no record that it was ever completed, and names the permissions at
   stake. Stage 2 adds one more: it makes `ACCESS_MEDIA_LOCATION` load-bearing for a user-facing
@@ -331,13 +434,26 @@ the one document updated in-change, and only for additions.
 
 The first two are the epic's, not this stage's; albums.md §10 states them and owns them.
 
-1. A deleted photo's index row — albums.md §10 question 1. It **blocks step 2.2**.
+1. ~~A deleted photo's index row — albums.md §10 question 1.~~ **Answered 2026-10-08 by
+   [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md); step
+   2.2 is unblocked.** Kept listed, struck through, until this plan is archived, so a session that
+   remembers the block can see it was lifted rather than dropped.
 2. A progress notification during indexing — albums.md §10 question 2. Step 2.4 waits on it.
-3. **How often does a full resync actually happen?** `getVersion()` changing means discarding the
-   whole index and rebuilding it. If that fires more often than expected — on an OS update, a
-   volume remount, a vendor media-scanner quirk — the cost is a complete re-index rather than a
-   delta, and the mitigation would have to be designed rather than discovered. Measurable in 2.2 on
-   the SM-G990B; recommend measuring rather than assuming it is rare.
+3. **How often does a *volume* resync happen, and how big is the primary volume's?** A resync is
+   scoped to the volume whose version changed — [albums.md](albums.md) §6,
+   [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)
+   clause 4 and step 2.2's criteria above own that rule, and this question no longer disputes it.
+   What scoping does not do is make a resync cheap: on a device with no removable storage every row
+   is on the primary volume, so the bound saves nothing there and a primary version change still
+   costs re-opening every indexed file. So the open part is the frequency and the size. What moves
+   the primary volume's version — an OS update, a vendor media-scanner quirk, a remount — and how
+   often? If it is rare, nothing further is needed. If it is not, a mitigation has to be designed
+   rather than discovered, and the obvious candidate is to treat a version change as "stop trusting
+   the generation watermark" rather than "re-read this volume's rows", which belongs in 2.2 beside
+   the watermark it would qualify. Measurable in 2.2 on the SM-G990B; recommend measuring rather
+   than assuming it is rare. The related unknown — whether attaching or detaching a secondary
+   volume perturbs the primary's version — is step 2.2's to settle and is already in its criteria,
+   not here.
 4. **Where does the coverage notice live?** ADR-0019 requires the user to be told how much of their
    library has a location, but not where. Album Detail View is the obvious home; whether the Album
    type dialog or the place picker should also warn before an empty album is created is a design
@@ -355,7 +471,8 @@ The first two are the epic's, not this stage's; albums.md §10 states them and o
   progress, §8 decisions, §9 consequences, §10 open questions, §11 non-goals.
 - [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md),
   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md),
-  [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md) — the
+  [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md),
+  [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md) — the
   decisions binding on this stage, in addition to those binding on Stage 1.
 - [architecture-docs.instructions.md](../../.github/instructions/architecture-docs.instructions.md) —
   how this document is maintained, and by whom.

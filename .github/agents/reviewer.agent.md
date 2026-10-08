@@ -18,8 +18,8 @@ or Designer.
 
 This is **Easy Gallery**, an Android image and video gallery app in Kotlin with Jetpack Compose,
 Material 3, MVVM, and Coroutines/Flow, with no DI framework. Media is a live `MediaStore` query the
-app never copies; the only data it owns is a small Room database of albums (ADR-0009), alongside
-five `SharedPreferences` files. The standards you review against are:
+app never copies; the data it owns is two small Room databases — albums (ADR-0009) and the media
+index (ADR-0018) — alongside five `SharedPreferences` files. The standards you review against are:
 
 1. `AGENTS.md` — conventions, package layout, state ownership, preference stores, localisation,
    the definition of done, and the list of changes that require the user's approval.

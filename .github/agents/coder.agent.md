@@ -12,9 +12,9 @@ ALWAYS use #context7 MCP Server to read relevant documentation. Do this every ti
 
 This is **Easy Gallery**, an Android image and video gallery app written in Kotlin with Jetpack
 Compose, Material 3, MVVM, Coroutines/Flow, Coil 3, and Media3 ExoPlayer. It has no DI framework.
-Media comes live from `MediaStore` and is never copied; the only data the app owns is a small Room
-database of albums (ADR-0009), alongside five `SharedPreferences` files. Read these before you
-write anything:
+Media comes live from `MediaStore` and is never copied; the data the app owns is two small Room
+databases — albums (ADR-0009) and the media index (ADR-0018) — alongside five `SharedPreferences`
+files. Read these before you write anything:
 
 1. `AGENTS.md` — tech stack, package layout, state-ownership rules, the preference stores, the
    localisation rules, the definition of done, and the list of things to ask about before doing

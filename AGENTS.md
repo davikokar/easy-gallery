@@ -7,10 +7,11 @@ Guidance for AI agents working in this repository.
 **Easy Gallery** is a native Android image and video gallery app. It browses the media already
 present on the device through the Android `MediaStore`, organised by folder, and lets the user
 view, sort, group, filter, search, and manage that media. It keeps no copy of the user's media;
-the one thing it owns is a small Room database of albums, which stores references and user intent
-rather than media. The one exception to "no network, no account" is the optional tip jar,
-which uses Google Play Billing. Prefer clear, conventional code over clever abstractions, and
-explain non-obvious decisions in short commit messages.
+what it owns is two small Room databases — one of albums, which stores references and user intent
+rather than media, and one media index, which stores facts extracted from media and is
+recomputable from the device at any time. The one exception to "no network, no account" is the
+optional tip jar, which uses Google Play Billing. Prefer clear, conventional code over clever
+abstractions, and explain non-obvious decisions in short commit messages.
 
 ## Tech stack
 
@@ -18,10 +19,10 @@ explain non-obvious decisions in short commit messages.
 - **UI:** Jetpack Compose + Material 3 (`material-icons-extended`)
 - **Architecture:** MVVM with a unidirectional data flow (UI state exposed as `StateFlow` from a
   `ViewModel`, derived state built with `combine`)
-- **Persistence:** media comes live from `MediaStore` and is never copied. The app owns a Room
-  database holding albums only (ADR-0009), plus five `SharedPreferences` files for the language
-  override and user preferences (see *Preference stores* below). The two sit alongside each other;
-  the preference stores were deliberately not migrated.
+- **Persistence:** media comes live from `MediaStore` and is never copied. The app owns two Room
+  databases — albums (ADR-0009) and the media index (ADR-0018) — plus five `SharedPreferences`
+  files for the language override and user preferences (see *Preference stores* below). All three
+  kinds of store sit alongside each other; the preference stores were deliberately not migrated.
 - **Dependency injection:** none. Components are instantiated directly so tests can pass fakes.
 - **Image loading:** Coil 3 (`coil-compose`, `-gif`, `-video`, `-network-okhttp`)
 - **Video playback:** AndroidX Media3 ExoPlayer, pinned at **1.5.0**
@@ -43,13 +44,13 @@ explain non-obvious decisions in short commit messages.
 
 ```
 app/
-  schemas/              # Room exported schemas, one JSON per version
+  schemas/              # Room exported schemas, one directory per database, one JSON per version
   src/main/java/com/davide/seddio/easygallery/
-    EasyGalleryApp.kt   # Application: Coil ImageLoader + locale + database singleton
+    EasyGalleryApp.kt   # Application: Coil ImageLoader + locale + both database singletons
     MainActivity.kt     # Compose host, permissions, IntentSender launchers
     LocaleHelper.kt     # Per-app language persistence and Context wrapping
     data/               # Repository interface, MediaStore data source, models,
-                        # pure transformations, preference stores, Room database
+                        # pure transformations, preference stores, Room databases
     ui/                 # ViewModels, state holders, screens
       components/       # Reusable top bars, dialogs, media items
       theme/            # Material 3 theme
@@ -59,8 +60,8 @@ app/
 
 There is no `domain/` module. Pure, Android-free logic lives in `data/`
 (`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
-`AlbumMembership`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper files
-(`MediaDuration`, `ShareIntents`, `WallpaperIntents`) so it can be unit tested on a plain JVM.
+`AlbumMembership`, `MediaIdentity`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper
+files (`MediaDuration`, `ShareIntents`, `WallpaperIntents`) so it can be unit tested on a plain JVM.
 
 ## Documentation
 
@@ -192,21 +193,28 @@ Every store is an interface with a `SharedPreferences*` production implementatio
 The album watermark shares `app_settings` deliberately, to avoid a sixth preferences file for one
 scalar. Another scalar may join it; anything structured belongs in Room.
 
-### The album database
+### The two databases
 
-Room owns albums and nothing else — ADR-0009. It sits alongside the preference stores above,
-which were deliberately **not** migrated.
+Room owns albums (ADR-0009) and the media index (ADR-0018), in **two separate database files**,
+and nothing else. Both sit alongside the preference stores above, which were deliberately **not**
+migrated. The split is not tidiness: backup rules select files rather than tables, and the album
+database is backed up (ADR-0014) while the index must not be.
 
-- The singleton lives on `EasyGalleryApp`. Never construct a second one; Room's invalidation
-  tracking depends on there being one.
-- Access goes through the `AlbumStore` interface, with `RoomAlbumStore` for production and
-  `InMemoryAlbumStore` for tests — the same shape as the preference stores. DAO-level tests use
-  `inMemoryDatabaseBuilder`.
+- Both singletons live on `EasyGalleryApp`, each `by lazy`. Never construct a second instance of
+  either; Room's invalidation tracking depends on there being one.
+- Access goes through a store interface — `AlbumStore` and `MediaIndexStore` — each with a `Room*`
+  implementation for production and an `InMemory*` one for tests, the same shape as the preference
+  stores. DAO-level tests use `inMemoryDatabaseBuilder`.
 - Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
-  committed.
+  committed. Room writes **one directory per database class**, so a schema can be generated
+  correctly and still be left untracked by a `git add` aimed at `app/src/`. Check it.
+- Media identity — the content URI plus the `displayName` / `size` / `dateModified` healing triple
+  — has exactly **one** implementation, in `data/MediaIdentity.kt`, shared by album membership and
+  the index. ADR-0020 forbids a second; do not write one.
 - Membership identity, healing, and orphan retention are ADR-0010's; read it before touching
-  `AlbumMembership.kt`. Favourites are **not** in this database — they are a `MediaStore` column
-  (ADR-0011), unavailable below API 30.
+  `AlbumMembership.kt`. An index row is the opposite case — a cache, deleted rather than retained
+  when its media is gone (ADR-0020). Favourites are in **neither** database — they are a
+  `MediaStore` column (ADR-0011), unavailable below API 30.
 
 ### Strings and localisation
 

@@ -3,6 +3,7 @@ package com.davide.seddio.easygallery
 import android.app.Application
 import android.content.Context
 import com.davide.seddio.easygallery.data.EasyGalleryDatabase
+import com.davide.seddio.easygallery.data.MediaIndexDatabase
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.gif.AnimatedImageDecoder
@@ -11,6 +12,10 @@ import coil3.video.VideoFrameDecoder
 class EasyGalleryApp : Application(), SingletonImageLoader.Factory {
     val database: EasyGalleryDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         EasyGalleryDatabase.create(this)
+    }
+
+    val mediaIndexDatabase: MediaIndexDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        MediaIndexDatabase.create(this)
     }
 
     override fun attachBaseContext(base: Context) {

@@ -3,16 +3,18 @@
 Easy Gallery is a native Android image and video gallery app built entirely with Jetpack Compose.
 It browses the media already present on the device via the Android `MediaStore`, organised by
 folder, and lets the user view, sort, group, filter, search, and manage that media. It keeps no
-copy of the user's media. Since albums landed it owns a small Room database, but that database
-holds references and user intent only — never media.
+copy of the user's media. It owns **two** small Room databases — albums, and the media index —
+and neither holds media: the first holds references and user intent, the second holds facts
+extracted from media that can be recomputed from the device at any time.
 
 - **Package:** `com.davide.seddio.easygallery`
 - **Language:** Kotlin · **UI toolkit:** Jetpack Compose (Material 3)
 - **SDK levels and dependency versions:** [`app/build.gradle.kts`](../../app/build.gradle.kts) and
   [`gradle/libs.versions.toml`](../../gradle/libs.versions.toml) own them. Do not restate a
   version here; it will rot.
-- **Data sources:** Android `MediaStore` for all media; a Room database for albums;
-  `SharedPreferences` for the language override and user preferences. See *Persistence* below.
+- **Data sources:** Android `MediaStore` for all media; two Room databases, one for albums and one
+  for the media index; `SharedPreferences` for the language override and user preferences. See
+  *Persistence* below.
 - **Network/account:** none, except Google Play Billing for the optional tip jar.
 - **Dependency injection:** none — components are instantiated directly, so tests pass fakes.
 
@@ -108,6 +110,14 @@ trigger.
 Albums and media meet only in the ViewModel layer: `AlbumsViewModel` is handed the live
 `allMedia` list and resolves stored memberships against it. The database never holds a media row.
 
+The second database — the media index, `media_index.db` — is **not in that diagram yet**. Its
+schema, DAO and store exist and `EasyGalleryApp` holds it, but nothing writes to it and no screen
+reads from it; the pipeline that fills it and the evaluation that consumes it are later steps of
+[the Stage 2 plan](../design/albums-stage-2.md). When it joins the flow it joins it the same way
+albums do — index keys resolved against live media in the ViewModel layer, never rendered straight
+from the database —
+**[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)**.
+
 **Kotlin property initialisers run top to bottom.** A derived `combine(...)` flow must be declared
 below every property it reads, or the class does not compile. Do not work around this with
 `lateinit` or a nullable backing field.
@@ -131,11 +141,16 @@ below every property it reads, or the class does not compile. Do not work around
 | `MediaLocation.kt` | GPS parsing, formatting, URI building, and the per-item `MediaLocationReader`. |
 | `DefaultMediaPermissionHandler.kt` | Wraps the Android 11+ `createDeleteRequest`/`createWriteRequest` `IntentSender` APIs so the ViewModel stays free of `Activity` details. |
 | `MediaStoreVersionStore.kt` | The `MediaStore.getVersion()` watermark store (`SharedPreferences*` and `InMemory*`) and the `MediaStoreVersionProvider` that reads the live value. |
-| `EasyGalleryDatabase.kt` | The Room database: two entities, schema version 1, `exportSchema = true`. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
+| `EasyGalleryDatabase.kt` | The album Room database: two entities, schema version 1, `exportSchema = true`. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
 | `AlbumEntities.kt` | `AlbumEntity`, `AlbumMembershipEntity`, `AlbumMembershipKind`, and its type converter. |
 | `AlbumDao.kt` | The album DAO. UI-facing queries return `Flow`. |
 | `AlbumStore.kt` | `AlbumStore` plus `RoomAlbumStore` and `InMemoryAlbumStore`, and the `StoredAlbum` model. |
-| `AlbumMembership.kt` | Pure, Android-free membership resolution and healing — direct URI match, then healing key, then orphan. |
+| `AlbumMembership.kt` | Pure, Android-free membership resolution and healing — direct URI match, then healing key, then orphan. The key itself comes from `MediaIdentity.kt`. |
+| `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. |
+| `MediaIndexDatabase.kt` | The media index Room database: one entity, schema version 1, `exportSchema = true`. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
+| `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, and ADR-0018's captured and derived column split. |
+| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`; deletion is per row, per volume, or whole-index. |
+| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry` model. |
 | `AlbumNaming.kt` | Pure default naming for a new album — the first `My album N` that no existing album uses. |
 | `Favourites.kt` | Pure favourite-tier selection from SDK level, `MANAGE_MEDIA` grant, and R extension version. |
 | `FavouritesDataSource.kt` | The `MediaStore` favourite read/write implementation behind the `FavouritesDataSource` interface. |
@@ -143,9 +158,9 @@ below every property it reads, or the class does not compile. Do not work around
 
 There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 (`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
-`AlbumMembership`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper files
-(`MediaDuration`, `ShareIntents`, `WallpaperIntents`) specifically so it can be unit tested on a
-plain JVM without Robolectric.
+`AlbumMembership`, `MediaIdentity`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper
+files (`MediaDuration`, `ShareIntents`, `WallpaperIntents`) specifically so it can be unit tested
+on a plain JVM without Robolectric.
 
 ### `ui/`
 
@@ -195,10 +210,11 @@ helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, plus `MediaLocatio
 ### App entry points
 
 - **`EasyGalleryApp`** (`Application`) — configures the Coil 3 `ImageLoader` with video-frame and
-  animated-image decoders, applies the persisted locale in `attachBaseContext`, and holds the
-  `EasyGalleryDatabase` singleton as a `lazy` property. There is no DI framework to own the
-  database and a second instance would defeat Room's invalidation tracking —
-  **[ADR-0009](decisions/0009-room-as-first-owned-datastore.md)**.
+  animated-image decoders, applies the persisted locale in `attachBaseContext`, and holds both
+  database singletons, `EasyGalleryDatabase` and `MediaIndexDatabase`, as `lazy` properties. There
+  is no DI framework to own them and a second instance of either would defeat Room's invalidation
+  tracking — **[ADR-0009](decisions/0009-room-as-first-owned-datastore.md)**. Two databases rather
+  than one is **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)**.
 - **`MainActivity`** — hosts the Compose tree, checks media permissions, and registers the
   `IntentSender` launchers for scoped-storage delete/write requests and for favourite writes.
 - **`LocaleHelper`** — persists the BCP-47 language tag and wraps a `Context` with it via
@@ -325,9 +341,10 @@ to this folder" target chosen at OK rather than on selection.
 
 ## 6. Persistence
 
-The app persists in two places, and they sit **alongside** each other. Room did not replace the
-preference stores: they work, they are tested, and migrating them would be churn with no
-user-visible benefit — **[ADR-0009](decisions/0009-room-as-first-owned-datastore.md)**.
+The app persists in `SharedPreferences` and in two Room databases, and they all sit **alongside**
+each other. Room did not replace the preference stores: they work, they are tested, and migrating
+them would be churn with no user-visible benefit —
+**[ADR-0009](decisions/0009-room-as-first-owned-datastore.md)**.
 
 ### Preference stores
 
@@ -375,14 +392,43 @@ to a membership row, chosen at random once, so it heals through the ordinary mem
 **[ADR-0015](decisions/0015-album-cover-persisted-random-member.md)**.
 
 The database is in scope for Android auto-backup and device transfer, which is the project
-template's default kept deliberately: `allowBackup="true"` and two rules files with every rule
-still commented out — **[ADR-0014](decisions/0014-album-database-included-in-auto-backup.md)**.
-Adding a single `<include>` would silently narrow the whole backup, so do not "tidy" those files.
+template's default kept deliberately —
+**[ADR-0014](decisions/0014-album-database-included-in-auto-backup.md)**: `allowBackup="true"`, and
+the only elements in either rules file are the `<exclude>` entries for the index database below.
+**There is no `<include>` anywhere, and that is what keeps the album database in scope** — adding
+one would silently narrow the whole backup to it, so do not "tidy" those files.
 
 **Favourites are not in this database.** They are a `MediaStore` column, read and written through
 `FavouritesDataSource` with a tier chosen from the SDK level, the `MANAGE_MEDIA` grant, and the R
 extension version — **[ADR-0011](decisions/0011-favourites-backed-by-mediastore.md)**.
 `MANAGE_MEDIA` is declared in the manifest, requested only in context, and never required.
+
+### The media index database
+
+`media_index.db`, Room, schema version 1, exported to `app/schemas/` under its own directory. One
+table, `media_index`, keyed by content URI and carrying the same healing triple an album membership
+carries, so a moved file heals rather than being re-indexed from nothing. EXIF facts captured from
+a file and the place codes later derived from them are **separate columns**, and the derived ones
+are written by no code yet —
+**[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** owns both rules and the reason
+this is a second database rather than two more tables in the first.
+
+It is **excluded** from backup and device transfer — the file and its `-wal` / `-shm` sidecars, in
+`backup_rules.xml` and in both sections of `data_extraction_rules.xml`. Backup rules select files
+rather than tables, which is why the split into two databases is what makes "back up albums, never
+back up the index" expressible at all. The exclusion costs nothing on restore because every row is
+recomputable from the device.
+
+The index is **a cache, not a record of intent**: a row whose media is gone is deleted rather than
+retained, which is the opposite of what an album membership does, and an automatic album's contents
+are the index's keys intersected with live media rather than the index's rows —
+**[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)**. Do not "fix" the
+apparent inconsistency with ADR-0010 in either direction; the two differ because a membership is a
+user's choice and an index row is not.
+
+Nothing fills it or reads it yet. The schema, the DAO, the store and the singleton are in place;
+the delta detection, the extraction pass, the scheduling and the evaluation that use them are later
+steps of [the Stage 2 plan](../design/albums-stage-2.md).
 
 ---
 
@@ -455,7 +501,7 @@ Anything machine-parsed — coordinates, durations — is formatted with `Locale
 | Async | Kotlin Coroutines + `StateFlow` |
 | Billing | Google Play Billing (`billing-ktx`) — the tip jar |
 | Media data | Android `MediaStore` — all media, and the favourite flag |
-| App-owned data | Room, with KSP as the annotation processor — albums only |
+| App-owned data | Room, with KSP as the annotation processor — two databases: albums, and the media index |
 | Unit tests | JUnit4, MockK, Turbine, coroutines-test; Robolectric for the `data/` Android-boundary tests; `room-testing` and `inMemoryDatabaseBuilder` for the DAO |
 | Instrumented tests | Compose UI test + Espresso |
 
