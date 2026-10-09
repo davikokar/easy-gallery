@@ -20,6 +20,9 @@ interface MediaIndexDao {
     @Query("SELECT * FROM media_index WHERE mediaUri = :mediaUri LIMIT 1")
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntity?
 
+    @Query("SELECT * FROM media_index WHERE volumeName = :volumeName ORDER BY mediaUri ASC")
+    suspend fun listByVolume(volumeName: String): List<MediaIndexEntity>
+
     @Query("DELETE FROM media_index WHERE mediaUri = :mediaUri")
     suspend fun deleteByMediaUri(mediaUri: String)
 
@@ -28,4 +31,16 @@ interface MediaIndexDao {
 
     @Query("DELETE FROM media_index")
     suspend fun deleteAll()
+
+    @Query("SELECT * FROM media_index_watermark")
+    fun listWatermarks(): List<MediaIndexWatermarkEntity>
+
+    @Query("SELECT * FROM media_index_watermark WHERE volumeName = :volumeName LIMIT 1")
+    fun getWatermark(volumeName: String): MediaIndexWatermarkEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertWatermark(watermark: MediaIndexWatermarkEntity)
+
+    @Query("DELETE FROM media_index_watermark WHERE volumeName = :volumeName")
+    fun deleteWatermark(volumeName: String)
 }

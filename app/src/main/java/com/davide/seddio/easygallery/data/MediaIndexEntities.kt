@@ -40,3 +40,12 @@ data class MediaIndexEntity(
         )
     }
 }
+
+@Entity(tableName = "media_index_watermark")
+data class MediaIndexWatermarkEntity(
+    @PrimaryKey
+    val volumeName: String,
+    val version: String?,
+    val generation: Long?,
+    val dateModifiedWatermarkSeconds: Long?
+)

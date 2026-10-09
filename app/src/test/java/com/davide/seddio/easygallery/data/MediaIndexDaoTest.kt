@@ -133,6 +133,34 @@ class MediaIndexDaoTest {
         }
     }
 
+    @Test
+    fun `watermark table upsert list and delete work by volume`() {
+        dao.upsertWatermark(
+            MediaIndexWatermarkEntity(
+                volumeName = "external_primary",
+                version = "v3",
+                generation = 11L,
+                dateModifiedWatermarkSeconds = 900L
+            )
+        )
+        dao.upsertWatermark(
+            MediaIndexWatermarkEntity(
+                volumeName = "external",
+                version = "v4",
+                generation = null,
+                dateModifiedWatermarkSeconds = 700L
+            )
+        )
+
+        val all = dao.listWatermarks().associateBy { it.volumeName }
+        assertEquals(setOf("external_primary", "external"), all.keys)
+        assertEquals("v3", all.getValue("external_primary").version)
+
+        dao.deleteWatermark("external")
+        assertNull(dao.getWatermark("external"))
+        assertNotNull(dao.getWatermark("external_primary"))
+    }
+
     private fun sampleEntity(
         mediaUri: String,
         displayName: String = "photo.jpg",

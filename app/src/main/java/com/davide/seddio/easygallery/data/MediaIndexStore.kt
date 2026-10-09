@@ -10,6 +10,7 @@ interface MediaIndexStore {
     fun observeAll(): Flow<List<MediaIndexEntry>>
     fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntry>>
 
+    suspend fun listByVolume(volumeName: String): List<MediaIndexEntry>
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry?
     suspend fun upsert(entries: List<MediaIndexEntry>)
     suspend fun deleteByMediaUri(mediaUri: String)
@@ -59,6 +60,10 @@ class RoomMediaIndexStore(
 
     override suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry? {
         return dao.getByMediaUri(mediaUri)?.toStoreEntry()
+    }
+
+    override suspend fun listByVolume(volumeName: String): List<MediaIndexEntry> {
+        return dao.listByVolume(volumeName).map { it.toStoreEntry() }
     }
 
     override suspend fun upsert(entries: List<MediaIndexEntry>) {
@@ -134,6 +139,16 @@ class InMemoryMediaIndexStore : MediaIndexStore {
 
     override suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry? {
         return lock.withLock { rows[mediaUri] }
+    }
+
+    override suspend fun listByVolume(volumeName: String): List<MediaIndexEntry> {
+        return lock.withLock {
+            rows.values
+                .asSequence()
+                .filter { it.volumeName == volumeName }
+                .sortedBy { it.mediaUri }
+                .toList()
+        }
     }
 
     override suspend fun upsert(entries: List<MediaIndexEntry>) {

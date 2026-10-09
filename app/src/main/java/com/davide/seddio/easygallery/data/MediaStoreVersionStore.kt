@@ -2,7 +2,6 @@ package com.davide.seddio.easygallery.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.os.Build
 import android.provider.MediaStore
 
 interface MediaStoreVersionStore {
@@ -49,7 +48,6 @@ class SharedPreferencesMediaStoreVersionStore(
 
 object AndroidMediaStoreVersionProvider : MediaStoreVersionProvider {
     override fun currentVersion(context: Context): String? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         return MediaStore.getVersion(context)
     }
 }

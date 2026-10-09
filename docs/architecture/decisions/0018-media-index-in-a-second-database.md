@@ -189,3 +189,67 @@ and leave every automatic album quietly incomplete.
   `res/xml/data_extraction_rules.xml` — the unauthored state this decision is the first to change
 - <https://developer.android.com/identity/data/autobackup> — files included by default, the 25 MB
   quota, and `onQuotaExceeded()`
+
+## Amendment 1 — 2026-10-09 — The index also holds the delta pipeline's scheduling state
+
+This amendment **adds** to the Decision; it corrects nothing. Everything in the record continues to
+govern — the second database, the exclusion from backup in all three places, the captured/derived
+column split, the singleton rule applying twice, and every alternative rejected in *Alternatives
+Considered*.
+
+It is recorded as an amendment rather than a superseding ADR, following ADR-0010 Amendment 1,
+ADR-0011 Amendment 1 and ADR-0016 Amendment 1. The reasoning that chose a separate, backup-excluded
+database did not change, and the new content is **an instance of that reasoning rather than an
+exception to it**. Disabling this record and restating it would retire a decision that still
+governs.
+
+### What changed
+
+The Decision described the index as one row per media item. Step 2.2 of
+[albums-stage-2.md](../../design/albums-stage-2.md) added a second table holding **scheduling
+state**: the per-volume delta watermark — the last-seen `MediaStore` version string, the last-seen
+generation number, and the `DATE_MODIFIED` fallback watermark used on API 28–29 — keyed by volume
+name.
+
+So the index database now holds two kinds of thing: facts *about* media, and the bookkeeping that
+decides which media to look at next. Both are covered by the same rules this record already states.
+
+### Why it belongs here rather than in `SharedPreferences`
+
+It was first implemented in the `app_settings` preferences file, beside the album watermark, and
+moved. The watermark is **a map keyed by volume name, not a scalar**, and `AGENTS.md` and
+`ARCHITECTURE.md` §6 both say that file may take another scalar and nothing structured. That ruled
+out the cheap option and left two candidates — a sixth preferences file, or the index database.
+
+The index database won on three of this record's own arguments:
+
+- **It is recomputable.** A lost watermark costs one full resync, which is exactly the cost this
+  record already accepts for the rows themselves. It is not a record of user intent, and ADR-0020's
+  distinction between a user's choice and a cache puts it firmly on the cache side.
+- **It must not be backed up**, for the same reason the rows must not: every `MediaStore` key and
+  every generation number is meaningless on the receiving device, and a restored watermark would be
+  actively worse than an absent one, because it would suppress the resync that rebuilds the index.
+  Putting it in the excluded file gets that for free; a preferences file would have needed a fourth
+  `<exclude>` in three places, with the same invisible-failure mode this record's *Negative*
+  consequences already describe.
+- **It is worthless without the index.** "Delete the index" must leave no stale watermark behind,
+  and this record already makes that a supported whole-file operation. Two stores in two mechanisms
+  would make it two operations that must not drift apart.
+
+### Consequences
+
+- **The index database is at version 2.** The watermark table arrived through a real
+  `Migration(1, 2)` registered on the builder, with **no destructive fallback**, and Room exports
+  one JSON per version under `app/schemas/` — `1.json` and `2.json`. **Each must be committed by
+  the change that produces it.** Whether either is tracked at any given moment is a fact
+  `git ls-files app/schemas` owns, and no document should restate it; the directory is outside
+  `app/src/`, so a `git add` aimed there misses it silently. This is the first migration either
+  database has had, and it is the precedent for the rest of Stage 2.
+- The *Positive* consequence that the two databases version independently is now load-bearing
+  rather than theoretical: this bump touched neither the album schema nor its history.
+- Watermark access follows the same store convention as everything else here —
+  `MediaIndexWatermarkStore`, with `Room*` and `InMemory*` implementations. That is a third store
+  interface over two databases, not a new pattern.
+- The *Negative* consequence about two transaction scopes is unaffected. The watermark and the rows
+  it describes are in the **same** database, so the one place atomicity would have mattered is the
+  one place it is available.

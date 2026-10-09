@@ -111,8 +111,9 @@ Albums and media meet only in the ViewModel layer: `AlbumsViewModel` is handed t
 `allMedia` list and resolves stored memberships against it. The database never holds a media row.
 
 The second database — the media index, `media_index.db` — is **not in that diagram yet**. Its
-schema, DAO and store exist and `EasyGalleryApp` holds it, but nothing writes to it and no screen
-reads from it; the pipeline that fills it and the evaluation that consumes it are later steps of
+schema, DAO, stores, delta detection and reconciliation exist and `EasyGalleryApp` holds the
+database, but no production code calls any of it and no screen reads from it; the pass that fills
+it and the evaluation that consumes it are later steps of
 [the Stage 2 plan](../design/albums-stage-2.md). When it joins the flow it joins it the same way
 albums do — index keys resolved against live media in the ViewModel layer, never rendered straight
 from the database —
@@ -147,10 +148,16 @@ below every property it reads, or the class does not compile. Do not work around
 | `AlbumStore.kt` | `AlbumStore` plus `RoomAlbumStore` and `InMemoryAlbumStore`, and the `StoredAlbum` model. |
 | `AlbumMembership.kt` | Pure, Android-free membership resolution and healing — direct URI match, then healing key, then orphan. The key itself comes from `MediaIdentity.kt`. |
 | `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. |
-| `MediaIndexDatabase.kt` | The media index Room database: one entity, schema version 1, `exportSchema = true`. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
-| `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, and ADR-0018's captured and derived column split. |
-| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`; deletion is per row, per volume, or whole-index. |
+| `MediaIndexDatabase.kt` | The media index Room database: two entities, schema version 2, `exportSchema = true`, with `MIGRATION_1_2` registered on the builder and no destructive fallback. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
+| `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, and ADR-0018's captured and derived column split — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name. |
+| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`; deletion is per row, per volume, or whole-index. It also carries the watermark queries — list, get, upsert, delete by volume. |
 | `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry` model. |
+| `MediaIndexWatermarkStore.kt` | `MediaIndexWatermarkStore` plus `RoomMediaIndexWatermarkStore` and `InMemoryMediaIndexWatermarkStore`, and the `MediaIndexVolumeWatermark` model — version, generation, and the API 28–29 date fallback, one entry per volume. |
+| `MediaIndexDeltaDetection.kt` | Pure, Android-free delta detection: the API-branch resolution, the volume plan (which volumes resync and what the next watermarks are), the per-row selection, the `DATE_MODIFIED` fallback predicate, and the `MediaIndexDeltaDetector` that composes a snapshot provider with the watermark store. |
+| `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared identity with an in-memory join, and returns without touching a volume that is not present. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
+| `MediaStoreVolumeSnapshotProvider.kt` | The `MediaStoreVolumeSnapshotProvider` interface, the `MediaStoreVolumeGateway` that isolates the four level-gated `MediaStore` calls, and the Android implementation that builds one snapshot per API branch. |
+| `MediaStoreRowDeltaProvider.kt` | The `ContentResolver` query behind row selection: the per-volume image and video collections, the generation columns where they exist, and the legacy `external` collections on API 28. |
+| `AndroidMediaStoreVolumeVersionProvider.kt` | Reads a single volume's version string — the no-argument call for the primary volume, the per-volume call on API 29+. |
 | `AlbumNaming.kt` | Pure default naming for a new album — the first `My album N` that no existing album uses. |
 | `Favourites.kt` | Pure favourite-tier selection from SDK level, `MANAGE_MEDIA` grant, and R extension version. |
 | `FavouritesDataSource.kt` | The `MediaStore` favourite read/write implementation behind the `FavouritesDataSource` interface. |
@@ -158,9 +165,11 @@ below every property it reads, or the class does not compile. Do not work around
 
 There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 (`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
-`AlbumMembership`, `MediaIdentity`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper
-files (`MediaDuration`, `ShareIntents`, `WallpaperIntents`) specifically so it can be unit tested
-on a plain JVM without Robolectric.
+`AlbumMembership`, `MediaIdentity`, `MediaIndexDeltaDetection`, `MediaIndexReconciliation`,
+`AlbumNaming`, `Favourites`) and in `ui/components/` helper files (`MediaDuration`, `ShareIntents`,
+`WallpaperIntents`) specifically so it can be unit tested on a plain JVM without Robolectric.
+Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
+the `AlbumMembership` precedent `MediaIndexReconciliation` follows.
 
 ### `ui/`
 
@@ -366,7 +375,9 @@ Every store is an interface with a `SharedPreferences*` production implementatio
 `albums_mediastore_version`, written by `SharedPreferencesMediaStoreVersionStore` in
 `data/MediaStoreVersionStore.kt` and injected into `AlbumsViewModel`; it was put there
 deliberately rather than opening a sixth preferences file for one key. A second scalar may join
-it. Anything structured must not.
+it. Anything structured must not — the media index's per-volume watermark was briefly written
+here, is **not** a scalar, and lives in the index database instead (§6, *The media index
+database*).
 
 The folder thumbnail override is resolved against live media rather than trusted blindly, so a
 deleted or moved item falls back automatically —
@@ -405,19 +416,33 @@ extension version — **[ADR-0011](decisions/0011-favourites-backed-by-mediastor
 
 ### The media index database
 
-`media_index.db`, Room, schema version 1, exported to `app/schemas/` under its own directory. One
-table, `media_index`, keyed by content URI and carrying the same healing triple an album membership
-carries, so a moved file heals rather than being re-indexed from nothing. EXIF facts captured from
-a file and the place codes later derived from them are **separate columns**, and the derived ones
-are written by no code yet —
+`media_index.db`, Room, schema version 2, exported to `app/schemas/` under its own directory. Two
+tables:
+
+| Table | Holds |
+|---|---|
+| `media_index` | one row per indexed item: the content URI, the same healing triple an album membership carries, the volume name, the generation numbers, the captured EXIF columns, and the derived place columns |
+| `media_index_watermark` | one row per volume: the last-seen version string, the last-seen generation, and the API 28–29 `DATE_MODIFIED` fallback watermark |
+
+EXIF facts captured from a file and the place codes later derived from them are **separate
+columns**, and the derived ones are written by no code yet —
 **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** owns both rules and the reason
-this is a second database rather than two more tables in the first.
+this is a second database rather than two more tables in the first. Its Amendment 1 records why the
+watermark table is here rather than in `SharedPreferences`.
+
+The watermark table arrived through a real `Migration(1, 2)` registered on the builder, with **no
+destructive fallback**. The precedent that sets for every later index schema change — bump,
+migrate, commit the JSON — is
+**[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 1's, and is not
+restated here. The two databases version independently, so this moved neither the album schema nor
+its history.
 
 It is **excluded** from backup and device transfer — the file and its `-wal` / `-shm` sidecars, in
 `backup_rules.xml` and in both sections of `data_extraction_rules.xml`. Backup rules select files
 rather than tables, which is why the split into two databases is what makes "back up albums, never
 back up the index" expressible at all. The exclusion costs nothing on restore because every row is
-recomputable from the device.
+recomputable from the device — the watermark rows included, which is the argument for keeping them
+here rather than beside the album watermark in `app_settings`.
 
 The index is **a cache, not a record of intent**: a row whose media is gone is deleted rather than
 retained, which is the opposite of what an album membership does, and an automatic album's contents
@@ -426,9 +451,10 @@ are the index's keys intersected with live media rather than the index's rows �
 apparent inconsistency with ADR-0010 in either direction; the two differ because a membership is a
 user's choice and an index row is not.
 
-Nothing fills it or reads it yet. The schema, the DAO, the store and the singleton are in place;
-the delta detection, the extraction pass, the scheduling and the evaluation that use them are later
-steps of [the Stage 2 plan](../design/albums-stage-2.md).
+Nothing fills it or reads it yet. The schema, the DAO, the two stores, the singleton, and the delta
+detection and reconciliation that would drive it are in place, but **no production code calls
+them**: the extraction pass, the scheduling and the evaluation are later steps of
+[the Stage 2 plan](../design/albums-stage-2.md).
 
 ---
 

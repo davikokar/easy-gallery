@@ -220,6 +220,12 @@ platform provides it:
 - **`MediaStore.getGeneration(volume)`** with the per-row `GENERATION_ADDED` / `GENERATION_MODIFIED`
   columns — monotonically increasing. Keep a watermark; only rows above it need work.
 
+**That watermark lives in the index database, keyed by volume name** —
+[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 1, which
+is binding here. So the index holds two kinds of thing: per-item facts, and the bookkeeping that
+decides which items to look at next. Both are recomputable and neither is backed up, which is the
+whole of the argument for keeping them together.
+
 Both are more robust than `DATE_ADDED` / `DATE_MODIFIED`, which move when an app calls
 `setLastModified()` or the user's clock is wrong. They do not arrive at the same API level, and the
 fallback is narrower than "no delta detection below 30" because of it. `getGeneration` is API 30, so
@@ -401,6 +407,17 @@ re-checked against the code and all still hold: the forced Kotlin 2.1.0 runtime 
 ### Stage log
 
 One line per status change, newest last. This is the history; the table above is the current state.
+
+> **A step landing inside an already-in-progress stage takes no line, and that absence is the rule
+> rather than an oversight.** The log moves when a stage's *status* moves; a stage that is already
+> 🔶 does not change status because one of its steps finished, so Stage 2 shows a single entry
+> while several of its steps are done. Those steps' record lives in
+> [albums-stage-2.md](albums-stage-2.md) until that document is archived, at which point it is
+> folded in here. Recorded explicitly because a missing line is indistinguishable from a forgotten
+> one, and this judgement had to be re-made and re-explained each time a Stage 2 step closed. The
+> entries above reading "Stage 1 stays Complete" are the other case: work landing against a
+> **closed** stage, where what is worth recording is that its exit criteria were re-checked and
+> held.
 
 | Date | Change |
 |---|---|
@@ -598,6 +615,18 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     and §3's formula means one album can hold both kinds at once: its additions and exclusions
     follow ADR-0010, its rule matches follow ADR-0020.
 
+20. **The delta watermark is a table in the index database, not a preference.** It was written to
+    `app_settings` first and moved. The watermark is a map keyed by volume name; `AGENTS.md` and
+    `ARCHITECTURE.md` §6 both allow that file another *scalar* and nothing structured, and a sixth
+    preferences file was not worth buying the difference. The reasoning is
+    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 1: a
+    watermark is index metadata — recomputable, worthless without the index, and actively harmful
+    if restored onto a new device, because it would suppress the very resync that rebuilds the
+    index. Two consequences outlive Stage 2. The index database is now at **version 2 via a real
+    migration with no destructive fallback**, which is the precedent every later schema change
+    follows, Stages 3 and 4 included when Tier B and Tier C add their tables. And "delete the
+    index" stays one whole-file operation, which is what §8.9's required Settings switch will need.
+
 ---
 
 ## 9. Consequences for the existing app
@@ -660,6 +689,20 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    only until it is answered.
 3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
+5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
+   — **Raised 2026-10-09, with the maintainer.** Step 2.2 of
+   [albums-stage-2.md](albums-stage-2.md) removed the `if (SDK_INT < R) return null` guard from
+   `AndroidMediaStoreVersionProvider` in `data/MediaStoreVersionStore.kt`, a **Stage 1** file that
+   step did not scope. The API fact is right — `MediaStore.getVersion(Context)` is available from
+   API 12, not API 30 — so the guard was wrong. The consequence is not a documentation fix but a
+   **behaviour change to a shipped Stage 1 feature**:
+   `AlbumsViewModel.didMediaStoreVersionChange()` returned `false` unconditionally on API 28–29 and
+   now does not, so membership healing re-evaluation activates on those devices for the first time.
+   Either reading is defensible — a latent bug fixed, or an unscoped change to working behaviour —
+   and the evidence is thin on purpose: there is a Robolectric test at `@Config(sdk = P)` at the
+   provider level, **none at the ViewModel level**, and no device at that API level is available
+   here. This is listed as an epic question rather than a stage detail because it touches Stage 1's
+   shipped behaviour, not Stage 2's new code. Nothing in Stage 2 is blocked on it.
 
 Questions scoped to a single stage live in that stage's plan — Stage 2's are in
 [albums-stage-2.md](albums-stage-2.md) — and only arrive here if they outlive it.

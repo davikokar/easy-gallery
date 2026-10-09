@@ -58,10 +58,11 @@ app/
   src/androidTest/      # Instrumented Compose UI tests
 ```
 
-There is no `domain/` module. Pure, Android-free logic lives in `data/`
-(`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
-`AlbumMembership`, `MediaIdentity`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper
-files (`MediaDuration`, `ShareIntents`, `WallpaperIntents`) so it can be unit tested on a plain JVM.
+There is no `domain/` module. Pure, Android-free logic lives in `data/` and in `ui/components/`
+helper files so it can be unit tested on a plain JVM. **Which files those are is owned by
+[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §3** — this file used to
+restate the list and the two copies drifted apart the first time the list grew, which is exactly
+the failure the rule below about copied facts describes.
 
 ## Documentation
 
@@ -191,7 +192,9 @@ Every store is an interface with a `SharedPreferences*` production implementatio
 `InMemory*` implementation for tests. Add both when you add a store.
 
 The album watermark shares `app_settings` deliberately, to avoid a sixth preferences file for one
-scalar. Another scalar may join it; anything structured belongs in Room.
+scalar. Another scalar may join it; anything structured belongs in Room. The media index's
+per-volume watermark is the worked example: it was written here first, is a map rather than a
+scalar, and moved into the index database.
 
 ### The two databases
 
@@ -202,9 +205,16 @@ database is backed up (ADR-0014) while the index must not be.
 
 - Both singletons live on `EasyGalleryApp`, each `by lazy`. Never construct a second instance of
   either; Room's invalidation tracking depends on there being one.
-- Access goes through a store interface — `AlbumStore` and `MediaIndexStore` — each with a `Room*`
-  implementation for production and an `InMemory*` one for tests, the same shape as the preference
-  stores. DAO-level tests use `inMemoryDatabaseBuilder`.
+- Access goes through a store interface — `AlbumStore`, `MediaIndexStore`, and
+  `MediaIndexWatermarkStore` — each with a `Room*` implementation for production and an
+  `InMemory*` one for tests, the same shape as the preference stores. DAO-level tests use
+  `inMemoryDatabaseBuilder`.
+- **One database does not mean one table, and neither is at version 1.** The album database holds
+  two tables at version 1; the index database holds two at **version 2**, having gained the
+  per-volume delta watermark table through a real `Migration(1, 2)` with no destructive fallback.
+  A watermark is index metadata — recomputable, worthless without the index, already excluded from
+  backup — so it belongs with the data it describes rather than in `app_settings`. ADR-0018
+  Amendment 1 records that.
 - Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
   committed. Room writes **one directory per database class**, so a schema can be generated
   correctly and still be left untracked by a `git add` aimed at `app/src/`. Check it.
@@ -262,7 +272,14 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   "No such file or directory", which a grep-filtered pipeline reports as a clean build. Treat
   empty Gradle output as suspicious, not as success.
 - `--offline` does not work (not everything is cached).
-- `lintDebug` is configured with `abortOnError = false`, so it is informational, not a gate.
+- **`lintDebug` does not run at all on this machine, and that is worse than it sounds.**
+  `:app:lintAnalyzeDebug` fails with
+  `Could not initialize class com.intellij.java.syntax.JavaSyntaxDefinition`. It is also configured
+  with `abortOnError = false`, so lint was never a gate — but "informational" reads as *it runs and
+  you may ignore it*, and the truth is that it produces nothing. The consequence that bites:
+  **`NewApi` is not catching unguarded `MediaStore` calls** on this minSdk-28 module, and Stage 2
+  of the albums epic hit exactly that twice. Check every API-level guard by reading it; do not
+  expect a tool to find it, and do not report a lint run as clean when it failed to start.
 - **A device may or may not be attached. `adb devices` settles it; do not assume either way.**
   When one is listed, `connectedDebugAndroidTest` runs here and instrumented behaviour can be
   genuinely verified — the suite has run on hardware, so "it cannot run" is not a safe
