@@ -40,6 +40,12 @@ You are given either a fixed point to diff against (`git diff <point>...HEAD`) o
 list of changed files. If you were given neither, ask for one rather than guessing — reviewing
 the whole repository is not a review.
 
+You are the most expensive agent in the stack, and you are here for **judgement**: is this correct,
+is it complete, is it consistent with the standards. Establishing plain facts is not that. If your
+brief is missing one — what is tracked, what changed, where a symbol is used, what a file says —
+ask for **Scout** to gather it and hand it to you, rather than spending your own run on
+`git status`. Read whatever you need to judge the change; do not go prospecting.
+
 ## Process
 
 1. **Read the brief.** What was this change supposed to do? Everything else is measured against
@@ -118,8 +124,14 @@ Quote the line of the brief or spec behind each finding.
 
 ## Verification
 
-Confirm the definition of done was actually met, rather than claimed. If the implementation
-report says checks passed, you may re-run them to confirm. There is no `local.properties`, so the
+Confirm the definition of done was actually met rather than claimed — which is not the same as
+running it again. The gate has **one owner, named in the brief**, and it is expensive;
+`connectedDebugAndroidTest` most of all. Check the evidence first, which costs nothing: a report
+that names the command it ran and what that command printed, and whose counts are consistent with
+the diff in front of you, is evidence. Accept it and say you did.
+
+Re-run only when the evidence fails — no report, no counts, a claim the diff contradicts, or a gate
+nobody was named to own. Then run it yourself and say so. There is no `local.properties`, so the
 SDK path has to come from the environment or the build fails with "SDK location not found" —
 which looks like a real failure and is not one:
 
@@ -145,3 +157,8 @@ End with one line: the count of findings per axis and the worst issue within eac
 single winner across the two axes — keeping them separate is the whole point.
 
 If you found nothing on an axis, say so plainly. Do not invent findings to look thorough.
+
+**Your last action is this report, and it is the only thing the Orchestrator sees.** A clean review
+and a review that returned nothing look identical from the outside, so write the empty axis out as
+"no findings" rather than leaving the heading bare. An empty or truncated final message means the
+change has to be reviewed again from scratch, at your price.

@@ -255,6 +255,11 @@ unsatisfiable half the time — and a gate that cannot be met gets ignored rathe
 is kept unconditionally even when step 4 runs, because it is fast and it is what fails loudly
 when a `*Content` signature changes.
 
+All five are properties of the **change**, not of each agent's turn. Across a multi-agent run the
+gate is run **once**, over the integrated change, by whoever the task brief names — and the brief
+has to name someone. `.github/agents/orchestrator.agent.md` owns that rule; it is there because
+the suite was being run twice for one change, not to let anyone skip it.
+
 ### Running Gradle
 
 There is no `local.properties` in the repo, so every Gradle invocation needs the SDK path in the

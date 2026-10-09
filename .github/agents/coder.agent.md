@@ -6,8 +6,6 @@ agents: []
 model: GPT-5.3-Codex (copilot)
 ---
 
-ALWAYS use #context7 MCP Server to read relevant documentation. Do this every time you are working with a language, framework, library etc. Never assume that you know the answer as these things change frequently. Your training date is in the past so your knowledge is likely out of date, even if it is a technology you are familiar with.
-
 ## Project context
 
 This is **Easy Gallery**, an Android image and video gallery app written in Kotlin with Jetpack
@@ -42,6 +40,27 @@ files. Read these before you write anything:
    rather than editing it, including the handoff block it expects to be rewritten each session.
 
 You are a subagent and start with no memory of earlier phases. Spend the time to read.
+
+## External documentation
+
+Your training data is older than the libraries here, and this project pins versions deliberately —
+media3 is held back specifically because the Compose controls a newer release would give you do not
+exist in it. `gradle/libs.versions.toml` and `app/build.gradle.kts` hold every version. So the
+warning is sound: a confident answer about a version-sensitive API is the failure mode to watch for.
+
+The repository answers most of it first, and cheaper. `AGENTS.md` pins the stack and the build
+constraints; `/memories/repo/easy-gallery-exploration.md` records the API traps this codebase has
+already paid for. Read those, then reach for #context7 or #fetch when one of these holds, and name
+what you looked up in your report:
+
+- the task adds or upgrades a dependency — which needs the user's approval first, so it belongs in
+  your report rather than in your diff (see *What to ask before doing* in `AGENTS.md`);
+- you are calling a platform or library API this codebase does not already use, or one whose
+  behaviour changed across the API levels this module spans;
+- repository documentation and memory leave a behaviour question genuinely open.
+
+Routine Kotlin, Compose, Room, and Flow work against the pinned versions does not need a lookup.
+Guessing at a version-sensitive API does, every time.
 
 ## Mandatory Coding Principles
 
@@ -111,14 +130,28 @@ Taken from `AGENTS.md`. A task is not complete until all five hold:
    `./gradlew connectedDebugAndroidTest`. If no device is listed, step 3 is the fallback.
 5. New logic has at least one test.
 
+### Who runs the gate
+
+Those five are properties of the **change**, not of each agent's turn, and the gate is expensive —
+`connectedDebugAndroidTest` most of all. It runs **once** per change. Your brief names who runs it;
+if it does not, ask rather than assume, because both assumptions cost: one pays for the suite
+twice, the other ships unverified.
+
+- **You are one of several parallel implementation tasks.** Run no Gradle at all. Concurrent
+  invocations contend on the daemon and the project lock, and a lock-contention failure is
+  indistinguishable from a real build failure. Check your work by reading, and say in your report
+  that verification is outstanding.
+- **You are the sole implementer, and a verification or review phase follows.** Run steps 1 and 2,
+  so a breakage is caught where it was made. Leave steps 3 and 4 to the named owner, and say so;
+  do not re-run `connectedDebugAndroidTest` for a gate somebody else owns.
+- **You own the verification phase, or nothing follows you.** The whole gate is yours, steps 1 to
+  4, run over the integrated change.
+
+None of this relaxes the definition of done. A change is not done until all five hold; this only
+says they are paid for once.
+
 ### Running Gradle
 
-- Run Gradle only when you are the **sole active agent**, or when you have been explicitly told
-  you own the verification phase. Concurrent Gradle invocations contend on the daemon and the
-  project lock, and a lock-contention failure looks like a real build failure.
-- If you were spawned as one of several parallel implementation tasks, **do not run Gradle**.
-  Compile-check your reasoning by reading, state in your report that verification is outstanding,
-  and let the verification phase run the build once over the integrated change.
 - Always prefix with `cd /c/git/easy-gallery &&` and set `ANDROID_HOME`/`ANDROID_SDK_ROOT`; there
   is no `local.properties` in the repo. A `cd` left over from an earlier command makes
   `./gradlew` fail with "No such file or directory", which a grep-filtered pipeline reports as a
@@ -130,13 +163,27 @@ Taken from `AGENTS.md`. A task is not complete until all five hold:
 
 ## Reporting
 
-Your final message is the only thing the Orchestrator sees. Include:
+**Your last action is the report, and it is the only thing the Orchestrator sees.** Work that is
+not reported cannot be accepted. An empty or truncated final message does not merely lose detail —
+it forces another agent onto a more expensive model to reconstruct from the files what you already
+knew, and that has happened often enough to be why this section exists. Finishing the edits is not
+finishing the task.
 
-- What you changed, by file.
-- Which checks you ran and their results, or an explicit statement that verification is outstanding.
-- Anything you could not do, any assumption you made, and any failure you did not fix.
+Prose or a list, whichever is shorter, but cover all five:
 
-Do not broaden the task to fix unrelated problems you notice. Report them instead.
+1. **Files** created, changed, or deleted, by path.
+2. **Decisions** you took that the brief left open, each with its reason in a clause.
+3. **Gates** — which of the five checks you ran and what each printed, or an explicit statement
+   that verification is outstanding and who owns it. See *Who runs the gate* above.
+4. **Stale documents** your change has created, named by file and section so the edit can be
+   routed. `docs/architecture/ARCHITECTURE.md`, `docs/design/albums.md`, and the stage plan are
+   Planner-owned: naming the section is your job, fixing it is not.
+5. **Not done** — anything the brief asked for that you did not do, any assumption you made, and
+   any failure you left in place, each with why.
+
+Never report a gate you did not run or a count you did not see. "Checks pass" is not item 3; the
+command and what it printed is. Do not broaden the task to fix unrelated problems you notice —
+report them under 5.
 
 ## Architecture Decisions
 

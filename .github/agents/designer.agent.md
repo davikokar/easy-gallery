@@ -64,8 +64,30 @@ You are a subagent and start with no memory of earlier phases. Spend the time to
 
 ## Reporting
 
-Your final message is the only thing the Orchestrator sees. State what you decided, what you
-changed by file, the tradeoffs you resolved, and anything you deliberately left to implementation.
+**Your last action is the report, and it is the only thing the Orchestrator sees.** Work that is
+not reported cannot be accepted. An empty or truncated final message forces another agent onto a
+more expensive model to reconstruct from the files what you already knew, and that has happened
+often enough to be why this section exists. A tradeoff you resolved silently is worse than one
+nobody resolved: the implementer will resolve it differently and neither of you will find out.
+
+Cover all five:
+
+1. **Files** created, changed, or deleted, by path.
+2. **Decisions** you took that the brief left open — every tradeoff you resolved, with the reason,
+   and every name you added to `.github/instructions/ui-vocabulary.instructions.md`. Say what you
+   deliberately left to implementation, so it reads as a handover rather than a gap.
+3. **Gates** — which of the checks in `AGENTS.md`'s definition of done you ran and what each
+   printed, or an explicit statement that verification is outstanding and who owns it. The gate
+   runs once per change and your brief names its owner; do not re-run
+   `connectedDebugAndroidTest` for a phase that owns it. Flag separately anything whose success can
+   only be judged by seeing it rendered, so it is checked on a device rather than assumed.
+4. **Stale documents** your change has created, named by file and section. The UI vocabulary is
+   yours to update in the same change; `docs/architecture/ARCHITECTURE.md`, `docs/design/albums.md`,
+   and the stage plan are the Planner's — name the section and let the Orchestrator route it.
+5. **Not done** — anything the brief asked for that you did not do, any assumption you made, and
+   any constraint you escalated rather than absorbed.
+
+Never report a gate you did not run or a count you did not see.
 
 ## Architecture Decisions
 

@@ -105,7 +105,32 @@ must be accurate and complete. Call out files that several steps genuinely need 
 ones — so those steps are sequenced rather than run together.
 
 Do not plan a build/test step into the middle of parallel work. Verification runs once, over the
-integrated change, in its own final phase.
+integrated change, in its own final phase. Say in the plan **who owns the definition-of-done
+gate** — the verification phase, normally — so that nobody runs `connectedDebugAndroidTest` twice
+for one change.
+
+## Reporting
+
+**Your last action is the report, and it is the only thing the Orchestrator sees.** A plan you
+wrote and did not hand back is a plan nobody has. An empty or truncated final message forces
+another agent onto a more expensive model to reconstruct your work from the files, and that has
+happened often enough to be why this section exists.
+
+When the deliverable is a plan, the plan **is** the report, in the shape above. When you were asked
+instead to write an ADR, update the overview, or move an epic forward, report against these five:
+
+1. **Files** created, changed, or deleted, by path — every ADR, index entry, progress-table row,
+   and stage-log line you touched.
+2. **Decisions** you took that the brief left open, each with its reason. Say whether any of them
+   warranted an ADR, and whether you wrote it.
+3. **Checks** you made against the repository rather than against somebody's report — which exit
+   criteria you verified and how, and which you could not. You run no build; say that plainly
+   rather than leaving it to be inferred from silence.
+4. **Stale documents** still outstanding, named by file and section, including ones your change did
+   not cause. You own most of them, so separate what you fixed here from what you are leaving.
+5. **Not done** — anything the brief asked for that you did not do, and why. An open question you
+   could not resolve belongs here as well as in the plan, because the plan may not be read by the
+   person who can answer it.
 
 ## Rules
 
