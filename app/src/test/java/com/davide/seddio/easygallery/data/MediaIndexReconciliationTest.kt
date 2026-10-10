@@ -23,7 +23,7 @@ class MediaIndexReconciliationTest {
         )
         val storedWatermarks = mapOf(
             "external_primary" to MediaIndexVolumeWatermark("v8", null, 100L),
-            "external" to MediaIndexVolumeWatermark("v4", null, 50L)
+            "0123-4567" to MediaIndexVolumeWatermark("v4", null, 50L)
         )
 
         val plan = planMediaIndexDelta(snapshot, storedWatermarks)
@@ -41,8 +41,8 @@ class MediaIndexReconciliationTest {
 
         val remaining =
             store.listByVolume("external_primary").map { it.mediaUri } +
-                store.listByVolume("external").map { it.mediaUri }
-        assertEquals(listOf("content://media/external/images/media/2"), remaining)
+                store.listByVolume("0123-4567").map { it.mediaUri }
+        assertEquals(listOf("content://media/0123-4567/images/media/2"), remaining)
     }
 
     @Test
@@ -72,7 +72,7 @@ class MediaIndexReconciliationTest {
 
         assertTrue(store.listByVolume(MediaIndexDeltaTestFixtures.PRIMARY_VOLUME).isEmpty())
         assertEquals(
-            listOf("content://media/external/images/media/2"),
+            listOf("content://media/0123-4567/images/media/2"),
             store.listByVolume(MediaIndexDeltaTestFixtures.SECONDARY_VOLUME).map { it.mediaUri }
         )
     }
@@ -106,7 +106,7 @@ class MediaIndexReconciliationTest {
 
         assertTrue(store.listByVolume(MediaIndexDeltaTestFixtures.PRIMARY_VOLUME).isEmpty())
         assertEquals(
-            listOf("content://media/external/images/media/2"),
+            listOf("content://media/0123-4567/images/media/2"),
             store.listByVolume(MediaIndexDeltaTestFixtures.SECONDARY_VOLUME).map { it.mediaUri }
         )
     }
@@ -223,6 +223,47 @@ class MediaIndexReconciliationTest {
 
         assertEquals(setOf(healedLegacyUri), secondPass.deletedMediaUris)
         assertTrue(store.listByVolume("external_primary").isEmpty())
+    }
+
+    @Test
+    fun `healed external uri keeps secondary volume name instead of orphaning to external`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val secondaryVolume = "0123-4567"
+        val staleUri = "content://media/0123-4567/images/media/41"
+        val healedLegacyUri = "content://media/external/images/media/401"
+
+        store.upsert(
+            listOf(
+                MediaIndexEntry(
+                    mediaUri = staleUri,
+                    displayName = "secondary.jpg",
+                    size = 999L,
+                    dateModified = 555L,
+                    volumeName = secondaryVolume,
+                    generationAdded = null,
+                    generationModified = null,
+                    capturedDateTakenEpochMillis = null,
+                    capturedLatitude = null,
+                    capturedLongitude = null,
+                    capturedWidth = null,
+                    capturedHeight = null,
+                    derivedCountryCode = null,
+                    derivedRegionCode = null,
+                    derivedPlaceName = null
+                )
+            )
+        )
+
+        MediaIndexReconciler(store).reconcileVolume(
+            volumeName = secondaryVolume,
+            liveMedia = listOf(mediaItem(healedLegacyUri, "secondary.jpg", size = 999L, dateModified = 555L)),
+            presentVolumes = setOf(secondaryVolume)
+        )
+
+        val rows = store.listByVolume(secondaryVolume)
+        assertEquals(1, rows.size)
+        assertEquals(healedLegacyUri, rows.single().mediaUri)
+        assertEquals(secondaryVolume, rows.single().volumeName)
     }
 
     @Test

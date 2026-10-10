@@ -111,9 +111,9 @@ Albums and media meet only in the ViewModel layer: `AlbumsViewModel` is handed t
 `allMedia` list and resolves stored memberships against it. The database never holds a media row.
 
 The second database — the media index, `media_index.db` — is **not in that diagram yet**. Its
-schema, DAO, stores, delta detection and reconciliation exist and `EasyGalleryApp` holds the
-database, but no production code calls any of it and no screen reads from it; the pass that fills
-it and the evaluation that consumes it are later steps of
+schema, DAO, stores, delta detection, reconciliation and the Tier A batch indexer that fills it all
+exist and `EasyGalleryApp` holds the database, but nothing calls the indexer and no screen reads
+from it; the scheduling that would run it and the evaluation that consumes it are later steps of
 [the Stage 2 plan](../design/albums-stage-2.md). When it joins the flow it joins it the same way
 albums do — index keys resolved against live media in the ViewModel layer, never rendered straight
 from the database —
@@ -139,7 +139,7 @@ below every property it reads, or the class does not compile. Do not work around
 | `ViewPreferences.kt` | The per-view preference bundle and `PreferenceScope`. |
 | `FolderViewOverrides.kt` | The sparse per-folder override bundle and its apply/merge logic, plus the pure three-layer Folder Detail resolution shared by Folder Detail View and the New album screen. See §5. |
 | `CameraFolder.kt` | The camera-folder path heuristic and the implicit sort default it produces. |
-| `MediaLocation.kt` | GPS parsing, formatting, URI building, and the per-item `MediaLocationReader`. |
+| `MediaLocation.kt` | GPS parsing, formatting, URI building, and the per-item `MediaLocationReader`. Its `originalMediaUriForExifRead` — ADR-0001's `setRequireOriginal` path — plus `mediaCoordinatesFromExifLatLong` and the `isAtLeastQ` guard are shared with the Tier A indexer rather than reimplemented there. |
 | `DefaultMediaPermissionHandler.kt` | Wraps the Android 11+ `createDeleteRequest`/`createWriteRequest` `IntentSender` APIs so the ViewModel stays free of `Activity` details. |
 | `MediaStoreVersionStore.kt` | The `MediaStore.getVersion()` watermark store (`SharedPreferences*` and `InMemory*`) and the `MediaStoreVersionProvider` that reads the live value. |
 | `EasyGalleryDatabase.kt` | The album Room database: two entities, schema version 1, `exportSchema = true`. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
@@ -156,8 +156,10 @@ below every property it reads, or the class does not compile. Do not work around
 | `MediaIndexDeltaDetection.kt` | Pure, Android-free delta detection: the API-branch resolution, the volume plan (which volumes resync and what the next watermarks are), the per-row selection, the `DATE_MODIFIED` fallback predicate, and the `MediaIndexDeltaDetector` that composes a snapshot provider with the watermark store. |
 | `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared identity with an in-memory join, and returns without touching a volume that is not present. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
 | `MediaStoreVolumeSnapshotProvider.kt` | The `MediaStoreVolumeSnapshotProvider` interface, the `MediaStoreVolumeGateway` that isolates the four level-gated `MediaStore` calls, and the Android implementation that builds one snapshot per API branch. |
-| `MediaStoreRowDeltaProvider.kt` | The `ContentResolver` query behind row selection: the per-volume image and video collections, the generation columns where they exist, and the legacy `external` collections on API 28. |
+| `MediaStoreRowDeltaProvider.kt` | The `ContentResolver` query behind row selection: the per-volume image and video collections, the generation columns where they exist, and the legacy `external` collections on API 28. It canonicalises every observed URI at the source, so a row's spelling does not depend on which collection it was observed through, while the row keeps its own concrete volume name. |
 | `AndroidMediaStoreVolumeVersionProvider.kt` | Reads a single volume's version string — the no-argument call for the primary volume, the per-volume call on API 29+. |
+| `MediaIndexTierAIndexer.kt` | Tier A extraction and the batch that applies it: the `MediaIndexTierAExtractor` interface, its Android implementation (`ExifInterface` for images, `MediaMetadataRetriever` for video), the two pure date-taken parsers, and `MediaIndexTierABatchIndexer`, which composes detection, row selection, extraction, upsert, reconciliation and watermark persistence into one cancellable pass. Nothing calls it yet. |
+| `MediaStoreUriAliases.kt` | The single rule for `MediaStore` URI spellings: parse one into volume, kind and id, and canonicalise any volume into the `content://media/external/…` union namespace, so observed rows and live media join on one spelling. |
 | `AlbumNaming.kt` | Pure default naming for a new album — the first `My album N` that no existing album uses. |
 | `Favourites.kt` | Pure favourite-tier selection from SDK level, `MANAGE_MEDIA` grant, and R extension version. |
 | `FavouritesDataSource.kt` | The `MediaStore` favourite read/write implementation behind the `FavouritesDataSource` interface. |
@@ -170,6 +172,11 @@ There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 `WallpaperIntents`) specifically so it can be unit tested on a plain JVM without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
 the `AlbumMembership` precedent `MediaIndexReconciliation` follows.
+
+`MediaIndexTierAIndexer.kt` is deliberately **not** on that list. Unlike the delta-detection files,
+which split the Android boundary into providers of their own, it keeps the extractor, the pure date
+parsers and the batch orchestrator in one file — so its parsers are unit-tested plain while its
+extractor is tested under Robolectric, and the file as a whole cannot be claimed as Android-free.
 
 ### `ui/`
 
@@ -451,9 +458,10 @@ are the index's keys intersected with live media rather than the index's rows �
 apparent inconsistency with ADR-0010 in either direction; the two differ because a membership is a
 user's choice and an index row is not.
 
-Nothing fills it or reads it yet. The schema, the DAO, the two stores, the singleton, and the delta
-detection and reconciliation that would drive it are in place, but **no production code calls
-them**: the extraction pass, the scheduling and the evaluation are later steps of
+Nothing reads it, and nothing yet runs the pass that would fill it. The schema, the DAO, the two
+stores, the singleton, the delta detection and reconciliation, and the Tier A batch indexer that
+walks a delta and writes rows are all in place, but **no production code calls the indexer**: the
+scheduling and the evaluation are later steps of
 [the Stage 2 plan](../design/albums-stage-2.md).
 
 ---

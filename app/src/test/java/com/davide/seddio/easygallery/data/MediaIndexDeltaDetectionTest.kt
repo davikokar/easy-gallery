@@ -173,7 +173,7 @@ class MediaIndexDeltaDetectionTest {
     }
 
     @Test
-    fun `detectAndPersist writes next watermarks`() {
+    fun `detect returns plan and stored watermarks from the same pre-pass read`() {
         val snapshot = MediaStoreVolumeSnapshot(
             apiBranch = MediaStoreDeltaApiBranch.API_30_PLUS,
             observedVolumes = listOf(ObservedMediaStoreVolume("external_primary", "v2", 9L)),
@@ -188,9 +188,15 @@ class MediaIndexDeltaDetectionTest {
             snapshotProvider = FixedSnapshotProvider(snapshot)
         )
 
-        val plan = detector.detectAndPersist(sdkInt = 30)
+        val detection = detector.detect(sdkInt = 30)
 
-        assertEquals(setOf("external_primary"), plan.volumesToResync)
+        assertEquals(setOf("external_primary"), detection.plan.volumesToResync)
+        assertEquals(
+            mapOf("external_primary" to MediaIndexVolumeWatermark("v1", 2L, null)),
+            detection.storedWatermarks
+        )
+
+        detector.persistWatermarks(detection.plan.nextWatermarks)
         assertEquals(MediaIndexVolumeWatermark("v2", 9L, null), store.read("external_primary"))
     }
 

@@ -73,8 +73,8 @@ class AndroidMediaStoreRowDeltaProviderTest {
         assertEquals(2, projections.size)
         assertEquals(
             listOf(
-                "content://media/external_primary/images/media/1",
-                "content://media/external_primary/video/media/2"
+                "content://media/external/images/media/1",
+                "content://media/external/video/media/2"
             ),
             rows.map { it.mediaUri }
         )
@@ -137,6 +137,44 @@ class AndroidMediaStoreRowDeltaProviderTest {
             setOf(COLUMN_ID, COLUMN_DATE_MODIFIED),
             projections.first().toSet()
         )
+    }
+
+    @Test
+    fun `api 30 plus canonicalizes uuid volume rows to external namespace`() {
+        every { context.contentResolver } returns contentResolver
+
+        val imageCursor = fakeCursor(
+            columns = mapOf(
+                COLUMN_ID to 0,
+                COLUMN_DATE_MODIFIED to 1,
+                COLUMN_GENERATION_ADDED to 2,
+                COLUMN_GENERATION_MODIFIED to 3
+            ),
+            rows = listOf(mapOf(0 to 7L, 1 to 321L, 2 to 20L, 3 to 21L))
+        )
+        val videoCursor = fakeCursor(
+            columns = mapOf(
+                COLUMN_ID to 0,
+                COLUMN_DATE_MODIFIED to 1,
+                COLUMN_GENERATION_ADDED to 2,
+                COLUMN_GENERATION_MODIFIED to 3
+            ),
+            rows = emptyList()
+        )
+
+        every {
+            contentResolver.query(any(), any(), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val provider = AndroidMediaStoreRowDeltaProvider(context)
+        val rows = provider.queryObservedRows(
+            volumeName = "0123-4567",
+            apiBranch = MediaStoreDeltaApiBranch.API_30_PLUS
+        )
+
+        assertEquals(1, rows.size)
+        assertEquals("content://media/external/images/media/7", rows.single().mediaUri)
+        assertEquals("0123-4567", rows.single().volumeName)
     }
 
     @Test

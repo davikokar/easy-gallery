@@ -281,6 +281,15 @@ binding here and states what that costs. The staleness that remains is therefore
 direction only, which the paragraph above covers: a photo that has not been indexed yet cannot
 match a rule yet, and the user is told so.
 
+**A third state exists and it is not staleness at all.** An item can be fully indexed and still
+carry no value for the column a rule tests — the index stores an absent fact as absent rather than
+substituting an approximation, so the row will never change and waiting will not help it. Such an
+item must not be counted as outstanding work, because that count would never reach zero, and must
+not be counted as covered either, because the album that tests the column will not contain it. The
+missing-GPS case is already visible as ADR-0019's coverage notice; Stage 2 step 2.3 found the same
+shape for date-taken, where a photo with no EXIF date at all gets a null rather than a `dateModified`
+fallback, and Tiers B and C will meet it again whenever inference declines to produce a result.
+
 ---
 
 ## 7. Staging and progress

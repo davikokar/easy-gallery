@@ -2,7 +2,7 @@ package com.davide.seddio.easygallery.data
 
 object MediaIndexDeltaTestFixtures {
     const val PRIMARY_VOLUME = "external_primary"
-    const val SECONDARY_VOLUME = "external"
+    const val SECONDARY_VOLUME = "0123-4567"
 
     fun twoVolumeSnapshot(
         apiBranch: MediaStoreDeltaApiBranch,
@@ -43,7 +43,7 @@ object MediaIndexDeltaTestFixtures {
                 derivedPlaceName = null
             ),
             MediaIndexEntry(
-                mediaUri = "content://media/external/images/media/2",
+                mediaUri = "content://media/0123-4567/images/media/2",
                 displayName = "secondary.jpg",
                 size = 101L,
                 dateModified = 201L,

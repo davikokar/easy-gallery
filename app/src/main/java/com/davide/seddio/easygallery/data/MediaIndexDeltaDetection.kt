@@ -46,6 +46,11 @@ data class MediaIndexRowDeltaSelection(
     val maxDateModifiedWatermarkByVolume: Map<String, Long>
 )
 
+data class MediaIndexDeltaDetection(
+    val plan: MediaIndexDeltaPlan,
+    val storedWatermarks: Map<String, MediaIndexVolumeWatermark>
+)
+
 interface MediaStoreVolumeVersionProvider {
     fun versionForVolume(volumeName: String): String?
 }
@@ -170,18 +175,19 @@ class MediaIndexDeltaDetector(
         UnknownMediaStoreVolumeVersionProvider
 ) {
 
-    fun detectAndPersist(
-        sdkInt: Int
-    ): MediaIndexDeltaPlan {
+    fun detect(sdkInt: Int): MediaIndexDeltaDetection {
         val snapshot = snapshotProvider.snapshot(sdkInt)
         val stored = watermarkStore.readAll()
-        val plan = planMediaIndexDelta(snapshot, stored)
+        return MediaIndexDeltaDetection(
+            plan = planMediaIndexDelta(snapshot, stored),
+            storedWatermarks = stored
+        )
+    }
 
-        plan.nextWatermarks.forEach { (volumeName, watermark) ->
+    fun persistWatermarks(watermarks: Map<String, MediaIndexVolumeWatermark>) {
+        watermarks.forEach { (volumeName, watermark) ->
             watermarkStore.write(volumeName, watermark)
         }
-
-        return plan
     }
 
     fun updateDateModifiedWatermark(

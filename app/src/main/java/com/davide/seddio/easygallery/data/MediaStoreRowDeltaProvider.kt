@@ -89,8 +89,9 @@ class AndroidMediaStoreRowDeltaProvider(
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idIndex)
+                val observedUri = ContentUris.withAppendedId(collectionUri, id)
                 rows += MediaStoreObservedRowDelta(
-                    mediaUri = ContentUris.withAppendedId(collectionUri, id).toString(),
+                    mediaUri = canonicalMediaStoreUriForJoin(observedUri.toString()),
                     volumeName = volumeName,
                     generationAdded = cursor.longOrNull(generationAddedIndex),
                     generationModified = cursor.longOrNull(generationModifiedIndex),

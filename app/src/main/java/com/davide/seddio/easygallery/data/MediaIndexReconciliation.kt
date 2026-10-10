@@ -1,9 +1,5 @@
 package com.davide.seddio.easygallery.data
 
-import android.provider.MediaStore
-
-private val MEDIASTORE_URI_VOLUME_REGEX =
-    Regex("^content://media/([^/]+)/(images|video)/media/.+$")
 private const val LEGACY_EXTERNAL_VOLUME = "external"
 
 data class MediaIndexUriRewrite(
@@ -18,23 +14,11 @@ data class MediaIndexReconciliationResult(
     val healedRewrites: List<MediaIndexUriRewrite>
 )
 
-fun mediaStoreVolumeNameFromUri(mediaUri: String): String? {
-    val match = MEDIASTORE_URI_VOLUME_REGEX.matchEntire(mediaUri) ?: return null
-    return match.groupValues[1]
-}
-
 private fun reconciledVolumeNameForHealedUri(mediaUri: String, reconciledVolumeName: String): String? {
     val parsed = mediaStoreVolumeNameFromUri(mediaUri) ?: return null
-    return if (
-        parsed == LEGACY_EXTERNAL_VOLUME &&
-        reconciledVolumeName == MediaStore.VOLUME_EXTERNAL_PRIMARY
-    ) {
-        // API 28 rows are read from legacy content://media/external/... collections but
-        // indexed under external_primary so they remain visible to API 28 reconciliation.
-        MediaStore.VOLUME_EXTERNAL_PRIMARY
-    } else {
-        parsed
-    }
+    // The external namespace is a union view, so it does not identify one concrete volume.
+    // Keep the currently reconciled volume to preserve listByVolume reachability.
+    return if (parsed == LEGACY_EXTERNAL_VOLUME) reconciledVolumeName else parsed
 }
 
 class MediaIndexReconciler(

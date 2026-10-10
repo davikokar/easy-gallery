@@ -20,31 +20,57 @@
 > before anything else — and then whatever the step itself requires. *Session protocol* below says
 > what that means.
 
-- **Next step: 2.3 — Tier A extraction.**
-- **Depends on:** steps 2.1 and 2.2, both **Complete**. 2.3 reads the delta they produce and writes
-  the rows they reconcile. [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md)
-  governs the schema it writes into — **read its Amendment 1**, which is new and which is what makes
-  the index database version 2. [ADR-0001](../architecture/decisions/0001-on-demand-media-location-metadata.md)
-  governs how the files are opened, and ADR-0020 still governs what a row means.
-- **The trap that will cost a session if it is not read first: `detectAndPersist` persists before
-  it returns.** `MediaIndexDeltaDetector.detectAndPersist` writes every new watermark to the store
-  and *then* hands back the plan. `selectRowsForReindex(plan, storedWatermarks, observedRows)`
-  needs the **pre-pass** watermarks to narrow by generation or by date. Call
-  `watermarkStore.readAll()` after `detectAndPersist` and every stored generation already equals
-  the observed one, so nothing is above the watermark and selection silently narrows to **nothing**
-  — no exception, no empty-list warning, just an indexer that indexes nothing and looks like it
-  worked. The only correct order is:
+- **Next step: 2.4 — the pipeline.** First user-visible step of the stage, and the natural shipping
+  seam.
+- **Depends on:** steps 2.1, 2.2 and 2.3, all **Complete**. 2.3 built the batch; 2.4 is what calls
+  it. WorkManager is already approved as a dependency — [albums.md](albums.md) §8 decision 18 — so
+  adding it needs no further ask, but it does need a `gradle/libs.versions.toml` entry and a row in
+  `ARCHITECTURE.md` §10's tech-stack table, which is an overview trigger. ADR-0018 governs the
+  schema, ADR-0020 governs what a row means, and ADR-0001 governs how files are opened; 2.3 changed
+  none of them.
+- **The trap the previous version of this block prescribed no longer exists, and following it now
+  would reintroduce a data-loss bug.** `MediaIndexDeltaDetector.detectAndPersist` **is gone**. It
+  was split into `detect(sdkInt)`, which returns the plan *and* the pre-pass watermarks together,
+  and `persistWatermarks(...)`, which the batch calls at the **end** of the pass. The composition is:
 
   ```
-  val stored = watermarkStore.readAll()      // first, and keep it
-  val plan   = detector.detectAndPersist(sdkInt)
-  val rows   = selectRowsForReindex(plan, stored, observedRows)
+  val detection = detector.detect(sdkInt)          // plan + pre-pass watermarks, inseparable
+  val rows      = selectRowsForReindex(detection.plan, detection.storedWatermarks, observedRows)
+  …                                                 // extract and upsert
+  detector.persistWatermarks(clampedWatermarks)     // last, after the rows are written
   ```
 
-  **Nothing in the types enforces this** — both arguments are `Map<String, MediaIndexVolumeWatermark>`
-  and either compiles. 2.3 composes these for the first time and 2.4 composes them again under
-  WorkManager, where the failure is even quieter. If 2.3 finds a way to make the ordering
-  unrepresentable rather than merely documented, take it.
+  The old order is no longer expressible, which is what the 2.3 criterion asked for. **Why 2.4 in
+  particular must not undo it:** persisting first advances a volume's generation watermark past rows
+  that were never indexed, and WorkManager can stop a job mid-batch, so a cancelled run would leave
+  those rows permanently unselectable until something else moved the version string. 2.4's job is to
+  call `MediaIndexTierABatchIndexer.indexDelta(sdkInt)`, not to recompose these pieces around it.
+- **A row the delta selects but the live snapshot does not contain is normal, not an error.** The
+  live media list and the per-volume delta query are taken at different moments, so anything that
+  arrives between them — a camera capture, a screenshot, a download, an item leaving pending or
+  trashed state, a volume mounted mid-pass — is in one and not the other. An earlier attempt made
+  this throw; it was reachable by taking a photo while indexing ran, and under WorkManager it would
+  have become a job that failed and retried forever. The batch now **counts** those rows as skipped
+  and **clamps** that volume's watermark to strictly below the lowest skipped row, so the row is
+  re-selected next pass while the rows that *were* indexed keep their progress.
+  `MediaIndexTierABatchResult.skippedRows` is the number to surface or log, never to treat as a
+  failure. Two conditions still fail loudly, deliberately, because neither can be a race: a selected
+  row whose URI does not parse as a `MediaStore` URI, and a **total** miss when the selection is
+  non-empty — the latter is the zero-indexed-rows bug that survived two review rounds.
+- **The namespace split is one rule in one place: `data/MediaStoreUriAliases.kt`.** Live media always
+  carries `content://media/external/…`; observed delta rows carry `content://media/<volume>/…`. The
+  rule is **any volume ↔ `external`**, not an `external_primary` special case — an earlier round
+  assumed the special case, which would have indexed **zero** rows on any secondary volume while
+  every test stayed green, because the fakes agreed with each other rather than with production.
+  No device with removable storage is available here, so that remains reasoned from the code and the
+  platform's namespaces rather than observed.
+  `MediaStoreRowDeltaProvider` canonicalises at the source, and a row still keeps its own concrete
+  volume name; do not add a second spelling rule anywhere.
+- **Also learned at 2.3, and 2.4's to act on:** an item that is indexed but whose date-taken is null
+  — no EXIF date at all, and extraction deliberately does **not** fall back to `dateModified` — is a
+  third state, distinct from "not yet indexed" and from "indexed with a date". It never becomes
+  non-null. 2.4's `SortType.DATE_TAKEN` degrade rule is written for two states and must name the
+  third; the criterion under step 2.4 below now says so.
 - **Learned in 2.2, and binding on what follows:**
   - **The per-volume watermark lives in the index database, not in `app_settings`.** It was
     implemented there first and moved: it is a map keyed by volume name, and `AGENTS.md` allows
@@ -54,10 +80,10 @@
     backed up, so it belongs with the data it describes.
   - **The index database is therefore at version 2, through a real `Migration(1, 2)` with no
     destructive fallback**, and both `1.json` and `2.json` are exported. That is the precedent:
-    **any schema change 2.3 makes is another bump, another migration, and another committed JSON.**
+    **any later schema change is another bump, another migration, and another committed JSON.**
     `fallbackToDestructiveMigration` is not available to this database — a user's index is cheap to
     lose, but silently dropping the table also drops the watermark that would have triggered the
-    rebuild.
+    rebuild. 2.3 needed no schema change, so the precedent is still untested by a second use.
   - **The mount/unmount question could not be settled, and is reported rather than answered.** The
     one device available, the SM-G990B, has no removable storage: `adb shell sm list-volumes all`
     reports only `private mounted null` and `emulated;0 mounted null`, so no controlled experiment
@@ -75,12 +101,16 @@
     The failure and its consequence now live in `AGENTS.md` *Running Gradle*, which owns them, and
     in repo memory; this stage does not restate them. What is Stage 2's own: 2.3 calls
     `MediaStore.setRequireOriginal`, which is API 29+, and step 2.2 shipped two unguarded
-    `MediaStore` calls that lint would have caught had it started. Check the guard by reading it.
-  - **`2.json` is untracked as this is written**, under
-    `app/schemas/com.davide.seddio.easygallery.data.MediaIndexDatabase/`. Same hazard as 2.1's
-    `1.json`, same check: `git ls-files app/schemas` settles it and `git status` does not. No
-    other document states whether it is tracked — ADR-0018 Amendment 1 states only that it must be
-    committed by the change that produces it, which is the form that stays true.
+    `MediaStore` calls that lint would have caught had it started. **The 2.3 guard was checked by
+    reading it** — the call sits behind `isAtLeastQ()` in `data/MediaLocation.kt`, now annotated
+    `@ChecksSdkIntAtLeast(api = Q)` so that the guard is machine-recognisable the day lint does
+    start. Every later step inherits the same obligation: read the guard, do not expect a tool to
+    find it.
+  - **The open `2.json` tracking item from 2.2 is closed, and the check that closed it is what
+    carries forward.** `git ls-files app/schemas` is what settles whether an exported schema is
+    tracked; `git status` does not, because Room writes one directory per database class and a
+    `git add` aimed at `app/src/` reaches neither. Run it after any schema change rather than
+    trusting a sentence here about what is committed today.
 - **With the maintainer, and not to be acted on by the next session:** step 2.2 removed the
   `if (SDK_INT < R) return null` guard from `AndroidMediaStoreVersionProvider` in
   `data/MediaStoreVersionStore.kt` — a **Stage 1** file the step did not scope. The API fact behind
@@ -104,18 +134,19 @@
     `identityHash` change, which is now a version 3.
   - **Step 2.5 needs no migration to the album database.** The column ADR-0017 fills already exists
     and is unused. Do not plan a migration.
-  - **WorkManager belongs to step 2.4**, not before — albums.md §8 decision 18. Step 2.3 must not
-    pull it in; its batch runs when something calls it.
+  - **WorkManager belongs to step 2.4**, not before — albums.md §8 decision 18. Steps 2.1–2.3 kept
+    it out, and the batch they built runs when something calls it.
   - **A note for step 2.6, cheap now and a migration later:** a row whose coordinates fall outside
     [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)'s
     distance cap resolves to null country, null region and null place — **indistinguishable from
     "not yet resolved"** — so a resolve pass selecting on "derived columns are null" would retry
     those rows forever. Not worth a column today; worth knowing at 2.6.
-- **Gates as 2.2 closed:** `testDebugUnitTest` **291 tests, 0 failures**; `connectedDebugAndroidTest`
+- **Gates as 2.3 closed:** `testDebugUnitTest` **311 tests, 0 failures**; `connectedDebugAndroidTest`
   **76 of 76** on the SM-G990B. 2.1's suite instability is history rather than an open item — see
   the note under step 2.1 below.
-- **Blocked, and needing the maintainer:** nothing in 2.3 is blocked. The `MediaStoreVersionStore`
-  guard above is the maintainer's and holds up no step.
+- **Blocked, and needing the maintainer:** nothing in 2.4 is blocked, except that its progress
+  surface is capped at in-app until albums.md §10 question 2 is answered. The
+  `MediaStoreVersionStore` guard above is the maintainer's and holds up no step.
 - **Open but blocking nothing yet:** the remaining questions at the end of this document.
 
 ---
@@ -127,7 +158,7 @@
 | **2.0** | The three Stage 2 ADRs and this document. No code. | ✅ Complete — 2026-10-08 |
 | **2.1** | Index database and schema | ✅ Complete — 2026-10-09 |
 | **2.2** | Delta detection | ✅ Complete — 2026-10-09 |
-| **2.3** | Tier A extraction | ⬜ Not started |
+| **2.3** | Tier A extraction | ✅ Complete — 2026-10-09 |
 | **2.4** | WorkManager pipeline, "Index now", progress and staleness | ⬜ Not started |
 | **2.5** | Evaluation engine and time-only rules | ⬜ Not started |
 | **2.6** | The gazetteer | ⬜ Not started |
@@ -288,21 +319,55 @@ yet — the batch runs when something calls it.
 
 **Exit criteria**
 
-- Images go through `ACCESS_MEDIA_LOCATION` + `MediaStore.setRequireOriginal` on API 29+, reusing
+- [x] Images go through `ACCESS_MEDIA_LOCATION` + `MediaStore.setRequireOriginal` on API 29+, reusing
   the path `MediaLocation.kt` already established. Video goes through the `MediaMetadataRetriever`
-  path. Neither is reimplemented.
-- A permission denial, a missing file, and a corrupt header each produce an absent value and never
+  path. Neither is reimplemented. `originalMediaUriForExifRead`, `mediaCoordinatesFromExifLatLong`
+  and the `isAtLeastQ` guard were lifted out of `MediaLocation.kt` as shared helpers and are called
+  by the extractor; the guard is now annotated `@ChecksSdkIntAtLeast`, which matters more than usual
+  here because `lintDebug` does not run in this workspace and `NewApi` is catching nothing.
+- [x] A permission denial, a missing file, and a corrupt header each produce an absent value and never
   an exception escaping the batch — ADR-0001's rule, applied to a loop that will meet all three.
-- **The date-taken semantics are stated and tested**: what time base is stored, and what a
+  Both extractor paths and the batch's own `safeExtract` catch broadly and rethrow only
+  `CancellationException`; one unit test drives all three cases through a full batch.
+- [x] **The date-taken semantics are stated and tested**: what time base is stored, and what a
   zone-less EXIF `DateTimeOriginal` is interpreted as. A capture timestamp compared against a zoned
-  range is a classic off-by-one-day defect and 2.5 depends on this being pinned down.
-- Batch size and cancellation behaviour are deliberate, because 2.4 will run this under a system
-  that can stop it mid-batch.
-- **The delta is composed in the order read → detect → select**, with the watermarks read *before*
-  `detectAndPersist` passed to `selectRowsForReindex`. Reading them after it selects nothing and
-  fails silently; the handoff block above has the detail. A test that would fail under the wrong
-  order is what proves this, not a comment.
-- Pure extraction and parsing are unit-tested on a plain JVM.
+  range is a classic off-by-one-day defect and 2.5 depends on this being pinned down. **The answer:
+  epoch milliseconds UTC; `OffsetTimeOriginal` is used when present, and a zone-less value is
+  interpreted in the device zone at extraction time.** It is stated on
+  `parseExifDateTakenEpochMillis`, which is the function a reader meets first, and five plain-JVM
+  tests cover both branches and the malformed case. **The consequence 2.5 inherits: the stored
+  instant for a zone-less photo depends on the zone the device was in when it was indexed, so
+  changing that interpretation later is a re-index, not a migration.**
+- [x] Batch size and cancellation behaviour are deliberate, because 2.4 will run this under a system
+  that can stop it mid-batch. Rows are chunked (64 by default, injectable) and `ensureActive()` is
+  checked between chunks, between rows, and between reconciled volumes; watermarks are persisted
+  **after** the pass, so a cancelled batch keeps the progress of the rows it did index and
+  re-selects the rest. Two tests cancel mid-batch and assert the watermark did not advance, one per
+  API branch.
+- [x] **The delta is composed in the order read → detect → select**, and the ordering is now
+  **structural rather than documented**: `MediaIndexDeltaDetector.detect(sdkInt)` returns the plan
+  *and* the pre-pass watermarks together, and persistence moved to a separate
+  `persistWatermarks(...)` the batch calls at the end. `detectAndPersist` no longer exists, so the
+  wrong order is not expressible. The criterion asked for a test that would fail under the wrong
+  order and there is one; it now guards the composition rather than the hazard.
+- [x] Pure extraction and parsing are unit-tested on a plain JVM. The two date parsers and the batch
+  orchestrator are tested plain; the extractor itself is Robolectric, as the rest of the `data/`
+  Android boundary is.
+
+**Landed beyond the criteria, and flagged rather than claimed.** Two things this step changed that
+its criteria did not ask for:
+
+- **A behavioural fix to step 2.2's already-shipped reconciliation.** A healed row whose URI sits in
+  the legacy `external` namespace now keeps the volume name it was reconciled under, instead of
+  being forced to `external_primary`. The old behaviour orphaned secondary-volume rows onto a volume
+  name `getExternalVolumeNames()` never returns, so nothing would ever reconcile them again. 2.2's
+  criteria still hold; this makes them hold on a device with a card as well as on one without.
+- **The namespace split is now one rule in one place**, `data/MediaStoreUriAliases.kt`, and
+  `MediaStoreRowDeltaProvider` canonicalises at the source. See the handoff block above for why the
+  rule is *any volume ↔ `external`* and not the `external_primary` special case an earlier round
+  assumed.
+
+No schema change, therefore no version bump, no migration and no new JSON for this step to commit.
 
 ### 2.4 — The pipeline — *first user-visible step, and the natural shipping seam*
 
@@ -321,7 +386,12 @@ yet — the batch runs when something calls it.
   `ARCHITECTURE.md` §11, and
   [ADR-0008](../architecture/decisions/0008-camera-folder-default-sort-order.md) records how it got
   there; resolving a §11 item is itself an overview trigger. An item not yet indexed must degrade to
-  the current behaviour rather than disappearing or sorting to one end.
+  the current behaviour rather than disappearing or sorting to one end. **There is a third state,
+  found at 2.3 and not covered by that rule: an item that *is* indexed and whose date-taken is
+  null**, because it carried no EXIF date at all — extraction does not fall back to `dateModified`,
+  so the column stays null rather than being filled with an approximation. It is indistinguishable
+  from "not yet indexed" by the column alone and it will never become non-null, so the degrade rule
+  has to name it explicitly or those items will churn or sort to one end forever.
 - WorkManager appears in `gradle/libs.versions.toml` and in `ARCHITECTURE.md` §10's tech-stack
   table, which is an overview trigger.
 - Every new string is in all ten locales.
@@ -443,10 +513,10 @@ change.
   table, the Known debt item in §11 that step 2.4 resolves, and links to ADRs 0017–0020 in the
   sections they govern. The deferral was recorded for 0017–0019 at step 2.0 and applies to ADR-0020
   for the same reason — it was adopted ahead of the work it governs — and is discharged here.
-  **Partly discharged at 2.1 and 2.2**: the `data/` files of both steps, the second database in §6
-  — now two tables at version 2 — and the links to ADR-0018 and ADR-0020 are in, as is ADR-0018's
-  Amendment 1. ADR-0017 goes in with 2.5 and ADR-0019 with 2.6, which are the steps that build what
-  each governs; WorkManager and the §11 item remain 2.4's.
+  **Partly discharged at 2.1, 2.2 and 2.3**: the `data/` files of all three steps, the second
+  database in §6 — now two tables at version 2 — and the links to ADR-0018 and ADR-0020 are in, as
+  is ADR-0018's Amendment 1. ADR-0017 goes in with 2.5 and ADR-0019 with 2.6, which are the steps
+  that build what each governs; WorkManager and the §11 item remain 2.4's.
 - **The Play Console restricted-permission declaration is confirmed done.** albums.md §9 carries it
   forward from Stage 1 with no record that it was ever completed, and names the permissions at
   stake. Stage 2 adds one more: it makes `ACCESS_MEDIA_LOCATION` load-bearing for a user-facing
