@@ -162,4 +162,31 @@
     <string name="manage_media_rationale_message">Android normalmente pide confirmación para cada cambio. Permite que Easy Gallery gestione tus archivos multimedia para evitar estos avisos. Puedes usar todas las funciones sin este permiso.</string>
     <string name="manage_media_not_now">Ahora no</string>
     <string name="manage_media_open_settings">Abrir configuración</string>
+    <string name="settings_media_index">Índice multimedia</string>
+    <string name="settings_index_now">Indexar ahora</string>
+    <string name="settings_index_running">Indexando…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="one">Queda %1$d elemento por analizar</item>
+        <item quantity="other">Quedan %1$d elementos por analizar</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="one">%1$d elemento multimedia tiene fecha indexada</item>
+        <item quantity="other">%1$d elementos multimedia tienen fecha indexada</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="one">%1$d elemento multimedia está indexado sin fecha</item>
+        <item quantity="other">%1$d elementos multimedia están indexados sin fecha</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="one">%1$d elemento multimedia aún no está indexado</item>
+        <item quantity="other">%1$d elementos multimedia aún no están indexados</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="one">%1$d elemento aplazado hasta el próximo análisis</item>
+        <item quantity="other">%1$d elementos aplazados hasta el próximo análisis</item>
+    </plurals>
+    <string name="settings_index_last_success">Última indexación: %1$s</string>
+    <string name="settings_index_never">Aún no se ha indexado</string>
+    <string name="settings_index_failed">El último análisis falló</string>
+    <string name="settings_index_cancelled">El último análisis se interrumpió</string>
 </resources>

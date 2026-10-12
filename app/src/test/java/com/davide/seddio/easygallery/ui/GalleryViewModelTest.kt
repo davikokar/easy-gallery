@@ -66,14 +66,16 @@ class GalleryViewModelTest {
     private fun createViewModel(
         displayPreferencesStore: DisplayPreferencesStore = InMemoryDisplayPreferencesStore(),
         folderViewPreferencesStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore(),
-        folderThumbnailStore: FolderThumbnailStore = SharedPreferencesFolderThumbnailStore(application)
+        folderThumbnailStore: FolderThumbnailStore = SharedPreferencesFolderThumbnailStore(application),
+        mediaIndexStore: MediaIndexStore = InMemoryMediaIndexStore()
     ) = GalleryViewModel(
         application,
         repository,
         permissionHandler,
         folderViewPreferencesStore,
         folderThumbnailStore,
-        displayPreferencesStore
+        displayPreferencesStore,
+        mediaIndexStore
     )
 
     @Test

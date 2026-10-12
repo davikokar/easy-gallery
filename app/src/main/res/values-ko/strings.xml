@@ -160,4 +160,26 @@
     <string name="manage_media_rationale_message">Android에서는 일반적으로 변경할 때마다 확인을 요청합니다. Easy Gallery에 미디어 관리 권한을 허용하면 이 확인을 생략할 수 있습니다. 이 권한 없이도 모든 기능을 사용할 수 있습니다.</string>
     <string name="manage_media_not_now">지금 안 함</string>
     <string name="manage_media_open_settings">설정 열기</string>
+    <string name="settings_media_index">미디어 색인</string>
+    <string name="settings_index_now">지금 색인</string>
+    <string name="settings_index_running">색인 생성 중…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="other">스캔할 항목 %1$d개 남음</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="other">날짜가 색인된 미디어 항목 %1$d개</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="other">날짜 없이 색인된 미디어 항목 %1$d개</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="other">아직 색인되지 않은 미디어 항목 %1$d개</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="other">다음 스캔으로 연기된 항목 %1$d개</item>
+    </plurals>
+    <string name="settings_index_last_success">마지막 색인: %1$s</string>
+    <string name="settings_index_never">아직 색인되지 않음</string>
+    <string name="settings_index_failed">마지막 스캔 실패</string>
+    <string name="settings_index_cancelled">마지막 스캔이 중단됨</string>
 </resources>

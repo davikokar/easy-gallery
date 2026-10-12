@@ -160,4 +160,26 @@
     <string name="manage_media_rationale_message">Android では通常、変更のたびに確認が求められます。Easy Gallery にメディアの管理を許可すると、この確認を省略できます。この権限がなくてもすべての機能を利用できます。</string>
     <string name="manage_media_not_now">今はしない</string>
     <string name="manage_media_open_settings">設定を開く</string>
+    <string name="settings_media_index">メディアインデックス</string>
+    <string name="settings_index_now">今すぐインデックスを作成</string>
+    <string name="settings_index_running">インデックスを作成中…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="other">あと%1$d件をスキャン</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="other">日付がインデックス済みのメディア項目：%1$d件</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="other">日付なしでインデックス済みのメディア項目：%1$d件</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="other">まだインデックスされていないメディア項目：%1$d件</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="other">次回のスキャンに延期：%1$d件</item>
+    </plurals>
+    <string name="settings_index_last_success">最終インデックス：%1$s</string>
+    <string name="settings_index_never">まだインデックスされていません</string>
+    <string name="settings_index_failed">前回のスキャンに失敗しました</string>
+    <string name="settings_index_cancelled">前回のスキャンは中断されました</string>
 </resources>

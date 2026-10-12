@@ -79,6 +79,7 @@ fun NewAlbumScreen(
     val foldersState by galleryViewModel.newAlbumFolders.collectAsState()
     val foldersPreferences by galleryViewModel.preferences(PreferenceScope.FOLDERS).collectAsState()
     val folderDetailPreferenceLayers by galleryViewModel.folderDetailPreferenceLayers.collectAsState()
+    val indexedDateTakenByMediaUri by galleryViewModel.indexedDateTakenByMediaUri.collectAsState()
     val albums by albumsViewModel.albums.collectAsState()
 
     var name by rememberSaveable { mutableStateOf(initialName) }
@@ -100,12 +101,14 @@ fun NewAlbumScreen(
     val sortedFolderMedia = remember(
         selectedFolderMedia,
         selectedFolderPreferences.sortType,
-        selectedFolderPreferences.sortOrder
+        selectedFolderPreferences.sortOrder,
+        indexedDateTakenByMediaUri
     ) {
         GalleryTransformations.sortMedia(
-            selectedFolderMedia,
-            selectedFolderPreferences.sortType,
-            selectedFolderPreferences.sortOrder
+            media = selectedFolderMedia,
+            sort = selectedFolderPreferences.sortType,
+            order = selectedFolderPreferences.sortOrder,
+            indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri
         )
     }
 

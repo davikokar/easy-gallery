@@ -81,8 +81,11 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
   `new_album_media_list`, or `new_album_media_grouped` inside it. There is no tag that is present
   at the folder level in every state.
   Aliases: **album picker**, **album creation screen**
-- **Settings screen** (`SettingsScreen`): App preferences, language, support, legal, and the
-  tip jar.
+- **Settings screen** (`SettingsScreen`): App preferences, language, support, legal, and the tip
+  jar. Its **Media index area** (`MediaIndexSettingsArea`, tagged `media_index_status_area`) reports
+  current scan progress, items indexed with a date, items indexed with no date, deferred items,
+  and the last successful scan. The **Index now action** (tagged `media_index_now_action`) starts
+  a user-requested scan and is disabled without a click action while indexing is already running.
 - **Manage excluded screen** (`ManageExcludedScreen`): Lists excluded folders so they can be
   brought back.
 - **Permission denied screen** (`PermissionDeniedScreen`, in `MainActivity.kt`): The message and

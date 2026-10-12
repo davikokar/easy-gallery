@@ -5,6 +5,12 @@ import java.util.*
 
 object GalleryTransformations {
 
+    private sealed interface DateTakenSortState {
+        data class IndexedWithDate(val epochMillis: Long) : DateTakenSortState
+        data object IndexedWithoutDate : DateTakenSortState
+        data object NotIndexed : DateTakenSortState
+    }
+
     fun filterAndSortFolders(
         allMedia: List<MediaItem>,
         query: String,
@@ -100,11 +106,22 @@ object GalleryTransformations {
         }
     }
 
-    fun sortMedia(media: List<MediaItem>, sort: SortType, order: SortOrder): List<MediaItem> {
+    fun sortMedia(
+        media: List<MediaItem>,
+        sort: SortType,
+        order: SortOrder,
+        indexedDateTakenByCanonicalMediaUri: Map<String, Long?>
+    ): List<MediaItem> {
         val baseSorted = when (sort) {
             SortType.NAME -> media.sortedBy { it.name }
             SortType.LAST_MODIFIED -> media.sortedBy { it.dateModified }
-            SortType.DATE_TAKEN -> media.sortedBy { it.dateAdded }
+            SortType.DATE_TAKEN -> media.sortedBy { item ->
+                when (val state = dateTakenSortState(item, indexedDateTakenByCanonicalMediaUri)) {
+                    is DateTakenSortState.IndexedWithDate -> state.epochMillis
+                    DateTakenSortState.IndexedWithoutDate -> item.dateAdded * 1_000L
+                    DateTakenSortState.NotIndexed -> item.dateAdded * 1_000L
+                }
+            }
             SortType.RANDOM -> media.shuffled()
             else -> media.sortedBy { it.dateAdded }
         }
@@ -113,6 +130,24 @@ object GalleryTransformations {
             baseSorted.reversed()
         } else {
             baseSorted
+        }
+    }
+
+    private fun dateTakenSortState(
+        item: MediaItem,
+        indexedDateTakenByCanonicalMediaUri: Map<String, Long?>
+    ): DateTakenSortState {
+        // The index projection is keyed by canonical MediaStore URI aliases.
+        val mediaUri = canonicalMediaStoreUriForJoin(item.uri.toString())
+        if (!indexedDateTakenByCanonicalMediaUri.containsKey(mediaUri)) {
+            return DateTakenSortState.NotIndexed
+        }
+
+        val indexedDateTaken = indexedDateTakenByCanonicalMediaUri[mediaUri]
+        return if (indexedDateTaken != null) {
+            DateTakenSortState.IndexedWithDate(indexedDateTaken)
+        } else {
+            DateTakenSortState.IndexedWithoutDate
         }
     }
 

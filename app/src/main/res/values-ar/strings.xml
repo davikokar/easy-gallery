@@ -170,4 +170,51 @@
     <string name="manage_media_rationale_message">يطلب Android عادةً تأكيد كل تغيير. اسمح لـ Easy Gallery بإدارة الوسائط لتجنب هذه المطالبات. يمكنك استخدام جميع الميزات بدون هذا الإذن.</string>
     <string name="manage_media_not_now">ليس الآن</string>
     <string name="manage_media_open_settings">فتح الإعدادات</string>
+    <string name="settings_media_index">فهرس الوسائط</string>
+    <string name="settings_index_now">الفهرسة الآن</string>
+    <string name="settings_index_running">جارٍ الفهرسة…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="zero">لا توجد عناصر متبقية للمسح</item>
+        <item quantity="one">عنصر واحد متبقٍ للمسح</item>
+        <item quantity="two">عنصران متبقيان للمسح</item>
+        <item quantity="few">%1$d عناصر متبقية للمسح</item>
+        <item quantity="many">%1$d عنصرًا متبقيًا للمسح</item>
+        <item quantity="other">%1$d عنصر متبقٍ للمسح</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="zero">لا يحتوي أي عنصر وسائط على تاريخ مفهرس</item>
+        <item quantity="one">عنصر وسائط واحد يحتوي على تاريخ مفهرس</item>
+        <item quantity="two">عنصرا وسائط يحتويان على تاريخ مفهرس</item>
+        <item quantity="few">%1$d عناصر وسائط تحتوي على تاريخ مفهرس</item>
+        <item quantity="many">%1$d عنصر وسائط يحتوي على تاريخ مفهرس</item>
+        <item quantity="other">%1$d عنصر وسائط يحتوي على تاريخ مفهرس</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="zero">لا يوجد عنصر وسائط مفهرس بلا تاريخ</item>
+        <item quantity="one">عنصر وسائط واحد مفهرس بلا تاريخ</item>
+        <item quantity="two">عنصرا وسائط مفهرسان بلا تاريخ</item>
+        <item quantity="few">%1$d عناصر وسائط مفهرسة بلا تاريخ</item>
+        <item quantity="many">%1$d عنصر وسائط مفهرس بلا تاريخ</item>
+        <item quantity="other">%1$d عنصر وسائط مفهرس بلا تاريخ</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="zero">لا توجد عناصر وسائط غير مفهرسة بعد</item>
+        <item quantity="one">عنصر وسائط واحد لم يُفهرس بعد</item>
+        <item quantity="two">عنصرا وسائط لم يُفهرسا بعد</item>
+        <item quantity="few">%1$d عناصر وسائط لم تُفهرس بعد</item>
+        <item quantity="many">%1$d عنصر وسائط لم يُفهرس بعد</item>
+        <item quantity="other">%1$d عنصر وسائط لم يُفهرس بعد</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="zero">لم يتم تأجيل أي عنصر للمسح التالي</item>
+        <item quantity="one">تم تأجيل عنصر واحد للمسح التالي</item>
+        <item quantity="two">تم تأجيل عنصرين للمسح التالي</item>
+        <item quantity="few">تم تأجيل %1$d عناصر للمسح التالي</item>
+        <item quantity="many">تم تأجيل %1$d عنصرًا للمسح التالي</item>
+        <item quantity="other">تم تأجيل %1$d عنصر للمسح التالي</item>
+    </plurals>
+    <string name="settings_index_last_success">آخر فهرسة: %1$s</string>
+    <string name="settings_index_never">لم تتم الفهرسة بعد</string>
+    <string name="settings_index_failed">فشل آخر مسح</string>
+    <string name="settings_index_cancelled">تمت مقاطعة آخر مسح</string>
 </resources>

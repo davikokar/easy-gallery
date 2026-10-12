@@ -8,10 +8,12 @@
         <exclude domain="database" path="media_index.db"/>
         <exclude domain="database" path="media_index.db-wal"/>
         <exclude domain="database" path="media_index.db-shm"/>
+        <exclude domain="sharedpref" path="media_index_run_state.xml"/>
     </cloud-backup>
     <device-transfer>
         <exclude domain="database" path="media_index.db"/>
         <exclude domain="database" path="media_index.db-wal"/>
         <exclude domain="database" path="media_index.db-shm"/>
+        <exclude domain="sharedpref" path="media_index_run_state.xml"/>
     </device-transfer>
 </data-extraction-rules>

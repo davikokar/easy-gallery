@@ -242,7 +242,10 @@ class MediaIndexTierABatchIndexer(
         require(chunkSize > 0) { "chunkSize must be > 0" }
     }
 
-    suspend fun indexDelta(sdkInt: Int): MediaIndexTierABatchResult {
+    suspend fun indexDelta(
+        sdkInt: Int,
+        onProgress: ((MediaIndexTierAProgress) -> Unit)? = null
+    ): MediaIndexTierABatchResult {
         val detection = deltaDetector.detect(sdkInt)
         val plan = detection.plan
         val storedWatermarksBeforeDetect = detection.storedWatermarks
@@ -268,6 +271,16 @@ class MediaIndexTierABatchIndexer(
         val missingGenerationFloorByVolume = linkedMapOf<String, Long>()
         val missingDateFloorByVolume = linkedMapOf<String, Long>()
         val maxIndexedDateByVolume = linkedMapOf<String, Long>()
+        val selectedRowsCount = rowSelection.rowsToReindex.size
+        onProgress?.invoke(
+            MediaIndexTierAProgress(
+                selectedRows = selectedRowsCount,
+                processedRows = 0,
+                indexedRows = 0,
+                skippedRows = 0
+            )
+        )
+
         rowSelection.rowsToReindex
             .chunked(chunkSize)
             .forEach { chunk ->
@@ -331,6 +344,15 @@ class MediaIndexTierABatchIndexer(
                     mediaIndexStore.upsert(entries)
                     indexedCount += entries.size
                 }
+
+                onProgress?.invoke(
+                    MediaIndexTierAProgress(
+                        selectedRows = selectedRowsCount,
+                        processedRows = indexedCount + missingLiveRows,
+                        indexedRows = indexedCount,
+                        skippedRows = missingLiveRows
+                    )
+                )
             }
 
         if (
@@ -373,7 +395,7 @@ class MediaIndexTierABatchIndexer(
         }
 
         return MediaIndexTierABatchResult(
-            selectedRows = rowSelection.rowsToReindex.size,
+            selectedRows = selectedRowsCount,
             indexedRows = indexedCount,
             skippedRows = missingLiveRows,
             deletedRows = deletedCount,

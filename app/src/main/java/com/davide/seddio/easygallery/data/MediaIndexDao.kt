@@ -6,6 +6,11 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
+data class MediaIndexDateTakenProjectionEntity(
+    val mediaUri: String,
+    val capturedDateTakenEpochMillis: Long?
+)
+
 @Dao
 interface MediaIndexDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -13,6 +18,9 @@ interface MediaIndexDao {
 
     @Query("SELECT * FROM media_index ORDER BY mediaUri ASC")
     fun observeAll(): Flow<List<MediaIndexEntity>>
+
+    @Query("SELECT mediaUri, capturedDateTakenEpochMillis FROM media_index ORDER BY mediaUri ASC")
+    fun observeDateTakenProjection(): Flow<List<MediaIndexDateTakenProjectionEntity>>
 
     @Query("SELECT * FROM media_index WHERE volumeName = :volumeName ORDER BY mediaUri ASC")
     fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntity>>

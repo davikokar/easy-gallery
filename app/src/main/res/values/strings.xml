@@ -165,4 +165,31 @@
     <string name="manage_media_rationale_message">Android normally asks you to confirm each change. Allow Easy Gallery to manage media to avoid these prompts. You can use every feature without this permission.</string>
     <string name="manage_media_not_now">Not now</string>
     <string name="manage_media_open_settings">Open settings</string>
+    <string name="settings_media_index">Media index</string>
+    <string name="settings_index_now">Index now</string>
+    <string name="settings_index_running">Indexing…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="one">%1$d item still to scan</item>
+        <item quantity="other">%1$d items still to scan</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="one">%1$d media item has an indexed date</item>
+        <item quantity="other">%1$d media items have an indexed date</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="one">%1$d media item is indexed without a date</item>
+        <item quantity="other">%1$d media items are indexed without a date</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="one">%1$d media item is not yet indexed</item>
+        <item quantity="other">%1$d media items are not yet indexed</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="one">%1$d item deferred to the next scan</item>
+        <item quantity="other">%1$d items deferred to the next scan</item>
+    </plurals>
+    <string name="settings_index_last_success">Last indexed: %1$s</string>
+    <string name="settings_index_never">Not indexed yet</string>
+    <string name="settings_index_failed">Last scan failed</string>
+    <string name="settings_index_cancelled">Last scan was interrupted</string>
 </resources>

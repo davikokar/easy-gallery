@@ -162,4 +162,31 @@
     <string name="manage_media_rationale_message">Android demande normalement de confirmer chaque modification. Autorisez Easy Gallery à gérer les médias pour éviter ces demandes. Toutes les fonctionnalités restent disponibles sans cette autorisation.</string>
     <string name="manage_media_not_now">Pas maintenant</string>
     <string name="manage_media_open_settings">Ouvrir les paramètres</string>
+    <string name="settings_media_index">Index des médias</string>
+    <string name="settings_index_now">Indexer maintenant</string>
+    <string name="settings_index_running">Indexation…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="one">%1$d élément reste à analyser</item>
+        <item quantity="other">%1$d éléments restent à analyser</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="one">%1$d élément média a une date indexée</item>
+        <item quantity="other">%1$d éléments média ont une date indexée</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="one">%1$d élément média est indexé sans date</item>
+        <item quantity="other">%1$d éléments média sont indexés sans date</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="one">%1$d élément média n’est pas encore indexé</item>
+        <item quantity="other">%1$d éléments média ne sont pas encore indexés</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="one">%1$d élément reporté à la prochaine analyse</item>
+        <item quantity="other">%1$d éléments reportés à la prochaine analyse</item>
+    </plurals>
+    <string name="settings_index_last_success">Dernière indexation : %1$s</string>
+    <string name="settings_index_never">Pas encore indexé</string>
+    <string name="settings_index_failed">La dernière analyse a échoué</string>
+    <string name="settings_index_cancelled">La dernière analyse a été interrompue</string>
 </resources>

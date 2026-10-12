@@ -162,4 +162,31 @@
     <string name="manage_media_rationale_message">O Android normalmente pede confirmação para cada alteração. Permita que o Easy Gallery gerencie mídia para evitar esses avisos. Todos os recursos continuam disponíveis sem essa permissão.</string>
     <string name="manage_media_not_now">Agora não</string>
     <string name="manage_media_open_settings">Abrir configurações</string>
+    <string name="settings_media_index">Índice de mídia</string>
+    <string name="settings_index_now">Indexar agora</string>
+    <string name="settings_index_running">Indexando…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="one">Falta analisar %1$d item</item>
+        <item quantity="other">Faltam analisar %1$d itens</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="one">%1$d item de mídia tem data indexada</item>
+        <item quantity="other">%1$d itens de mídia têm data indexada</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="one">%1$d item de mídia está indexado sem data</item>
+        <item quantity="other">%1$d itens de mídia estão indexados sem data</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="one">%1$d item de mídia ainda não está indexado</item>
+        <item quantity="other">%1$d itens de mídia ainda não estão indexados</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="one">%1$d item adiado para a próxima análise</item>
+        <item quantity="other">%1$d itens adiados para a próxima análise</item>
+    </plurals>
+    <string name="settings_index_last_success">Última indexação: %1$s</string>
+    <string name="settings_index_never">Ainda não indexado</string>
+    <string name="settings_index_failed">A última análise falhou</string>
+    <string name="settings_index_cancelled">A última análise foi interrompida</string>
 </resources>

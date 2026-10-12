@@ -160,4 +160,26 @@
     <string name="manage_media_rationale_message">Android 通常会要求您确认每项更改。允许 Easy Gallery 管理媒体可避免这些提示。即使不授予此权限，所有功能仍可正常使用。</string>
     <string name="manage_media_not_now">暂不</string>
     <string name="manage_media_open_settings">打开设置</string>
+    <string name="settings_media_index">媒体索引</string>
+    <string name="settings_index_now">立即建立索引</string>
+    <string name="settings_index_running">正在建立索引…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="other">还有 %1$d 项待扫描</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="other">已索引且有日期的媒体项：%1$d 项</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="other">已索引但无日期的媒体项：%1$d 项</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="other">尚未索引的媒体项：%1$d 项</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="other">推迟到下次扫描：%1$d 项</item>
+    </plurals>
+    <string name="settings_index_last_success">上次索引：%1$s</string>
+    <string name="settings_index_never">尚未建立索引</string>
+    <string name="settings_index_failed">上次扫描失败</string>
+    <string name="settings_index_cancelled">上次扫描已中断</string>
 </resources>

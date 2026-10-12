@@ -162,4 +162,31 @@
     <string name="manage_media_rationale_message">Android normalmente chiede di confermare ogni modifica. Consenti a Easy Gallery di gestire i media per evitare queste richieste. Tutte le funzioni sono disponibili anche senza questa autorizzazione.</string>
     <string name="manage_media_not_now">Non ora</string>
     <string name="manage_media_open_settings">Apri impostazioni</string>
+    <string name="settings_media_index">Indice multimediale</string>
+    <string name="settings_index_now">Indicizza ora</string>
+    <string name="settings_index_running">Indicizzazione…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="one">%1$d elemento ancora da analizzare</item>
+        <item quantity="other">%1$d elementi ancora da analizzare</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="one">%1$d elemento multimediale ha una data indicizzata</item>
+        <item quantity="other">%1$d elementi multimediali hanno una data indicizzata</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="one">%1$d elemento multimediale è indicizzato senza data</item>
+        <item quantity="other">%1$d elementi multimediali sono indicizzati senza data</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="one">%1$d elemento multimediale non è ancora indicizzato</item>
+        <item quantity="other">%1$d elementi multimediali non sono ancora indicizzati</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="one">%1$d elemento rinviato alla prossima analisi</item>
+        <item quantity="other">%1$d elementi rinviati alla prossima analisi</item>
+    </plurals>
+    <string name="settings_index_last_success">Ultima indicizzazione: %1$s</string>
+    <string name="settings_index_never">Non ancora indicizzato</string>
+    <string name="settings_index_failed">Ultima analisi non riuscita</string>
+    <string name="settings_index_cancelled">L’ultima analisi è stata interrotta</string>
 </resources>

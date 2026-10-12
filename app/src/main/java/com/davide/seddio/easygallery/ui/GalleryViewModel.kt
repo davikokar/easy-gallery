@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.davide.seddio.easygallery.EasyGalleryApp
 import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
@@ -25,7 +26,9 @@ class GalleryViewModel @JvmOverloads constructor(
         SharedPreferencesFolderViewPreferencesStore(application),
     private val folderThumbnailStore: FolderThumbnailStore =
         SharedPreferencesFolderThumbnailStore(application),
-    displayPreferencesStore: DisplayPreferencesStore = SharedPreferencesDisplayStore(application)
+    displayPreferencesStore: DisplayPreferencesStore = SharedPreferencesDisplayStore(application),
+    mediaIndexStore: MediaIndexStore =
+        (application as EasyGalleryApp).mediaIndexStore
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
@@ -158,6 +161,13 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
     val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
 
+    private val mediaIndexDateTakenState = MediaIndexDateTakenState(
+        mediaIndexStore = mediaIndexStore,
+        scope = viewModelScope
+    )
+    val indexedDateTakenByMediaUri: StateFlow<Map<String, Long?>> =
+        mediaIndexDateTakenState.indexedDateTakenByMediaUri
+
     private val mediaViewer = MediaViewerState()
     val selectedMedia: StateFlow<MediaItem?> = mediaViewer.selectedMedia
     val currentMediaList: StateFlow<List<MediaItem>> = mediaViewer.currentMediaList
@@ -224,17 +234,34 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
     val filteredMedia: StateFlow<List<MediaItem>> = combine(
-        _mediaInFolder, effectiveFolderDetailPrefs, prefs.searchQuery(PreferenceScope.FOLDER_DETAIL)
-    ) { media, viewPrefs, query ->
+        _mediaInFolder,
+        effectiveFolderDetailPrefs,
+        prefs.searchQuery(PreferenceScope.FOLDER_DETAIL),
+        mediaIndexDateTakenState.indexedDateTakenByMediaUri
+    ) { media, viewPrefs, query, indexedDateTakenByMediaUri ->
         val filtered = GalleryTransformations.filterMedia(media, query, viewPrefs.mediaTypes)
-        GalleryTransformations.sortMedia(filtered, viewPrefs.sortType, viewPrefs.sortOrder)
+        GalleryTransformations.sortMedia(
+            media = filtered,
+            sort = viewPrefs.sortType,
+            order = viewPrefs.sortOrder,
+            indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
-        _allMedia, timelinePrefs, prefs.searchQuery(PreferenceScope.TIMELINE), _excludedFolders
-    ) { media, viewPrefs, query, excluded ->
+        _allMedia,
+        timelinePrefs,
+        prefs.searchQuery(PreferenceScope.TIMELINE),
+        _excludedFolders,
+        mediaIndexDateTakenState.indexedDateTakenByMediaUri
+    ) { media, viewPrefs, query, excluded, indexedDateTakenByMediaUri ->
         val filtered = GalleryTransformations.filterMedia(media, query, viewPrefs.mediaTypes, excluded)
-        GalleryTransformations.sortMedia(filtered, viewPrefs.sortType, viewPrefs.sortOrder)
+        GalleryTransformations.sortMedia(
+            media = filtered,
+            sort = viewPrefs.sortType,
+            order = viewPrefs.sortOrder,
+            indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(

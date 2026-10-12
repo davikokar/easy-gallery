@@ -9,6 +9,8 @@ import kotlinx.coroutines.sync.withLock
 interface MediaIndexStore {
     fun observeAll(): Flow<List<MediaIndexEntry>>
     fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntry>>
+    fun observeDateTakenProjection(): Flow<Map<String, Long?>>
+    fun observeDateTakenCounts(): Flow<DateTakenCounts>
 
     suspend fun listByVolume(volumeName: String): List<MediaIndexEntry>
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry?
@@ -17,6 +19,11 @@ interface MediaIndexStore {
     suspend fun deleteByVolume(volumeName: String)
     suspend fun deleteAll()
 }
+
+data class DateTakenCounts(
+    val withDate: Int,
+    val withoutDate: Int
+)
 
 data class MediaIndexEntry(
     val mediaUri: String,
@@ -56,6 +63,25 @@ class RoomMediaIndexStore(
 
     override fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntry>> {
         return dao.observeByVolume(volumeName).map { rows -> rows.map { it.toStoreEntry() } }
+    }
+
+    override fun observeDateTakenProjection(): Flow<Map<String, Long?>> {
+        return dao.observeDateTakenProjection().map { rows ->
+            buildMap(rows.size) {
+                rows.forEach { row ->
+                    put(canonicalMediaStoreUriForJoin(row.mediaUri), row.capturedDateTakenEpochMillis)
+                }
+            }
+        }
+    }
+
+    override fun observeDateTakenCounts(): Flow<DateTakenCounts> {
+        return observeDateTakenProjection().map { projection ->
+            DateTakenCounts(
+                withDate = projection.count { it.value != null },
+                withoutDate = projection.count { it.value == null }
+            )
+        }
     }
 
     override suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry? {
@@ -134,6 +160,25 @@ class InMemoryMediaIndexStore : MediaIndexStore {
     override fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntry>> {
         return rowsFlow.map { current ->
             current.filter { it.volumeName == volumeName }
+        }
+    }
+
+    override fun observeDateTakenProjection(): Flow<Map<String, Long?>> {
+        return rowsFlow.map { current ->
+            buildMap(current.size) {
+                current.forEach { entry ->
+                    put(canonicalMediaStoreUriForJoin(entry.mediaUri), entry.capturedDateTakenEpochMillis)
+                }
+            }
+        }
+    }
+
+    override fun observeDateTakenCounts(): Flow<DateTakenCounts> {
+        return observeDateTakenProjection().map { projection ->
+            DateTakenCounts(
+                withDate = projection.count { it.value != null },
+                withoutDate = projection.count { it.value == null }
+            )
         }
     }
 

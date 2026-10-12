@@ -69,6 +69,7 @@ import com.davide.seddio.easygallery.data.SortOrder
 import com.davide.seddio.easygallery.data.SortType
 import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
+import com.davide.seddio.easygallery.data.canonicalMediaStoreUriForJoin
 import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
 import com.davide.seddio.easygallery.ui.components.DestinationFolderPickerDialog
 import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
@@ -102,19 +103,25 @@ fun AlbumDetailScreen(
     val isSearchActive by galleryViewModel.isSearchActive(scope).collectAsState()
     val isMediaSelectionMode by galleryViewModel.isMediaSelectionMode.collectAsState()
     val selectedMediaItems by galleryViewModel.selectedMediaItems.collectAsState()
+    val indexedDateTakenByMediaUri by galleryViewModel.indexedDateTakenByMediaUri.collectAsState()
     val isDestinationPickerActive by galleryViewModel.isDestinationPickerActive.collectAsState()
     val pendingOperation by galleryViewModel.pendingOperation.collectAsState()
     val browsingPath by galleryViewModel.browsingPath.collectAsState()
     val browsingFolders by galleryViewModel.browsingFolders.collectAsState()
 
     val resolvedMedia = if (isFavouritesAlbum) favouriteMedia else members.map { it.mediaItem }
-    val media = remember(resolvedMedia, preferences, searchQuery) {
+    val media = remember(resolvedMedia, preferences, searchQuery, indexedDateTakenByMediaUri) {
         val filtered = GalleryTransformations.filterMedia(
             resolvedMedia,
             searchQuery,
             preferences.mediaTypes
         )
-        GalleryTransformations.sortMedia(filtered, preferences.sortType, preferences.sortOrder)
+        GalleryTransformations.sortMedia(
+            media = filtered,
+            sort = preferences.sortType,
+            order = preferences.sortOrder,
+            indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri
+        )
     }
     val fileTypeLabels = mapOf(
         MediaType.IMAGE to stringResource(R.string.filter_images),

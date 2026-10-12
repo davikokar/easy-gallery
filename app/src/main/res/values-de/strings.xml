@@ -162,4 +162,31 @@
     <string name="manage_media_rationale_message">Android fordert normalerweise für jede Änderung eine Bestätigung an. Wenn Easy Gallery Medien verwalten darf, entfallen diese Rückfragen. Alle Funktionen sind auch ohne diese Berechtigung verfügbar.</string>
     <string name="manage_media_not_now">Nicht jetzt</string>
     <string name="manage_media_open_settings">Einstellungen öffnen</string>
+    <string name="settings_media_index">Medienindex</string>
+    <string name="settings_index_now">Jetzt indexieren</string>
+    <string name="settings_index_running">Indexierung läuft…</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="one">%1$d Element muss noch gescannt werden</item>
+        <item quantity="other">%1$d Elemente müssen noch gescannt werden</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="one">%1$d Medienelement hat ein indexiertes Datum</item>
+        <item quantity="other">%1$d Medienelemente haben ein indexiertes Datum</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="one">%1$d Medienelement ist ohne Datum indexiert</item>
+        <item quantity="other">%1$d Medienelemente sind ohne Datum indexiert</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="one">%1$d Medienelement ist noch nicht indexiert</item>
+        <item quantity="other">%1$d Medienelemente sind noch nicht indexiert</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="one">%1$d Element auf den nächsten Scan verschoben</item>
+        <item quantity="other">%1$d Elemente auf den nächsten Scan verschoben</item>
+    </plurals>
+    <string name="settings_index_last_success">Zuletzt indexiert: %1$s</string>
+    <string name="settings_index_never">Noch nicht indexiert</string>
+    <string name="settings_index_failed">Letzter Scan fehlgeschlagen</string>
+    <string name="settings_index_cancelled">Letzter Scan wurde unterbrochen</string>
 </resources>

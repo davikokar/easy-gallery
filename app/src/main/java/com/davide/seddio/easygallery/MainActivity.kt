@@ -56,6 +56,7 @@ import com.davide.seddio.easygallery.ui.NewAlbumScreen
 import com.davide.seddio.easygallery.ui.FavouritesViewModel
 import com.davide.seddio.easygallery.ui.CreateFolderViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
+import com.davide.seddio.easygallery.ui.MediaIndexingViewModel
 import com.davide.seddio.easygallery.ui.theme.EasyGalleryTheme
 
 class MainActivity : ComponentActivity() {
@@ -65,6 +66,7 @@ class MainActivity : ComponentActivity() {
     private val favouritesViewModel: FavouritesViewModel by viewModels()
     private val createFolderViewModel: CreateFolderViewModel by viewModels()
     private val billingViewModel: BillingViewModel by viewModels()
+    private val mediaIndexingViewModel: MediaIndexingViewModel by viewModels()
     private var hasPermission by mutableStateOf(false)
 
     private val intentSenderLauncher = registerForActivityResult(
@@ -146,6 +148,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(hasPermission) {
+                if (hasPermission) {
+                    mediaIndexingViewModel.ensurePeriodicIndexing()
+                }
+            }
+
             EasyGalleryTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -173,6 +181,7 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(allMedia) {
                         albumsViewModel.setAllMedia(allMedia)
+                        mediaIndexingViewModel.setLiveMedia(allMedia)
                         if (allMedia.isNotEmpty()) {
                             favouritesViewModel.loadExistingFavourites()
                         }
@@ -236,7 +245,11 @@ class MainActivity : ComponentActivity() {
                                 BackHandler {
                                     viewModel.setSettingsMode(false)
                                 }
-                                SettingsScreen(viewModel, billingViewModel)
+                                SettingsScreen(
+                                    viewModel = viewModel,
+                                    billingViewModel = billingViewModel,
+                                    mediaIndexingViewModel = mediaIndexingViewModel
+                                )
                             } else if (selectedFolder != null) {
                                 FolderDetailScreen(
                                     viewModel = viewModel,
