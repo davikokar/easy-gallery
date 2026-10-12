@@ -168,6 +168,8 @@
     <string name="settings_media_index">Media index</string>
     <string name="settings_index_now">Index now</string>
     <string name="settings_index_running">Indexing…</string>
+    <string name="settings_index_waiting">Waiting for conditions</string>
+    <string name="settings_index_waiting_detail">Scheduled and waiting for charging, device idle, and battery-not-low.</string>
     <plurals name="settings_index_remaining_rows">
         <item quantity="one">%1$d item still to scan</item>
         <item quantity="other">%1$d items still to scan</item>

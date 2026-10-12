@@ -7,12 +7,15 @@ import com.davide.seddio.easygallery.data.InMemoryMediaIndexRunStateStore
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaIndexEntry
+import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import com.davide.seddio.easygallery.data.MediaIndexingWorkScheduler
 import app.cash.turbine.test
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -28,7 +31,7 @@ class MediaIndexingViewModelTest {
             scheduler = mockk<MediaIndexingWorkScheduler>(relaxed = true),
             runStateStore = InMemoryMediaIndexRunStateStore(),
             mediaIndexStore = indexStore,
-            livenessStore = InMemoryMediaIndexingLivenessStore(flowOf(false))
+            livenessStore = InMemoryMediaIndexingLivenessStore(flowOf(MediaIndexingWorkStatus.IDLE))
         )
 
         viewModel.setLiveMedia(
@@ -65,7 +68,7 @@ class MediaIndexingViewModelTest {
             scheduler = mockk<MediaIndexingWorkScheduler>(relaxed = true),
             runStateStore = InMemoryMediaIndexRunStateStore(),
             mediaIndexStore = indexStore,
-            livenessStore = InMemoryMediaIndexingLivenessStore(flowOf(false))
+            livenessStore = InMemoryMediaIndexingLivenessStore(flowOf(MediaIndexingWorkStatus.IDLE))
         )
 
         viewModel.setLiveMedia(listOf(mediaItem("content://media/external/images/1")))
@@ -85,6 +88,33 @@ class MediaIndexingViewModelTest {
             assertEquals(1, state.indexedWithDateCount)
             assertEquals(0, state.indexedWithoutDateCount)
             assertEquals(0, state.notYetIndexedCount)
+        }
+    }
+
+    @Test
+    fun `ui state maps work status to running flag`() = runTest {
+        val statusCases = listOf(
+            MediaIndexingWorkStatus.IDLE to false,
+            MediaIndexingWorkStatus.WAITING to false,
+            MediaIndexingWorkStatus.RUNNING to true
+        )
+
+        statusCases.forEach { (status, expectedRunning) ->
+            val viewModel = MediaIndexingViewModel(
+                application = mockk<Application>(relaxed = true),
+                scheduler = mockk<MediaIndexingWorkScheduler>(relaxed = true),
+                runStateStore = InMemoryMediaIndexRunStateStore(),
+                mediaIndexStore = InMemoryMediaIndexStore(),
+                livenessStore = InMemoryMediaIndexingLivenessStore(flowOf(status))
+            )
+
+            val state = if (status == MediaIndexingWorkStatus.IDLE) {
+                viewModel.uiState.value
+            } else {
+                viewModel.uiState.drop(1).first()
+            }
+            assertEquals(status, state.workStatus)
+            assertEquals(expectedRunning, state.isRunning)
         }
     }
 

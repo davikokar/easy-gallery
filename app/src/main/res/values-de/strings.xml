@@ -165,6 +165,8 @@
     <string name="settings_media_index">Medienindex</string>
     <string name="settings_index_now">Jetzt indexieren</string>
     <string name="settings_index_running">Indexierung läuft…</string>
+    <string name="settings_index_waiting">Wartet auf Bedingungen</string>
+    <string name="settings_index_waiting_detail">Geplant und wartet auf Laden, Geräte-Leerlauf und ausreichend Akku.</string>
     <plurals name="settings_index_remaining_rows">
         <item quantity="one">%1$d Element muss noch gescannt werden</item>
         <item quantity="other">%1$d Elemente müssen noch gescannt werden</item>

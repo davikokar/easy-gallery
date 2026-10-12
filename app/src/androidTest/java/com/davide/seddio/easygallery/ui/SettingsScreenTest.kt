@@ -2,6 +2,7 @@ package com.davide.seddio.easygallery.ui
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import com.davide.seddio.easygallery.data.MediaIndexRunOutcome
 import io.mockk.every
 import io.mockk.mockk
@@ -91,7 +92,7 @@ class SettingsScreenTest {
         composeTestRule.setContent {
             MediaIndexSettingsArea(
                 state = indexingState(
-                    isRunning = true,
+                    workStatus = MediaIndexingWorkStatus.RUNNING,
                     selectedRows = 12,
                     processedRows = 5,
                     indexedWithDateCount = 3,
@@ -112,7 +113,7 @@ class SettingsScreenTest {
     fun indexNowActionHasNoClickActionWhileRunning() {
         composeTestRule.setContent {
             MediaIndexSettingsArea(
-                state = indexingState(isRunning = true),
+                state = indexingState(workStatus = MediaIndexingWorkStatus.RUNNING),
                 onIndexNow = {}
             )
         }
@@ -137,16 +138,34 @@ class SettingsScreenTest {
         assertEquals(1, clicks)
     }
 
+    @Test
+    fun indexNowActionRunsWhileWaiting() {
+        var clicks = 0
+        composeTestRule.setContent {
+            MediaIndexSettingsArea(
+                state = indexingState(workStatus = MediaIndexingWorkStatus.WAITING),
+                onIndexNow = { clicks++ }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("media_index_now_action")
+            .assertHasClickAction()
+            .performClick()
+
+        assertEquals(1, clicks)
+    }
+
     companion object {
         private fun indexingState(
-            isRunning: Boolean = false,
+            workStatus: MediaIndexingWorkStatus = MediaIndexingWorkStatus.IDLE,
             selectedRows: Int = 0,
             processedRows: Int = 0,
             indexedWithDateCount: Int = 0,
             indexedWithoutDateCount: Int = 0,
             notYetIndexedCount: Int = 0
         ) = MediaIndexingUiState(
-            isRunning = isRunning,
+            workStatus = workStatus,
+            isRunning = workStatus == MediaIndexingWorkStatus.RUNNING,
             selectedRows = selectedRows,
             processedRows = processedRows,
             indexedRows = processedRows,

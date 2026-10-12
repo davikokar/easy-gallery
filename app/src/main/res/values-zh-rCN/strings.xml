@@ -163,6 +163,8 @@
     <string name="settings_media_index">媒体索引</string>
     <string name="settings_index_now">立即建立索引</string>
     <string name="settings_index_running">正在建立索引…</string>
+    <string name="settings_index_waiting">等待条件满足</string>
+    <string name="settings_index_waiting_detail">已计划，正在等待充电、设备空闲且电量非低电量状态。</string>
     <plurals name="settings_index_remaining_rows">
         <item quantity="other">还有 %1$d 项待扫描</item>
     </plurals>

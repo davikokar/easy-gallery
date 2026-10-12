@@ -173,6 +173,8 @@
     <string name="settings_media_index">فهرس الوسائط</string>
     <string name="settings_index_now">الفهرسة الآن</string>
     <string name="settings_index_running">جارٍ الفهرسة…</string>
+    <string name="settings_index_waiting">بانتظار توفر الشروط</string>
+    <string name="settings_index_waiting_detail">تمت الجدولة وبانتظار الشحن، وخمول الجهاز، وألا تكون البطارية منخفضة.</string>
     <plurals name="settings_index_remaining_rows">
         <item quantity="zero">لا توجد عناصر متبقية للمسح</item>
         <item quantity="one">عنصر واحد متبقٍ للمسح</item>

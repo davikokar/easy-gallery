@@ -153,7 +153,7 @@ class WorkManagerMediaIndexingWorkScheduler(
 
     override fun ensurePeriodicIndexing() {
         workManager.enqueueUniquePeriodicWork(
-            UNIQUE_INDEX_WORK,
+            UNIQUE_PERIODIC_INDEX_WORK,
             ExistingPeriodicWorkPolicy.UPDATE,
             buildPeriodicRequest()
         )
@@ -161,7 +161,7 @@ class WorkManagerMediaIndexingWorkScheduler(
 
     override fun enqueueIndexNow() {
         workManager.enqueueUniqueWork(
-            UNIQUE_INDEX_WORK,
+            UNIQUE_INDEX_NOW_WORK,
             ExistingWorkPolicy.REPLACE,
             buildIndexNowRequest()
         )
@@ -196,7 +196,8 @@ class WorkManagerMediaIndexingWorkScheduler(
     }
 
     companion object {
-        const val UNIQUE_INDEX_WORK = "media-index"
+        const val UNIQUE_PERIODIC_INDEX_WORK = "media-index-periodic"
+        const val UNIQUE_INDEX_NOW_WORK = "media-index-now"
         private const val PERIODIC_REPEAT_HOURS = 24L
     }
 }

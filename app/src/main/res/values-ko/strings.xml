@@ -163,6 +163,8 @@
     <string name="settings_media_index">미디어 색인</string>
     <string name="settings_index_now">지금 색인</string>
     <string name="settings_index_running">색인 생성 중…</string>
+    <string name="settings_index_waiting">조건 대기 중</string>
+    <string name="settings_index_waiting_detail">예약되었으며 충전 중, 기기 유휴 상태, 배터리 부족 아님 조건을 기다리고 있습니다.</string>
     <plurals name="settings_index_remaining_rows">
         <item quantity="other">스캔할 항목 %1$d개 남음</item>
     </plurals>

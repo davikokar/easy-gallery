@@ -41,7 +41,7 @@ class MediaIndexingWorkEnqueueTest {
         val workManager = WorkManager.getInstance(app)
         val viewModel = MediaIndexingViewModel(application = app)
 
-        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_WORK)
+        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_NOW_WORK)
         workManager.pruneWork()
 
         val idsBefore = uniqueWorkIds(workManager)
@@ -55,7 +55,7 @@ class MediaIndexingWorkEnqueueTest {
         )
 
         val infos = workManager
-            .getWorkInfosForUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_WORK)
+            .getWorkInfosForUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_NOW_WORK)
             .get(10, TimeUnit.SECONDS)
 
         val enqueuedInfo = infos.first { info -> info.id == enqueuedId }
@@ -90,7 +90,8 @@ class MediaIndexingWorkEnqueueTest {
             }
         }
 
-        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_WORK)
+        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_NOW_WORK)
+        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_PERIODIC_INDEX_WORK)
         workManager.pruneWork()
 
         val visibleMediaCount = runBlocking { MediaStoreDataSource(app).getAllMedia().size }
@@ -236,7 +237,8 @@ class MediaIndexingWorkEnqueueTest {
         withDeniedMediaAccess(app) {
             assertRequiredMediaPermissionsDenied(app)
 
-            workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_WORK)
+            workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_NOW_WORK)
+            workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_PERIODIC_INDEX_WORK)
             workManager.pruneWork()
 
             val idsBeforeDenied = uniqueWorkIds(workManager)
@@ -257,7 +259,8 @@ class MediaIndexingWorkEnqueueTest {
             )
         }
 
-        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_WORK)
+        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_NOW_WORK)
+        workManager.cancelUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_PERIODIC_INDEX_WORK)
         workManager.pruneWork()
 
         val idsBeforeGranted = uniqueWorkIds(workManager)
@@ -510,7 +513,7 @@ class MediaIndexingWorkEnqueueTest {
 
     private fun uniqueWorkIds(workManager: WorkManager): Set<UUID> {
         return workManager
-            .getWorkInfosForUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_WORK)
+            .getWorkInfosForUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_NOW_WORK)
             .get(10, TimeUnit.SECONDS)
             .mapTo(LinkedHashSet()) { info -> info.id }
     }
@@ -521,7 +524,7 @@ class MediaIndexingWorkEnqueueTest {
     ): UUID? {
         repeat(20) {
             val infos = workManager
-                .getWorkInfosForUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_WORK)
+                .getWorkInfosForUniqueWork(WorkManagerMediaIndexingWorkScheduler.UNIQUE_INDEX_NOW_WORK)
                 .get(10, TimeUnit.SECONDS)
 
             val newest = infos.firstOrNull { info ->

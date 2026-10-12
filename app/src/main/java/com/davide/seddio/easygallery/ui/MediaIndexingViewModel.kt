@@ -9,6 +9,7 @@ import com.davide.seddio.easygallery.data.MediaIndexRunOutcome
 import com.davide.seddio.easygallery.data.MediaIndexRunStateStore
 import com.davide.seddio.easygallery.data.MediaIndexStore
 import com.davide.seddio.easygallery.data.MediaIndexingLivenessStore
+import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import com.davide.seddio.easygallery.data.MediaIndexingWorkScheduler
 import com.davide.seddio.easygallery.data.WorkManagerMediaIndexingLivenessStore
 import com.davide.seddio.easygallery.data.canonicalMediaStoreUriForJoin
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 data class MediaIndexingUiState(
+    val workStatus: MediaIndexingWorkStatus,
     val isRunning: Boolean,
     val selectedRows: Int,
     val processedRows: Int,
@@ -52,7 +54,7 @@ class MediaIndexingViewModel @JvmOverloads constructor(
             WorkManagerMediaIndexingLivenessStore(app)
         }
 ) : AndroidViewModel(application) {
-    private val isWorkerRunningFlow: Flow<Boolean> = livenessStore.isRunning
+    private val workStatusFlow: Flow<MediaIndexingWorkStatus> = livenessStore.status
 
     private val liveCanonicalUris = MutableStateFlow<Set<String>>(emptySet())
 
@@ -64,17 +66,18 @@ class MediaIndexingViewModel @JvmOverloads constructor(
 
     val uiState: StateFlow<MediaIndexingUiState> = combine(
         runStateStore.state,
-        isWorkerRunningFlow,
+        workStatusFlow,
         liveCanonicalUris,
         indexedCanonicalUris,
         indexedProjection
-    ) { runState, isWorkerRunning, liveUris, indexedUris, projection ->
+    ) { runState, workStatus, liveUris, indexedUris, projection ->
         val liveIndexedUris = indexedUris.intersect(liveUris)
         val liveNotYetIndexed = (liveUris.size - liveIndexedUris.size).coerceAtLeast(0)
         val indexedWithDateCount = liveIndexedUris.count { uri -> projection[uri] != null }
         val indexedWithoutDateCount = liveIndexedUris.size - indexedWithDateCount
         MediaIndexingUiState(
-            isRunning = isWorkerRunning,
+            workStatus = workStatus,
+            isRunning = workStatus == MediaIndexingWorkStatus.RUNNING,
             selectedRows = runState.selectedRows,
             processedRows = runState.processedRows,
             indexedRows = runState.indexedRows,
@@ -95,6 +98,7 @@ class MediaIndexingViewModel @JvmOverloads constructor(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
         MediaIndexingUiState(
+            workStatus = MediaIndexingWorkStatus.IDLE,
             isRunning = false,
             selectedRows = 0,
             processedRows = 0,

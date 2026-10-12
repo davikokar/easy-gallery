@@ -165,6 +165,8 @@
     <string name="settings_media_index">Index des médias</string>
     <string name="settings_index_now">Indexer maintenant</string>
     <string name="settings_index_running">Indexation…</string>
+    <string name="settings_index_waiting">En attente des conditions</string>
+    <string name="settings_index_waiting_detail">Planifié et en attente de la charge, de l’inactivité de l’appareil et d’une batterie suffisante.</string>
     <plurals name="settings_index_remaining_rows">
         <item quantity="one">%1$d élément reste à analyser</item>
         <item quantity="other">%1$d éléments restent à analyser</item>

@@ -163,6 +163,8 @@
     <string name="settings_media_index">メディアインデックス</string>
     <string name="settings_index_now">今すぐインデックスを作成</string>
     <string name="settings_index_running">インデックスを作成中…</string>
+    <string name="settings_index_waiting">条件待ち</string>
+    <string name="settings_index_waiting_detail">スケジュール済みで、充電中・端末アイドル・バッテリー残量低下なしの条件を待機しています。</string>
     <plurals name="settings_index_remaining_rows">
         <item quantity="other">あと%1$d件をスキャン</item>
     </plurals>

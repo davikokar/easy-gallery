@@ -38,6 +38,7 @@ import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 import com.davide.seddio.easygallery.data.MediaIndexRunOutcome
+import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -196,15 +197,26 @@ fun MediaIndexSettingsArea(
     onIndexNow: () -> Unit
 ) {
     SettingsSection(title = stringResource(R.string.settings_media_index))
+    val isRunning = state.workStatus == MediaIndexingWorkStatus.RUNNING
+    val isWaiting = state.workStatus == MediaIndexingWorkStatus.WAITING
+
     SettingsItem(
-        title = if (state.isRunning) {
+        title = when {
+            isRunning -> {
             stringResource(R.string.settings_index_running)
-        } else {
+            }
+
+            isWaiting -> {
+                stringResource(R.string.settings_index_waiting)
+            }
+
+            else -> {
             stringResource(R.string.settings_index_now)
+            }
         },
         icon = Icons.AutoMirrored.Filled.ManageSearch,
         onClick = onIndexNow,
-        enabled = !state.isRunning,
+        enabled = !isRunning,
         modifier = Modifier.testTag("media_index_now_action")
     )
 
@@ -215,7 +227,7 @@ fun MediaIndexSettingsArea(
             .testTag("media_index_status_area"),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        if (state.isRunning) {
+        if (isRunning) {
             val outstandingRows = (state.selectedRows - state.processedRows).coerceAtLeast(0)
             if (state.selectedRows > 0) {
                 LinearProgressIndicator(
@@ -234,6 +246,12 @@ fun MediaIndexSettingsArea(
             } else {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
+        } else if (isWaiting) {
+            Text(
+                stringResource(R.string.settings_index_waiting_detail),
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
 
         Text(
