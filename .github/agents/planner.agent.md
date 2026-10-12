@@ -15,7 +15,7 @@ You create plans and maintain ADRs. You do not write implementation code.
 This is **Easy Gallery**, an Android image and video gallery app in Kotlin with Jetpack Compose,
 Material 3, MVVM, and Coroutines/Flow. It has no DI framework. Media comes live from `MediaStore`
 and is never copied; the data the app owns is two small Room databases — albums (ADR-0009) and the
-media index (ADR-0018) — alongside five `SharedPreferences` files. Read these before planning:
+media index (ADR-0018) — alongside six `SharedPreferences` files. Read these before planning:
 
 1. `AGENTS.md` — tech stack, package layout, state-ownership rules, preference stores,
    localisation rules, the definition of done, and the list of things that require the user's

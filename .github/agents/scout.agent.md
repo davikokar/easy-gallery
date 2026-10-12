@@ -47,7 +47,7 @@ command writes, do not run it — say in your report what you would have needed 
 This is **Easy Gallery**, an Android image and video gallery app in Kotlin with Jetpack Compose,
 Material 3, MVVM, and Coroutines/Flow, with no DI framework. Media comes live from `MediaStore` and
 is never copied; the data the app owns is two small Room databases — albums (ADR-0009) and the
-media index (ADR-0018) — alongside five `SharedPreferences` files.
+media index (ADR-0018) — alongside six `SharedPreferences` files.
 
 You are not required to read the whole standards set before answering — that is the Reviewer's
 overhead and copying it would make you as expensive. Read what the question needs. These are where

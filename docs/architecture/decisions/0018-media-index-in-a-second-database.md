@@ -253,3 +253,78 @@ The index database won on three of this record's own arguments:
 - The *Negative* consequence about two transaction scopes is unaffected. The watermark and the rows
   it describes are in the **same** database, so the one place atomicity would have mattered is the
   one place it is available.
+
+## Amendment 2 — 2026-10-12 — The index's run state is a preferences file, and why Amendment 1's test does not reach it
+
+This amendment **adds** to the record; it corrects nothing, and in particular it does not weaken
+Amendment 1. The watermark stays in the index database for every reason Amendment 1 gives.
+
+It exists because Amendment 1 reads like a general rule and is not one. Step 2.4 of
+[albums-stage-2.md](../../design/albums-stage-2.md) added a **sixth `SharedPreferences` file**,
+`media_index_run_state`, holding the last indexing run's outcome, its start and finish timestamps,
+and its row counters. That file passes Amendment 1's three-part test — it is disposable, it is
+worthless without the index, and it must not be backed up — and it was still kept in
+`SharedPreferences`. Without this record the next person meets a decision that looks like its own
+precedent being ignored, and re-derives it wrongly in whichever direction they happen to start
+from.
+
+### Decision
+
+**`media_index_run_state` stays in `SharedPreferences`.** It is not moved into the index database.
+
+### Why the three-part test does not decide it
+
+Amendment 1's three arguments were not a general test for "may this live in Room". They were the
+tiebreak between a sixth preferences file and the index database, **after** a prior test had
+already ruled out `app_settings`: the watermark is a map keyed by volume name, and `app_settings`
+is allowed another scalar and nothing structured. That prior test is the one that decides here, and
+it points the other way. Run state is twelve fixed, flat scalars — three `Long?` timestamps, six
+`Int` counters, one enum name, and nothing whose key depends on the data. There is no structure for
+a table to express that a preferences file cannot.
+
+The three arguments then fail to separate the two candidates, because each of them is about
+*correctness coupling*, and run state has none:
+
+- **"Recomputable" is the weakest of the three, and it is the one that actually differs.** A lost
+  watermark is recomputed by a full resync, which produces a correct index. A lost run state is not
+  recomputed at all — nothing can reconstruct when the last run finished. It is simply disposable,
+  which is a different property and a weaker claim on durable storage, not a stronger one.
+- **"Worthless without the index" is true of both, but the stakes are not the same.** A watermark
+  that outlives its index is *actively harmful*: it suppresses the resync that would rebuild the
+  index, and the user gets a silently incomplete index with no error. A run state that outlives its
+  index is *cosmetically wrong*: a Settings label says a scan happened, and the figures beside it —
+  which are intersected with live media and read from the index itself, not from this file —
+  already say the index is empty. The worst case is a stale timestamp until the next run. Losing it
+  costs a blank label; losing the watermark costs a wrong index.
+- **"Must not be backed up" is satisfied either way**, and the cost of satisfying it outside the
+  database has now been paid. Amendment 1 counted a fourth `<exclude>` in three places against the
+  preferences option. Those entries exist, were written correctly, and have been read back;
+  [ADR-0014](0014-album-database-included-in-auto-backup.md) Amendment 1 records the posture they
+  fit into. An argument from a cost that is already paid is not an argument.
+
+### What it is, which is the thing that settles it
+
+The watermark is part of the index. The index cannot be correctly extended without it, and "delete
+the index" must take it with it — which is why Amendment 1 insists on one whole-file operation.
+Run state is a report *about a job*, not part of the data the job produces. Deleting the index
+without deleting the run state leaves a stale label, not a broken index, so the two do not have to
+move together and nothing is bought by making them.
+
+### Consequences
+
+- **The boundary now has a worked example on each side**, which is more useful than either alone:
+  structured, correctness-bearing index bookkeeping goes in the index database; flat, disposable
+  reporting about a run stays in `SharedPreferences`. `AGENTS.md`'s *Preference stores* section and
+  `ARCHITECTURE.md` §6 carry both.
+- **"Delete the index" is now two operations, deliberately.** Dropping the database file leaves the
+  run state behind. That is acceptable — the first subsequent run overwrites it, and in the interim
+  the Settings figures that come from the index read zero while the timestamp reads stale. §8.9's
+  future Settings switch should clear it for tidiness, not for correctness.
+- **This record does not license a seventh preferences file.** The same two tests apply next time,
+  in the same order: structured goes in a database; flat and disposable may stay. Anything that the
+  index's correctness depends on belongs with the index whatever its shape.
+- `media_index_run_state` deliberately holds **no** liveness flag. A persisted `is_running` was
+  implemented and removed: it survives process death, so a killed worker left the Index now action
+  disabled permanently. Liveness is derived from WorkManager's `WorkInfo` instead. That is not a
+  storage decision and needs no ADR, but it is why the store writes fewer keys than its state class
+  has fields.

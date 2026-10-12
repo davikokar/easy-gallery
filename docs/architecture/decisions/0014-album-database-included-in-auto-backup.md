@@ -12,6 +12,12 @@ preferences a user can shrug off and set again. An album is different. It is the
 deliberate effort, it cannot be recomputed from anything, and losing it is not an inconvenience but
 the destruction of work.
 
+> **The count above was true on 2026-10-07 and is not a live figure.** There are six preference
+> files now, and the sixth \u2014 `media_index_run_state` \u2014 is the first one *excluded* from backup.
+> The context is left as written, per the rule that an ADR's context is never rewritten; Amendment 1
+> below records what changed and why it is an instance of this decision rather than an exception to
+> it. The current list is owned by `ARCHITECTURE.md` §6.
+
 The app's backup posture today is an accident of the project template rather than a decision:
 
 - `AndroidManifest.xml` sets `android:allowBackup="true"`.
@@ -153,3 +159,52 @@ configuration this project's conventions avoid.
   `app/src/main/res/xml/data_extraction_rules.xml` — the current, unauthored state this adopts
 - <https://developer.android.com/identity/data/autobackup> — files included by default, the 25 MB
   quota, restore timing, and the restricted mode a `BackupAgent` would run in
+
+## Amendment 1 — 2026-10-12 — A preferences file is excluded for the first time
+
+This amendment **adds** to the record; it corrects nothing. The Decision continues to govern in
+full: `allowBackup="true"` stays, the album database stays in scope, and there is still **no
+`<include>` element anywhere**.
+
+It is recorded as an amendment rather than a superseding ADR, following ADR-0010 Amendment 1,
+ADR-0011 Amendment 1 and ADR-0018 Amendment 1. The posture did not change; what changed is which
+files it sorts into which side.
+
+### What changed
+
+The Context above says the preference files "hold preferences a user can shrug off and set again",
+and that sentence is the reason this record never contemplated excluding one. Stage 2 step 2.4 of
+[albums-stage-2.md](../../design/albums-stage-2.md) added a sixth preferences file,
+`media_index_run_state`, which is not that kind of thing. It is a report on the last run of the
+media index — outcome, timestamps, and row counters — and it describes an index that
+[ADR-0018](0018-media-index-in-a-second-database.md) excludes from backup.
+
+So it is excluded too, in the same three places the index database is: `backup_rules.xml`, and both
+the `<cloud-backup>` and `<device-transfer>` sections of `data_extraction_rules.xml`. Restoring
+"412 items indexed, last scan Tuesday" onto a device whose index is empty would describe something
+that does not exist, and would do it on the one screen the user looks at to find out whether
+indexing is working.
+
+### Why this is an instance of the decision rather than an exception
+
+The Decision's test is what the data *is*, not where it is stored. Albums are irreplaceable user
+effort and are backed up. The index and everything describing it are recomputable from the device
+and are not. A preferences file falling on the index's side of that line is the test working, not
+the test being bent.
+
+The *Scope* paragraph above anticipated the shape of this: it warned that adding the first
+`<exclude>` must not be mistaken for an opportunity to add `<include>` elements. That warning has
+now been tested twice — once by ADR-0018's database exclusions, once here — and held both times.
+
+### Consequences
+
+- **The exclusion list is no longer "the index database".** It is "the index database and
+  everything that reports on it", and it now spans two storage mechanisms. A future reader checking
+  the rules files against this record should expect a `sharedpref` entry beside the `database`
+  ones.
+- The invisible-failure mode ADR-0018 named gets one more instance: the app behaves identically
+  whether or not this file is backed up, so only a reading of the XML catches a mistake. It was
+  read for this amendment and is correct in all three places.
+- **This does not open the door to excluding the other five.** They hold user preferences, which is
+  exactly what the Context above says is worth restoring. Excluding one of those would be a
+  reversal of this decision and needs a new ADR, not another amendment.

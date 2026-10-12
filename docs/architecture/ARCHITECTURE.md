@@ -83,17 +83,19 @@ reshape and why, and its Corrections record what the picker stopped inheriting.
 ## 2. Data flow
 
 ```
-MediaStore (ContentResolver queries)        Room (easy_gallery.db)
-        │                                           │
-MediaStoreDataSource ──▶ MediaRepository         AlbumDao
-FavouritesDataSource                                │
-        │                                    RoomAlbumStore ──▶ AlbumStore
-        │                                           │
-GalleryViewModel  ──delegates state to──▶  DisplayPreferencesState
+MediaStore (ContentResolver queries)        Room (easy_gallery.db)      Room (media_index.db)
+        │                                           │                            │
+MediaStoreDataSource ──▶ MediaRepository         AlbumDao                  MediaIndexDao
+FavouritesDataSource                                │                            │
+        │                                    RoomAlbumStore ──▶ AlbumStore  RoomMediaIndexStore
+        │                                           │                            │
+        │                                           │              MediaIndexingWorker (WorkManager)
+        │                                           │                            │
+GalleryViewModel  ──delegates state to──▶  DisplayPreferencesState    MediaIndexDateTakenState
    (central hub)                            FolderViewPreferencesState
         │                                   MediaViewerState
         │   (+ AlbumsViewModel, FavouritesViewModel, CreateFolderViewModel,
-        │      BillingViewModel as feature ViewModels)
+        │      BillingViewModel, MediaIndexingViewModel as feature ViewModels)
         │
 *Screen composables   ← read the ViewModel, bind a PreferenceScope
         │
@@ -110,14 +112,20 @@ trigger.
 Albums and media meet only in the ViewModel layer: `AlbumsViewModel` is handed the live
 `allMedia` list and resolves stored memberships against it. The database never holds a media row.
 
-The second database — the media index, `media_index.db` — is **not in that diagram yet**. Its
-schema, DAO, stores, delta detection, reconciliation and the Tier A batch indexer that fills it all
-exist and `EasyGalleryApp` holds the database, but nothing calls the indexer and no screen reads
-from it; the scheduling that would run it and the evaluation that consumes it are later steps of
-[the Stage 2 plan](../design/albums-stage-2.md). When it joins the flow it joins it the same way
-albums do — index keys resolved against live media in the ViewModel layer, never rendered straight
-from the database —
-**[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)**.
+The second database — the media index, `media_index.db` — **is now in that flow, on two paths that
+never meet**. It is *filled* by `MediaIndexingWorker` under WorkManager, out of process with any
+screen, and it is *read* by `MediaIndexDateTakenState`, a `GalleryViewModel` delegate that projects
+captured date-taken by media URI so `SortType.DATE_TAKEN` can sort by it. `MediaIndexingViewModel`
+sits beside both: it schedules the work, and it reports progress and last-indexed state to the
+Settings screen. The evaluation that would turn index rows into album members is still a later step
+of [the Stage 2 plan](../design/albums-stage-2.md).
+
+Both read paths obey the same rule albums do — index keys resolved against live media in the
+ViewModel layer, never rendered straight from the database —
+**[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)**. Date-taken sorting
+joins the projection onto the live media list it is already sorting, and the Settings figures are
+intersected with live media before they are counted, so a deleted photo stops being counted without
+waiting for a scan.
 
 **Kotlin property initialisers run top to bottom.** A derived `combine(...)` flow must be declared
 below every property it reads, or the class does not compile. Do not work around this with
@@ -133,7 +141,7 @@ below every property it reads, or the class does not compile. Do not work around
 |---|---|
 | `MediaRepository.kt` | The interface abstracting all media access and file operations. |
 | `MediaStoreDataSource.kt` | The `MediaStore`/`ContentResolver` implementation, plus copy/move/delete/create. |
-| `GalleryTransformations.kt` | All pure filter, sort, and group logic, including date headers and path conversion. |
+| `GalleryTransformations.kt` | All pure filter, sort, and group logic, including date headers and path conversion. `sortMedia` takes the index's date-taken projection as a parameter rather than reaching for it, which is what keeps it Android-free and plain-JVM testable. |
 | `GalleryModels.kt` | `SortType`, `SortOrder`, `GroupByType`, `DisplayMode`, `ViewType`, `OperationType`, `GalleryUiState`, `MediaPermissionHandler`. |
 | `MediaItem.kt`, `Folder.kt` | The two domain models. |
 | `ViewPreferences.kt` | The per-view preference bundle and `PreferenceScope`. |
@@ -158,7 +166,10 @@ below every property it reads, or the class does not compile. Do not work around
 | `MediaStoreVolumeSnapshotProvider.kt` | The `MediaStoreVolumeSnapshotProvider` interface, the `MediaStoreVolumeGateway` that isolates the four level-gated `MediaStore` calls, and the Android implementation that builds one snapshot per API branch. |
 | `MediaStoreRowDeltaProvider.kt` | The `ContentResolver` query behind row selection: the per-volume image and video collections, the generation columns where they exist, and the legacy `external` collections on API 28. It canonicalises every observed URI at the source, so a row's spelling does not depend on which collection it was observed through, while the row keeps its own concrete volume name. |
 | `AndroidMediaStoreVolumeVersionProvider.kt` | Reads a single volume's version string — the no-argument call for the primary volume, the per-volume call on API 29+. |
-| `MediaIndexTierAIndexer.kt` | Tier A extraction and the batch that applies it: the `MediaIndexTierAExtractor` interface, its Android implementation (`ExifInterface` for images, `MediaMetadataRetriever` for video), the two pure date-taken parsers, and `MediaIndexTierABatchIndexer`, which composes detection, row selection, extraction, upsert, reconciliation and watermark persistence into one cancellable pass. Nothing calls it yet. |
+| `MediaIndexTierAIndexer.kt` | Tier A extraction and the batch that applies it: the `MediaIndexTierAExtractor` interface, its Android implementation (`ExifInterface` for images, `MediaMetadataRetriever` for video), the two pure date-taken parsers, and `MediaIndexTierABatchIndexer`, which composes detection, row selection, extraction, upsert, reconciliation and watermark persistence into one cancellable pass. `MediaIndexingWorker` is its only caller. |
+| `MediaIndexingWork.kt` | The WorkManager boundary: `MediaIndexingWorker` (a `CoroutineWorker` that runs one batch and reports progress), and `MediaIndexingWorkScheduler` with its `WorkManager*` implementation — the unique periodic request and its constraints, and the one-time "Index now" request. The worker **refuses to index without media read permission** and fails rather than running; see §11. |
+| `MediaIndexRunStateStore.kt` | The index run-state store (`SharedPreferences*` and `InMemory*`) — last outcome, timestamps and row counters for the Settings surface. Liveness is deliberately **not** among them; see *Persistence*. |
+| `MediaIndexingLivenessStore.kt` | `MediaIndexingLivenessStore`, whose `WorkManager*` implementation derives "is indexing running" from `WorkInfo` rather than from anything persisted, and an `InMemory*` implementation for tests. |
 | `MediaStoreUriAliases.kt` | The single rule for `MediaStore` URI spellings: parse one into volume, kind and id, and canonicalise any volume into the `content://media/external/…` union namespace, so observed rows and live media join on one spelling. |
 | `AlbumNaming.kt` | Pure default naming for a new album — the first `My album N` that no existing album uses. |
 | `Favourites.kt` | Pure favourite-tier selection from SDK level, `MANAGE_MEDIA` grant, and R extension version. |
@@ -188,6 +199,9 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
 - **`FolderViewPreferencesState`** — the sparse per-folder overrides, keyed by folder path.
 - **`MediaViewerState`** — transient full-screen viewer state: current item, paging list,
   immersive mode, rotation, and the saved video position.
+- **`MediaIndexDateTakenState`** — the index's date-taken projection, keyed by canonical
+  `MediaStore` URI, as a `StateFlow` for `GalleryViewModel` to hand to `GalleryTransformations`.
+  Its one job is to keep the Room `Flow` out of the ViewModel body.
 - **`AlbumsViewModel`** — albums and their members. It observes `AlbumStore`, resolves stored
   memberships against the live media list it is handed, writes healed URIs and orphan flags back,
   and owns `selectedAlbumId`. It also owns the `MediaStore.getVersion()` watermark that decides
@@ -197,10 +211,17 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
 - **`CreateFolderViewModel`** — the create-folder dialog's own state; emits a `folderCreated`
   event the host screen listens for. Precedent for a feature-scoped ViewModel.
 - **`BillingViewModel`** — the Google Play Billing client and the tip-jar purchase flow.
+- **`MediaIndexingViewModel`** — the Settings screen's Media index area: it schedules the periodic
+  job, starts "Index now", and combines run state, WorkManager liveness and the index projection
+  into one UI state. The counts it publishes are **intersected with the live media list** it is
+  handed, and it reports three separate figures — indexed with a date, indexed with no date, not
+  yet indexed — rather than one percentage, because they are incommensurable.
 
-`AlbumsViewModel` and `FavouritesViewModel` are feature-scoped on that precedent. `GalleryViewModel`
-gained no album state; it still owns selection, media operations, and the viewer delegate, which
-Album Detail View reuses.
+`AlbumsViewModel`, `FavouritesViewModel` and `MediaIndexingViewModel` are feature-scoped on that
+precedent. `GalleryViewModel` gained no album state and no indexing state; it still owns selection,
+media operations, and the viewer delegate, which Album Detail View reuses. What it gained for the
+index is one delegate, `MediaIndexDateTakenState`, because date-taken sorting is a property of the
+flows it already owns.
 
 Screens: `FolderListScreen` (with `FolderList`, `FolderGrid`, `FolderDialogs`),
 `FolderDetailScreen`, `AlbumDetailScreen` (with `AlbumDialogs`), `NewAlbumScreen`,
@@ -374,6 +395,7 @@ parses structured keys and would collide with flat ones.
 | `folder_preferences` | pinned and excluded folder paths | `FolderPreferencesStore` |
 | `folder_display_preferences` | per-folder preference overrides | `FolderViewPreferencesStore` |
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
+| `media_index_run_state` | the last indexing run's outcome, timestamps and row counters | `MediaIndexRunStateStore` |
 
 Every store is an interface with a `SharedPreferences*` production implementation and an
 `InMemory*` implementation for tests. Add both when you add a store.
@@ -390,6 +412,22 @@ The folder thumbnail override is resolved against live media rather than trusted
 deleted or moved item falls back automatically —
 **[ADR-0007](decisions/0007-persisted-folder-thumbnail-override.md)**, including its two
 amendments covering the draft-and-commit picker and pre-selection.
+
+`media_index_run_state` is the sixth file and the only one that is **excluded from backup**. It was
+challenged on ADR-0018 Amendment 1's test — the test that moved the per-volume watermark *into* the
+index database — and kept here; **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)**
+Amendment 2 records why that test does not reach it. Two consequences live here rather than in the
+ADR, because they are structure:
+
+- **It holds no liveness flag.** "Is indexing running now" is read from WorkManager through
+  `MediaIndexingLivenessStore`, never from this file. A persisted `is_running` does not survive
+  process death correctly — a killed worker leaves it true forever, and the Index now action stays
+  disabled with no way out short of clearing app data. `SharedPreferencesMediaIndexRunStateStore`
+  actively removes that key on every write, which is the scar of having tried it.
+- **It is the one preference file with an `<exclude>`**, in `backup_rules.xml` and in both sections
+  of `data_extraction_rules.xml`, beside the index database's three. Restoring a row count and a
+  "last indexed" timestamp from another device would describe an index that does not exist on this
+  one.
 
 ### The album database
 
@@ -412,7 +450,8 @@ to a membership row, chosen at random once, so it heals through the ordinary mem
 The database is in scope for Android auto-backup and device transfer, which is the project
 template's default kept deliberately —
 **[ADR-0014](decisions/0014-album-database-included-in-auto-backup.md)**: `allowBackup="true"`, and
-the only elements in either rules file are the `<exclude>` entries for the index database below.
+the only elements in either rules file are `<exclude>` entries — three for the index database and
+its sidecars, and one for the `media_index_run_state` preferences file.
 **There is no `<include>` anywhere, and that is what keeps the album database in scope** — adding
 one would silently narrow the whole backup to it, so do not "tidy" those files.
 
@@ -445,11 +484,13 @@ restated here. The two databases version independently, so this moved neither th
 its history.
 
 It is **excluded** from backup and device transfer — the file and its `-wal` / `-shm` sidecars, in
-`backup_rules.xml` and in both sections of `data_extraction_rules.xml`. Backup rules select files
-rather than tables, which is why the split into two databases is what makes "back up albums, never
-back up the index" expressible at all. The exclusion costs nothing on restore because every row is
-recomputable from the device — the watermark rows included, which is the argument for keeping them
-here rather than beside the album watermark in `app_settings`.
+`backup_rules.xml` and in both sections of `data_extraction_rules.xml`. The
+`media_index_run_state` preferences file is excluded in the same three places and for the same
+reason. Backup rules select files rather than tables, which is why the split into two databases is
+what makes "back up albums, never back up the index" expressible at all. The exclusion costs
+nothing on restore because every row is recomputable from the device — the watermark rows
+included, which is the argument for keeping them here rather than beside the album watermark in
+`app_settings`.
 
 The index is **a cache, not a record of intent**: a row whose media is gone is deleted rather than
 retained, which is the opposite of what an album membership does, and an automatic album's contents
@@ -458,10 +499,10 @@ are the index's keys intersected with live media rather than the index's rows �
 apparent inconsistency with ADR-0010 in either direction; the two differ because a membership is a
 user's choice and an index row is not.
 
-Nothing reads it, and nothing yet runs the pass that would fill it. The schema, the DAO, the two
-stores, the singleton, the delta detection and reconciliation, and the Tier A batch indexer that
-walks a delta and writes rows are all in place, but **no production code calls the indexer**: the
-scheduling and the evaluation are later steps of
+It is filled by `MediaIndexingWorker` under WorkManager and read by `MediaIndexDateTakenState` for
+`SortType.DATE_TAKEN` and by `MediaIndexingViewModel` for the Settings figures — see §2. The
+**derived place columns are still written by nothing**, and the evaluation that would turn index
+rows into automatic album members is a later step of
 [the Stage 2 plan](../design/albums-stage-2.md).
 
 ---
@@ -533,6 +574,7 @@ Anything machine-parsed — coordinates, durations — is formatted with `Locale
 | Video playback | AndroidX Media3 ExoPlayer, pinned at 1.5.0 |
 | EXIF | `androidx.exifinterface` |
 | Async | Kotlin Coroutines + `StateFlow` |
+| Background work | AndroidX WorkManager (`work-runtime-ktx`) — the constrained periodic media-index job and "Index now" |
 | Billing | Google Play Billing (`billing-ktx`) — the tip jar |
 | Media data | Android `MediaStore` — all media, and the favourite flag |
 | App-owned data | Room, with KSP as the annotation processor — two databases: albums, and the media index |
@@ -562,8 +604,24 @@ KSP.
 - ~~**Back from Timeline View exited the app**, because the view switcher was a toggle with no
   notion of a home view.~~ Resolved when the switcher became a dropdown: back from Timeline or
   Albums View now returns to Folders View.
-- **`SortType.DATE_TAKEN` does not read EXIF.** `MediaItem` has no `dateTaken`; the transformation
-  maps it to `dateAdded` and the data source never queries `DATE_TAKEN`.
+- **`SortType.DATE_TAKEN` reads the index for media, and not for folders or grouping.** The
+  item-level sort was resolved at Stage 2 step 2.4: all four sites that sort media — Timeline View,
+  Folder Detail View, Album Detail View and the New album screen — pass the index's projection into
+  `GalleryTransformations.sortMedia`, which uses the captured date-taken where one exists and
+  degrades to `dateAdded` for an item that is **not yet indexed** and for one that is **indexed with
+  no date at all**. The two remaining uses still map to `dateAdded`: sorting *folders* by date taken
+  reads `Folder.dateTaken`, which `MediaStoreDataSource` aggregates from each item's `dateAdded`;
+  and `GroupByType.DATE_TAKEN_DAILY` / `_MONTHLY` group by `dateAdded`, so a date header can still
+  disagree with the order of the items under it. Narrowed rather than struck, because the second of
+  those is user-visible.
+- **The indexing job's two API-level limits.** "Index now" is expedited only on API 31+; below it
+  the request is ordinary one-time work, because expedited work there means a foreground service
+  and a notification, and that is reserved by
+  [albums.md](../design/albums.md) §10 question 2. The expedited request also carries **no**
+  `requiresBatteryNotLow`, `requiresCharging` or `requiresDeviceIdle` — the platform accepts only
+  network and storage constraints on expedited work and rejects the request otherwise — so the
+  periodic job's constraints and the Index now request's are deliberately different sets, not a
+  copy-paste omission.
 - **Folders are aggregated by `BUCKET_DISPLAY_NAME`**, keeping the first path, so two folders with
   the same name collapse. Per-folder overrides and thumbnails inherit that limitation.
 - **No pagination.** Timeline View holds every item on the device in memory.
@@ -600,6 +658,18 @@ KSP.
   `ui/AlbumsViewModel.kt` (one Album's resolved state). Both live under `ui`, so a reader has to
   check the import to know which is meant. The UI vocabulary uses the composable sense. Renaming
   either is a vocabulary change and belongs to the Designer.
+- **"Index now" cancels the periodic indexing job until the app is next opened.** Both requests use
+  the same unique work name, `media-index`, and the Index now path enqueues with
+  `ExistingWorkPolicy.REPLACE`, so the one-time request takes the periodic request's place.
+  `MainActivity` re-establishes the periodic job in a `LaunchedEffect` once permission is held, so
+  in practice the next app open repairs it — but a user who taps Index now and never opens the app
+  again has no scheduled indexing. Found while closing step 2.4 and not triaged; recorded here
+  rather than fixed, because the fix is a choice between two unique work names and a different
+  existing-work policy.
+- **The periodic request's constraints are asserted by no test.** The instrumented test covers the
+  Index now request's constraints and a real end-to-end worker run; `buildPeriodicRequest()` is
+  verified by reading it. A later change could drop `setRequiresCharging` or `setRequiresDeviceIdle`
+  and nothing would fail.
 - **Two user-facing strings are English-only.** `support_email_subject` and `error_no_email_app`
   exist in `values/` and in none of the other nine locales. They predate albums — added with the
   support-email feature — so they are not Stage 1 drift, but they break the rule in §9 and nothing

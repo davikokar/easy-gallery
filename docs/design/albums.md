@@ -245,9 +245,15 @@ This is the distinction that keeps the feature from becoming a battery problem:
 | Frequency | once per image, ever | often |
 | Where | WorkManager, constrained | `viewModelScope`, on demand |
 
-**Indexing** runs under WorkManager, constrained to charging, device idle, and battery not low,
-with a manual "Index now" in Settings as expedited work. No network constraint — nothing leaves the
-device.
+**Indexing** runs under WorkManager, constrained to charging, device idle, and battery not low. No
+network constraint — nothing leaves the device. A manual **"Index now"** in Settings runs the same
+batch on demand, and runs it *expedited* **only on the API levels where the platform grants that
+without a foreground service and a notification**; below them it degrades to ordinary one-time work
+rather than pre-empting §10 question 2, which reserves the notification question for the maintainer.
+Which level that is, and why the two requests therefore carry deliberately different constraint
+sets, are owned by [../architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) §11 and not
+restated here. **This paragraph used to say "as expedited work" flatly**, which overstated what
+step 2.4 shipped.
 
 **Evaluation** is not background work. It runs on app open and after each index batch:
 
@@ -606,6 +612,14 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     item for it. It is added at step 2.4 of [albums-stage-2.md](albums-stage-2.md), not before, so
     the pure data-layer steps stay free of it. Recorded here so nobody asks again.
 
+    **This approval covers the dependency and not the permissions it merges in.** When WorkManager
+    landed at step 2.4 it added `ACCESS_NETWORK_STATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and
+    `FOREGROUND_SERVICE` to the **merged** manifest, none of which the source manifest declares.
+    That is a separate ask-before-doing item under `AGENTS.md`, it was never asked, and it is open
+    as §10 question 6. "Nobody asks again" above means nobody re-asks whether the library may be
+    used; it never meant the permissions — but it read as though it did, which is how they went
+    unexamined.
+
 19. **A deleted photo disappears from an automatic album immediately, not at the next scan**
     ([ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)).
     This answers open question 1. The mechanism is that an automatic album's contents are **not**
@@ -658,7 +672,9 @@ Things this epic breaks or strains, which should surprise nobody when they come 
   confirm the Play Console declaration before shipping and **no record exists that it was done** —
   carry it into Stage 2 rather than assuming it. It is now a Stage 2 exit criterion in
   [albums-stage-2.md](albums-stage-2.md), widened to cover `ACCESS_MEDIA_LOCATION`, which Stage 2
-  makes load-bearing for a user-facing feature for the first time.
+  makes load-bearing for a user-facing feature for the first time. **Whoever makes that declaration
+  must read §10 question 6 first**: Stage 2 also put four permissions into the merged manifest that
+  the source manifest does not declare, and a declaration describes the merged manifest.
 - **ADR-0001** is extended, not superseded: lazy per-item location reads remain correct for the
   info surfaces; the index becomes a second, amortised path. Both
   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) and
@@ -712,6 +728,32 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    provider level, **none at the ViewModel level**, and no device at that API level is available
    here. This is listed as an epic question rather than a stage detail because it touches Stage 1's
    shipped behaviour, not Stage 2's new code. Nothing in Stage 2 is blocked on it.
+6. **What is to be done about the four permissions WorkManager adds to the merged manifest?** —
+   **Raised 2026-10-12, with the maintainer, and unresolved.** Step 2.4 of
+   [albums-stage-2.md](albums-stage-2.md) added WorkManager, which §8 decision 18 had already
+   approved. What that approval did not cover is what the library brings with it: the **merged**
+   manifest now declares `ACCESS_NETWORK_STATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and
+   `FOREGROUND_SERVICE`, none of which `app/src/main/AndroidManifest.xml` asks for and none of
+   which was examined before the dependency landed. `AGENTS.md` makes a new permission an
+   ask-before-doing item and now says explicitly that a dependency can add one without the source
+   manifest changing; this is the case that made it say so, and the check is against the merged
+   manifest rather than the source one.
+
+   **Why it is not a formality.** `ACCESS_NETWORK_STATE` sits awkwardly beside §6's *nothing leaves
+   the device* and beside §11's *no cloud, no account, no sync*. It grants no network access and
+   nothing in this app reads it — but it is visible to anyone who inspects the app's permissions,
+   and this app's whole posture is that there would be nothing to find. It also lands on the Play
+   declaration §9 already carries forward with no record that it was ever completed, which is the
+   second reason to settle this before shipping rather than after: the declaration and the Data
+   Safety answers have to describe whatever the merged manifest actually says.
+
+   **The shape of the answer, with none of it taken here.** Either accept all four, record why each
+   is there, and cover them in the Play declaration; or remove the ones a single constrained job
+   does not need — `tools:node="remove"` in the source manifest is the mechanism — and establish on
+   hardware that scheduling still survives the cases the removed ones exist for, a reboot in
+   particular; or reconsider the dependency, which would unpick step 2.4 and is the least likely.
+   **This is the maintainer's to decide.** Nothing in Stage 2 is blocked on it, no step is to close
+   it by inference, and no agent is to add, remove, or silence any of the four meanwhile.
 
 Questions scoped to a single stage live in that stage's plan — Stage 2's are in
 [albums-stage-2.md](albums-stage-2.md) — and only arrive here if they outlive it.

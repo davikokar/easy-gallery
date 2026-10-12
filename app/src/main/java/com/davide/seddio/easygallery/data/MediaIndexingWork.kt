@@ -1,7 +1,12 @@
 package com.davide.seddio.easygallery.data
 
+import android.Manifest
+import android.app.AppOpsManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Process
+import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -40,6 +45,8 @@ class MediaIndexingWorker(
         setProgress(progressData(MediaIndexTierAProgress(0, 0, 0, 0)))
 
         return try {
+            ensureMediaReadPermission(applicationContext)
+
             val result = app.createMediaIndexTierABatchIndexer().indexDelta(
                 sdkInt = Build.VERSION.SDK_INT,
                 onProgress = { progress ->
@@ -78,6 +85,48 @@ class MediaIndexingWorker(
         KEY_INDEXED_ROWS to progress.indexedRows,
         KEY_SKIPPED_ROWS to progress.skippedRows
     )
+
+    private fun ensureMediaReadPermission(context: Context) {
+        val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        val allGranted = requiredPermissions.all { permission ->
+            hasMediaReadAccess(context, permission)
+        }
+
+        if (!allGranted) {
+            throw IllegalStateException("Required media read permission is missing")
+        }
+    }
+
+    private fun hasMediaReadAccess(context: Context, permission: String): Boolean {
+        val runtimeGranted =
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        if (!runtimeGranted) return false
+
+        val op = when (permission) {
+            Manifest.permission.READ_MEDIA_IMAGES -> "android:read_media_images"
+            Manifest.permission.READ_MEDIA_VIDEO -> "android:read_media_video"
+            Manifest.permission.READ_EXTERNAL_STORAGE -> AppOpsManager.OPSTR_READ_EXTERNAL_STORAGE
+            else -> return runtimeGranted
+        }
+
+        val appOps = context.getSystemService(AppOpsManager::class.java) ?: return runtimeGranted
+        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(op, Process.myUid(), context.packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(op, Process.myUid(), context.packageName)
+        }
+
+        return mode == AppOpsManager.MODE_ALLOWED || mode == AppOpsManager.MODE_DEFAULT
+    }
 
     companion object {
         const val KEY_SELECTED_ROWS = "selected_rows"

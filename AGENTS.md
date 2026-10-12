@@ -20,9 +20,10 @@ abstractions, and explain non-obvious decisions in short commit messages.
 - **Architecture:** MVVM with a unidirectional data flow (UI state exposed as `StateFlow` from a
   `ViewModel`, derived state built with `combine`)
 - **Persistence:** media comes live from `MediaStore` and is never copied. The app owns two Room
-  databases — albums (ADR-0009) and the media index (ADR-0018) — plus five `SharedPreferences`
-  files for the language override and user preferences (see *Preference stores* below). All three
-  kinds of store sit alongside each other; the preference stores were deliberately not migrated.
+  databases — albums (ADR-0009) and the media index (ADR-0018) — plus six `SharedPreferences`
+  files for the language override, user preferences, and index run state (see *Preference stores*
+  below). All three kinds of store sit alongside each other; the preference stores were
+  deliberately not migrated.
 - **Dependency injection:** none. Components are instantiated directly so tests can pass fakes.
 - **Image loading:** Coil 3 (`coil-compose`, `-gif`, `-video`, `-network-okhttp`)
 - **Video playback:** AndroidX Media3 ExoPlayer, pinned at **1.5.0**
@@ -31,6 +32,10 @@ abstractions, and explain non-obvious decisions in short commit messages.
   `kotlin-android` plugin. Removing that line breaks the build with an error that never mentions
   KSP.
 - **Billing:** Google Play Billing (`billing-ktx`), used only by the tip jar in Settings
+- **Background work:** AndroidX WorkManager (`work-runtime-ktx`), used only by the media index —
+  one constrained periodic job and the "Index now" action in Settings. It adds four permissions to
+  the **merged** manifest that the source manifest does not declare; see *What to ask before
+  doing*.
 - **Async:** Kotlin Coroutines + Flow
 - **Build:** Gradle (Kotlin DSL, `.gradle.kts`). **Every version lives in
   `gradle/libs.versions.toml` and `app/build.gradle.kts` — read them rather than restating one
@@ -161,8 +166,10 @@ the audit is for the rest.
 - **`GalleryViewModel` is the largest file in the app by a wide margin.** Treat that as a reason
   to extract, not a licence to add. The two established escapes are a new state holder like the
   three above, or a feature-scoped ViewModel — `CreateFolderViewModel`, `BillingViewModel`,
-  `AlbumsViewModel`, and `FavouritesViewModel` are the precedent. Albums added **no album state**
-  to `GalleryViewModel`; it only reuses the viewer delegate and the selection machinery.
+  `AlbumsViewModel`, `FavouritesViewModel`, and `MediaIndexingViewModel` are the precedent. Albums
+  added **no album state** to `GalleryViewModel`; it only reuses the viewer delegate and the
+  selection machinery. The media index added one delegate, `MediaIndexDateTakenState`, and nothing
+  else.
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -187,14 +194,24 @@ Each store owns its own `SharedPreferences` file; do not merge them.
 | `folder_preferences` | pinned and excluded folder paths | `FolderPreferencesStore` |
 | `folder_display_preferences` | per-folder preference overrides | `FolderViewPreferencesStore` |
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
+| `media_index_run_state` | last indexing run's outcome, timestamps, counters | `MediaIndexRunStateStore` |
 
 Every store is an interface with a `SharedPreferences*` production implementation and an
 `InMemory*` implementation for tests. Add both when you add a store.
 
 The album watermark shares `app_settings` deliberately, to avoid a sixth preferences file for one
-scalar. Another scalar may join it; anything structured belongs in Room. The media index's
-per-volume watermark is the worked example: it was written here first, is a map rather than a
-scalar, and moved into the index database.
+scalar. Another scalar may join it; **anything structured must not** — that rule is about
+`app_settings`, not about preference files in general. The media index's per-volume watermark is
+the worked example: it was written here first, is a map rather than a scalar, and moved into the
+index database (ADR-0018 Amendment 1).
+
+`media_index_run_state` is the sixth file, and the one that shows where the line actually falls. It
+was challenged on the same test that moved the watermark and **kept in `SharedPreferences`**: it is
+a fixed set of flat scalars, and unlike the watermark it is not bookkeeping the index's correctness
+depends on — losing it costs a blank label, not a wrong index. ADR-0018 Amendment 2 records the
+reasoning. It is also the only preferences file carrying an `<exclude>` in the backup rules, and it
+deliberately holds **no** liveness flag — "is indexing running" comes from WorkManager, because a
+persisted one survives process death and disables the Index now action forever.
 
 ### The two databases
 
@@ -296,7 +313,13 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
 
 - Adding a new third-party dependency, or upgrading a pinned one (notably media3 1.5.0, which
   governs what video-control APIs exist).
-- Adding a new Android permission or `<queries>` entry.
+- Adding a new Android permission or `<queries>` entry. **A dependency can do this without the
+  source manifest changing**, and the approval of the dependency is not approval of the
+  permissions it merges in. WorkManager is the worked example and the reason this sentence exists:
+  it added `ACCESS_NETWORK_STATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE`
+  to the merged manifest at Stage 2 step 2.4, unexamined, and that is open as
+  [docs/design/albums.md](docs/design/albums.md) §10 question 6. Check the merged manifest, not
+  `app/src/main/AndroidManifest.xml`, when a dependency lands.
 - Introducing a new architectural pattern not described above, or contradicting an active ADR.
 - Adding `android:configChanges` to `MainActivity` — ADR-0002 forbids it.
 
