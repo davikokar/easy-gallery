@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -134,6 +135,86 @@ class MediaIndexDaoTest {
     }
 
     @Test
+    fun `identity date taken projection returns each column unshuffled`() = runTest {
+        dao.upsert(
+            listOf(
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/41",
+                    displayName = "projected.jpg",
+                    size = 4_141L,
+                    dateModified = 5_252L,
+                    capturedDateTakenEpochMillis = 1_727_000_000_123L
+                )
+            )
+        )
+
+        val rows = dao.observeIdentityDateTaken().first()
+
+        assertEquals(
+            listOf(
+                MediaIndexIdentityDateTakenEntity(
+                    mediaUri = "content://media/external/images/media/41",
+                    displayName = "projected.jpg",
+                    size = 4_141L,
+                    dateModified = 5_252L,
+                    capturedDateTakenEpochMillis = 1_727_000_000_123L
+                )
+            ),
+            rows
+        )
+    }
+
+    @Test
+    fun `identity date taken projection re-emits on upsert and on delete`() = runTest {
+        dao.observeIdentityDateTaken().test {
+            assertTrue(awaitItem().isEmpty())
+
+            dao.upsert(listOf(sampleEntity(mediaUri = "content://media/external/images/media/51")))
+            assertEquals(
+                listOf("content://media/external/images/media/51"),
+                awaitItem().map { it.mediaUri }
+            )
+
+            dao.upsert(
+                listOf(
+                    sampleEntity(
+                        mediaUri = "content://media/external/images/media/51",
+                        capturedDateTakenEpochMillis = 1_728_000_000_000L
+                    )
+                )
+            )
+            assertEquals(1_728_000_000_000L, awaitItem().single().capturedDateTakenEpochMillis)
+
+            dao.deleteByMediaUri("content://media/external/images/media/51")
+            assertTrue(awaitItem().isEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `identity date taken projection returns null date row and does not filter by volume`() = runTest {
+        dao.upsert(
+            listOf(
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/61",
+                    capturedDateTakenEpochMillis = null
+                ),
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/62",
+                    volumeName = "unmounted_volume"
+                )
+            )
+        )
+
+        val byUri = dao.observeIdentityDateTaken().first().associateBy { it.mediaUri }
+
+        assertEquals(setOf("content://media/external/images/media/61", "content://media/external/images/media/62"), byUri.keys)
+        assertNull(byUri.getValue("content://media/external/images/media/61").capturedDateTakenEpochMillis)
+        assertNotNull(byUri.getValue("content://media/external/images/media/62").capturedDateTakenEpochMillis)
+        assertNull(byUri["content://media/external/images/media/63"])
+    }
+
+    @Test
     fun `watermark table upsert list and delete work by volume`() {
         dao.upsertWatermark(
             MediaIndexWatermarkEntity(
@@ -165,6 +246,9 @@ class MediaIndexDaoTest {
         mediaUri: String,
         displayName: String = "photo.jpg",
         volumeName: String = "external_primary",
+        size: Long = 123L,
+        dateModified: Long = 456L,
+        capturedDateTakenEpochMillis: Long? = 1_725_000_000_000L,
         capturedWidth: Int? = null,
         capturedHeight: Int? = null,
         derivedCountryCode: String? = null,
@@ -174,12 +258,12 @@ class MediaIndexDaoTest {
         return MediaIndexEntity(
             mediaUri = mediaUri,
             displayName = displayName,
-            size = 123L,
-            dateModified = 456L,
+            size = size,
+            dateModified = dateModified,
             volumeName = volumeName,
             generationAdded = 10L,
             generationModified = 11L,
-            capturedDateTakenEpochMillis = 1_725_000_000_000L,
+            capturedDateTakenEpochMillis = capturedDateTakenEpochMillis,
             capturedLatitude = 43.7696,
             capturedLongitude = 11.2558,
             capturedWidth = capturedWidth,

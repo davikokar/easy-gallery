@@ -162,6 +162,7 @@ class MainActivity : ComponentActivity() {
                     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
                     val selectedMedia: com.davide.seddio.easygallery.data.MediaItem? by viewModel.selectedMedia.collectAsState()
                     val allMedia by viewModel.allMedia.collectAsState()
+                    val isMediaLoaded by viewModel.isMediaLoaded.collectAsState()
                     val albums by albumsViewModel.albums.collectAsState()
                     val selectedAlbumId by albumsViewModel.selectedAlbumId.collectAsState()
                     val favouriteUris by favouritesViewModel.favourites.collectAsState()
@@ -179,8 +180,10 @@ class MainActivity : ComponentActivity() {
                     // Non-null means the New album screen is open, holding the name it opened on.
                     var newAlbumInitialName by rememberSaveable { mutableStateOf<String?>(null) }
 
+                    LaunchedEffect(allMedia, isMediaLoaded) {
+                        if (isMediaLoaded) albumsViewModel.setAllMedia(allMedia)
+                    }
                     LaunchedEffect(allMedia) {
-                        albumsViewModel.setAllMedia(allMedia)
                         mediaIndexingViewModel.setLiveMedia(allMedia)
                         if (allMedia.isNotEmpty()) {
                             favouritesViewModel.loadExistingFavourites()

@@ -4,8 +4,10 @@ import android.net.Uri
 import app.cash.turbine.test
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -38,6 +40,41 @@ class MediaIndexInMemoryStoreTest {
             store.deleteByVolume("external")
             assertTrue(awaitItem().isEmpty())
 
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `identity date taken projection carries identity and distinguishes null date from absent row`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val withDate = sampleEntry(mediaUri = "content://media/external/images/media/3")
+        val withoutDate = sampleEntry(
+            mediaUri = "content://media/external/images/media/4",
+            capturedDateTakenEpochMillis = null
+        )
+        store.upsert(listOf(withoutDate, withDate))
+
+        val rows = store.observeIdentityDateTaken().first().associateBy { it.identity.mediaUri }
+
+        assertEquals(setOf(withDate.mediaUri, withoutDate.mediaUri), rows.keys)
+        assertEquals(withDate.toMediaIdentity(), rows.getValue(withDate.mediaUri).identity)
+        assertEquals(withDate.capturedDateTakenEpochMillis, rows.getValue(withDate.mediaUri).capturedDateTakenEpochMillis)
+        assertNull(rows.getValue(withoutDate.mediaUri).capturedDateTakenEpochMillis)
+        assertNull(rows["content://media/external/images/media/5"])
+    }
+
+    @Test
+    fun `identity date taken projection re-emits on upsert and on delete`() = runTest {
+        val store = InMemoryMediaIndexStore()
+
+        store.observeIdentityDateTaken().test {
+            assertTrue(awaitItem().isEmpty())
+
+            store.upsert(listOf(sampleEntry(mediaUri = "content://media/external/images/media/6")))
+            assertEquals(1, awaitItem().size)
+
+            store.deleteByMediaUri("content://media/external/images/media/6")
+            assertTrue(awaitItem().isEmpty())
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -116,6 +153,7 @@ class MediaIndexInMemoryStoreTest {
         mediaUri: String,
         displayName: String = "photo.jpg",
         volumeName: String = "external_primary",
+        capturedDateTakenEpochMillis: Long? = 1_726_000_000_000L,
         derivedCountryCode: String? = null,
         derivedRegionCode: String? = null,
         derivedPlaceName: String? = null
@@ -128,7 +166,7 @@ class MediaIndexInMemoryStoreTest {
             volumeName = volumeName,
             generationAdded = 5L,
             generationModified = 6L,
-            capturedDateTakenEpochMillis = 1_726_000_000_000L,
+            capturedDateTakenEpochMillis = capturedDateTakenEpochMillis,
             capturedLatitude = 43.7696,
             capturedLongitude = 11.2558,
             capturedWidth = 1080,

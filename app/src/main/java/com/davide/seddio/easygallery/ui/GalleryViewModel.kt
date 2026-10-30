@@ -75,6 +75,10 @@ class GalleryViewModel @JvmOverloads constructor(
     private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
     val allMedia: StateFlow<List<MediaItem>> = _allMedia.asStateFlow()
 
+    // `allMedia` starts as an empty placeholder; this is true only once getAllMedia() has actually returned.
+    private val _isMediaLoaded = MutableStateFlow(false)
+    val isMediaLoaded: StateFlow<Boolean> = _isMediaLoaded.asStateFlow()
+
     private val _excludedFolders = MutableStateFlow(folderStore.loadExcluded()) // Stores folder paths
     val excludedFolders: StateFlow<Set<String>> = _excludedFolders.asStateFlow()
 
@@ -289,6 +293,7 @@ class GalleryViewModel @JvmOverloads constructor(
                 val folders = repository.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
                 _allMedia.value = repository.getAllMedia()
+                _isMediaLoaded.value = true
 
                 // Refresh current folder media if one is selected
                 _selectedFolder.value?.let { currentFolder ->

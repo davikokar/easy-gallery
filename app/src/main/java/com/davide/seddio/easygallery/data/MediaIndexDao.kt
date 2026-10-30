@@ -11,6 +11,14 @@ data class MediaIndexDateTakenProjectionEntity(
     val capturedDateTakenEpochMillis: Long?
 )
 
+data class MediaIndexIdentityDateTakenEntity(
+    val mediaUri: String,
+    val displayName: String,
+    val size: Long,
+    val dateModified: Long,
+    val capturedDateTakenEpochMillis: Long?
+)
+
 @Dao
 interface MediaIndexDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -21,6 +29,12 @@ interface MediaIndexDao {
 
     @Query("SELECT mediaUri, capturedDateTakenEpochMillis FROM media_index ORDER BY mediaUri ASC")
     fun observeDateTakenProjection(): Flow<List<MediaIndexDateTakenProjectionEntity>>
+
+    @Query(
+        "SELECT mediaUri, displayName, size, dateModified, capturedDateTakenEpochMillis " +
+            "FROM media_index ORDER BY mediaUri ASC"
+    )
+    fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTakenEntity>>
 
     @Query("SELECT * FROM media_index WHERE volumeName = :volumeName ORDER BY mediaUri ASC")
     fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntity>>

@@ -20,171 +20,216 @@
 > before anything else — and then whatever the step itself requires. *Session protocol* below says
 > what that means.
 
-- **Next step: 2.5 — evaluation and time-only rules.** The first genuinely automatic album, and the
-  first code that *reads* the index rather than filling it. Zero geo risk, which is why it comes
-  before 2.6.
-- **Depends on:** steps 2.1–2.4, all **Complete**. 2.4 shipped the pipeline that keeps the index
-  filled, so 2.5 may assume there is something to evaluate against — and must behave when there is
-  not. The decisions binding on it are
-  [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) for the rule
-  format and the `Unevaluatable` path,
-  [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md) for the
-  intersection with live media, and ADR-0012 for how rule, additions and exclusions compose.
-  **No migration, to either database:** `albums.rule` already exists and is unused, and the index
-  needs no new column for a time rule.
-- **The defect 2.4 found on hardware, and the rule it leaves behind: a run that cannot read the
-  library must not advance a watermark.** `getVersion`, `getGeneration` and `getExternalVolumeNames`
-  are not permission-gated; the row query is. A run without media access therefore observed **zero**
-  rows, selected and skipped nothing — so 2.3's skipped-row clamping never engaged — and then
-  persisted the observed generation as if the whole volume had been indexed. Every later run *with*
-  permission would have selected nothing, and the library would never be indexed, with no error, no
-  retry and no recovery short of clearing app data. `MediaIndexingWorker` now checks the runtime
-  permission **and** the app-op before it does anything, and fails loudly rather than succeeding
-  vacuously. **This was the third defect in this stage whose symptom was "indexed nothing and looked
-  like it worked"** — 2.2 and 2.3 hold the other two. Treat that as the stage's signature failure
-  rather than three coincidences, and ask what 2.5's version of it is: an evaluation run over an
-  empty or partial index renders an automatic album as simply *empty*, which is the same shape of
-  silence.
-- **"Index now" and the periodic job share the unique work name `media-index`, and Index now
-  enqueues with `ExistingWorkPolicy.REPLACE`** — so tapping Index now **cancels the periodic job**
-  until `MainActivity` re-establishes it on the next app open. Found while closing 2.4, **not
-  triaged**, and recorded in `ARCHITECTURE.md` §11, which owns it. It matters to 2.5 because 2.5
-  evaluates after each index batch and so sits next to this seam: whoever touches scheduling should
-  settle it rather than inherit it. The fix is a choice between two unique work names and a
-  different existing-work policy — a decision, not a patch.
-- **The periodic request's constraints are asserted by no test.** The instrumented test covers the
-  *Index now* request's constraints and a real end-to-end worker run; `buildPeriodicRequest()` is
-  verified by reading it. A later change could drop `setRequiresCharging` or `setRequiresDeviceIdle`
-  and nothing would fail. Also in `ARCHITECTURE.md` §11.
-- **The indexing job has two API-level limits and neither is a defect.** "Index now" is expedited on
-  the higher API levels only, and the expedited request deliberately carries **none** of the
-  periodic job's three constraints, because the platform rejects an expedited request that carries
-  them. `ARCHITECTURE.md` §11 owns both facts, the level, and the reasoning;
-  [albums.md](albums.md) §6 now states that the first is level-dependent rather than flat. Do not
-  "fix" either by making the two requests match.
-- **The derived place columns are still written by nothing, and stay that way until 2.6.** They have
-  existed since 2.1 and are null on every device. A 2.5 rule that tested country, region or place
-  would therefore match nothing, everywhere, silently — the signature failure again. 2.5's clause is
-  `time` and only `time`; the `region` clause is 2.7's, and the pass that fills those columns is
-  2.6's. The trap waiting at 2.6 is under *Still true* below.
-- **The time base 2.5 must obey was pinned down at 2.3 and is not 2.5's to reopen.** Date-taken is
-  stored as **epoch milliseconds UTC**; `OffsetTimeOriginal` is used where present, and a zone-less
-  EXIF `DateTimeOriginal` is interpreted in **the device's zone at extraction time**. It is stated
-  on `parseExifDateTakenEpochMillis`, which is the function a reader meets first. The consequence
-  2.5 inherits: the stored instant for a zone-less photo depends on the zone the device was in when
-  it was indexed, so a capture timestamp compared against a zoned range is the classic
-  off-by-one-day defect, and changing the interpretation later is a **re-index, not a migration**.
-- **The third date-taken state already has a name in the code; reuse it rather than inventing a
-  second vocabulary.** An item can be indexed and still carry a null date — no EXIF date at all, and
-  extraction deliberately does **not** fall back to `dateModified` — which is distinct both from
-  "not yet indexed" and from "indexed with a date", and never becomes non-null. 2.4 named all three
-  explicitly in `DateTakenSortState`: `IndexedWithDate`, `IndexedWithoutDate`, `NotIndexed`. A
-  `time` clause meets the same three. [albums.md](albums.md) §6's closing paragraph owns the rule
-  that follows from it: such an item must not be counted as outstanding work, because that count
-  would never reach zero, and must not be counted as covered either.
-- **2.4's progress surface already applies §6's honesty rule, and 2.5's counts answer to the same
-  shape.** The Settings Media index figures are **intersected with live media before counting**, so
-  a deleted photo stops being counted without waiting for a scan, and they are shown as **three
-  separate figures with no combined percentage**, because they are incommensurable. Whatever 2.5
-  shows for an album that is still waiting on the index should not invent a fourth style beside it.
-- **The data-layer traps of 2.2 and 2.3 are not repeated here.** The delta composition
-  (`detect` / `persistWatermarks` and why the order is structural), the selected-but-not-live race
-  and its watermark clamping, and the `external` ↔ any-volume namespace rule in
-  `data/MediaStoreUriAliases.kt` all still hold and are all recorded under their own steps below and
-  in repo memory. 2.5 touches none of them; a session that does should read them there rather than
-  trust this block's silence.
-- **Learned in 2.2, and binding on what follows:**
-  - **The per-volume watermark lives in the index database, not in `app_settings`.** It was
-    implemented there first and moved: it is a map keyed by volume name, and `AGENTS.md` allows
-    that file another scalar and nothing structured. The reasoning and its consequences are
-    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 1 —
-    a watermark is index metadata, recomputable, worthless without the index, and must not be
-    backed up, so it belongs with the data it describes.
-  - **The index database is therefore at version 2, through a real `Migration(1, 2)` with no
-    destructive fallback**, and both `1.json` and `2.json` are exported. That is the precedent:
-    **any later schema change is another bump, another migration, and another committed JSON.**
-    `fallbackToDestructiveMigration` is not available to this database — a user's index is cheap to
-    lose, but silently dropping the table also drops the watermark that would have triggered the
-    rebuild. Neither 2.3 nor 2.4 needed a schema change, so the precedent is still untested by a
-    second use.
-  - **The mount/unmount question could not be settled, and is reported rather than answered.** The
-    one device available, the SM-G990B, has no removable storage: `adb shell sm list-volumes all`
-    reports only `private mounted null` and `emulated;0 mounted null`, so no controlled experiment
-    against a second volume was possible. What a mount or unmount does to an already-present
-    volume's version string is therefore still unknown, and the code does not assume either answer:
-    reconciliation refuses to treat an absent volume as a deletion, which is safe under both. It is
-    in repo memory under the same heading. **Do not close it by inference** — it needs a device with
-    a card. 2.4 has since put the batch on a schedule, so a wrong assumption here now costs full
-    re-indexes unattended rather than only when something calls the batch.
-  - **The API 28 presence rule is settled: only `MediaStore.VOLUME_EXTERNAL_PRIMARY` counts as
-    present.** API 28 has no volume-enumeration API at all, so reconciling anything else would mean
-    deleting rows keyed to volumes nobody can currently observe — exactly what ADR-0020 clause 4
-    forbids. The cost is accepted and recorded: a device that never leaves API 28 never observes
-    those volumes, so retained rows can accumulate for the life of the install. Also in repo memory.
-  - **`lintDebug` cannot run in this workspace**, which is pre-existing and unrelated to Stage 2.
-    The failure and its consequence now live in `AGENTS.md` *Running Gradle*, which owns them, and
-    in repo memory; this stage does not restate them. What is Stage 2's own: 2.3 calls
-    `MediaStore.setRequireOriginal`, which is API 29+, and step 2.2 shipped two unguarded
-    `MediaStore` calls that lint would have caught had it started. **The 2.3 guard was checked by
-    reading it** — the call sits behind `isAtLeastQ()` in `data/MediaLocation.kt`, now annotated
-    `@ChecksSdkIntAtLeast(api = Q)` so that the guard is machine-recognisable the day lint does
-    start. Every later step inherits the same obligation: read the guard, do not expect a tool to
-    find it.
-  - **The open `2.json` tracking item from 2.2 is closed, and the check that closed it is what
-    carries forward.** `git ls-files app/schemas` is what settles whether an exported schema is
-    tracked; `git status` does not, because Room writes one directory per database class and a
-    `git add` aimed at `app/src/` reaches neither. Run it after any schema change rather than
-    trusting a sentence here about what is committed today.
-- **With the maintainer, and not to be acted on by the next session:** step 2.2 removed the
-  `if (SDK_INT < R) return null` guard from `AndroidMediaStoreVersionProvider` in
-  `data/MediaStoreVersionStore.kt` — a **Stage 1** file the step did not scope. The API fact behind
-  the removal is right: `MediaStore.getVersion(Context)` is available from API 12. The consequence
-  is a behaviour change to a shipped feature: `AlbumsViewModel.didMediaStoreVersionChange()`
-  previously returned `false` unconditionally on API 28–29, and album membership healing
-  re-evaluation now activates on those devices for the first time. There is a Robolectric test at
-  `@Config(sdk = P)` at the provider level and **none at the ViewModel level**, and no device at
-  that API level is available. It is the maintainer's call whether this is a latent bug fixed or a
-  change to revert; it is also logged as [albums.md](albums.md) §10 question 5. **Do not change the
-  code either way.**
-- **Also with the maintainer, and also not to be acted on: the four permissions WorkManager merges
-  in.** Step 2.4 added the library — approved long before, as [albums.md](albums.md) §8 decision 18 —
-  and with it `ACCESS_NETWORK_STATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE`
-  in the **merged** manifest, while `app/src/main/AndroidManifest.xml` stayed clean. The dependency
-  was approved; these were never examined. It is open as [albums.md](albums.md) **§10 question 6**,
-  which holds the reasoning and the options. Check the merged manifest, not the source one, when a
-  dependency lands — and **do not add, remove, or silence any of the four** while the question is
-  open.
-- **Still true, from earlier sessions:**
-  - **The app's live-media set is already the thing albums resolve against.**
-    `AlbumsViewModel.computeAlbum` joins stored rows against the list `GalleryViewModel` loads and
-    pushes in through `setAllMedia`. ADR-0020's live join is that pattern reused, not a new one, and
-    2.5's intersection answers to the same shape.
-  - **The shared identity exists and is shared.** `data/MediaIdentity.kt` holds `MediaIdentity` and
-    `MediaHealingKey`; album membership and the index row model both build on it, and reconciliation
-    heals through it with an in-memory hash join rather than a `WHERE` over the healing triple — so
-    there is still **no index on those three columns and none is wanted**. Adding one is a Room
-    `identityHash` change, which is now a version 3.
-  - **Step 2.5 needs no migration to the album database.** The column ADR-0017 fills already exists
-    and is unused. Do not plan a migration.
-  - **A note for step 2.6, cheap now and a migration later:** a row whose coordinates fall outside
-    [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)'s
+- **2.5 is ✅ Complete (2026-10-26); 2.6 is next. Before it starts, the maintainer has decisions to
+  take that gate or shape 2.6 and 2.7.** None of them is any agent's to take, and each is owned
+  where it is linked. In the order they bite:
+  1. **[albums.md](albums.md) §10 question 7 — now with a measurement behind it.** Whether a new
+     photo reaches a time or region album on app open, or only after the next index pass. §6
+     promises the first; 2.5 delivers the second. **2.5's device run adds a fact the question did
+     not have:** on the SM-G990B, about 79% of the live library was indexed **without a date** — no
+     EXIF date at all — so a time album on that device can only ever cover the dated minority.
+     That is by design: ADR-0017 Amendment 1 rules out a `dateAdded` fallback because it invents
+     members. But it is the product-visible shape of question 7 and of §6's "indexed without a
+     date" state, and as 2.5 is built **nothing tells the user about it**: an undated item is
+     neither waiting nor covered, so the album reads `COMPLETE` and no notice speaks for the items
+     it cannot contain. 2.7's coverage notice is specified for location only (ADR-0019); whether
+     time albums need the same is part of this decision. One device, not a rule — but worth knowing
+     before 2.7 makes time albums user-creatable. **Do not add an app-open index pass, a `dateAdded`
+     fallback, or soften §6 while it is open.**
+  2. **Bring time-only creation forward, or not.** No user can create an automatic album until 2.7;
+     2.5 shipped the engine with the Automatic option still disabled. Bringing it forward is a scope
+     change to this plan, and 2.5's correction note says what it would replace.
+  3. **The proposed reconciler criterion under 2.6.** Accept it there, move it to a small standalone
+     step before 2.7, or decide otherwise. Until then it is a proposal and binds nobody.
+  4. **[albums.md](albums.md) §10 question 5.** Step 2.2 removed the `< R` guard from
+     `AndroidMediaStoreVersionProvider` in `data/MediaStoreVersionStore.kt`, a Stage 1 file, which
+     turned album membership healing on for API 28–29 for the first time. Latent bug fixed or change
+     to revert is the maintainer's call. **Do not change the code either way.**
+  5. **[albums.md](albums.md) §10 question 6.** WorkManager merges `ACCESS_NETWORK_STATE`,
+     `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE` into the **merged** manifest; the
+     dependency was approved, these were never examined. **Do not add, remove or silence any of the
+     four** while the question is open.
+  6. **The Play Console restricted-permission declaration**, carried forward since Stage 1, has no
+     record of being done. It is a Stage 2 exit criterion below and is met only by checking the
+     console; Stage 2 makes `ACCESS_MEDIA_LOCATION` load-bearing, and question 6's four permissions
+     land on the same declaration.
+  7. **[albums.md](albums.md) §10 question 2** — a notification, and with it `POST_NOTIFICATIONS` —
+     is still open, so every progress surface stays in-app. It blocks no step.
+- **Then 2.6 — the gazetteer — and what it starts from.**
+  - **It is offline**, per [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md):
+    a trimmed dataset shipped as an APK asset, and every figure the ADR lists under *To be measured*
+    measured and recorded. 2.6's exit criteria below are the checklist.
+  - **The derived place columns are still written by nothing.** They have existed since 2.1 and are
+    null on every device; 2.6's resolve pass is their first writer. Until it lands, anything that
+    tests country, region or place matches nothing, everywhere, silently.
+  - **A `region` clause is an unknown clause type until 2.7**, so a rule carrying one parses to
+    `Unevaluatable` and shows the newer-app notice. That is ADR-0017's rule applied, not a gap for
+    2.6 to close; 2.7 is the step that makes it evaluatable.
+  - **[ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)
+    Amendment 1 holds the decisions 2.5 was built on** — the `time` clause's shape, the zone it is
+    read in, how strict the parser is, and the rule that an undated or unindexed item never matches.
+    Read them there. Its *When this format becomes binding* section is the one that matters next:
+    the format is freely revisable until 2.7 first writes a rule, and not afterwards.
+  - **No migration was needed for 2.5 and none was made**, to either database. The album database is
+    still at version 1 and the index at version 2.
+  - **The trap waiting at 2.6, cheap now and a migration later:** a row whose coordinates fall
+    outside [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)'s
     distance cap resolves to null country, null region and null place — **indistinguishable from
     "not yet resolved"** — so a resolve pass selecting on "derived columns are null" would retry
-    those rows forever. Not worth a column today; worth knowing at 2.6.
-- **Gates as 2.4 closed:** `testDebugUnitTest` **318 tests, 0 failures**; `connectedDebugAndroidTest`
-  **82 of 82** on the SM-G990B, that run being the first to include `MediaIndexingWorkEnqueueTest`.
-  Those are the figures of 2.4's own closing run, carried here rather than re-measured by the
-  documentation pass that wrote this block. 2.1's suite instability is history rather than an open
-  item — see the note under step 2.1 below. A connected run reporting **0 tests** is an install
-  timeout, not a pass; wake and unlock the device and run it again, which is in repo memory.
-- **Blocked, and needing the maintainer:** nothing in 2.5 is blocked. [albums.md](albums.md) §10
-  question 2 still caps any progress surface at in-app, which 2.5 inherits rather than reopens, and
-  the two items above are the maintainer's and hold up no step.
-- **Open but blocking nothing yet:** the remaining questions at the end of this document. Question 1
-  there is answered and struck through; 3 and 4 are live and belong to later steps; **question 5 is
-  2.5's own to decide** — whether an unevaluatable album needs its own string or whether
-  `album_hidden_items_notice` covers it — and if the answer is a new string, that is ten locale
-  files in the same change.
+    those rows forever. Not worth a column yet; decide it at 2.6.
+- **Still true, and binding on what follows:**
+  - **2.5 depends on 2.4 having filled the index, and must behave when it has not.** An evaluation
+    over an empty or partial index would render an automatic album as simply *empty*; 2.5 answers
+    that with the waiting notice, and any later clause meets the same shape.
+  - **A run that cannot read the library must not advance a watermark.** `MediaIndexingWorker`
+    checks the runtime permission **and** the app-op before it does anything and fails loudly,
+    because the volume and generation calls are not permission-gated and the row query is. 2.4's
+    record below has the whole defect; it was the third of this stage's "indexed nothing and looked
+    like it worked" failures.
+  - **The data-layer traps of 2.2 and 2.3 are not repeated here.** The delta composition
+    (`detect` / `persistWatermarks` and why the order is structural), the selected-but-not-live race
+    and its watermark clamping, and the `external` ↔ any-volume namespace rule in
+    `data/MediaStoreUriAliases.kt` all still hold and are recorded under their own steps below and
+    in repo memory.
+  - **The per-volume watermark lives in the index database, not in `app_settings`**, which is why
+    the index is at version 2 through a real `Migration(1, 2)` with no destructive fallback.
+    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 1 holds
+    the reasoning. **Any later schema change is another bump, another migration and another
+    committed JSON**; `fallbackToDestructiveMigration` is not available, because dropping the table
+    also drops the watermark that would trigger the rebuild.
+  - **The API 28 presence rule: only `MediaStore.VOLUME_EXTERNAL_PRIMARY` counts as present.** API 28
+    has no volume-enumeration API, so reconciling anything else would delete rows for volumes nobody
+    can observe — what ADR-0020 clause 4 forbids. The accepted cost: retained rows can accumulate
+    for the life of an install that never leaves API 28.
+  - **What a mount or unmount does to an already-present volume's version is still unknown.** The
+    SM-G990B has no removable storage, so no controlled experiment was possible; the code assumes
+    neither answer, and reconciliation refuses to treat an absent volume as a deletion. **Do not
+    close it by inference** — it needs a device with a card. Open question 3 below carries it.
+  - **`lintDebug` cannot run in this workspace**, so `NewApi` catches nothing. `AGENTS.md` *Running
+    Gradle* owns the failure. **Read every API-level guard**; `isAtLeastQ()` in
+    `data/MediaLocation.kt` is annotated `@ChecksSdkIntAtLeast` so that the day lint does start, it
+    recognises the guard.
+  - **`git ls-files app/schemas` settles whether an exported schema is tracked**; `git status` does
+    not, because Room writes one directory per database class, outside `app/src/`. Run it after any
+    schema change rather than trusting a sentence here.
+  - **The indexing job has two API-level limits and neither is a defect.** "Index now" is expedited
+    on the higher API levels only, and the expedited request deliberately carries **none** of the
+    periodic job's three constraints, because the platform rejects an expedited request that carries
+    them. `ARCHITECTURE.md` §11 owns both facts, the level and the reasoning. Do not "fix" either by
+    making the two requests match.
+  - **The shared-work-name finding from 2.4's close is resolved — do not reopen it.** It was resolved
+    in commit `d68898d` by two unique work names, `media-index-periodic` and `media-index-now`, so
+    Index now's `REPLACE` can only replace an earlier Index now. The same change made liveness
+    three-state — `RUNNING`, `WAITING`, `IDLE` — and **only `RUNNING` disables Index now**, because a
+    periodic job sits enqueued between runs and the old two-state liveness read that as "Indexing…"
+    forever. `ARCHITECTURE.md` §11 keeps the struck entry and the reasoning.
+  - **The time base was pinned down at 2.3.** Date-taken is stored as epoch milliseconds UTC;
+    `OffsetTimeOriginal` is used where present, and a zone-less EXIF `DateTimeOriginal` is read in
+    the device's zone at extraction time, as stated on `parseExifDateTakenEpochMillis`. Changing that
+    later is a **re-index, not a migration**. ADR-0017 Amendment 1 mirrors it at evaluation time and
+    records the accepted limit for a user who travels.
+  - **The three date-taken states have names; reuse them.** `DateTakenSortState` has
+    `IndexedWithDate`, `IndexedWithoutDate` and `NotIndexed`, and the evaluator uses the same three.
+    An item indexed without a date is neither outstanding work nor covered — [albums.md](albums.md)
+    §6's closing paragraph owns that rule.
+  - **One progress surface.** The Settings Media index figures are intersected with live media and
+    shown as three separate figures with no combined percentage. 2.5's waiting notice points there
+    rather than inventing a second style; open question 5 below says why.
+  - **The shared identity is shared, and joined in memory.** `data/MediaIdentity.kt` holds
+    `MediaIdentity`, `MediaHealingKey` and now `LiveMediaLookup`. There is still **no database index
+    on the healing triple and none is wanted**; adding one is a Room `identityHash` change, which
+    would make the index database version 3.
+  - **A connected run uninstalls the app and wipes its data when it finishes**, and a run reporting
+    **0 tests** is an install timeout, not a pass. `AGENTS.md` *Running Gradle* owns the first and
+    repo memory has the routine for the second. A device test can also fail on its own race, as
+    2.5's did; read the failure before suspecting the product.
+- **Residual device checks carried from 2.5's close — not blockers, and not 2.5's exit criteria.**
+  2.5 closed on a device run that proved the pipeline and the Compose notice tests; these are what
+  it could not reach. Do them when something shipped can create a rule album — 2.7, or time-only
+  creation if the maintainer brings it forward — or earlier by hand.
+  - **A notice in a real tile or row of the installed app**, and Album Detail View's notices in the
+    installed app. They have rendered only in Compose tests with fixtures. Watch above all the
+    **tile notice at a font scale around 2 on a grid of three or more columns** — the tile is a fixed
+    square and its notice ellipsizes — and in de, fr, it and pt-rBR, which run longest.
+  - **The translations of the four `album_rule_*` strings**, written and then reworded by R3 without
+    a native-speaker pass. ja, ko and ar first.
+  - **A multi-volume index run, and the mount/unmount question** (open question 3). The SM-G990B has
+    no removable storage.
+  - **R1's gate in production composition.** The forwarding that checks `isMediaLoaded` lives in
+    `MainActivity` and `FolderListScreen`; the device test constructs `AlbumsViewModel` directly, so
+    R1 rests on its unit tests.
+- **Known debt this stage carries, each owned elsewhere — read it there:**
+  - **The periodic indexing request's constraints are asserted by no test**; `buildPeriodicRequest()`
+    is verified by reading it. `ARCHITECTURE.md` §11.
+  - **Folder-level date-taken sorting and date-taken grouping still use `dateAdded`**, so a date
+    header can disagree with the order beneath it. `ARCHITECTURE.md` §11.
+  - **`MediaIndexReconciler` still holds a private live lookup** — its own by-URI and by-healing-key
+    maps — which is the second copy ADR-0020 clause 3 forbids. Out of 2.5's scope and not fixed, and
+    not a mechanical swap onto `LiveMediaLookup`, because reconciliation compares raw URIs.
+    `ARCHITECTURE.md` §11 has the detail. **No step or exit criterion closed it, so as planned Stage 2
+    could complete with an Active ADR breached.** 2.6 now carries a *proposed* criterion that would
+    close it, awaiting the maintainer's decision — see the list below.
+  - **The app-open empty-list defect is fixed (R1); two ungated siblings remain**, both found by
+    reading and neither device-observed. The Settings Media index figures read zero until media has
+    loaded, because `setLiveMedia` is not gated on `isMediaLoaded`; and the New album screen can open
+    on an empty folder picker in the window between `loadFolders()` reporting success and
+    `getAllMedia()` returning. Neither feeds indexing or album membership. `ARCHITECTURE.md` §11
+    owns both.
+  - **Notice fatigue, and the product question behind it.** The waiting notice shows whenever any
+    live item is not yet indexed, and an item taken today stays unindexed until the next constrained
+    run — which can be days on a phone that is rarely idle on a charger. That contradicts albums.md
+    §6's promise that a photo taken this afternoon appears when the app opens; it is now
+    [albums.md](albums.md) §10 question 7, the maintainer's call.
+  - **From the review of 2.5, recorded for the maintainer and not acted on:**
+    - The index `Flow` in `AlbumsViewModel` is shared with `shareIn(..., WhileSubscribed())` under a
+      `flatMapLatest` over the album list. With no stop timeout, every re-emission of that list — a
+      rename, a cover change — can drop the last subscriber and restart the full-table Room query.
+      The review suggests `WhileSubscribed(5_000)`; not applied.
+    - Evaluation cost: every index chunk the worker commits re-evaluates every rule album, and
+      `AlbumMembership.resolve` runs twice per rule album — once in `computeAlbum`, once inside the
+      evaluator. Revisit before 2.7 makes rule albums common.
+    - Removing from a **manual** album deletes only the member's own membership id, although
+      `additionIdsByUri` can hold several addition rows for one item; the others keep it in the album.
+      Pre-existing, a one-line fix, not made.
+    - Several new KDoc comments from 2.5 run three to six lines, against the repo's one-line comment
+      guideline. Low priority.
+    - **A possible permanent waiting state.** A live item the indexer never selects by construction
+      would keep every time album `WAITING_ON_INDEX` forever. The candidate is a secondary volume on
+      API 28, where only the primary volume counts as present. Unverified; the device test
+      ran on a device with no secondary volume, so it could not catch it.
+    - **An edited file keeps its old indexed date until it is re-indexed**, because a direct URI match
+      never consults the healing triple, and the album shows `COMPLETE` meanwhile. Accepted, and
+      recorded as such in ADR-0017 Amendment 1.
+    - Two androidTest fixtures still pass `resolved` / `stored` values to a helper that no longer
+      forwards them. Harmless decoration.
+    - `removeMembers` deletes the row, recording no exclusion, for a membership id with no live
+      match. Unreachable in production because `removeMember` and `removeMembers` have no production
+      caller; the only UI path is `removeMembersByMedia`, which has a `MediaItem` in hand. Nothing
+      enforces that. R2 under 2.5 has it.
+  - **No test covers a reload that fails after a successful first load** — `isMediaLoaded` should
+    stay true and `allMedia` keep its old value. And `MainActivity` and `FolderListScreen` each
+    check `isMediaLoaded` but forward `allMedia`, so a third forwarder that forgets the check brings
+    the cold-start defect back. A single nullable-until-loaded flow would remove that risk; not done.
+    The failed-first-load consequence is `ARCHITECTURE.md` §11's.
+- **Working-tree hygiene — the maintainer's, before anything is committed.** What is or is not
+  pending is a property of the working tree, not of this document: run `git status`, untracked
+  files included, and `git ls-files app/schemas`, rather than trusting a sentence here.
+  - **2.5 is not committed.** Its code, tests, resources and documents — including new, untracked
+    files — have to be reviewed and committed by the maintainer. 2.5 made no schema change, so
+    `app/schemas/` should show nothing new; check it.
+  - **The tracked `.artifacts/tmp/connectedDebugAndroidTest-20261012.logcat.txt` must be restored to
+    its committed state before any commit.** It grows when a connected run writes to it, and
+    `.artifacts/` is history that must not be edited (`AGENTS.md`).
+  - **The six `.github/agents/*.agent.md` files differ only in their `model:` frontmatter line.**
+    Not part of 2.5; commit or discard them as a separate decision.
+- **Orchestration lessons, kept short:**
+  - A Planner or Coder run sometimes returns no report although its work landed. Re-run it asking
+    **only for the report**, rather than redoing the work or reconstructing it from the files.
+  - A documentation pass is not complete because it says so. Check its report against the file —
+    this block survived one pass still announcing 2.5 as "the first genuinely automatic album".
+- **Open questions** are at the end of this document: 1 and 5 are answered and struck through; 3
+  (volume resync frequency and size, and the mount/unmount unknown) and 4 (where the coverage notice
+  lives) are live and belong to later steps.
 
 ---
 
@@ -197,7 +242,7 @@
 | **2.2** | Delta detection | ✅ Complete — 2026-10-09 |
 | **2.3** | Tier A extraction | ✅ Complete — 2026-10-09 |
 | **2.4** | WorkManager pipeline, "Index now", progress and staleness | ✅ Complete — 2026-10-12 |
-| **2.5** | Evaluation engine and time-only rules | ⬜ Not started |
+| **2.5** | Evaluation engine and time-only rules | ✅ Complete — 2026-10-26 |
 | **2.6** | The gazetteer | ⬜ Not started |
 | **2.7** | Region rules and the place picker | ⬜ Not started |
 
@@ -258,10 +303,10 @@ with a Room-backed implementation and an `InMemory*` implementation, DAO tests o
 **Carried forward at 2.1, and now retired:** `connectedDebugAndroidTest` was reported here as **not
 observed as met**. The suite had gone unstable on the one device available — the instrumentation
 host SIGKILLed mid-suite, failures moving between unrelated tests, every named failure passing in
-isolation — and the one controlled run gave 75 of 76, failing
-`AlbumDetailContentTest.backButtonReturnsToAlbums` with "No compose hierarchies found in the app"
+isolation — and the one controlled run failed only
+`AlbumDetailContentTest.backButtonReturnsToAlbums`, with "No compose hierarchies found in the app",
 while logcat showed foreground focus churn to a third-party app. **That verdict no longer stands:**
-the suite has since run **76 of 76** three times on the SM-G990B, which is the observation the
+the suite has since run clean three times on the SM-G990B, which is the observation the
 standard asks for. The instability is kept here as history, and its triage rule is in repo memory,
 because the next session to meet "No compose hierarchies" should check for focus churn before
 suspecting the product.
@@ -487,6 +532,8 @@ re-establishes the periodic job on the next app open, which bounds the damage to
 Index now and never opens the app again has no scheduled indexing". It is in `ARCHITECTURE.md` §11.
 It is not a criterion of this step and the step does not wait on it, but 2.5 evaluates after each
 index batch, so whoever touches scheduling next should settle it rather than inherit it.
+**Since resolved, by commit `d68898d`** — two unique work names; `ARCHITECTURE.md` §11 has the
+struck entry and the reasoning. Kept here as the record of what this step closed with.
 
 > **This is where Stage 2 could stop and still have shipped something real**: the index is built,
 > date-taken sort is fixed, the phone is not being drained, and no album rule exists yet. Nothing
@@ -495,27 +542,162 @@ index batch, so whoever touches scheduling next should settle it rather than inh
 ### 2.5 — Evaluation and time-only rules
 
 **Delivers:** the rule format of ADR-0017 — parser, `Unevaluatable` handling, the `time` clause —
-the evaluator that turns a rule into members against the index, and the first genuinely automatic
-album. **Zero geo risk**: if 2.6 disappoints, Stage 2 still ships a working automatic album.
+the evaluator that turns a rule into members against the index, and a **test-only** way to create a
+rule. The clause's shape, its zone, and the parser's strictness are fixed in ADR-0017 Amendment 1,
+written before the code. **Zero geo risk**, but **no user can create an automatic album at the end
+of this step**: the Album type dialog's Automatic option stays disabled until 2.7, which is also
+the first step that writes `albums.rule` from a shipped code path.
+
+> **Corrected 2026-10-26.** This line used to promise "the first genuinely automatic album", and the
+> ordering note below said that if 2.6 disappointed Stage 2 would still ship a working automatic
+> album. Neither held as the step is scoped: 2.5 ships the engine, not a way for a user to reach
+> it. The honest fallback is that if 2.6 disappoints, **2.7 ships time-only creation without the
+> region picker**. The maintainer may choose instead to bring time-only creation forward into 2.5
+> or a step of its own; that is a scope change to this plan and is not assumed here.
 
 **Exit criteria**
 
-- Rules round-trip through `albums.rule` with **no migration** to the album database.
-- `NULL` rule still means manual. Nothing about existing manual albums changes.
-- An unknown clause type, an unknown envelope version, and malformed JSON all produce
+Ticked only where a unit test, the repository, or a run on hardware proves it. No device was
+attached at 2.5's first two verifications, so the last three lines were held open for a device run;
+that run, on the SM-G990B at API 36 on 2026-10-26, met them. What it did not reach is listed after
+the criteria, and none of it is an exit criterion.
+
+- [x] Rules round-trip through `albums.rule` with **no migration** to the album database.
+  `AlbumRuleStorageTest` writes and reads the real column through Room; `app/schemas/` is unchanged,
+  so there is no version bump and no new JSON.
+- [x] `NULL` rule still means manual. Nothing about existing manual albums changes. A null column
+  parses to no rule at all, and stays null after members are added and an exclusion is recorded.
+- [x] An unknown clause type, an unknown envelope version, and malformed JSON all produce
   `Unevaluatable`; the album resolves to its additions minus its exclusions, shows the notice, and
   **is never rewritten**. Each of the three has its own test. This is the highest-risk code in the
   step, because the failure it guards against cannot occur on a device that has only moved forward.
-- Evaluation composes with ADR-0012: `(rule matches ∪ additions) − exclusions`, with exclusion
-  winning, and tombstones surviving re-evaluation.
-- **The rule's matches are intersected with live media before display** — ADR-0020. The index
+  "Never rewritten" is tested byte for byte across rename, add and remove. **The "shows the notice"
+  clause is proven only as far as the status that drives it**; the rendering is the Compose tests',
+  which ran on hardware below.
+- [x] Evaluation composes with ADR-0012: `(rule matches ∪ additions) − exclusions`, with exclusion
+  winning, and tombstones surviving re-evaluation — including an exclusion surviving a re-emitted,
+  changed index.
+- [x] **The rule's matches are intersected with live media before display** — ADR-0020. The index
   supplies keys; the album shows items that `MediaStore` currently returns, resolved by the same
   path `AlbumMembership` already uses. A test proves that an indexed item absent from live media
-  does not appear, and that it needs no scan to disappear.
-- Evaluation runs on app open and after each index batch — **not** under the indexing constraints
-  (albums.md §6).
-- Parser and evaluator are pure and unit-tested on a plain JVM.
-- Every new string is in all ten locales.
+  does not appear, and that it needs no scan to disappear: the row stays in the index and the item
+  is gone anyway.
+- [x] Evaluation runs on app open and after each index batch — **not** under the indexing constraints
+  (albums.md §6). Proven at the ViewModel by an index-store emission alone, with live media
+  unchanged, and separately by `setAllMedia` alone. That the real batch produces that emission was
+  proven on hardware by the device test below.
+- [x] Parser and evaluator are pure and unit-tested on a plain JVM. `AlbumRuleTest` and
+  `AlbumRuleEvaluationTest` run without Robolectric; only the storage test uses it, because it
+  exercises Room.
+- [x] Every new string is in all ten locales. The four `album_rule_*_notice*` keys, counted in each of
+  the ten `strings.xml` files.
+- [x] `AutomaticAlbumEvaluationDeviceTest` proves the real pipeline — live `MediaStore`, the
+  production extractor, a real batch into the Room index, and one rule album observed before and
+  after it. **Passed on the SM-G990B.** The album went from `WAITING_ON_INDEX` before the batch to
+  `COMPLETE` after it with no other trigger, its members matched an expectation computed
+  independently, and no `ENVIRONMENT:` guard tripped; the figures are in the run's logcat, not here.
+  The expectation excluded every item indexed without a date — about 79% of that device's library —
+  which is ADR-0017 Amendment 1's no-`dateAdded`-fallback rule holding on real data; the handoff
+  block says why the maintainer should know the proportion. **The first run failed on a race in the
+  test, not the product:** it selected the album straight after creating it, before the album had
+  appeared in `AlbumsViewModel.albums`, and the ViewModel's init collector clears a selection whose
+  id is not among the computed albums — so the selected-members flow stayed empty while the album's
+  list item already had the right members. The fix is test-side only, selecting the album once it
+  has first been observed, and three reruns passed.
+- [x] The full `connectedDebugAndroidTest` suite. **Passed on the SM-G990B** with no failures and no
+  errors, `MediaIndexingWorkEnqueueTest` included. A `signal 9 (Killed)` in logcat at process
+  teardown did not affect the results. The run uninstalled the app when it finished — `AGENTS.md`
+  *Running Gradle* — so it was reinstalled, its media permissions re-granted, and it was seen to
+  launch with Folders View and Albums View rendering.
+- [x] The Compose notice tests in `AlbumDetailContentTest` and `FolderListContentTest`. **Passed in
+  that run**, including Album Detail View's notices in RTL at font scale 2, the tile's state
+  description, and the RTL row tests. They drive fixtures, which is the limit below.
+
+**Not device-verified at the close.** None of these is an exit criterion above, and none can be seen
+in the installed app until something shipped can create a rule album, so they did not hold the step
+open. They are carried into the handoff block as residual checks:
+
+- a notice in a real tile or row of the installed app, above all the tile notice at a font scale
+  around 2 on a grid of three or more columns, and Album Detail View's notices in the installed app;
+- a multi-volume index run, and the mount/unmount question — the device has no removable storage;
+- the translations of the four new strings, which have had no native-speaker pass;
+- R1 in production composition, below;
+- every API-level guard, checked by reading only, because `lintDebug` cannot run.
+
+**Remediation round 1 ran on hardware with the rest, with one exception.** R2 is ViewModel
+behaviour and rests on its unit tests; R3's reworded notices rendered in the Compose tests above.
+**R1 is still covered only by unit tests**: its gate lives in composables — `MainActivity` and
+`FolderListScreen` check `isMediaLoaded` before forwarding — and the device test constructs
+`AlbumsViewModel` directly, so nothing on hardware exercises the forwarding in production
+composition.
+
+**Landed beyond the criteria, flagged rather than claimed.** None of these was asked for; each was
+needed for a criterion above to be true rather than merely tested.
+
+- **`hiddenMemberCount` now counts additions only.** A rule match is not a stored row, so "stored
+  minus resolved" would subtract matches from a count they were never in and report hidden members
+  that do not exist. `AlbumDetailContent` therefore no longer takes a stored and a resolved count;
+  it takes the hidden count directly.
+- **Removing an item from a rule album always records an exclusion**, even when the item is there
+  only as an addition. Deleting the addition row alone would be enough today and wrong later: once
+  the item's date is indexed and falls in range, it would reappear as a match the user had already
+  removed. As first landed this applied to evaluatable rules only; R2 below extended it to any
+  stored rule.
+- **No orphan or URI-rewrite write-back while live media is still null.** Before `MediaStore` has
+  been read every membership looks unresolved, and the empty initial list used to mark every one of
+  them orphaned. As first landed the guard never engaged in production, because the caller handed
+  over an empty list rather than nothing; R1 below is what made it real.
+- **The tile and row notices are announced through `stateDescription`.** The tile's semantics set
+  its content description to the album name, so TalkBack never read any visible notice text. This
+  also fixed the Stage 1 hidden-items notice, which had never been announced either.
+- **The evaluator joins index URIs and live URIs through `canonicalMediaStoreUriForJoin` on both
+  sides**, because an index row may be spelled with a volume name where live media uses `external`.
+  The membership side **deliberately stays raw**, per ADR-0010 Amendment 1; canonicalising it would
+  change which album rows count as direct matches.
+- **The live lookup was extracted into `LiveMediaLookup`** in `data/MediaIdentity.kt`, so membership
+  and rules share one implementation of the direct-then-healing match, as ADR-0020 clause 3
+  requires. Index reconciliation still holds a private copy; that is `ARCHITECTURE.md` §11's, not
+  fixed here.
+- **The unevaluatable notice is reachable only through data until 2.7**, because the Automatic
+  option is still disabled and no shipped path writes a rule. Until then the notice is exercised by
+  tests alone; they ran on hardware at the close.
+
+**Remediation round 1, after a review of the work above.** Three defects, each fixed in code and
+unit-tested; what the device run reached for each is stated after the exit criteria above.
+
+- **R1 — app open no longer hands `AlbumsViewModel` an empty list as if it were the library.**
+  `GalleryViewModel._allMedia` starts as `emptyList()`, and `MainActivity` and `FolderListScreen`
+  forwarded it at once. So on every cold start a rule album was evaluated against "the device has no
+  media" and reported `COMPLETE` with no members — this stage's signature failure, "looked like it
+  worked", reproduced in the evaluator — and the null-media write-back guard above never ran, so
+  manual memberships were briefly written back as orphaned and then healed. The fix is
+  `GalleryViewModel.isMediaLoaded`: false until `loadFolders()` has assigned the first result of
+  `getAllMedia()`, never reset by a reload, and still false if that first load throws. Both callers
+  forward to `setAllMedia` only once it is true. **The gate is a load signal, not emptiness**,
+  because a device with genuinely no media must still deliver an empty list once loading finishes
+  and get an honest empty album. The ViewModel was left as it was: it already told null from a list,
+  and the defect was the caller saying "loaded" too early. `MediaIndexingViewModel.setLiveMedia` is
+  deliberately **not** gated by this change; `ARCHITECTURE.md` §11 records what that leaves.
+- **R2 — removal from an unevaluatable album now records an exclusion.** ADR-0012 makes a removal a
+  positive persisted fact. Deleting only the addition row from an album whose rule this build cannot
+  read left nothing to stop a newer build, which can read it, from re-matching the item. The test is
+  now whether a rule is **stored** — `hasStoredRule`, `album.rule != null` — not whether it parses.
+  Manual albums are unchanged. **One known gap, recorded by the implementer:** in `removeMembers`, a
+  membership id whose item has no live match takes the plain delete-the-row path, because there is
+  no `MediaItem` to build an exclusion from. It is unreachable in production because `removeMember`
+  and `removeMembers` have no production caller: the only UI path is `removeMembersByMedia`
+  (`ui/AlbumDetailScreen.kt`), which has a `MediaItem` in hand. Nothing enforces that.
+- **R3 — the waiting notice no longer claims a scan is running.** `album_rule_waiting_notice` and
+  `album_rule_waiting_notice_short` said photos were "still being scanned", which is false in the
+  usual waiting case: no pass running, the periodic job held by its constraints. They now say some
+  photos and videos have not been scanned yet, and point at Settings, Media index for the current
+  state. The nine translations were reworded without a native-speaker pass; ja, ko and ar want one
+  first. The UI vocabulary entry has since been renamed **Incomplete-album notice**, keeping
+  "Still-scanning notice" as an alias; the `testTag` `album_rule_waiting_notice` keeps its older
+  name because tests depend on it. Two androidTest method names still use the old name, as harmless
+  leftovers: `waitingAlbumShowsStillScanningNoticePointingToSettingsWithoutAnyFigure` in
+  `AlbumDetailContentTest` and `albumsViewShowsStillScanningNoticeWithoutAnyFigureOnTileAndRow` in
+  `FolderListContentTest`.
 
 ### 2.6 — The gazetteer
 
@@ -534,6 +716,15 @@ attribution surface.
   creates one; its string is in all ten locales.
 - Nearest-place matching, bucketing and the cap are pure and unit-tested on a plain JVM, including
   the antimeridian and the poles.
+- **Proposed 2026-10-26, for the maintainer's decision — not binding until accepted.**
+  `MediaIndexReconciler` resolves live media through `LiveMediaLookup` and holds no private by-URI
+  or by-healing-key map; its URI key — raw or canonical — is chosen explicitly, and tests pin which
+  rows count as direct matches under it. This closes the
+  [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)
+  clause 3 breach recorded in `ARCHITECTURE.md` §11, which nothing in this plan closes today. It is
+  proposed here because 2.6's resolve pass is the next change to the index's write side. The
+  alternative is a small standalone step before 2.7; either way it should land before 2.7 makes
+  rules user-writable, because a reconciliation mistake then shows up in a user's album.
 
 ### 2.7 — Region rules and the place picker
 
@@ -565,9 +756,12 @@ flipping of ADR-0016's **Automatic album** option from disabled to live.
   behaviour settled, no album rules yet. Everything before it is infrastructure; everything after it
   is a feature on top. If Stage 2 has to be shipped early, this is the line.
 - **2.5 before 2.6 and 2.7 is deliberate risk ordering.** Time rules need no dataset, no licence,
-  no size budget and no coastline. Doing them first means Stage 2 delivers a working automatic
-  album even if the geo dataset turns out to be too large, too slow, or too inaccurate — and if it
-  does, 2.6 and 2.7 can be deferred without stranding the evaluation engine.
+  no size budget and no coastline. Doing them first means the evaluation engine is built and tested
+  before any geo work, so it is not stranded if the geo dataset turns out to be too large, too slow,
+  or too inaccurate. **It does not by itself put an automatic album in a user's hands** — 2.5 has no
+  creation UI. If 2.6 disappoints, the fallback is that 2.7 ships time-only creation without the
+  region picker, unless the maintainer has already brought time-only creation forward (see 2.5's
+  correction note).
 - **2.6 before 2.7** so the UI is built against measured data rather than against assumptions about
   it. The coverage notice in particular cannot be designed sensibly until it is known how many
   photos have coordinates at all.
@@ -610,8 +804,9 @@ change.
   are ADR-0018's two amendments and ADR-0014's. 2.4 added the WorkManager row to §10, the index's
   two paths through the data flow in §2, the `MediaIndexingViewModel` and `MediaIndexDateTakenState`
   entries in §3, the sixth preference store and the `sharedpref` backup exclusion in §6, and
-  narrowed — rather than struck — the `SortType.DATE_TAKEN` item in §11. ADR-0017 goes in with 2.5
-  and ADR-0019 with 2.6, which are the steps that build what each governs.
+  narrowed — rather than struck — the `SortType.DATE_TAKEN` item in §11. ADR-0017 went in with 2.5,
+  on the `data/` rows of the rule files in §3, and ADR-0019 goes in with 2.6, the step that builds
+  what it governs.
 - **The Play Console restricted-permission declaration is confirmed done.** albums.md §9 carries it
   forward from Stage 1 with no record that it was ever completed, and names the permissions at
   stake. Stage 2 adds one more: it makes `ACCESS_MEDIA_LOCATION` load-bearing for a user-facing
@@ -690,10 +885,16 @@ The first two are the epic's, not this stage's; albums.md §10 states them and o
    library has a location, but not where. Album Detail View is the obvious home; whether the Album
    type dialog or the place picker should also warn before an empty album is created is a design
    question for 2.7, and depends on the number measured in 2.6.
-5. **Does an unevaluatable album need its own string, or does `album_hidden_items_notice` cover
-   it?** They are different conditions — "members are waiting to heal" versus "this rule needs a
-   newer app" — and conflating them would be the cheap wrong answer. Decide in 2.5; if a new string
-   is needed it is ten locale files.
+5. ~~**Does an unevaluatable album need its own string, or does `album_hidden_items_notice` cover
+   it?**~~ **Answered at 2.5: it needed its own — and so did the waiting state.** They are different
+   conditions — "members are waiting to heal" versus "this rule needs a newer app" — and conflating
+   them was the cheap wrong answer this question warned about. Four keys landed in all ten locales:
+   `album_rule_unevaluatable_notice` and `album_rule_waiting_notice` in full in Album Detail View,
+   and their `_short` forms on the album tile and row. The hidden-items notice still shows beside
+   either when additions are unresolved. **The waiting notice carries no count and no progress, by
+   design**: it points to Settings, so the Settings Media index area stays the only progress
+   surface and §6's honesty rule has one place to be kept rather than two. Kept listed, struck
+   through, until this plan is archived.
 
 ---
 

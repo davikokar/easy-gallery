@@ -3,7 +3,7 @@ name: Scout
 description: Establishes facts about the repository — what is on disk, what changed, what is tracked, where a symbol is used, which documents contradict the code. Strictly read-only. Use whenever the question is "what is true?" rather than "is this right?".
 tools: ['vscode', 'execute', 'read', 'search', 'vscode/memory']
 agents: []
-model: GPT-5 mini (copilot)
+model: Claude Haiku 5.5
 ---
 
 # Scout Agent

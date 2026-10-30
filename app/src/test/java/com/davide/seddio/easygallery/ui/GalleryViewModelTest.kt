@@ -660,6 +660,100 @@ class GalleryViewModelTest {
     }
 
     @Test
+    fun `isMediaLoaded is false before any load`() = runTest {
+        val viewModel = createViewModel()
+
+        assertFalse(viewModel.isMediaLoaded.value)
+        assertTrue(viewModel.allMedia.value.isEmpty())
+    }
+
+    @Test
+    fun `isMediaLoaded stays false while getAllMedia is in flight even after folders report Success`() = runTest {
+        val gate = kotlinx.coroutines.CompletableDeferred<List<MediaItem>>()
+        val gatedRepository = object : MediaRepository by repository {
+            override suspend fun getAllMedia(): List<MediaItem> = gate.await()
+        }
+        val viewModel = GalleryViewModel(
+            application,
+            gatedRepository,
+            permissionHandler,
+            InMemoryFolderViewPreferencesStore(),
+            SharedPreferencesFolderThumbnailStore(application),
+            InMemoryDisplayPreferencesStore(),
+            InMemoryMediaIndexStore()
+        )
+
+        viewModel.loadFolders()
+
+        assertTrue(viewModel.uiState.value is GalleryUiState.Success)
+        assertFalse(viewModel.isMediaLoaded.value)
+
+        val media = listOf(createMediaItem(mockUri1, "/path/A"))
+        gate.complete(media)
+
+        assertTrue(viewModel.isMediaLoaded.value)
+        assertEquals(media, viewModel.allMedia.value)
+    }
+
+    @Test
+    fun `isMediaLoaded becomes true after load`() = runTest {
+        repository.mediaItems = listOf(createMediaItem(mockUri1, "/path/A"))
+        val viewModel = createViewModel()
+
+        viewModel.loadFolders()
+
+        assertTrue(viewModel.isMediaLoaded.value)
+        assertEquals(1, viewModel.allMedia.value.size)
+    }
+
+    @Test
+    fun `isMediaLoaded becomes true for a device with zero media`() = runTest {
+        repository.mediaItems = emptyList()
+        val viewModel = createViewModel()
+
+        viewModel.loadFolders()
+
+        assertTrue(viewModel.isMediaLoaded.value)
+        assertTrue(viewModel.allMedia.value.isEmpty())
+    }
+
+    @Test
+    fun `isMediaLoaded stays false when the first getAllMedia fails`() = runTest {
+        val failingRepository = object : MediaRepository by repository {
+            override suspend fun getAllMedia(): List<MediaItem> = throw IllegalStateException("boom")
+        }
+        val viewModel = GalleryViewModel(
+            application,
+            failingRepository,
+            permissionHandler,
+            InMemoryFolderViewPreferencesStore(),
+            SharedPreferencesFolderThumbnailStore(application),
+            InMemoryDisplayPreferencesStore(),
+            InMemoryMediaIndexStore()
+        )
+
+        viewModel.loadFolders()
+
+        assertFalse(viewModel.isMediaLoaded.value)
+    }
+
+    @Test
+    fun `reload keeps isMediaLoaded true and publishes the fresh list`() = runTest {
+        repository.mediaItems = listOf(createMediaItem(mockUri1, "/path/A"))
+        val viewModel = createViewModel()
+        viewModel.loadFolders()
+
+        repository.mediaItems = listOf(
+            createMediaItem(mockUri1, "/path/A"),
+            createMediaItem(mockUri2, "/path/B")
+        )
+        viewModel.loadFolders()
+
+        assertTrue(viewModel.isMediaLoaded.value)
+        assertEquals(2, viewModel.allMedia.value.size)
+    }
+
+    @Test
     fun `deleteMedia calls repository and reloads folders`() = runTest {
         val viewModel = createViewModel()
         val item = createMediaItem(mockUri1, "/path")

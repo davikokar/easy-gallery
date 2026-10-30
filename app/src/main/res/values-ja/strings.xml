@@ -143,6 +143,10 @@
     <string name="album_add_to_title">アルバムに追加</string>
     <string name="album_empty">このアルバムにはアイテムがありません</string>
     <string name="album_hidden_items_notice">一部のアイテムは一時的に利用できません。ファイルが再び利用可能になると、このアルバムに再表示されます。</string>
+    <string name="album_rule_unevaluatable_notice">このアルバムの自動ルールを使うには、より新しいバージョンのアプリが必要です。更新するまでは、手動で追加したアイテムのみが表示されます。</string>
+    <string name="album_rule_unevaluatable_notice_short">より新しいバージョンのアプリが必要です。手動で追加したアイテムのみ表示されます。</string>
+    <string name="album_rule_waiting_notice">まだスキャンされていない写真や動画があるため、このアルバムは不完全な場合があります。現在の状況は%2$sの「%1$s」で確認できます。</string>
+    <string name="album_rule_waiting_notice_short">未スキャンの項目があるため、不完全な場合があります。%1$sをご確認ください。</string>
     <string name="album_default_name">マイアルバム %1$d</string>
     <string name="album_type_title">新しいアルバム</string>
     <string name="album_type_manual_title">手動アルバム</string>

@@ -255,7 +255,16 @@ sets, are owned by [../architecture/ARCHITECTURE.md](../architecture/ARCHITECTUR
 restated here. **This paragraph used to say "as expedited work" flatly**, which overstated what
 step 2.4 shipped.
 
-**Evaluation** is not background work. It runs on app open and after each index batch:
+**Evaluation** is not background work. It runs on app open, **once the first read of live media has
+finished** — until then an automatic album reports that it is waiting, not that it is complete —
+and after each index batch. **The gate is `GalleryViewModel`'s media-loaded flag, not the emptiness
+of the media list**: the list starts empty before `MediaStore` has been read, an empty list cannot be
+told from an empty library, and forwarding it made every rule album read as complete and empty on
+every cold start until Stage 2 step 2.5's remediation added the flag. Where the gate sits is owned
+by [../architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) §3. After a batch, evaluation
+is **driven by Room invalidation** of the one in-process index database that the indexing
+worker and the ViewModel share, with no WorkManager involvement (invalidation fires on each write
+the batch commits, so evaluation can also run during a batch):
 
 - Region and time rules are a filter over indexed columns. Compute on read, materialise nothing.
 - Content and people rules need vector comparison across the library. Materialise results with a
@@ -754,6 +763,36 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    particular; or reconsider the dependency, which would unpick step 2.4 and is the least likely.
    **This is the maintainer's to decide.** Nothing in Stage 2 is blocked on it, no step is to close
    it by inference, and no agent is to add, remove, or silence any of the four meanwhile.
+7. **Should a photo taken today reach a time or region album when the app opens, or only after the
+   next index pass?** — **Raised 2026-10-26, with the maintainer, and unresolved.** §6 promises the
+   first: "a photo taken this afternoon should appear in *Castles* when the app opens, not next time
+   the phone is plugged in." Stage 2 step 2.5 of [albums-stage-2.md](albums-stage-2.md) delivers the
+   second. Evaluation does run on app open, as §6 says, but an item the index has not reached never
+   matches a `time` clause —
+   [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 1,
+   which rules out a `dateAdded` fallback because it invents members — and a region clause will need
+   the index the same way. Indexing runs only under its constraints (charging, idle, battery not low)
+   or on "Index now", so a new photo can wait days on a phone that is rarely idle on a charger. The
+   waiting notice makes the album honest about this; it does not make it fast. The stage plan names
+   the effect "notice fatigue" without reconciling it with §6, which is why it is here.
+
+   **The options, none of them taken here.**
+   - **Accept the gap and soften §6**, so it promises that a new photo appears after the next index
+     pass, with the waiting notice as the bridge. No code; the cost is the promise itself.
+   - **Run a delta index pass on app open**, over only the rows the watermark selects, outside the
+     periodic job's constraints. That is a scheduling decision in what §8 decision 18 settled as
+     constrained background work, it adds battery and file-open cost to app start, and it sits next
+     to §10 questions 2 and 6 — an unconstrained or expedited request is where a foreground service,
+     a notification and the merged-manifest permissions come into play.
+   - **Extract on view instead of indexing early**: evaluate the not-yet-indexed live items of a rule
+     album by reading their date at evaluation time, in-process and bounded to what is unindexed.
+     This pays ADR-0001's per-item cost on the evaluation path, which §6 separates from indexing on
+     purpose, and would need its own decision.
+   - **Narrow the gap without closing it**, for instance by relaxing a constraint on the periodic
+     job or shortening its period. Cheaper, still not "when the app opens".
+
+   **This is the maintainer's to decide.** Nothing in Stage 2 is blocked on it, and no agent is to
+   add an app-open index pass or soften §6 meanwhile.
 
 Questions scoped to a single stage live in that stage's plan — Stage 2's are in
 [albums-stage-2.md](albums-stage-2.md) — and only arrive here if they outlive it.

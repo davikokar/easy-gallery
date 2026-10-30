@@ -82,6 +82,7 @@ fun FolderListScreen(
 ) {
     val uiState by viewModel.filteredFolders.collectAsState()
     val allMedia by viewModel.allMedia.collectAsState()
+    val isMediaLoaded by viewModel.isMediaLoaded.collectAsState()
     val displayMode by viewModel.displayMode.collectAsState()
     val activeScope = when (displayMode) {
         DisplayMode.FOLDERS -> PreferenceScope.FOLDERS
@@ -112,8 +113,8 @@ fun FolderListScreen(
     LaunchedEffect(Unit) {
         createFolderViewModel.folderCreated.collect { viewModel.loadFolders() }
     }
-    LaunchedEffect(allMedia) {
-        albumsViewModel.setAllMedia(allMedia)
+    LaunchedEffect(allMedia, isMediaLoaded) {
+        if (isMediaLoaded) albumsViewModel.setAllMedia(allMedia)
     }
 
     val favouriteMedia = remember(allMedia, favouriteUris) {
@@ -769,6 +770,7 @@ private fun AlbumsViewBody(
                     name = album.name,
                     itemCount = album.resolvedMemberCount,
                     hiddenMemberCount = album.hiddenMemberCount,
+                    status = album.status,
                     coverUri = album.cover?.uri,
                     isSelected = selectedAlbumId == album.id,
                     onClick = { onSelectAlbum(album.id) },
@@ -800,6 +802,7 @@ private fun AlbumsViewBody(
                     name = album.name,
                     itemCount = album.resolvedMemberCount,
                     hiddenMemberCount = album.hiddenMemberCount,
+                    status = album.status,
                     coverUri = album.cover?.uri,
                     isSelected = selectedAlbumId == album.id,
                     onClick = { onSelectAlbum(album.id) },

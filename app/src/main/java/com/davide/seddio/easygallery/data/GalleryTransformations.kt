@@ -3,13 +3,14 @@ package com.davide.seddio.easygallery.data
 import java.text.SimpleDateFormat
 import java.util.*
 
-object GalleryTransformations {
+/** What the media index knows about one live item's date taken. Shared by sorting and album rules. */
+sealed interface DateTakenSortState {
+    data class IndexedWithDate(val epochMillis: Long) : DateTakenSortState
+    data object IndexedWithoutDate : DateTakenSortState
+    data object NotIndexed : DateTakenSortState
+}
 
-    private sealed interface DateTakenSortState {
-        data class IndexedWithDate(val epochMillis: Long) : DateTakenSortState
-        data object IndexedWithoutDate : DateTakenSortState
-        data object NotIndexed : DateTakenSortState
-    }
+object GalleryTransformations {
 
     fun filterAndSortFolders(
         allMedia: List<MediaItem>,

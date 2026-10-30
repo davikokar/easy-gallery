@@ -308,6 +308,9 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   assumption. When none is listed, `compileDebugAndroidTestKotlin` is the fallback, not the
   ceiling. Claim device-verified behaviour only for what you actually ran and observed, and say
   which of the two you did.
+- `connectedDebugAndroidTest` uninstalls the app and wipes its data when it finishes, so reinstall
+  with `:app:installDebug` and re-grant the media permissions before using the app by hand.
+- Git Bash rewrites `/sdcard/...` arguments to `adb` unless `MSYS_NO_PATHCONV=1` is set.
 
 ## What to ask before doing
 

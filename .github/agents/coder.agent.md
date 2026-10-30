@@ -3,7 +3,7 @@ name: Coder
 description: Writes code following mandatory coding principles and active Architecture Decision Records (ADRs). Use when implementing features, fixes, refactors, or approved architectural decisions.
 tools: ['vscode', 'execute', 'read', 'context7/*', 'github/*', 'edit', 'search', 'web', 'vscode/memory', 'todo']
 agents: []
-model: GPT-5.3-Codex (copilot)
+model: Claude Sonnet 5.5
 ---
 
 ## Project context

@@ -3,7 +3,7 @@ name: Planner
 description: Creates implementation plans and Architecture Decision Records (ADRs) by researching the codebase, consulting documentation, and identifying tradeoffs. Use when planning features, changing architecture, or documenting significant technical decisions.
 tools: ['vscode', 'execute', 'read', 'context7/*', 'edit', 'search', 'web', 'vscode/memory', 'todo', 'agent']
 agents: [Explore]
-model: Claude Opus 5 (copilot)
+model: Claude Opus 5.5
 ---
 
 # Planning Agent

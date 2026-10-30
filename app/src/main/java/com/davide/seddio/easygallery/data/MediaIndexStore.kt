@@ -12,6 +12,9 @@ interface MediaIndexStore {
     fun observeDateTakenProjection(): Flow<Map<String, Long?>>
     fun observeDateTakenCounts(): Flow<DateTakenCounts>
 
+    /** Every row, unfiltered and with stored (non-canonicalised) URIs, ordered by URI; no row means not indexed. */
+    fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTaken>>
+
     suspend fun listByVolume(volumeName: String): List<MediaIndexEntry>
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry?
     suspend fun upsert(entries: List<MediaIndexEntry>)
@@ -23,6 +26,12 @@ interface MediaIndexStore {
 data class DateTakenCounts(
     val withDate: Int,
     val withoutDate: Int
+)
+
+/** A null date means indexed without a date; an absent row means not indexed. */
+data class MediaIndexIdentityDateTaken(
+    val identity: MediaIdentity,
+    val capturedDateTakenEpochMillis: Long?
 )
 
 data class MediaIndexEntry(
@@ -81,6 +90,22 @@ class RoomMediaIndexStore(
                 withDate = projection.count { it.value != null },
                 withoutDate = projection.count { it.value == null }
             )
+        }
+    }
+
+    override fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTaken>> {
+        return dao.observeIdentityDateTaken().map { rows ->
+            rows.map { row ->
+                MediaIndexIdentityDateTaken(
+                    identity = mediaIdentityOf(
+                        mediaUri = row.mediaUri,
+                        displayName = row.displayName,
+                        size = row.size,
+                        dateModified = row.dateModified
+                    ),
+                    capturedDateTakenEpochMillis = row.capturedDateTakenEpochMillis
+                )
+            }
         }
     }
 
@@ -179,6 +204,17 @@ class InMemoryMediaIndexStore : MediaIndexStore {
                 withDate = projection.count { it.value != null },
                 withoutDate = projection.count { it.value == null }
             )
+        }
+    }
+
+    override fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTaken>> {
+        return rowsFlow.map { current ->
+            current.map { entry ->
+                MediaIndexIdentityDateTaken(
+                    identity = entry.toMediaIdentity(),
+                    capturedDateTakenEpochMillis = entry.capturedDateTakenEpochMillis
+                )
+            }
         }
     }
 

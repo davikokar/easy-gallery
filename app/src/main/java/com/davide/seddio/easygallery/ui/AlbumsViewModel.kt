@@ -6,10 +6,16 @@ import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.EasyGalleryApp
 import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
+import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumMembership
 import com.davide.seddio.easygallery.data.AlbumNaming
+import com.davide.seddio.easygallery.data.AlbumRuleEvaluator
+import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVersionProvider
+import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
+import com.davide.seddio.easygallery.data.MediaIndexIdentityDateTaken
+import com.davide.seddio.easygallery.data.MediaIndexStore
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.MediaStoreVersionStore
@@ -20,8 +26,11 @@ import com.davide.seddio.easygallery.data.SharedPreferencesMediaStoreVersionStor
 import com.davide.seddio.easygallery.data.StoredAlbum
 import com.davide.seddio.easygallery.data.StoredMembership
 import com.davide.seddio.easygallery.data.StoredMembershipKind
+import java.time.ZoneId
 import java.util.Locale
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +38,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -43,12 +54,15 @@ data class AlbumListItem(
     val isCoverFallback: Boolean,
     val resolvedMemberCount: Int,
     val storedMemberCount: Int,
+    /** Stored additions that did not resolve to a live item; rule matches never count. */
     val hiddenMemberCount: Int,
-    val storedMembershipCount: Int
+    val storedMembershipCount: Int,
+    val status: AlbumEvaluationStatus
 )
 
+/** [membershipId] is null for a rule match that has no addition row. */
 data class AlbumDetailMember(
-    val membershipId: Long,
+    val membershipId: Long?,
     val mediaItem: MediaItem
 )
 
@@ -62,7 +76,12 @@ class AlbumsViewModel @JvmOverloads constructor(
     private val mediaStoreVersionStore: MediaStoreVersionStore =
         SharedPreferencesMediaStoreVersionStore(application),
     private val mediaStoreVersionProvider: MediaStoreVersionProvider =
-        AndroidMediaStoreVersionProvider
+        AndroidMediaStoreVersionProvider,
+    private val mediaIndexStore: MediaIndexStore =
+        (application as? EasyGalleryApp)?.mediaIndexStore ?: InMemoryMediaIndexStore(),
+    // Read at each evaluation, not cached: the user can change the device zone while the app lives.
+    private val zoneProvider: () -> ZoneId = { ZoneId.systemDefault() },
+    private val evaluationDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : AndroidViewModel(application) {
 
     private data class ComputedAlbum(
@@ -73,12 +92,18 @@ class AlbumsViewModel @JvmOverloads constructor(
         val isCoverFallback: Boolean,
         val resolvedMemberCount: Int,
         val storedMemberCount: Int,
+        val hiddenMemberCount: Int,
         val storedMembershipCount: Int,
+        val status: AlbumEvaluationStatus,
+        val additionIdsByUri: Map<String, List<Long>>,
         val uriRewrites: List<MembershipUriRewrite>,
         val orphanStateChanges: List<MembershipOrphanStateChange>
     ) {
+        // An unevaluatable rule counts: a newer build may read it and re-match what the user removed.
+        val hasStoredRule: Boolean
+            get() = album.rule != null
+
         fun toListItem(): AlbumListItem {
-            val hidden = (storedMemberCount - resolvedMemberCount).coerceAtLeast(0)
             return AlbumListItem(
                 id = album.id,
                 name = album.name,
@@ -87,8 +112,9 @@ class AlbumsViewModel @JvmOverloads constructor(
                 isCoverFallback = isCoverFallback,
                 resolvedMemberCount = resolvedMemberCount,
                 storedMemberCount = storedMemberCount,
-                hiddenMemberCount = hidden,
-                storedMembershipCount = storedMembershipCount
+                hiddenMemberCount = hiddenMemberCount,
+                storedMembershipCount = storedMembershipCount,
+                status = status
             )
         }
     }
@@ -101,7 +127,8 @@ class AlbumsViewModel @JvmOverloads constructor(
     private val healMutex = Mutex()
     private val lastHealsByAlbumId = mutableMapOf<Long, PendingHeal>()
 
-    private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
+    // Null until MediaStore has been read once; a rule album is then WAITING_ON_INDEX, not empty.
+    private val _allMedia = MutableStateFlow<List<MediaItem>?>(null)
     private val _mediaVersionEpoch = MutableStateFlow(0L)
     private val _selectedAlbumId = MutableStateFlow<Long?>(null)
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -110,6 +137,13 @@ class AlbumsViewModel @JvmOverloads constructor(
     val selectedAlbumId: StateFlow<Long?> = _selectedAlbumId.asStateFlow()
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    // Shared so every rule album reads one index query; only collected while a rule album exists.
+    private val indexEntries: Flow<List<MediaIndexIdentityDateTaken>> = mediaIndexStore
+        .observeIdentityDateTaken()
+        .flowOn(evaluationDispatcher)
+        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(), replay = 1)
+
+    // Re-runs on albums, memberships, live media (app open) and every index store emission (after a batch).
     private val computedAlbums: StateFlow<List<ComputedAlbum>> =
         combine(albumStore.observeAlbums(), _allMedia, _mediaVersionEpoch) { albums, media, _ ->
             albums to media
@@ -117,19 +151,12 @@ class AlbumsViewModel @JvmOverloads constructor(
             if (albums.isEmpty()) {
                 flowOf(emptyList())
             } else {
-                combine(albums.map { album ->
-                    albumStore.observeMembershipsForAlbum(album.id).map { memberships ->
-                        computeAlbum(
-                            album = album,
-                            memberships = memberships,
-                            liveMedia = media
-                        )
-                    }
-                }) { computed ->
+                combine(albums.map { album -> observeComputedAlbum(album, media) }) { computed ->
                     computed.toList()
                 }
             }
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        }.flowOn(evaluationDispatcher)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val albums: StateFlow<List<AlbumListItem>> = computedAlbums
         .map { computed ->
@@ -269,17 +296,24 @@ class AlbumsViewModel @JvmOverloads constructor(
     }
 
     fun removeMember(albumId: Long, membershipId: Long) {
-        viewModelScope.launch {
-            albumStore.removeMembership(albumId, membershipId)
-        }
+        removeMembers(albumId, listOf(membershipId))
     }
 
     fun removeMembers(albumId: Long, membershipIds: Collection<Long>) {
         if (membershipIds.isEmpty()) return
 
         viewModelScope.launch {
+            val computed = computedAlbums.value
+                .firstOrNull { it.album.id == albumId }
+                ?.takeIf { it.hasStoredRule }
+
             membershipIds.forEach { membershipId ->
-                albumStore.removeMembership(albumId, membershipId)
+                val member = computed?.members?.firstOrNull { it.membershipId == membershipId }
+                if (computed != null && member != null) {
+                    removeFromAlbum(computed, listOf(member))
+                } else {
+                    albumStore.removeMembership(albumId, membershipId)
+                }
             }
         }
     }
@@ -290,12 +324,38 @@ class AlbumsViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             val targetUris = mediaItems.map { it.uri.toString() }.toSet()
             val computed = computedAlbums.value.firstOrNull { it.album.id == albumId } ?: return@launch
-            val membershipIds = computed.members
+            val targets = computed.members
                 .filter { member -> member.mediaItem.uri.toString() in targetUris }
-                .map { it.membershipId }
 
-            membershipIds.forEach { membershipId ->
-                albumStore.removeMembership(albumId, membershipId)
+            removeFromAlbum(computed, targets)
+        }
+    }
+
+    /**
+     * A rule match has no row to delete, so removing one records an exclusion (ADR-0012), and any
+     * addition row for the item goes too or the addition would keep it in. Without a stored rule
+     * nothing can re-match the item, so removal is just deleting its row.
+     */
+    private suspend fun removeFromAlbum(computed: ComputedAlbum, targets: List<AlbumDetailMember>) {
+        val albumId = computed.album.id
+
+        targets.forEach { member ->
+            if (!computed.hasStoredRule) {
+                member.membershipId?.let { albumStore.removeMembership(albumId, it) }
+                return@forEach
+            }
+
+            val item = member.mediaItem
+            val uriString = item.uri.toString()
+            albumStore.recordExclusion(
+                albumId = albumId,
+                mediaUri = uriString,
+                displayName = item.name,
+                size = item.size,
+                dateModified = item.dateModified
+            )
+            computed.additionIdsByUri[uriString].orEmpty().forEach { additionId ->
+                albumStore.removeMembership(albumId, additionId)
             }
         }
     }
@@ -324,31 +384,50 @@ class AlbumsViewModel @JvmOverloads constructor(
         }
     }
 
+    // A manual album never reads the index, so an index emission does not recompute it.
+    private fun observeComputedAlbum(album: StoredAlbum, liveMedia: List<MediaItem>?): Flow<ComputedAlbum> {
+        val memberships = albumStore.observeMembershipsForAlbum(album.id)
+        if (album.rule == null) {
+            return memberships.map { computeAlbum(album, it, liveMedia, emptyList()) }
+        }
+
+        return combine(memberships, indexEntries) { currentMemberships, index ->
+            computeAlbum(album, currentMemberships, liveMedia, index)
+        }
+    }
+
     private fun computeAlbum(
         album: StoredAlbum,
         memberships: List<StoredMembership>,
-        liveMedia: List<MediaItem>
+        liveMedia: List<MediaItem>?,
+        indexEntries: List<MediaIndexIdentityDateTaken>
     ): ComputedAlbum {
-        val resolution = AlbumMembership.resolve(memberships, liveMedia)
-        val excludedUris = resolution.resolvedExclusions
-            .asSequence()
-            .map { it.resolvedMediaUri }
-            .toHashSet()
+        val resolution = AlbumMembership.resolve(memberships, liveMedia.orEmpty())
 
-        val visibleMembersByUri = LinkedHashMap<String, AlbumDetailMember>()
+        val additionIdsByUri = LinkedHashMap<String, MutableList<Long>>()
         resolution.resolvedAdditions.forEach { resolved ->
-            if (resolved.resolvedMediaUri in excludedUris) return@forEach
-            visibleMembersByUri.putIfAbsent(
-                resolved.resolvedMediaUri,
-                AlbumDetailMember(
-                    membershipId = resolved.membershipId,
-                    mediaItem = resolved.mediaItem
-                )
+            additionIdsByUri.getOrPut(resolved.resolvedMediaUri) { mutableListOf() } += resolved.membershipId
+        }
+
+        // The stored rule is only read here and never written back, whatever it parses to.
+        val rule = AlbumRuleJson.parse(album.rule)
+        val evaluation = rule?.let {
+            AlbumRuleEvaluator.evaluate(it, indexEntries, liveMedia, memberships, zoneProvider())
+        }
+        val items = evaluation?.members ?: resolution.albumItems
+        val status = evaluation?.status ?: AlbumEvaluationStatus.MANUAL
+
+        val members = items.map { item ->
+            AlbumDetailMember(
+                membershipId = additionIdsByUri[item.uri.toString()]?.firstOrNull(),
+                mediaItem = item
             )
         }
 
-        val members = visibleMembersByUri.values.toList()
-        val directCover = members.firstOrNull { it.membershipId == album.coverMembershipId }?.mediaItem
+        val coverMembershipId = album.coverMembershipId
+        val directCover = coverMembershipId?.let { id ->
+            members.firstOrNull { it.membershipId == id }?.mediaItem
+        }
         val fallbackCover = members.firstOrNull()?.mediaItem
         val cover = directCover ?: fallbackCover
         val isCoverFallback = directCover == null && fallbackCover != null
@@ -362,9 +441,13 @@ class AlbumsViewModel @JvmOverloads constructor(
             isCoverFallback = isCoverFallback,
             resolvedMemberCount = members.size,
             storedMemberCount = storedMemberCount,
+            hiddenMemberCount = storedMemberCount - resolution.resolvedAdditions.size,
             storedMembershipCount = memberships.size,
-            uriRewrites = resolution.uriRewrites,
-            orphanStateChanges = resolution.orphanStateChanges
+            status = status,
+            additionIdsByUri = additionIdsByUri,
+            // Before MediaStore is read every row looks unresolved; writing that back would be false.
+            uriRewrites = if (liveMedia == null) emptyList() else resolution.uriRewrites,
+            orphanStateChanges = if (liveMedia == null) emptyList() else resolution.orphanStateChanges
         )
     }
 

@@ -26,8 +26,10 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,14 +53,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
+import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.MediaItem
@@ -147,8 +153,12 @@ fun AlbumDetailScreen(
     AlbumDetailContent(
         albumName = if (isFavouritesAlbum) stringResource(R.string.favourites_title) else album?.name.orEmpty(),
         media = media,
-        storedMemberCount = if (isFavouritesAlbum) resolvedMedia.size else album?.storedMemberCount ?: 0,
-        resolvedMemberCount = if (isFavouritesAlbum) resolvedMedia.size else album?.resolvedMemberCount ?: 0,
+        hiddenMemberCount = if (isFavouritesAlbum) 0 else album?.hiddenMemberCount ?: 0,
+        evaluationStatus = if (isFavouritesAlbum) {
+            AlbumEvaluationStatus.MANUAL
+        } else {
+            album?.status ?: AlbumEvaluationStatus.MANUAL
+        },
         preferences = preferences,
         searchQuery = searchQuery,
         isSearchActive = isSearchActive,
@@ -225,8 +235,8 @@ fun AlbumDetailScreen(
 fun AlbumDetailContent(
     albumName: String,
     media: List<MediaItem>,
-    storedMemberCount: Int,
-    resolvedMemberCount: Int,
+    hiddenMemberCount: Int,
+    evaluationStatus: AlbumEvaluationStatus,
     preferences: ViewPreferences,
     searchQuery: String,
     isSearchActive: Boolean,
@@ -269,7 +279,6 @@ fun AlbumDetailContent(
     val context = LocalContext.current
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
-    val hasHiddenMembers = resolvedMemberCount < storedMemberCount
     val wallpaperEligibleMedia = selectedMedia.singleOrNull()
         ?.takeIf { supportsWallpaper(it.type) }
     val allSelectedAreFavourite = selectedMedia.isNotEmpty() &&
@@ -470,30 +479,29 @@ fun AlbumDetailContent(
                 .fillMaxSize()
                 .background(AppBackground)
         ) {
-            if (hasHiddenMembers) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("album_hidden_items_notice")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = stringResource(R.string.album_hidden_items_notice),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
+            when (evaluationStatus) {
+                AlbumEvaluationStatus.UNEVALUATABLE -> AlbumNoticeBand(
+                    icon = Icons.Default.SystemUpdate,
+                    text = stringResource(R.string.album_rule_unevaluatable_notice),
+                    testTag = "album_rule_unevaluatable_notice"
+                )
+                AlbumEvaluationStatus.WAITING_ON_INDEX -> AlbumNoticeBand(
+                    icon = Icons.Default.Schedule,
+                    text = stringResource(
+                        R.string.album_rule_waiting_notice,
+                        stringResource(R.string.settings_media_index),
+                        stringResource(R.string.settings_title)
+                    ),
+                    testTag = "album_rule_waiting_notice"
+                )
+                AlbumEvaluationStatus.MANUAL, AlbumEvaluationStatus.COMPLETE -> Unit
+            }
+            if (hiddenMemberCount > 0) {
+                AlbumNoticeBand(
+                    icon = Icons.Default.Info,
+                    text = stringResource(R.string.album_hidden_items_notice),
+                    testTag = "album_hidden_items_notice"
+                )
             }
 
             if (media.isEmpty()) {
@@ -548,6 +556,39 @@ fun AlbumDetailContent(
                     onZoomOut = onIncreaseColumns
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AlbumNoticeBand(
+    icon: ImageVector,
+    text: String,
+    testTag: String
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(testTag)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = text,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

@@ -219,7 +219,32 @@ Shared parts:
   when an Album has stored members that cannot currently be resolved against `MediaStore`, such as
   after restore or while an SD card is absent. It means those references are retained and waiting;
   it is never an error, proof of deletion, or data loss. A fully unresolved Album may therefore
-  appear empty while this notice is shown.
+  appear empty while this notice is shown. It counts stored additions only; a rule match has no
+  stored row and can never make it appear.
+- **Newer-app notice** (tagged `album_rule_unevaluatable_notice`; `AlbumEvaluationStatus.UNEVALUATABLE`):
+  The notice shown when an Album's automatic rule was written by a newer version of the app and
+  this build cannot read it. It says only the items added by hand are shown and that updating the
+  app is what changes that — unlike the **Hidden-members notice**, it does not promise anything will
+  reappear. It is drawn on the **Album tile**, the **Album row**, and in Album Detail View, with a
+  short wording on the tile and row and the full wording in Album Detail View.
+- **Incomplete-album notice** (tagged `album_rule_waiting_notice`; `AlbumEvaluationStatus.WAITING_ON_INDEX`):
+  The notice shown when an automatic Album may be incomplete because some photos and videos have
+  not been scanned yet. It makes **no promise that a scan is running** — it holds whether indexing
+  is in progress, paused, or not started — and points to the **Media index area** of the
+  **Settings screen** for the current state. It shows **no count, percentage, or progress
+  indicator of its own** — that area is the only progress surface, so a second figure here could
+  contradict it. It is not the **Hidden-members notice** (stored references that cannot be
+  resolved) or the **Newer-app notice** (a rule this build cannot read). Same three surfaces and
+  the same short/full split as the **Newer-app notice**. The Album Detail View wording names the
+  **Media index area** and Settings; the tile and row wording names Settings only. Renamed from
+  "Still-scanning notice", which implied a running scan; that name is now an alias only, and the
+  `testTag` keeps its older `waiting` name because tests depend on it.
+  Aliases: **Still-scanning notice**
+- Either notice may appear together with the **Hidden-members notice** on the same Album. In Album
+  Detail View they stack as separate bands, the **Newer-app notice** or **Incomplete-album notice**
+  first and the **Hidden-members notice** second. The two status notices never appear together,
+  because an Album has one evaluation status. On the tile and row the notices are also announced
+  as the tile's state description, because its content description is the Album name alone.
 - **Add to album** (`AddToAlbumDialog`): Add the selected media references to an existing Album, or
   start creating a new Album. This never copies or moves files.
 - **Remove from album**: Remove selected media references from the current Album without deleting

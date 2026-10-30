@@ -3,7 +3,7 @@ name: Orchestrator
 description: Coordinates Planner, Coder, Designer, Scout, and Reviewer work, including Architecture Decision Record (ADR) review and maintenance for changes with lasting architectural impact.
 tools: ['read/readFile', 'agent', 'vscode/memory']
 agents: [Planner, Coder, Designer, Scout, Reviewer]
-model: Claude Opus 5 (copilot)
+model: Claude Sonnet 5.5
 ---
 
 <!-- Note: Memory is experimental at the moment. You'll need to be in VS Code Insiders and toggle on memory in settings -->

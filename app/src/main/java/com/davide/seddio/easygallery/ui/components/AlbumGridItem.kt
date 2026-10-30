@@ -40,12 +40,14 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.R
+import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -55,6 +57,7 @@ fun LazyGridItemScope.AlbumGridItem(
     name: String,
     itemCount: Int,
     hiddenMemberCount: Int,
+    status: AlbumEvaluationStatus,
     coverUri: Uri?,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -65,6 +68,7 @@ fun LazyGridItemScope.AlbumGridItem(
         name = name,
         itemCount = itemCount,
         hiddenMemberCount = hiddenMemberCount,
+        status = status,
         coverUri = coverUri,
         isFavourite = false,
         isSelected = isSelected,
@@ -85,6 +89,7 @@ fun LazyGridItemScope.FavouritesAlbumGridItem(
         name = stringResource(R.string.favourites_title),
         itemCount = itemCount,
         hiddenMemberCount = 0,
+        status = AlbumEvaluationStatus.MANUAL,
         coverUri = coverUri,
         isFavourite = true,
         isSelected = isSelected,
@@ -100,6 +105,7 @@ fun LazyItemScope.AlbumListItem(
     name: String,
     itemCount: Int,
     hiddenMemberCount: Int,
+    status: AlbumEvaluationStatus,
     coverUri: Uri?,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -110,6 +116,7 @@ fun LazyItemScope.AlbumListItem(
         name = name,
         itemCount = itemCount,
         hiddenMemberCount = hiddenMemberCount,
+        status = status,
         coverUri = coverUri,
         isFavourite = false,
         isSelected = isSelected,
@@ -130,6 +137,7 @@ fun LazyItemScope.FavouritesAlbumListItem(
         name = stringResource(R.string.favourites_title),
         itemCount = itemCount,
         hiddenMemberCount = 0,
+        status = AlbumEvaluationStatus.MANUAL,
         coverUri = coverUri,
         isFavourite = true,
         isSelected = isSelected,
@@ -145,6 +153,7 @@ private fun LazyGridItemScope.AlbumGridItemContent(
     name: String,
     itemCount: Int,
     hiddenMemberCount: Int,
+    status: AlbumEvaluationStatus,
     coverUri: Uri?,
     isFavourite: Boolean,
     isSelected: Boolean,
@@ -156,13 +165,17 @@ private fun LazyGridItemScope.AlbumGridItemContent(
     } else {
         Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
     }
+    val notices = albumNotices(status, hiddenMemberCount)
 
     Card(
         modifier = Modifier
             .aspectRatio(1f)
             .animateItem()
             .testTag(testTag)
-            .semantics { contentDescription = name }
+            .semantics {
+                contentDescription = name
+                notices.announcement?.let { stateDescription = it }
+            }
             .then(interactionModifier),
         shape = RectangleShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -224,9 +237,19 @@ private fun LazyGridItemScope.AlbumGridItemContent(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (hiddenMemberCount > 0) {
+                notices.status?.let { notice ->
                     Text(
-                        text = stringResource(R.string.album_hidden_items_notice),
+                        text = notice.text,
+                        color = Color.White.copy(alpha = 0.92f),
+                        fontSize = 11.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag(notice.testTag)
+                    )
+                }
+                notices.hidden?.let { hiddenText ->
+                    Text(
+                        text = hiddenText,
                         color = Color.White.copy(alpha = 0.92f),
                         fontSize = 11.sp,
                         maxLines = 2,
@@ -246,6 +269,7 @@ private fun LazyItemScope.AlbumListItemContent(
     name: String,
     itemCount: Int,
     hiddenMemberCount: Int,
+    status: AlbumEvaluationStatus,
     coverUri: Uri?,
     isFavourite: Boolean,
     isSelected: Boolean,
@@ -257,6 +281,7 @@ private fun LazyItemScope.AlbumListItemContent(
     } else {
         Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
     }
+    val notices = albumNotices(status, hiddenMemberCount)
 
     Surface(
         modifier = Modifier
@@ -264,7 +289,10 @@ private fun LazyItemScope.AlbumListItemContent(
             .padding(horizontal = 8.dp, vertical = 4.dp)
             .animateItem()
             .testTag(testTag)
-            .semantics { contentDescription = name }
+            .semantics {
+                contentDescription = name
+                notices.announcement?.let { stateDescription = it }
+            }
             .then(interactionModifier),
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) {
@@ -324,9 +352,17 @@ private fun LazyItemScope.AlbumListItemContent(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (hiddenMemberCount > 0) {
+                notices.status?.let { notice ->
                     Text(
-                        text = stringResource(R.string.album_hidden_items_notice),
+                        text = notice.text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.testTag(notice.testTag)
+                    )
+                }
+                notices.hidden?.let { hiddenText ->
+                    Text(
+                        text = hiddenText,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.9f),
                         maxLines = 2,
@@ -392,6 +428,39 @@ private fun SelectionCheckmark(modifier: Modifier = Modifier) {
             .testTag("selected_checkmark")
             .background(Color.White, CircleShape)
     )
+}
+
+private class StatusNotice(val testTag: String, val text: String)
+
+private class AlbumNotices(val status: StatusNotice?, val hidden: String?) {
+    // The card's description is the name alone, so the notices are announced as its state.
+    val announcement: String? = listOfNotNull(status?.text, hidden)
+        .joinToString(" ")
+        .ifEmpty { null }
+}
+
+@Composable
+private fun albumNotices(status: AlbumEvaluationStatus, hiddenMemberCount: Int): AlbumNotices {
+    val statusNotice = when (status) {
+        AlbumEvaluationStatus.UNEVALUATABLE -> StatusNotice(
+            testTag = "album_rule_unevaluatable_notice",
+            text = stringResource(R.string.album_rule_unevaluatable_notice_short)
+        )
+        AlbumEvaluationStatus.WAITING_ON_INDEX -> StatusNotice(
+            testTag = "album_rule_waiting_notice",
+            text = stringResource(
+                R.string.album_rule_waiting_notice_short,
+                stringResource(R.string.settings_title)
+            )
+        )
+        AlbumEvaluationStatus.MANUAL, AlbumEvaluationStatus.COMPLETE -> null
+    }
+    val hiddenNotice = if (hiddenMemberCount > 0) {
+        stringResource(R.string.album_hidden_items_notice)
+    } else {
+        null
+    }
+    return AlbumNotices(statusNotice, hiddenNotice)
 }
 
 @Composable

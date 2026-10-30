@@ -3,7 +3,7 @@ name: Reviewer
 description: Reviews completed work against this repo's standards and against what was actually asked for. Use after implementation, before reporting a task complete.
 tools: ['vscode', 'execute', 'read', 'search', 'vscode/memory', 'todo']
 agents: []
-model: Claude Opus 5 (copilot)
+model: Claude Opus 5.5
 ---
 
 # Review Agent

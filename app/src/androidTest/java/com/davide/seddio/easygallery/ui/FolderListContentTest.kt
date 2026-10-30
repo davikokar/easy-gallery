@@ -2,15 +2,24 @@ package com.davide.seddio.easygallery.ui
 
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.test.platform.app.InstrumentationRegistry
+import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -18,6 +27,8 @@ class FolderListContentTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    private val appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
     private val fakeFolder = Folder(
         name = "Pictures",
@@ -250,7 +261,8 @@ class FolderListContentTest {
             resolvedMemberCount = 3,
             storedMemberCount = 3,
             hiddenMemberCount = 0,
-            storedMembershipCount = 3
+            storedMembershipCount = 3,
+            status = AlbumEvaluationStatus.MANUAL
         )
 
         composeTestRule.setContent {
@@ -352,7 +364,8 @@ class FolderListContentTest {
                 resolvedMemberCount = index.toInt(),
                 storedMemberCount = index.toInt(),
                 hiddenMemberCount = 0,
-                storedMembershipCount = index.toInt()
+                storedMembershipCount = index.toInt(),
+                status = AlbumEvaluationStatus.MANUAL
             )
         }
 
@@ -393,7 +406,8 @@ class FolderListContentTest {
                 resolvedMemberCount = index.toInt(),
                 storedMemberCount = index.toInt(),
                 hiddenMemberCount = 0,
-                storedMembershipCount = index.toInt()
+                storedMembershipCount = index.toInt(),
+                status = AlbumEvaluationStatus.MANUAL
             )
         }
 
@@ -451,7 +465,8 @@ class FolderListContentTest {
             resolvedMemberCount = 0,
             storedMemberCount = 5,
             hiddenMemberCount = 5,
-            storedMembershipCount = 5
+            storedMembershipCount = 5,
+            status = AlbumEvaluationStatus.MANUAL
         )
         val emptyAlbum = AlbumListItem(
             id = 10L,
@@ -462,7 +477,8 @@ class FolderListContentTest {
             resolvedMemberCount = 0,
             storedMemberCount = 0,
             hiddenMemberCount = 0,
-            storedMembershipCount = 0
+            storedMembershipCount = 0,
+            status = AlbumEvaluationStatus.MANUAL
         )
 
         composeTestRule.setContent {
@@ -475,6 +491,201 @@ class FolderListContentTest {
         composeTestRule.onAllNodesWithTag("album_hidden_items_notice", useUnmergedTree = true)
             .assertCountEquals(1)
     }
+
+    @Test
+    fun albumsViewShowsNewerAppNoticeOnTileAndRow() {
+        val album = albumItem(AlbumEvaluationStatus.UNEVALUATABLE)
+        var albumsViewType by mutableStateOf(ViewType.GRID)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                albumsViewType = albumsViewType
+            )
+        }
+
+        listOf(ViewType.GRID, ViewType.LIST).forEach { viewType ->
+            albumsViewType = viewType
+            composeTestRule.waitForIdle()
+
+            composeTestRule
+                .onNodeWithTag("album_rule_unevaluatable_notice", useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertTextEquals(appContext.getString(R.string.album_rule_unevaluatable_notice_short))
+            composeTestRule.onAllNodesWithTag("album_hidden_items_notice", useUnmergedTree = true)
+                .assertCountEquals(0)
+            composeTestRule.onAllNodesWithTag("album_rule_waiting_notice", useUnmergedTree = true)
+                .assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun albumsViewShowsStillScanningNoticeWithoutAnyFigureOnTileAndRow() {
+        val album = albumItem(AlbumEvaluationStatus.WAITING_ON_INDEX)
+        var albumsViewType by mutableStateOf(ViewType.GRID)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                albumsViewType = albumsViewType
+            )
+        }
+
+        listOf(ViewType.GRID, ViewType.LIST).forEach { viewType ->
+            albumsViewType = viewType
+            composeTestRule.waitForIdle()
+
+            val notice = composeTestRule
+                .onNodeWithTag("album_rule_waiting_notice", useUnmergedTree = true)
+                .assertIsDisplayed()
+            val expected = appContext.getString(
+                R.string.album_rule_waiting_notice_short,
+                appContext.getString(R.string.settings_title)
+            )
+            notice.assertTextEquals(expected)
+            val shown = notice.fetchSemanticsNode().config[SemanticsProperties.Text]
+                .joinToString(" ") { it.text }
+            assertTrue(
+                "The notice must carry no count or percentage: $shown",
+                shown.none { it.isDigit() || it == '%' }
+            )
+            composeTestRule
+                .onAllNodes(
+                    SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo),
+                    useUnmergedTree = true
+                )
+                .assertCountEquals(0)
+            composeTestRule.onAllNodesWithTag("album_rule_unevaluatable_notice", useUnmergedTree = true)
+                .assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun albumsViewShowsStatusNoticeAndHiddenItemsNoticeTogether() {
+        val album = albumItem(
+            status = AlbumEvaluationStatus.WAITING_ON_INDEX,
+            resolved = 0,
+            stored = 3,
+            hidden = 3
+        )
+        var albumsViewType by mutableStateOf(ViewType.GRID)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                albumsViewType = albumsViewType
+            )
+        }
+
+        listOf(ViewType.GRID, ViewType.LIST).forEach { viewType ->
+            albumsViewType = viewType
+            composeTestRule.waitForIdle()
+
+            composeTestRule
+                .onNodeWithTag("album_rule_waiting_notice", useUnmergedTree = true)
+                .assertIsDisplayed()
+            composeTestRule
+                .onNodeWithTag("album_hidden_items_notice", useUnmergedTree = true)
+                .assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun albumsViewShowsNoNoticeForManualOrCompleteAlbumsWhoseAdditionsAllResolve() {
+        // More live items than stored additions: a stored-versus-resolved comparison misreads this.
+        val manual = albumItem(AlbumEvaluationStatus.MANUAL, id = 21L, resolved = 2, stored = 2)
+        val complete = albumItem(AlbumEvaluationStatus.COMPLETE, id = 22L, resolved = 5, stored = 1)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(manual, complete)
+            )
+        }
+
+        composeTestRule.onNodeWithTag("album_tile_21").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_tile_22").assertIsDisplayed()
+        listOf(
+            "album_hidden_items_notice",
+            "album_rule_unevaluatable_notice",
+            "album_rule_waiting_notice"
+        ).forEach { tag ->
+            composeTestRule.onAllNodesWithTag(tag, useUnmergedTree = true).assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun albumTileAnnouncesItsNoticeAsStateAndKeepsTheNameAsDescription() {
+        val album = albumItem(AlbumEvaluationStatus.UNEVALUATABLE, name = "Castles")
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album)
+            )
+        }
+
+        val config = composeTestRule.onNodeWithTag("album_tile_${album.id}")
+            .fetchSemanticsNode().config
+        assertEquals(
+            appContext.getString(R.string.album_rule_unevaluatable_notice_short),
+            config[SemanticsProperties.StateDescription]
+        )
+        assertTrue(config[SemanticsProperties.ContentDescription].contains("Castles"))
+    }
+
+    @Test
+    fun albumRowKeepsItsNoticeFullyVisibleAtLargeFontScaleInRightToLeft() {
+        val album = albumItem(AlbumEvaluationStatus.WAITING_ON_INDEX)
+
+        composeTestRule.setContent {
+            CompositionLocalProvider(
+                LocalLayoutDirection provides LayoutDirection.Rtl,
+                LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)
+            ) {
+                FolderListContentWrapper(
+                    displayMode = DisplayMode.ALBUMS,
+                    albums = listOf(album),
+                    albumsViewType = ViewType.LIST
+                )
+            }
+        }
+
+        val row = composeTestRule.onNodeWithTag("album_tile_${album.id}")
+            .fetchSemanticsNode().boundsInRoot
+        val notice = composeTestRule
+            .onNodeWithTag("album_rule_waiting_notice", useUnmergedTree = true)
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "The notice must sit inside its row: $notice in $row",
+            notice.left >= row.left && notice.right <= row.right &&
+                notice.top >= row.top && notice.bottom <= row.bottom
+        )
+    }
+
+    private fun albumItem(
+        status: AlbumEvaluationStatus,
+        id: Long = 31L,
+        name: String = "Rule album",
+        resolved: Int = 2,
+        stored: Int = 0,
+        hidden: Int = 0
+    ) = AlbumListItem(
+        id = id,
+        name = name,
+        createdAt = id,
+        cover = null,
+        isCoverFallback = false,
+        resolvedMemberCount = resolved,
+        storedMemberCount = stored,
+        hiddenMemberCount = hidden,
+        storedMembershipCount = stored,
+        status = status
+    )
 
     @Composable
     private fun FolderListContentWrapper(

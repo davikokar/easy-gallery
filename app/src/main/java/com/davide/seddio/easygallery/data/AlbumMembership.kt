@@ -50,26 +50,13 @@ data class AlbumMembershipResolution(
     val orphanStateChanges: List<MembershipOrphanStateChange>
 )
 
-private data class MembershipMatch(
-    val resolvedMediaUri: String,
-    val mediaItem: MediaItem,
-    val requiresUriRewrite: Boolean
-)
-
 object AlbumMembership {
 
     fun resolve(
         memberships: List<StoredMembership>,
         liveMedia: List<MediaItem>
     ): AlbumMembershipResolution {
-        val mediaByUri = HashMap<String, MediaItem>(liveMedia.size)
-        val mediaByHealingKey = HashMap<MediaHealingKey, MediaItem>(liveMedia.size)
-
-        for (item in liveMedia) {
-            val identity = item.toMediaIdentity()
-            mediaByUri.putIfAbsent(identity.mediaUri, item)
-            mediaByHealingKey.putIfAbsent(identity.healingKey, item)
-        }
+        val lookup = LiveMediaLookup(liveMedia)
 
         val resolvedAdditions = mutableListOf<ResolvedMembership>()
         val resolvedExclusions = mutableListOf<ResolvedMembership>()
@@ -78,7 +65,7 @@ object AlbumMembership {
         val orphanStateChanges = mutableListOf<MembershipOrphanStateChange>()
 
         for (membership in memberships) {
-            val match = resolveMembership(membership, mediaByUri, mediaByHealingKey)
+            val match = lookup.find(membership.toMediaIdentity())
             if (match == null) {
                 orphanedMembershipIds += membership.id
                 if (!membership.isOrphaned) {
@@ -97,19 +84,20 @@ object AlbumMembership {
                 )
             }
 
+            val resolvedMediaUri = match.item.uri.toString()
             if (match.requiresUriRewrite) {
                 uriRewrites += MembershipUriRewrite(
                     membershipId = membership.id,
                     fromMediaUri = membership.mediaUri,
-                    toMediaUri = match.resolvedMediaUri
+                    toMediaUri = resolvedMediaUri
                 )
             }
 
             val resolved = ResolvedMembership(
                 membershipId = membership.id,
                 kind = membership.kind,
-                resolvedMediaUri = match.resolvedMediaUri,
-                mediaItem = match.mediaItem
+                resolvedMediaUri = resolvedMediaUri,
+                mediaItem = match.item
             )
 
             when (membership.kind) {
@@ -139,30 +127,9 @@ object AlbumMembership {
         )
     }
 
-    private fun resolveMembership(
-        membership: StoredMembership,
-        mediaByUri: Map<String, MediaItem>,
-        mediaByHealingKey: Map<MediaHealingKey, MediaItem>
-    ): MembershipMatch? {
-        val direct = mediaByUri[membership.mediaUri]
-        if (direct != null) {
-            return MembershipMatch(
-                resolvedMediaUri = direct.uri.toString(),
-                mediaItem = direct,
-                requiresUriRewrite = false
-            )
-        }
-
-        val healed = mediaByHealingKey[membership.toHealingKey()] ?: return null
-        return MembershipMatch(
-            resolvedMediaUri = healed.uri.toString(),
-            mediaItem = healed,
-            requiresUriRewrite = true
-        )
-    }
-
-    private fun StoredMembership.toHealingKey(): MediaHealingKey {
-        return MediaHealingKey(
+    private fun StoredMembership.toMediaIdentity(): MediaIdentity {
+        return mediaIdentityOf(
+            mediaUri = mediaUri,
             displayName = displayName,
             size = size,
             dateModified = dateModified

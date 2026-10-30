@@ -145,6 +145,10 @@
     <string name="album_add_to_title">Agregar a un álbum</string>
     <string name="album_empty">No hay elementos en este álbum</string>
     <string name="album_hidden_items_notice">Algunos elementos no están disponibles temporalmente. Volverán a aparecer en este álbum cuando los archivos estén disponibles de nuevo.</string>
+    <string name="album_rule_unevaluatable_notice">La regla automática de este álbum requiere una versión más reciente de la app. Hasta que actualices, solo se muestran los elementos que añadiste manualmente.</string>
+    <string name="album_rule_unevaluatable_notice_short">Requiere una app más reciente. Solo se muestran los elementos añadidos manualmente.</string>
+    <string name="album_rule_waiting_notice">Aún no se han analizado algunas fotos y videos, así que este álbum puede estar incompleto. Consulta el estado actual en “%1$s”, dentro de %2$s.</string>
+    <string name="album_rule_waiting_notice_short">Puede estar incompleto: hay elementos sin analizar. Consulta %1$s.</string>
     <string name="album_default_name">Mi álbum %1$d</string>
     <string name="album_type_title">Álbum nuevo</string>
     <string name="album_type_manual_title">Álbum manual</string>

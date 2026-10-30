@@ -50,6 +50,47 @@ class MediaIndexStoreTest {
     }
 
     @Test
+    fun `room and in-memory stores emit same identity date taken rows`() = runTest {
+        val inMemory = InMemoryMediaIndexStore()
+        val roomBacked = RoomMediaIndexStore(database)
+        val entries = listOf(
+            sampleEntry(mediaUri = "content://media/external/images/media/82", displayName = "b.jpg"),
+            sampleEntry(
+                mediaUri = "content://media/external/images/media/81",
+                displayName = "a.jpg",
+                capturedDateTakenEpochMillis = null
+            )
+        )
+        inMemory.upsert(entries)
+        roomBacked.upsert(entries)
+
+        val inMemoryRows = inMemory.observeIdentityDateTaken().first()
+        val roomRows = roomBacked.observeIdentityDateTaken().first()
+
+        assertEquals(inMemoryRows, roomRows)
+        assertEquals(
+            listOf("content://media/external/images/media/81", "content://media/external/images/media/82"),
+            roomRows.map { it.identity.mediaUri }
+        )
+        assertEquals(entries[1].toMediaIdentity(), roomRows.first().identity)
+        assertNull(roomRows.first().capturedDateTakenEpochMillis)
+    }
+
+    @Test
+    fun `room identity date taken re-emits when only an upsert lands`() = runTest {
+        val store = RoomMediaIndexStore(database)
+
+        store.observeIdentityDateTaken().test {
+            assertTrue(awaitItem().isEmpty())
+
+            store.upsert(listOf(sampleEntry(mediaUri = "content://media/external/images/media/91")))
+
+            assertEquals(1, awaitItem().size)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `observe by volume filters entries`() = runTest {
         val store = RoomMediaIndexStore(database)
 
@@ -197,6 +238,7 @@ class MediaIndexStoreTest {
         mediaUri: String,
         displayName: String = "photo.jpg",
         volumeName: String = "external_primary",
+        capturedDateTakenEpochMillis: Long? = 1_726_000_000_000L,
         derivedCountryCode: String? = null,
         derivedRegionCode: String? = null,
         derivedPlaceName: String? = null
@@ -209,7 +251,7 @@ class MediaIndexStoreTest {
             volumeName = volumeName,
             generationAdded = 5L,
             generationModified = 6L,
-            capturedDateTakenEpochMillis = 1_726_000_000_000L,
+            capturedDateTakenEpochMillis = capturedDateTakenEpochMillis,
             capturedLatitude = 43.7696,
             capturedLongitude = 11.2558,
             capturedWidth = 1080,
