@@ -34,6 +34,12 @@ private val VIDEO_DATE_LOCAL_PATTERNS: List<DateTimeFormatter> = listOf(
     DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss", Locale.US)
 )
 
+// A zero mvhd creation time is rendered by the platform as 19040101T000000.000Z; it means "no date".
+private val QUICKTIME_ZERO_LOCAL_DATE_TIME: LocalDateTime = LocalDateTime.of(1904, 1, 1, 0, 0, 0)
+// Also read by MediaIndexDatabase.MIGRATION_2_3, which clears rows stored with this value.
+val QUICKTIME_ZERO_EPOCH_MILLIS: Long =
+    QUICKTIME_ZERO_LOCAL_DATE_TIME.toInstant(ZoneOffset.UTC).toEpochMilli()
+
 data class MediaIndexTierAExtraction(
     val capturedDateTakenEpochMillis: Long?,
     val capturedLatitude: Double?,
@@ -200,18 +206,20 @@ fun parseVideoDateTakenEpochMillis(
     val raw = rawDate?.trim()?.takeIf { it.isNotEmpty() } ?: return null
 
     raw.toLongOrNull()?.let { numeric ->
-        return if (raw.length <= 10) numeric * 1_000 else numeric
+        return absentIfContainerZeroDate(if (raw.length <= 10) numeric * 1_000 else numeric)
     }
 
     try {
-        return Instant.parse(raw).toEpochMilli()
+        return absentIfContainerZeroDate(Instant.parse(raw).toEpochMilli())
     } catch (_: DateTimeParseException) {
         // Continue with non-ISO patterns below.
     }
 
     VIDEO_DATE_OFFSET_PATTERNS.forEach { formatter ->
         try {
-            return OffsetDateTime.parse(raw, formatter).toInstant().toEpochMilli()
+            return absentIfContainerZeroDate(
+                OffsetDateTime.parse(raw, formatter).toInstant().toEpochMilli()
+            )
         } catch (_: DateTimeParseException) {
             // Try next pattern.
         }
@@ -219,7 +227,9 @@ fun parseVideoDateTakenEpochMillis(
 
     VIDEO_DATE_LOCAL_PATTERNS.forEach { formatter ->
         try {
-            return LocalDateTime.parse(raw, formatter).atZone(fallbackZoneId).toInstant().toEpochMilli()
+            val localDateTime = LocalDateTime.parse(raw, formatter)
+            if (localDateTime == QUICKTIME_ZERO_LOCAL_DATE_TIME) return null
+            return localDateTime.atZone(fallbackZoneId).toInstant().toEpochMilli()
         } catch (_: DateTimeParseException) {
             // Try next pattern.
         }
@@ -227,6 +237,9 @@ fun parseVideoDateTakenEpochMillis(
 
     return null
 }
+
+private fun absentIfContainerZeroDate(epochMillis: Long): Long? =
+    epochMillis.takeUnless { it == QUICKTIME_ZERO_EPOCH_MILLIS }
 
 class MediaIndexTierABatchIndexer(
     private val mediaRepository: MediaRepository,

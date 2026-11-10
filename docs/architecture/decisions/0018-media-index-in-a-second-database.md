@@ -328,3 +328,75 @@ move together and nothing is bought by making them.
   disabled permanently. Liveness is derived from WorkManager's `WorkInfo` instead. That is not a
   storage decision and needs no ADR, but it is why the store writes fewer keys than its state class
   has fields.
+
+## Amendment 3 — 2026-10-30 — A stored encoder sentinel is cleared by a migration, and the index reaches version 3
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1 and 2.
+It is an amendment rather than a new ADR for the reason Amendment 1 gives: the index is still the
+separate, backup-excluded, recomputable database this record chose, and what follows applies
+Amendment 1's precedent — bump, migrate, commit the JSON — rather than departing from it. Amendment
+1's statement that the index is at version 2 was true when written and is left as written.
+
+### What happened
+
+A video container writes a creation time of 0 when it has no date.
+`MediaMetadataRetriever.METADATA_KEY_DATE` renders that as `19040101T000000.000Z`, the container
+epoch — established from AOSP source (android13-release, `MPEG4Extractor::convertTimeToDate`), not
+yet confirmed on hardware. Step 2.3's video date parser accepted it as a real capture date and stored
+epoch milliseconds `-2082844800000`. On the one device measured, a Samsung SM-G781B, most videos
+carried it, and `MediaStore`'s `DATE_TAKEN` was null for every one of them. Until it was fixed such a
+video counted as *indexed with a date* in Settings, sorted into 1904 under date-taken sort, and would
+have matched any `time` rule spanning 1904.
+
+The parser now treats exactly that instant, and its textual renderings, as absent:
+`parseVideoDateTakenEpochMillis` in `data/MediaIndexTierAIndexer.kt` returns null for it, while its
+neighbours — one second later, one day later — and genuinely old dates such as 1950 stay valid.
+EXIF's all-zero date forms were already rejected. It is the trap Null Island is the classic case of:
+an encoder's "no value" stored as a fact.
+[ADR-0017](0017-composable-album-rule-representation.md) Amendment 1 now says that such a sentinel
+counts as no date.
+
+### Decision
+
+**Rows already stored with the sentinel are corrected by a real migration, `MIGRATION_2_3`, which
+takes the index database to version 3.** It sets the captured date to null where it equals exactly
+the sentinel, reading the parser's shared `QUICKTIME_ZERO_EPOCH_MILLIS` constant rather than a second
+copy of the value. It re-extracts nothing, forces no resync, and is registered beside
+`MIGRATION_1_2` with no destructive fallback. The entity did not change, so the schema's identity
+hash did not either; Room still exports a `3.json` for the new version, and it must be committed by
+the change that produces it, as Amendment 1 requires of every version.
+
+### Why a migration
+
+- **Fixing the parser alone repairs nothing already stored.** Delta detection selects only media
+  that changed since the watermark, and an unchanged video is never re-extracted, so on an existing
+  install the 1904 value would stay for the life of the row.
+- **Normalising at read time was rejected.** It would put the sentinel in two places — the parser
+  and every reader — and leave the stored data wrong for the next reader that does not know to
+  filter it.
+- **A forced resync was rejected.** Clearing the watermarks would re-open every indexed file to
+  repair one value that needs no file at all, which is the most expensive repair available; and a
+  resync is scoped per volume by design ([albums.md](../../design/albums.md) §6,
+  [ADR-0020](0020-automatic-albums-resolve-against-live-media.md) clause 4), so a whole-index one is
+  not a tool this design offers.
+
+### Consequences
+
+- **A migration can correct data, not only schema.** The test this case passes: the correct value is
+  computable from the stored one, without the file. A future extraction fix that fails that test —
+  the right value needs the file re-read — cannot be repaired by a migration, and is a choice
+  between re-indexing and living with it.
+- **One real date is given up.** A video genuinely created at exactly 1904-01-01T00:00:00Z is now
+  undated. Accepted: no such video is plausible, and a sentinel matched by a plausibility window
+  instead would have discarded real old dates.
+- The album database is untouched; the two still version independently.
+
+### References
+
+- `data/MediaIndexTierAIndexer.kt` — `parseVideoDateTakenEpochMillis` and `QUICKTIME_ZERO_EPOCH_MILLIS`
+- `data/MediaIndexDatabase.kt` — `MIGRATION_2_3`
+- `MediaIndexTierAExtractionTest` and `MediaIndexDatabaseMigrationTest`, under `app/src/test/`
+- `app/schemas/com.davide.seddio.easygallery.data.MediaIndexDatabase/3.json`
+- [ADR-0017](0017-composable-album-rule-representation.md) Amendment 1, *Items with no date*
+- [docs/design/albums.md](../../design/albums.md) §8 decision 21 — what an undated item gets instead
+  of a second date source

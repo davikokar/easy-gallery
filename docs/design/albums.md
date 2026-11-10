@@ -654,10 +654,41 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 1: a
     watermark is index metadata — recomputable, worthless without the index, and actively harmful
     if restored onto a new device, because it would suppress the very resync that rebuilds the
-    index. Two consequences outlive Stage 2. The index database is now at **version 2 via a real
+    index. Two consequences outlive Stage 2. The index database reached **version 2 through a real
     migration with no destructive fallback**, which is the precedent every later schema change
-    follows, Stages 3 and 4 included when Tier B and Tier C add their tables. And "delete the
-    index" stays one whole-file operation, which is what §8.9's required Settings switch will need.
+    follows, Stages 3 and 4 included when Tier B and Tier C add their tables — and which the
+    data-only version 3 of ADR-0018 Amendment 3 has since followed. And "delete the index" stays
+    one whole-file operation, which is what §8.9's required Settings switch will need.
+
+21. **An item with no capture date gets a coverage notice, not a second date source.** Decided by
+    the maintainer on 2026-10-30. The question was whether a time album should fall back to some
+    other date when a photo or video carries no capture date, given how much of a real library has
+    none. The evidence says a second source would recover almost nothing. It was measured on a
+    Samsung SM-G781B (Android 13, API 33), over a real library of about 5,300 items indexed by the
+    production pipeline — one device, not a rule:
+    - only about one item in six had a usable capture date;
+    - about nine in ten of the undated items were messaging-app (WhatsApp) images carrying **no EXIF
+      segment at all**, so the file holds nothing to fall back to;
+    - `MediaStore`'s own `DATE_TAKEN` was null for **every** undated item, so the platform has no
+      better answer either;
+    - EXIF `DateTime` or `DateTimeDigitized` without `DateTimeOriginal` was negligible — none in a
+      sample of 100, a handful in a full census;
+    - the Camera and Screenshots folders were fully dated.
+
+    What is undated is overwhelmingly media *received* rather than taken, whose capture date is not
+    on the device in any form. A second source would also have needed an amendment to
+    [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 1,
+    which defines what "no date" means for a `time` clause and rules out `dateAdded` because it
+    invents members; that reasoning is untouched. So the answer is to say it rather than paper over
+    it: time albums get a **date-coverage notice**, the counterpart of ADR-0019's location coverage
+    notice, which is an exit criterion of step 2.7 in [albums-stage-2.md](albums-stage-2.md). It
+    counts live items indexed without a date, says what it counts, and is never presented as
+    pending work, because §6's closing paragraph already rules that such an item is neither
+    outstanding nor covered. The only earlier measurement, step 2.5's on the SM-G990B, points the
+    same way, and was taken before a video container's zero creation date was treated as absent
+    ([ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 3), so
+    if anything it understated the undated share. **Not decided by this:** how soon a photo that
+    *does* have a date reaches an album, which is §10 question 7 and still open.
 
 ---
 
@@ -724,7 +755,8 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
 5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
-   — **Raised 2026-10-09, with the maintainer.** Step 2.2 of
+   — ✅ **Answered 2026-10-30 by the maintainer: it stays on.** The question as raised is kept below,
+   then the answer. **Raised 2026-10-09, with the maintainer.** Step 2.2 of
    [albums-stage-2.md](albums-stage-2.md) removed the `if (SDK_INT < R) return null` guard from
    `AndroidMediaStoreVersionProvider` in `data/MediaStoreVersionStore.kt`, a **Stage 1** file that
    step did not scope. The API fact is right — `MediaStore.getVersion(Context)` is available from
@@ -734,9 +766,20 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    now does not, so membership healing re-evaluation activates on those devices for the first time.
    Either reading is defensible — a latent bug fixed, or an unscoped change to working behaviour —
    and the evidence is thin on purpose: there is a Robolectric test at `@Config(sdk = P)` at the
-   provider level, **none at the ViewModel level**, and no device at that API level is available
-   here. This is listed as an epic question rather than a stage detail because it touches Stage 1's
-   shipped behaviour, not Stage 2's new code. Nothing in Stage 2 is blocked on it.
+   provider level, **none at the ViewModel level** *(true when raised, no longer — see below)*, and
+   no device at that API level is available here. This is listed as an epic question rather than a
+   stage detail because it touches Stage 1's shipped behaviour, not Stage 2's new code. Nothing in
+   Stage 2 is blocked on it.
+
+   **The answer: keep the guard's removal.** The guard was wrong — `MediaStore.getVersion(Context)`
+   exists from API 12 — so re-evaluation being off on API 28–29 was a latent bug, and turning it on
+   is a fix to keep, not an unscoped change to revert. The evidence was strengthened before the
+   decision: `AlbumsViewModelMediaStoreVersionApi28Test`, under `app/src/test/` in the `ui`
+   package, runs at API 28 and drives the real `AndroidMediaStoreVersionProvider` under a real
+   `AlbumsViewModel`. It proves that a version change re-runs evaluation at API 28, and that nothing
+   re-runs without one. Its limits are stated rather than hidden: the platform call itself is
+   mocked, and no API 28–29 hardware is available here, so the behaviour has not been seen on a
+   device. The code was not changed by the answer.
 6. **What is to be done about the four permissions WorkManager adds to the merged manifest?** —
    **Raised 2026-10-12, with the maintainer, and unresolved.** Step 2.4 of
    [albums-stage-2.md](albums-stage-2.md) added WorkManager, which §8 decision 18 had already
@@ -763,6 +806,25 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    particular; or reconsider the dependency, which would unpick step 2.4 and is the least likely.
    **This is the maintainer's to decide.** Nothing in Stage 2 is blocked on it, no step is to close
    it by inference, and no agent is to add, remove, or silence any of the four meanwhile.
+
+   **Evidence from a spike after step 2.5 — evidence, not a decision, and the spike is not
+   finished.** Read from WorkManager 2.10.5's own code; none of it is confirmed on hardware.
+   - On API 23 and above WorkManager schedules through `SystemJobScheduler`, and the jobs it builds
+     are `setPersisted(false)`, so the platform does not keep them across a reboot. They are
+     re-registered from WorkManager's own database — by `RescheduleReceiver`, which WorkManager
+     enables at runtime while unfinished work exists and which listens for `BOOT_COMPLETED`,
+     `TIME_SET` and `TIMEZONE_CHANGED`, or else on the app's next process start.
+   - **`RECEIVE_BOOT_COMPLETED` is therefore probably not removable.** The prediction is that
+     without it periodic indexing stops after every reboot until the app is next opened.
+   - **`ACCESS_NETWORK_STATE` looks removable.** The only consumer found is
+     `ConstraintProxy$NetworkStateProxy`, which is disabled on API 23 and above.
+   - The spike records nothing yet about `WAKE_LOCK` or `FOREGROUND_SERVICE`.
+   - **The hardware check is pending**, because the device disconnected: install, tap Index now,
+     reboot once, and observe whether the periodic job is scheduled again **without** opening the
+     app. That is what would turn the first prediction into a fact.
+
+   The spike changed nothing in the manifest. Until the check has run, the predictions above are
+   inference, and this question is not to be closed on them.
 7. **Should a photo taken today reach a time or region album when the app opens, or only after the
    next index pass?** — **Raised 2026-10-26, with the maintainer, and unresolved.** §6 promises the
    first: "a photo taken this afternoon should appear in *Castles* when the app opens, not next time
@@ -790,6 +852,12 @@ Things this epic breaks or strains, which should surprise nobody when they come 
      purpose, and would need its own decision.
    - **Narrow the gap without closing it**, for instance by relaxing a constraint on the periodic
      job or shortening its period. Cheaper, still not "when the app opens".
+
+   **Not the undated-item question, which is decided.** §8 decision 21 settles what happens to an
+   item that will *never* have a date: a coverage notice, and no second date source. This question
+   is about items that *have* a date the index has not read yet, and it stays open. Whether
+   time-only album creation is brought forward from step 2.7 depends on its answer; the maintainer's
+   lean on that is recorded in [albums-stage-2.md](albums-stage-2.md)'s handoff block.
 
    **This is the maintainer's to decide.** Nothing in Stage 2 is blocked on it, and no agent is to
    add an app-open index pass or soften §6 meanwhile.

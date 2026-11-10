@@ -259,6 +259,7 @@ one, and it must land on `Unevaluatable` rather than be ignored.
 **An item the index has not reached, and an indexed item with no EXIF date, never match a `time`
 clause. There is no fallback to `dateAdded`.** These are the `NotIndexed` and `IndexedWithoutDate`
 states step 2.4 named in `DateTakenSortState`.
+An encoder's "no date" value — a video container's zero creation date, read back as 1904-01-01, or any other such sentinel — counts as no date, not as a date ([ADR-0018](0018-media-index-in-a-second-database.md) Amendment 3).
 
 Sorting degrades those two states to `dateAdded` because a sort must put every item somewhere. A
 filter does not, and `dateAdded` is when the file reached the device — a 2019 photo received in a

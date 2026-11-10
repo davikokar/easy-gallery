@@ -226,14 +226,20 @@ database is backed up (ADR-0014) while the index must not be.
   `MediaIndexWatermarkStore` — each with a `Room*` implementation for production and an
   `InMemory*` one for tests, the same shape as the preference stores. DAO-level tests use
   `inMemoryDatabaseBuilder`.
-- **One database does not mean one table, and neither is at version 1.** The album database holds
-  two tables at version 1; the index database holds two at **version 2**, having gained the
-  per-volume delta watermark table through a real `Migration(1, 2)` with no destructive fallback.
-  A watermark is index metadata — recomputable, worthless without the index, already excluded from
-  backup — so it belongs with the data it describes rather than in `app_settings`. ADR-0018
-  Amendment 1 records that.
+- **One database does not mean one table.** The album database holds two tables; the index
+  database holds two as well, having gained the per-volume delta watermark table through a real
+  `Migration(1, 2)`. A watermark is index metadata — recomputable, worthless without the index,
+  already excluded from backup — so it belongs with the data it describes rather than in
+  `app_settings`. ADR-0018 Amendment 1 records that.
+- **The index has migrated more than once, and never destructively.** Its second migration,
+  `Migration(2, 3)`, changes data rather than schema: it clears a video container's zero date
+  wrongly stored as a capture date. A fix to extraction does not reach rows already stored, because
+  delta detection never re-extracts unchanged media, and a migration was the cheap exact repair —
+  ADR-0018 Amendment 3 records why. Each database's current version is its `@Database` annotation;
+  read it there rather than from a document.
 - Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
-  committed. Room writes **one directory per database class**, so a schema can be generated
+  committed — and so does a data migration, which bumps the version even when the schema is
+  unchanged. Room writes **one directory per database class**, so a schema can be generated
   correctly and still be left untracked by a `git add` aimed at `app/src/`. Check it.
 - Media identity — the content URI plus the `displayName` / `size` / `dateModified` healing triple
   — has exactly **one** implementation, in `data/MediaIdentity.kt`, shared by album membership and

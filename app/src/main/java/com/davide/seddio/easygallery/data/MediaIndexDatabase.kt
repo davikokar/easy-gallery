@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [MediaIndexEntity::class, MediaIndexWatermarkEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class MediaIndexDatabase : RoomDatabase() {
@@ -24,7 +24,7 @@ abstract class MediaIndexDatabase : RoomDatabase() {
                 MediaIndexDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
         }
 
@@ -40,6 +40,16 @@ abstract class MediaIndexDatabase : RoomDatabase() {
                         PRIMARY KEY(`volumeName`)
                     )
                     """.trimIndent()
+                )
+            }
+        }
+
+        // Earlier builds stored the QuickTime zero date as a capture date; no re-extraction will ever fix it.
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "UPDATE `media_index` SET `capturedDateTakenEpochMillis` = NULL " +
+                        "WHERE `capturedDateTakenEpochMillis` = $QUICKTIME_ZERO_EPOCH_MILLIS"
                 )
             }
         }
