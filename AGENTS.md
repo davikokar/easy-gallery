@@ -336,8 +336,9 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   source manifest changing**, and the approval of the dependency is not approval of the
   permissions it merges in. WorkManager is the worked example and the reason this sentence exists:
   it added `ACCESS_NETWORK_STATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE`
-  to the merged manifest at Stage 2 step 2.4, unexamined, and that is open as
-  [docs/design/albums.md](docs/design/albums.md) §10 question 6. Check the merged manifest, not
+  to the merged manifest at Stage 2 step 2.4, unexamined, until
+  [docs/design/albums.md](docs/design/albums.md) §10 question 6 settled them after the fact — one
+  removed, three kept. Check the merged manifest, not
   `app/src/main/AndroidManifest.xml`, when a dependency lands.
 - Introducing a new architectural pattern not described above, or contradicting an active ADR.
 - Adding `android:configChanges` to `MainActivity` — ADR-0002 forbids it.

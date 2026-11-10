@@ -43,14 +43,18 @@
      located row counts as waiting is the evaluator's call;
      [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 4
      gives it the marker to decide with.
-  3. **A place arrives only after the next worker run**, because the resolver runs in the worker —
-     the shape of [albums.md](albums.md) §10 question 7, and to be answered with it.
+  3. **A place arrives only after the next worker run**, because the resolver runs in the worker.
+     Accepted, not a risk to design away: [albums.md](albums.md) §10 question 7 is answered, and a
+     place, like a date, reaches an album after the next index pass (§8 decision 22). **2.7 adds no
+     app-open index pass**; the coverage notices and the Incomplete-album notice carry the honesty.
   4. **Stage 2 exit criteria that 2.7 alone does not close** — the Play Console declaration, the
      documentation audit, among others; *Stage 2 exit criteria* below is the list. Two notes from
      2.5's review under *Known debt* below — evaluation cost and `WhileSubscribed` — say to
      revisit them before 2.7 makes rule albums common.
-- **The only outstanding hardware check is question 6's reboot spike** — item 2 of the maintainer's
-  list below. The v2→v3 migration of a real index is settled: before the v4 install, the
+- **No hardware check is outstanding.** Question 6's reboot spike is no longer pending: the
+  maintainer's answer keeps the boot permission, so the check would test a reason rather than gate
+  a change. Reboot survival stays unverified, and [albums.md](albums.md) §10 question 6 says so.
+  The v2→v3 migration of a real index is settled: before the v4 install, the
   SM-G990B's own index was already at v3, holding 427 rows and none of the 13 sentinel rows seen
   earlier, so `MIGRATION_2_3` ran correctly on hardware. The connected suite has since run over
   work containing `1162914`, at 2.6's final gate.
@@ -73,36 +77,27 @@
     `PLACE_RESOLVER_VERSION` bump with regenerated assets, not a constant — the question says why.
   - **`androidx.work:work-testing` is approved as a test dependency**, and landed with
     `MediaIndexingWorkerTest`. 2.6's *Record* has what it proves.
-- **Still the maintainer's, in this order.** None is any agent's to take, and each is owned where
-  it is linked.
-  1. **[albums.md](albums.md) §10 question 7 — app-open timing.** Whether a photo that has a date
-     reaches a time or region album when the app opens, or only after the next index pass. §6
-     promises the first; 2.5 delivers the second. Open, and separate from the undated-item
-     question, which is decided. **Do not add an app-open index pass or soften §6 while it is
-     open.**
-  2. **[albums.md](albums.md) §10 question 6 — the four merged-manifest permissions, with a spike
-     in progress.** The evidence so far is in the question: read from WorkManager's own code,
-     `RECEIVE_BOOT_COMPLETED` is probably not removable and `ACCESS_NETWORK_STATE` looks removable.
-     **Neither is confirmed.** The next action is the hardware check the device disconnection
-     interrupted: install, tap Index now, reboot once, and observe whether the periodic job is
-     scheduled again **without** opening the app. The spike changed nothing in the manifest; **do
-     not add, remove or silence any of the four** until the maintainer decides.
-  3. **Bring time-only creation forward, or not — now moot if 2.7 is next**, because 2.7 enables
-     the Automatic option for time and region rules together. It matters again only if 2.7 is
-     deferred. **The maintainer's lean — a lean, not a decision:** yes, but only after question 7 is
-     answered at least as "accept the gap and soften §6", and only after the date-coverage notice
-     exists.
-  4. **The Play Console restricted-permission declaration is the maintainer's own action, in the
-     console.** It is to be made after question 6 is settled and before the first release that
-     contains Stage 2, and it must describe the **merged** manifest — which is why it waits for
-     question 6. No agent can make it or verify it from the repository. It is a Stage 2 exit
-     criterion below, met only by checking the console and recording the outcome.
-  5. **[albums.md](albums.md) §10 question 2** — a notification, and with it `POST_NOTIFICATIONS` —
-     is still open, so every progress surface stays in-app. It blocks no step.
-  6. ~~**A unit test for `MediaIndexingWorker` needs `androidx.work:work-testing`**, a new test
-     dependency and so an `AGENTS.md` ask-before-doing item.~~ **Resolved 2026-11-10**: approved,
-     and `MediaIndexingWorkerTest` now proves a resolver failure marks the run FAILED — 2.6's
-     *Record*.
+  - **[albums.md](albums.md) §10 question 7: a new photo reaches a time or region album after the
+    next index pass, not when the app opens.** §6 was softened to promise that, its original
+    sentence struck rather than deleted; §8 decision 22 has why. **Do not add an app-open index
+    pass or extract-on-view.** The lean on bringing time-only creation forward depended on this
+    answer and is moot, because 2.7 is next and enables time and region creation together.
+  - **[albums.md](albums.md) §10 question 2: no notification.** Indexing progress stays in-app,
+    in the Settings screen's Media index area, and `POST_NOTIFICATIONS` is not requested. "Index
+    now" stays expedited on API 31+ only and ordinary below it, and the worker keeps no
+    `getForegroundInfo` — §8 decision 23. **Do not add a notification or a foreground service.**
+  - **[albums.md](albums.md) §10 question 6: `ACCESS_NETWORK_STATE` is removed from the merged
+    manifest; `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE` are kept.** The
+    removal is `tools:node="remove"` in the source manifest and was checked on the SM-G990B; §8
+    decision 24 has why each was kept or removed, and the question has the evidence. **Do not
+    restore the removed one or remove the kept three** without a new decision.
+- **Still the maintainer's.** No agent can take it, and it is owned where it is linked.
+  - **The Play Console restricted-permission declaration is the maintainer's own action, in the
+    console**, before the first release that contains Stage 2. It must describe the **merged**
+    manifest's final permission list — including `ACCESS_MEDIA_LOCATION`, and the `INTERNET` a
+    library merges in, which question 6 records as an observation rather than a decision. No agent
+    can make it or verify it from the repository. It is a Stage 2 exit criterion below, met only by
+    checking the console and recording the outcome.
 - **What 2.7 starts from.**
   - **The derived place columns are written now**, by the resolve pass, after Tier A in every
     worker run, and each resolved row carries `derivedPlaceResolverVersion`. Pending, resolved with
@@ -198,8 +193,8 @@
     2.5's did; read the failure before suspecting the product.
 - **Residual device checks carried from 2.5's close — not blockers, and not 2.5's exit criteria.**
   2.5 closed on a device run that proved the pipeline and the Compose notice tests; these are what
-  it could not reach. Do them when something shipped can create a rule album — 2.7, or time-only
-  creation if the maintainer brings it forward — or earlier by hand.
+  it could not reach. Do them when something shipped can create a rule album — 2.7 — or earlier by
+  hand.
   - **A notice in a real tile or row of the installed app**, and Album Detail View's notices in the
     installed app. They have rendered only in Compose tests with fixtures. Watch above all the
     **tile notice at a font scale around 2 on a grid of three or more columns** — the tile is a fixed
@@ -236,9 +231,10 @@
     owns both.
   - **Notice fatigue, and the product question behind it.** The waiting notice shows whenever any
     live item is not yet indexed, and an item taken today stays unindexed until the next constrained
-    run — which can be days on a phone that is rarely idle on a charger. That contradicts albums.md
-    §6's promise that a photo taken this afternoon appears when the app opens; it is now
-    [albums.md](albums.md) §10 question 7, the maintainer's call.
+    run — which can be days on a phone that is rarely idle on a charger. That contradicted albums.md
+    §6's original promise that a photo taken this afternoon appears when the app opens. The
+    maintainer answered [albums.md](albums.md) §10 question 7 by softening the promise rather than
+    closing the gap (§8 decision 22), so the fatigue is accepted and the notice is the bridge.
   - **From the review of 2.5, recorded for the maintainer and not acted on:**
     - The index `Flow` in `AlbumsViewModel` is shared with `shareIn(..., WhileSubscribed())` under a
       `flatMapLatest` over the album list. With no stop timeout, every re-emission of that list — a
@@ -533,7 +529,9 @@ No schema change, therefore no version bump, no migration and no new JSON for th
   than pre-empting that answer. The limit is in `ARCHITECTURE.md` §11 beside the second half of the
   same fact: an expedited request may carry **only** network and storage constraints, so the Index
   now request deliberately carries none of the periodic job's three. Had it carried
-  `requiresBatteryNotLow`, the platform would have rejected the request on every tap.
+  `requiresBatteryNotLow`, the platform would have rejected the request on every tap. Question 2
+  was later answered with no notification, which makes the API 31 limit permanent — albums.md §8
+  decision 23.
 - [x] Progress and last-indexed state are visible **in-app**, in the Settings screen's Media index
   area. No notification was added; question 2 is untouched. Two properties of that surface are
   albums.md §6's honesty rule applied rather than incidental: the figures are **intersected with
@@ -979,7 +977,9 @@ each becomes one.
   stored in a user's rule is not re-resolved. **2.7's `region` clause must not store raw admin1
   codes in a user rule without a plan for their stability.**
 - **A new GPS photo gets its place only after the next worker run**, because the resolver runs in
-  the worker. Same shape as [albums.md](albums.md) §10 question 7, and to be answered with it.
+  the worker. Same shape as [albums.md](albums.md) §10 question 7, and answered with it: accepted,
+  as for dates (§8 decision 22). **2.7 adds no app-open index pass**; the location and date
+  coverage notices and the Incomplete-album notice carry the honesty.
 - **A pending row can still carry derived values** — Tier A keeps the old ones so labels do not
   flicker. Whether a pending located row counts as waiting is the evaluator's to decide;
   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 4 gives
@@ -1050,8 +1050,10 @@ change.
 - **The Play Console restricted-permission declaration is confirmed done.** albums.md §9 carries it
   forward from Stage 1 with no record that it was ever completed, and names the permissions at
   stake. Stage 2 adds one more: it makes `ACCESS_MEDIA_LOCATION` load-bearing for a user-facing
-  feature for the first time, which is a Data Safety question in its own right. This criterion is
-  met by checking the Play Console and recording the outcome — not by assuming it.
+  feature for the first time, which is a Data Safety question in its own right. The declaration
+  covers the **merged** manifest's final permission list, not the source manifest's —
+  [albums.md](albums.md) §10 question 6 records what WorkManager and a library add there. This
+  criterion is met by checking the Play Console and recording the outcome — not by assuming it.
 - **A documentation audit has passed** — run `/docs-audit`, and fix or record everything it finds.
   Every stage carries this line, and stage completion is the scheduled moment for it, because
   triggers only catch the drift that was anticipated.
@@ -1097,9 +1099,12 @@ The first two are the epic's, not this stage's; albums.md §10 states them and o
    [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md); step
    2.2 is unblocked.** Kept listed, struck through, until this plan is archived, so a session that
    remembers the block can see it was lifted rather than dropped.
-2. A progress notification during indexing — albums.md §10 question 2. **Step 2.4 shipped in-app
+2. ~~A progress notification during indexing — albums.md §10 question 2. **Step 2.4 shipped in-app
    progress only and did not pre-empt it**, which is also why "Index now" degrades to ordinary work
-   below API 31. Every later progress surface inherits the same cap until it is answered.
+   below API 31. Every later progress surface inherits the same cap until it is answered.~~
+   **Answered 2026-11-10: no notification** — albums.md §8 decision 23. Every progress surface
+   stays in-app, and "Index now" stays ordinary work below API 31. Kept listed, struck through,
+   until this plan is archived.
 3. **How often does a *volume* resync happen, and how big is the primary volume's?** A resync is
    scoped to the volume whose version changed — [albums.md](albums.md) §6,
    [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)

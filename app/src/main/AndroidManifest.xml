@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.MANAGE_MEDIA" />
     <uses-permission android:name="com.android.vending.BILLING" />
 
+    <!-- WorkManager merges this in; our work has no network constraint, so nothing reads it. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
     <queries>
         <intent>
             <action android:name="android.service.wallpaper.CROP_AND_SET_WALLPAPER" />

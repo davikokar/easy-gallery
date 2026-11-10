@@ -248,8 +248,9 @@ This is the distinction that keeps the feature from becoming a battery problem:
 **Indexing** runs under WorkManager, constrained to charging, device idle, and battery not low. No
 network constraint — nothing leaves the device. A manual **"Index now"** in Settings runs the same
 batch on demand, and runs it *expedited* **only on the API levels where the platform grants that
-without a foreground service and a notification**; below them it degrades to ordinary one-time work
-rather than pre-empting §10 question 2, which reserves the notification question for the maintainer.
+without a foreground service and a notification**; below them it runs as ordinary one-time work, and
+the worker never runs as a foreground service. That was a holding position while §10 question 2 was
+open; it is now decided, because indexing shows no notification at all (§8 decision 23).
 Which level that is, and why the two requests therefore carry deliberately different constraint
 sets, are owned by [../architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) §11 and not
 restated here. **This paragraph used to say "as expedited work" flatly**, which overstated what
@@ -270,8 +271,14 @@ the batch commits, so evaluation can also run during a batch):
 - Content and people rules need vector comparison across the library. Materialise results with a
   generation stamp and re-evaluate only images newer than it.
 
-So "charging and idle" is right for the index and wrong for evaluation — a photo taken this
-afternoon should appear in *Castles* when the app opens, not next time the phone is plugged in.
+So "charging and idle" is right for the index and wrong for evaluation. ~~A photo taken this
+afternoon should appear in *Castles* when the app opens, not next time the phone is plugged in.~~
+**That promise was struck on 2026-11-10** (§8 decision 22, answering §10 question 7), because
+nothing delivers it. What holds is this: evaluation is cheap and runs on app open, but an item
+matches a rule only once the index has reached it, and the index reaches a new photo at the next
+index pass — the periodic constrained job, or "Index now". Until then the album's Incomplete-album
+notice says it is incomplete and points at indexing; that notice is the bridge. A new photo appears
+after the next index pass, not when the app opens.
 
 ### Be honest about staleness
 
@@ -627,10 +634,11 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     **This approval covers the dependency and not the permissions it merges in.** When WorkManager
     landed at step 2.4 it added `ACCESS_NETWORK_STATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and
     `FOREGROUND_SERVICE` to the **merged** manifest, none of which the source manifest declares.
-    That is a separate ask-before-doing item under `AGENTS.md`, it was never asked, and it is open
-    as §10 question 6. "Nobody asks again" above means nobody re-asks whether the library may be
-    used; it never meant the permissions — but it read as though it did, which is how they went
-    unexamined.
+    That is a separate ask-before-doing item under `AGENTS.md`, it was not asked before the
+    dependency landed, and it was raised afterwards as §10 question 6. "Nobody asks again" above
+    means nobody re-asks whether the library may be used; it never meant the permissions — but it
+    read as though it did, which is how they went unexamined. They have since been examined and
+    decided, one by one, in decision 24.
 
 19. **A deleted photo disappears from an automatic album immediately, not at the next scan**
     ([ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)).
@@ -691,7 +699,54 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     same way, and was taken before a video container's zero creation date was treated as absent
     ([ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 3), so
     if anything it understated the undated share. **Not decided by this:** how soon a photo that
-    *does* have a date reaches an album, which is §10 question 7 and still open.
+    *does* have a date reaches an album, which was §10 question 7 and is decision 22.
+
+22. **A new photo reaches a time or region album after the next index pass, not when the app
+    opens.** Decided by the maintainer on 2026-11-10, answering §10 question 7 with its option
+    "accept the gap and soften §6". Evaluation still runs on app open, but an item matches a `time`
+    or `region` clause only once the index has reached it —
+    [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 1
+    rules out a `dateAdded` fallback, and a place is written only by the resolver in the worker — and
+    the index reaches a new item at the periodic constrained job or at "Index now". §6's promise was
+    rewritten to say so, with the original struck rather than deleted, and the Incomplete-album
+    notice is the bridge. **Why not the alternatives.** An app-open index pass would add battery and
+    file-open cost to every start-up, and running outside decision 18's constraints pulls the
+    scheduling toward expedited or foreground work, which decision 23 rules out by refusing a
+    notification. Extracting on view would pay ADR-0001's per-item cost on the evaluation path, which
+    §6 keeps separate from indexing on purpose. Narrowing the gap by relaxing a constraint or
+    shortening the period was not taken either; it would be a decision of its own. **For step 2.7:**
+    no app-open index pass; the coverage notices and the Incomplete-album notice carry the honesty.
+
+23. **Indexing shows no notification; its progress is in-app only.** Decided by the maintainer on
+    2026-11-10, answering §10 question 2. Progress and last-indexed state stay in the Settings
+    screen's Media index area, and the app does not request `POST_NOTIFICATIONS`. Two properties of
+    step 2.4 that were provisional while the question was open are now decided: "Index now" runs as
+    expedited work only where the platform grants that without a foreground service and a
+    notification — API 31+ — and as ordinary one-time work below it; and the worker has no
+    `getForegroundInfo`, so it never runs as a foreground service. **Why:** the reasoning on record
+    is the question's own — a notification was needed only if indexing proved slow enough to need
+    one, and in-app progress avoids both a new runtime permission on API 33+ and a foreground service
+    below API 31. It also keeps the app-open index pass of decision 22 off the table. **Not decided
+    by this:** whether the `FOREGROUND_SERVICE` permission WorkManager merges in can be removed; that
+    was §10 question 6, since answered by decision 24, which keeps it.
+
+24. **Of the four permissions WorkManager merges in, `ACCESS_NETWORK_STATE` is removed and
+    `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE` are kept.** Decided by the
+    maintainer on 2026-11-10, answering §10 question 6, which also holds the hardware evidence. The
+    removal is a `tools:node="remove"` entry in `app/src/main/AndroidManifest.xml`. **Why remove
+    `ACCESS_NETWORK_STATE`:** nothing here needs it — indexing carries no network constraint, and
+    the only consumer found in WorkManager serves its pre-API-23 alarm scheduler and is declared
+    disabled — and an unused network permission misstates §6's *nothing leaves the device* to anyone
+    who inspects the app. **Why keep `RECEIVE_BOOT_COMPLETED`:** WorkManager's jobs do not survive a
+    reboot on their own and are re-registered by its boot receiver, so removing it would most likely
+    stop background indexing after every reboot until the app is next opened. **Why keep `WAKE_LOCK`
+    and `FOREGROUND_SERVICE`:** they are WorkManager's standard requirements. The app runs no
+    foreground work (decision 23), so `FOREGROUND_SERVICE` may well go unused, but removing a
+    permission the library expects was judged not worth the risk. **For whoever moves WorkManager
+    next:** an upgrade can merge in a permission this decision never saw, or come to need the one it
+    removed, so the merged manifest is rechecked when the version changes. **Not decided by this:**
+    the `INTERNET` permission a library adds to the merged manifest, which question 6 records as an
+    observation for the Play declaration of §9.
 
 ---
 
@@ -716,8 +771,10 @@ Things this epic breaks or strains, which should surprise nobody when they come 
   carry it into Stage 2 rather than assuming it. It is now a Stage 2 exit criterion in
   [albums-stage-2.md](albums-stage-2.md), widened to cover `ACCESS_MEDIA_LOCATION`, which Stage 2
   makes load-bearing for a user-facing feature for the first time. **Whoever makes that declaration
-  must read §10 question 6 first**: Stage 2 also put four permissions into the merged manifest that
-  the source manifest does not declare, and a declaration describes the merged manifest.
+  must read §10 question 6 first**: Stage 2 also put permissions into the merged manifest that the
+  source manifest does not declare — WorkManager's, one of them since removed by §8 decision 24 —
+  and the merged manifest carries `INTERNET` from a library as well. A declaration describes the
+  merged manifest's final permission list, not the source manifest.
 - **ADR-0001** is extended, not superseded: lazy per-item location reads remain correct for the
   info surfaces; the index becomes a second, amortised path. Both
   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) and
@@ -749,12 +806,18 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    open problem and pointed here.
 
    **No longer blocks step 2.2.**
-2. **Progress notification during indexing?** Needs `POST_NOTIFICATIONS` on API 33+. Avoidable if
-   progress lives only in-app, which is the Stage 2 default unless indexing proves slow enough to
-   need it. — **Deliberately still open, 2026-10-08.** It was raised during Stage 2 planning and
-   left open at the maintainer's request, to be discussed rather than inferred; a new runtime
-   permission is an `AGENTS.md` ask-before-doing item in any case. Step 2.4 ships in-app progress
-   only until it is answered.
+2. **Progress notification during indexing?** — ✅ **Answered 2026-11-10 by the maintainer: no
+   notification.** The question as raised is kept below, then the answer. Needs
+   `POST_NOTIFICATIONS` on API 33+. Avoidable if progress lives only in-app, which is the Stage 2
+   default unless indexing proves slow enough to need it. — **Deliberately still open, 2026-10-08.**
+   It was raised during Stage 2 planning and left open at the maintainer's request, to be discussed
+   rather than inferred; a new runtime permission is an `AGENTS.md` ask-before-doing item in any
+   case. Step 2.4 ships in-app progress only until it is answered.
+
+   **The answer: progress stays in-app, in the Settings screen's Media index area, and the app does
+   not request `POST_NOTIFICATIONS`.** It is what step 2.4 already shipped, so the code was not
+   changed by the answer. §8 decision 23 holds it, with the two properties it makes permanent — the
+   API 31 limit on an expedited "Index now" and the worker's lack of `getForegroundInfo`.
 3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
 5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
@@ -784,6 +847,8 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    mocked, and no API 28–29 hardware is available here, so the behaviour has not been seen on a
    device. The code was not changed by the answer.
 6. **What is to be done about the four permissions WorkManager adds to the merged manifest?** —
+   ✅ **Answered 2026-11-10 by the maintainer: `ACCESS_NETWORK_STATE` is removed; the other three
+   are kept.** The question as raised and the spike's evidence are kept below, then the answer.
    **Raised 2026-10-12, with the maintainer, and unresolved.** Step 2.4 of
    [albums-stage-2.md](albums-stage-2.md) added WorkManager, which §8 decision 18 had already
    approved. What that approval did not cover is what the library brings with it: the **merged**
@@ -828,12 +893,52 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 
    The spike changed nothing in the manifest. Until the check has run, the predictions above are
    inference, and this question is not to be closed on them.
+
+   **The answer: remove `ACCESS_NETWORK_STATE`; keep `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and
+   `FOREGROUND_SERVICE`.** The mechanism is the one named above, `tools:node="remove"` in
+   `app/src/main/AndroidManifest.xml`. §8 decision 24 holds it; the reasons per permission are:
+   - **`ACCESS_NETWORK_STATE`, removed.** Indexing has no network constraint — the periodic request
+     says `NetworkType.NOT_REQUIRED`, and Index now sets none. The only consumer found,
+     `ConstraintProxy$NetworkStateProxy`, is declared disabled and serves the alarm-based scheduler
+     WorkManager uses below API 23, beneath this app's minSdk. And an unused network permission sits
+     wrongly beside an app whose posture is that nothing leaves the device.
+   - **`RECEIVE_BOOT_COMPLETED`, kept,** on the spike's first finding: the jobs are built
+     non-persisted and `RescheduleReceiver` re-registers them after a reboot, so removing it would
+     most likely stop background indexing after every reboot until the app is next opened.
+   - **`WAKE_LOCK` and `FOREGROUND_SERVICE`, kept** as WorkManager's standard requirements. The app
+     does no foreground work (§8 decision 23), but removal was judged not worth the risk.
+
+   **Why closing it now does not break the rule above.** That paragraph forbade closing the
+   question on the spike's *predictions*, and the answer rests on none of them. The prediction that
+   was never checked — that the boot permission is needed — concerns a permission the answer keeps,
+   so being wrong about it costs an unneeded permission, not a broken schedule. The one permission
+   removed was checked on hardware.
+
+   **Evidence for the removal — SM-G990B, API 36, 2026-11-10.**
+   - The merged debug and release manifests differ from their earlier state by exactly that one
+     permission; every component and the `<queries>` element are unchanged.
+   - `dumpsys package` no longer lists it for the installed app.
+   - The periodic job is registered with charging, battery-not-low and idle constraints and no
+     network constraint.
+   - Index now ran to SUCCESS, the place resolve pass included, with no `SecurityException` and no
+     WorkManager error.
+   - The unit tests and the connected suite passed.
+
+   **Not verified: reboot survival.** The hardware check above never ran. The answer does not change
+   what it would test, because the boot permission stays, but that the schedule survives a reboot
+   is still inference rather than observation.
+
+   **An observation, not a decision: the merged manifest also declares `INTERNET`, from a
+   library.** Which library was not traced; it is outside this question, which is about
+   WorkManager's four. It is recorded because the Play declaration §9 carries forward has to
+   describe the merged manifest's final permission list, and that list includes it.
 7. **Should a photo taken today reach a time or region album when the app opens, or only after the
-   next index pass?** — **Raised 2026-10-26, with the maintainer, and unresolved.** §6 promises the
-   first: "a photo taken this afternoon should appear in *Castles* when the app opens, not next time
-   the phone is plugged in." Stage 2 step 2.5 of [albums-stage-2.md](albums-stage-2.md) delivers the
-   second. Evaluation does run on app open, as §6 says, but an item the index has not reached never
-   matches a `time` clause —
+   next index pass?** — ✅ **Answered 2026-11-10 by the maintainer: only after the next index
+   pass.** The question as raised is kept below, then the answer. **Raised 2026-10-26, with the
+   maintainer.** §6 promised the first: "a photo taken this afternoon should appear in *Castles*
+   when the app opens, not next time the phone is plugged in." Stage 2 step 2.5 of
+   [albums-stage-2.md](albums-stage-2.md) delivers the second. Evaluation does run on app open, as
+   §6 says, but an item the index has not reached never matches a `time` clause —
    [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 1,
    which rules out a `dateAdded` fallback because it invents members — and a region clause will need
    the index the same way. Indexing runs only under its constraints (charging, idle, battery not low)
@@ -858,12 +963,18 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 
    **Not the undated-item question, which is decided.** §8 decision 21 settles what happens to an
    item that will *never* have a date: a coverage notice, and no second date source. This question
-   is about items that *have* a date the index has not read yet, and it stays open. Whether
-   time-only album creation is brought forward from step 2.7 depends on its answer; the maintainer's
-   lean on that is recorded in [albums-stage-2.md](albums-stage-2.md)'s handoff block.
+   was about items that *have* a date the index has not read yet. Whether time-only album creation
+   would be brought forward from step 2.7 depended on its answer, and the maintainer's lean was to
+   do so only once §6 had been softened; that is now moot, because 2.7 is the next step and enables
+   time and region creation together.
 
-   **This is the maintainer's to decide.** Nothing in Stage 2 is blocked on it, and no agent is to
-   add an app-open index pass or soften §6 meanwhile.
+   **The answer: accept the gap and soften §6.** A new photo reaches a time or region album after
+   the next index pass — the periodic constrained job or "Index now" — not when the app opens. §6
+   now promises that, with its original sentence struck rather than deleted, and the
+   Incomplete-album notice is the bridge. §8 decision 22 holds the decision and why an app-open
+   index pass and extract-on-view were rejected. **For step 2.7:** no app-open index pass; the
+   coverage notices and the Incomplete-album notice carry the honesty. Reopening it is a new
+   decision.
 8. **Is the 100 km nearest-place cap kept, raised, or answered with a denser dataset?** — ✅
    **Answered 2026-11-10 by the maintainer: kept, with its known gaps.** The question as raised is
    kept below, then the answer. **Raised 2026-11-10, with the maintainer.** Approval 4 of step 2.6 in

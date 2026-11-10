@@ -695,8 +695,8 @@ KSP.
   those is user-visible.
 - **The indexing job's two API-level limits.** "Index now" is expedited only on API 31+; below it
   the request is ordinary one-time work, because expedited work there means a foreground service
-  and a notification, and that is reserved by
-  [albums.md](../design/albums.md) §10 question 2. The expedited request also carries **no**
+  and a notification, and indexing shows none — the worker has no `getForegroundInfo`, as decided
+  by [albums.md](../design/albums.md) §8 decision 23. The expedited request also carries **no**
   `requiresBatteryNotLow`, `requiresCharging` or `requiresDeviceIdle` — the platform accepts only
   network and storage constraints on expedited work and rejects the request otherwise — so the
   periodic job's constraints and the Index now request's are deliberately different sets, not a
