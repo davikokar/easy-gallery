@@ -7,7 +7,9 @@ import com.davide.seddio.easygallery.data.AndroidMediaIndexTierAExtractor
 import com.davide.seddio.easygallery.data.AndroidMediaStoreRowDeltaProvider
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVolumeSnapshotProvider
 import com.davide.seddio.easygallery.data.MediaIndexDatabase
+import com.davide.seddio.easygallery.data.GazetteerAssets
 import com.davide.seddio.easygallery.data.MediaIndexDeltaDetector
+import com.davide.seddio.easygallery.data.MediaIndexPlaceResolver
 import com.davide.seddio.easygallery.data.MediaIndexReconciler
 import com.davide.seddio.easygallery.data.MediaIndexRunStateStore
 import com.davide.seddio.easygallery.data.MediaIndexStore
@@ -60,6 +62,13 @@ class EasyGalleryApp : Application(), SingletonImageLoader.Factory {
                 add(AnimatedImageDecoder.Factory())
             }
             .build()
+    }
+
+    fun createMediaIndexPlaceResolver(): MediaIndexPlaceResolver {
+        return MediaIndexPlaceResolver(
+            store = mediaIndexStore,
+            gazetteerLoader = { GazetteerAssets.load(this) }
+        )
     }
 
     fun createMediaIndexTierABatchIndexer(): MediaIndexTierABatchIndexer {

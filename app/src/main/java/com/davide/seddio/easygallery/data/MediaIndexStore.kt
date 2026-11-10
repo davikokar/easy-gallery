@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.data
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -18,6 +19,21 @@ interface MediaIndexStore {
     suspend fun listByVolume(volumeName: String): List<MediaIndexEntry>
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry?
     suspend fun upsert(entries: List<MediaIndexEntry>)
+
+    /**
+     * Rows with coordinates whose resolver marker is null or not [currentResolverVersion], ordered by URI,
+     * strictly after [afterMediaUri] (null starts at the beginning). Page by passing the last URI back,
+     * never by repeating until empty: a skipped write leaves its row pending.
+     */
+    suspend fun listPendingPlaceResolution(
+        currentResolverVersion: Int,
+        afterMediaUri: String?,
+        limit: Int
+    ): List<MediaIndexEntry>
+
+    /** One transaction; returns how many writes matched a row still holding the coordinates they were computed from. */
+    suspend fun writeResolvedPlaces(writes: List<ResolvedPlaceWrite>): Int
+
     suspend fun deleteByMediaUri(mediaUri: String)
     suspend fun deleteByVolume(volumeName: String)
     suspend fun deleteAll()
@@ -32,6 +48,17 @@ data class DateTakenCounts(
 data class MediaIndexIdentityDateTaken(
     val identity: MediaIdentity,
     val capturedDateTakenEpochMillis: Long?
+)
+
+/** A resolver's answer for one row; [latitude] and [longitude] are the stored coordinates it was computed from. */
+data class ResolvedPlaceWrite(
+    val mediaUri: String,
+    val latitude: Double,
+    val longitude: Double,
+    val countryCode: String?,
+    val regionCode: String?,
+    val placeName: String?,
+    val resolverVersion: Int
 )
 
 data class MediaIndexEntry(
@@ -49,7 +76,9 @@ data class MediaIndexEntry(
     val capturedHeight: Int?,
     val derivedCountryCode: String?,
     val derivedRegionCode: String?,
-    val derivedPlaceName: String?
+    val derivedPlaceName: String?,
+    // Null forces re-resolution, so it is the safe value for any writer that does not know better.
+    val derivedPlaceResolverVersion: Int? = null
 ) {
     fun toMediaIdentity(): MediaIdentity {
         return mediaIdentityOf(
@@ -122,6 +151,33 @@ class RoomMediaIndexStore(
         dao.upsert(entries.map { it.toEntity() })
     }
 
+    override suspend fun listPendingPlaceResolution(
+        currentResolverVersion: Int,
+        afterMediaUri: String?,
+        limit: Int
+    ): List<MediaIndexEntry> {
+        require(limit > 0) { "limit must be positive, was $limit" }
+        return dao.listPendingPlaceResolution(currentResolverVersion, afterMediaUri, limit)
+            .map { it.toStoreEntry() }
+    }
+
+    override suspend fun writeResolvedPlaces(writes: List<ResolvedPlaceWrite>): Int {
+        if (writes.isEmpty()) return 0
+        return database.withTransaction {
+            writes.sumOf { write ->
+                dao.updateResolvedPlace(
+                    mediaUri = write.mediaUri,
+                    latitude = write.latitude,
+                    longitude = write.longitude,
+                    countryCode = write.countryCode,
+                    regionCode = write.regionCode,
+                    placeName = write.placeName,
+                    resolverVersion = write.resolverVersion
+                )
+            }
+        }
+    }
+
     override suspend fun deleteByMediaUri(mediaUri: String) {
         dao.deleteByMediaUri(mediaUri)
     }
@@ -150,7 +206,8 @@ class RoomMediaIndexStore(
             capturedHeight = capturedHeight,
             derivedCountryCode = derivedCountryCode,
             derivedRegionCode = derivedRegionCode,
-            derivedPlaceName = derivedPlaceName
+            derivedPlaceName = derivedPlaceName,
+            derivedPlaceResolverVersion = derivedPlaceResolverVersion
         )
     }
 
@@ -170,7 +227,8 @@ class RoomMediaIndexStore(
             capturedHeight = capturedHeight,
             derivedCountryCode = derivedCountryCode,
             derivedRegionCode = derivedRegionCode,
-            derivedPlaceName = derivedPlaceName
+            derivedPlaceName = derivedPlaceName,
+            derivedPlaceResolverVersion = derivedPlaceResolverVersion
         )
     }
 }
@@ -240,6 +298,46 @@ class InMemoryMediaIndexStore : MediaIndexStore {
                 rows[entry.mediaUri] = entry
             }
             publishLocked()
+        }
+    }
+
+    override suspend fun listPendingPlaceResolution(
+        currentResolverVersion: Int,
+        afterMediaUri: String?,
+        limit: Int
+    ): List<MediaIndexEntry> {
+        require(limit > 0) { "limit must be positive, was $limit" }
+        return lock.withLock {
+            rows.values
+                .asSequence()
+                .filter { it.capturedLatitude != null && it.capturedLongitude != null }
+                .filter { it.derivedPlaceResolverVersion != currentResolverVersion }
+                .filter { afterMediaUri == null || it.mediaUri > afterMediaUri }
+                .sortedBy { it.mediaUri }
+                .take(limit)
+                .toList()
+        }
+    }
+
+    override suspend fun writeResolvedPlaces(writes: List<ResolvedPlaceWrite>): Int {
+        if (writes.isEmpty()) return 0
+        return lock.withLock {
+            var written = 0
+            writes.forEach { write ->
+                val row = rows[write.mediaUri] ?: return@forEach
+                if (row.capturedLatitude != write.latitude || row.capturedLongitude != write.longitude) {
+                    return@forEach
+                }
+                rows[write.mediaUri] = row.copy(
+                    derivedCountryCode = write.countryCode,
+                    derivedRegionCode = write.regionCode,
+                    derivedPlaceName = write.placeName,
+                    derivedPlaceResolverVersion = write.resolverVersion
+                )
+                written += 1
+            }
+            if (written > 0) publishLocked()
+            written
         }
     }
 

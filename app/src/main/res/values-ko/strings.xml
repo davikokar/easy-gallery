@@ -121,6 +121,13 @@
     <string name="billing_thanks">지원해 주셔서 정말 감사합니다! ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">법적 고지</string>
+    <string name="settings_place_data">장소 데이터</string>
+    <string name="settings_place_data_credit">장소 이름: GeoNames, CC BY 4.0</string>
+    <string name="place_data_intro">사진 위치에 대한 장소 및 지역 이름은 GeoNames에서 제공됩니다. 이 데이터는 앱에 포함되어 있으며 오프라인으로 사용됩니다.</string>
+    <string name="place_data_label_source">제작자 및 출처</string>
+    <string name="place_data_label_licence">라이선스</string>
+    <string name="place_data_changes">데이터는 수정되었습니다. GeoNames 파일 cities15000, admin1CodesASCII, countryInfo에서 각 장소의 이름, 좌표, 국가, 지역만 남기도록 필터링하고 줄였습니다.</string>
+    <string name="place_data_disclaimer">이 데이터는 정확성, 최신성 또는 완전성에 대한 어떠한 보증이나 표시 없이 “있는 그대로” 제공됩니다.</string>
     <string name="settings_about">정보</string>
     <string name="about_version">버전 %1$s</string>
     <string name="folders_title">폴더</string>

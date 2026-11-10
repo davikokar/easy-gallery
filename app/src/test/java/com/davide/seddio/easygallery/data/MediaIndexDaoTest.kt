@@ -215,6 +215,59 @@ class MediaIndexDaoTest {
     }
 
     @Test
+    fun `pending place query orders by uri and applies marker coordinates and cursor filters`() = runTest {
+        dao.upsert(
+            listOf(
+                sampleEntity(mediaUri = "content://media/external/images/media/3", derivedPlaceResolverVersion = 2),
+                sampleEntity(mediaUri = "content://media/external/images/media/2", derivedPlaceResolverVersion = 1),
+                sampleEntity(mediaUri = "content://media/external/images/media/1"),
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/4",
+                    capturedLatitude = null,
+                    capturedLongitude = null
+                ),
+                sampleEntity(mediaUri = "content://media/external/images/media/5")
+            )
+        )
+
+        val all = dao.listPendingPlaceResolution(currentVersion = 2, afterMediaUri = null, limit = 10)
+        val afterFirst = dao.listPendingPlaceResolution(
+            currentVersion = 2,
+            afterMediaUri = "content://media/external/images/media/1",
+            limit = 1
+        )
+
+        assertEquals(
+            listOf(
+                "content://media/external/images/media/1",
+                "content://media/external/images/media/2",
+                "content://media/external/images/media/5"
+            ),
+            all.map { it.mediaUri }
+        )
+        assertEquals(listOf("content://media/external/images/media/2"), afterFirst.map { it.mediaUri })
+    }
+
+    @Test
+    fun `resolved place update matches uri and exact coordinates and reports rows written`() = runTest {
+        val uri = "content://media/external/images/media/81"
+        dao.upsert(listOf(sampleEntity(mediaUri = uri, derivedCountryCode = "XX")))
+
+        val wrongLatitude = dao.updateResolvedPlace(uri, 43.7697, 11.2558, "IT", "52", "Firenze", 2)
+        val wrongLongitude = dao.updateResolvedPlace(uri, 43.7696, 11.2559, "IT", "52", "Firenze", 2)
+        val wrongUri = dao.updateResolvedPlace("$uri-other", 43.7696, 11.2558, "IT", "52", "Firenze", 2)
+        val untouched = dao.getByMediaUri(uri)
+        val matched = dao.updateResolvedPlace(uri, 43.7696, 11.2558, null, null, null, 2)
+        val stored = dao.getByMediaUri(uri)
+
+        assertEquals(listOf(0, 0, 0, 1), listOf(wrongLatitude, wrongLongitude, wrongUri, matched))
+        assertEquals("XX", untouched?.derivedCountryCode)
+        assertNull(untouched?.derivedPlaceResolverVersion)
+        assertNull(stored?.derivedCountryCode)
+        assertEquals(2, stored?.derivedPlaceResolverVersion)
+    }
+
+    @Test
     fun `watermark table upsert list and delete work by volume`() {
         dao.upsertWatermark(
             MediaIndexWatermarkEntity(
@@ -253,7 +306,10 @@ class MediaIndexDaoTest {
         capturedHeight: Int? = null,
         derivedCountryCode: String? = null,
         derivedRegionCode: String? = null,
-        derivedPlaceName: String? = null
+        derivedPlaceName: String? = null,
+        capturedLatitude: Double? = 43.7696,
+        capturedLongitude: Double? = 11.2558,
+        derivedPlaceResolverVersion: Int? = null
     ): MediaIndexEntity {
         return MediaIndexEntity(
             mediaUri = mediaUri,
@@ -264,13 +320,14 @@ class MediaIndexDaoTest {
             generationAdded = 10L,
             generationModified = 11L,
             capturedDateTakenEpochMillis = capturedDateTakenEpochMillis,
-            capturedLatitude = 43.7696,
-            capturedLongitude = 11.2558,
+            capturedLatitude = capturedLatitude,
+            capturedLongitude = capturedLongitude,
             capturedWidth = capturedWidth,
             capturedHeight = capturedHeight,
             derivedCountryCode = derivedCountryCode,
             derivedRegionCode = derivedRegionCode,
-            derivedPlaceName = derivedPlaceName
+            derivedPlaceName = derivedPlaceName,
+            derivedPlaceResolverVersion = derivedPlaceResolverVersion
         )
     }
 }

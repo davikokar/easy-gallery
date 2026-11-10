@@ -29,7 +29,8 @@ data class MediaIndexEntity(
     val capturedHeight: Int?,
     val derivedCountryCode: String?,
     val derivedRegionCode: String?,
-    val derivedPlaceName: String?
+    val derivedPlaceName: String?,
+    val derivedPlaceResolverVersion: Int?
 ) {
     fun toMediaIdentity(): MediaIdentity {
         return mediaIdentityOf(

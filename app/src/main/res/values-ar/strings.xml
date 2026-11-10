@@ -126,6 +126,13 @@
     <string name="billing_thanks">شكراً جزيلاً على دعمك! ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">قانوني</string>
+    <string name="settings_place_data">بيانات الأماكن</string>
+    <string name="settings_place_data_credit">أسماء الأماكن: GeoNames، CC BY 4.0</string>
+    <string name="place_data_intro">تأتي أسماء الأماكن والمناطق الخاصة بمواقع الصور من GeoNames. البيانات مضمّنة في التطبيق وتُستخدم دون اتصال بالإنترنت.</string>
+    <string name="place_data_label_source">المؤلف والمصدر</string>
+    <string name="place_data_label_licence">الترخيص</string>
+    <string name="place_data_changes">تم تعديل البيانات. جرت تصفيتها واختصارها إلى اسم كل مكان وإحداثياته وبلده ومنطقته، باستخدام ملفات GeoNames التالية: cities15000 و admin1CodesASCII و countryInfo.</string>
+    <string name="place_data_disclaimer">تُقدَّم البيانات «كما هي» دون أي ضمان أو إقرار بدقتها أو حداثتها أو اكتمالها.</string>
     <string name="settings_about">حول</string>
     <string name="about_version">الإصدار %1$s</string>
     <string name="folders_title">المجلدات</string>

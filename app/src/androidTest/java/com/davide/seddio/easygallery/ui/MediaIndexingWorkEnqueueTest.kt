@@ -18,6 +18,7 @@ import com.davide.seddio.easygallery.data.MediaIndexingWorker
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
 import com.davide.seddio.easygallery.data.MediaStoreDeltaApiBranch
 import com.davide.seddio.easygallery.data.MediaIndexVolumeWatermark
+import com.davide.seddio.easygallery.data.PLACE_RESOLVER_VERSION
 import com.davide.seddio.easygallery.data.selectRowsForReindex
 import com.davide.seddio.easygallery.data.WorkManagerMediaIndexingWorkScheduler
 import java.util.UUID
@@ -169,6 +170,32 @@ class MediaIndexingWorkEnqueueTest {
             "Expected worker run to index non-zero rows on a media-bearing device. " +
                 "visibleMediaCount=$visibleMediaCount runSelected=${runState.selectedRows} runIndexed=${runState.indexedRows} runSkipped=${runState.skippedRows}",
             runState.indexedRows > 0
+        )
+
+        val rowsAfter = runBlocking { app.mediaIndexStore.observeAll().first() }
+        val locatedRows = rowsAfter.filter { it.capturedLatitude != null && it.capturedLongitude != null }
+        val locatedRowsWithPlace = locatedRows.count { it.derivedPlaceName != null }
+        val stillPending = runBlocking {
+            app.mediaIndexStore.listPendingPlaceResolution(
+                PLACE_RESOLVER_VERSION,
+                null,
+                rowsAfter.size.coerceAtLeast(1)
+            )
+        }
+        Log.i(
+            TAG,
+            "placeResolution: rows=${rowsAfter.size} rowsWithCoordinates=${locatedRows.size} " +
+                "rowsWithPlace=$locatedRowsWithPlace stillPending=${stillPending.size} " +
+                "resolverVersion=$PLACE_RESOLVER_VERSION"
+        )
+        if (locatedRows.isEmpty()) {
+            Log.i(TAG, "placeResolution: no row has coordinates on this device; the pending check below is vacuous")
+        }
+        // Vacuous when no row has coordinates; MediaIndexPlaceCoverageDeviceTest owns that environment check.
+        assertTrue(
+            "Rows with coordinates are still pending at resolver version $PLACE_RESOLVER_VERSION after Index now: " +
+                "stillPending=${stillPending.size} rowsWithCoordinates=${locatedRows.size}",
+            stillPending.isEmpty()
         )
 
         Log.i(
@@ -371,6 +398,14 @@ class MediaIndexingWorkEnqueueTest {
         }
 
         val uiAutomation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        // Without it GPS is redacted and the place-resolution assertion would have nothing to check.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                uiAutomation.grantRuntimePermission(targetPackage, Manifest.permission.ACCESS_MEDIA_LOCATION)
+            } catch (_: Exception) {
+                // Not asserted: the app treats this permission as non-gating.
+            }
+        }
         permissionsToGrant.forEach { permission ->
             try {
                 uiAutomation.grantRuntimePermission(targetPackage, permission)

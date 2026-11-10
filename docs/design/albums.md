@@ -606,7 +606,10 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     artifact and one code path. Two things to expect rather than discover: **most photos have no
     GPS at all**, so region albums will cover a minority of many libraries and the UI must say so;
     and nearest-place misattributes near borders, for which Natural Earth polygons are the recorded
-    upgrade path.
+    upgrade path. How the dataset is generated and stamped, the distance cap, and the language
+    names are shown in are settled in
+    [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)
+    Amendment 1; the 100 km cap was kept, gaps and all, by the maintainer — §10 question 8.
 
 17. **Suggested albums are deferred, not rejected.** "The system notices you have forty photos from
     Cornwall in June 2026 and offers to make an album of them" is a real future ambition and is
@@ -861,6 +864,40 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 
    **This is the maintainer's to decide.** Nothing in Stage 2 is blocked on it, and no agent is to
    add an app-open index pass or soften §6 meanwhile.
+8. **Is the 100 km nearest-place cap kept, raised, or answered with a denser dataset?** — ✅
+   **Answered 2026-11-10 by the maintainer: kept, with its known gaps.** The question as raised is
+   kept below, then the answer. **Raised 2026-11-10, with the maintainer.** Approval 4 of step 2.6 in
+   [albums-stage-2.md](albums-stage-2.md) made the cap "confirmed or changed from M5 before 2.6
+   closes", and M5 does neither:
+   [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)
+   Amendment 1's own test — no photo taken in a populated area lands beyond the cap — fails in sparse
+   regions — east Iceland, much of Oceania, and the more than 1% of places that have no other place
+   within 100 km. The amendment's *Measured* section owns the figures; the one library measured on a
+   device had no row beyond the cap, which says nothing about sparse regions.
+
+   **The options, none of them taken here.**
+   - **Keep 100 km and accept the gaps.** No code. A photo from east Iceland or rural Oceania has no
+     place, no region and no country, and joins the "no location" share the coverage notice counts.
+   - **Raise the cap, to about 180 km.** Closes the probed gaps, and files wilderness and offshore
+     photos under towns that far away — the "album is simply lying" failure the cap exists for.
+   - **Densify to `cities5000`.** Answers the gaps with real places, and is likely to break the
+     approved 1 MB budget, given what `cities15000` alone already costs (M1).
+
+   **Whichever is chosen, a change costs more than the constant.** The loader requires the asset
+   header's dataset version to equal `PLACE_RESOLVER_VERSION`, so a cap-only change still means
+   regenerating the assets, and the generator has no re-stamp mode while GeoNames replaces its files
+   in place — the amendment's M5 records it. Step 2.6 stayed In progress until this was answered,
+   because approval 4 made a decision on the cap a condition of closing it.
+
+   **The answer: keep 100 km and accept the gaps.** A photo taken in east Iceland — about 176.6 km
+   from the nearest place — in sparse Oceania, or near any of the more than 1% of places with no
+   neighbour within the cap gets no place, no region and no country, and is counted in the "no
+   location" share the coverage notice reports. **Why:** a missing place is honest and a wrong one is
+   the "album is simply lying" failure the cap exists to prevent; raising the cap trades the first for
+   the second, and densifying is likely to break the approved size budget. ADR-0019 Amendment 1's M5
+   verdict records the decision beside the evidence. **Reopening it is a new decision**, and costs
+   what the paragraph above says — a `PLACE_RESOLVER_VERSION` bump and regenerated assets, not a
+   constant.
 
 Questions scoped to a single stage live in that stage's plan — Stage 2's are in
 [albums-stage-2.md](albums-stage-2.md) — and only arrive here if they outlive it.

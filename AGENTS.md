@@ -10,8 +10,10 @@ view, sort, group, filter, search, and manage that media. It keeps no copy of th
 what it owns is two small Room databases — one of albums, which stores references and user intent
 rather than media, and one media index, which stores facts extracted from media and is
 recomputable from the device at any time. The one exception to "no network, no account" is the
-optional tip jar, which uses Google Play Billing. Prefer clear, conventional code over clever
-abstractions, and explain non-obvious decisions in short commit messages.
+optional tip jar, which uses Google Play Billing. Place names come from a GeoNames dataset bundled
+in the APK and read offline, never fetched, which is why Settings carries a CC BY attribution.
+Prefer clear, conventional code over clever abstractions, and explain non-obvious decisions in
+short commit messages.
 
 ## Tech stack
 
@@ -42,8 +44,8 @@ abstractions, and explain non-obvious decisions in short commit messages.
   here.**
 - **SDK:** minSdk 28, targetSdk 36, compileSdk 36.1
 - **Tests:** JUnit4, MockK, Turbine, coroutines-test, and Robolectric for the `data/`
-  Android-boundary tests, plus `room-testing` with `inMemoryDatabaseBuilder` for the DAO (unit);
-  Compose UI test + Espresso (instrumented)
+  Android-boundary tests, plus `room-testing` with `inMemoryDatabaseBuilder` for the DAO and
+  `work-testing` for `MediaIndexingWorker` (unit); Compose UI test + Espresso (instrumented)
 
 ## Module / package layout
 
@@ -59,8 +61,14 @@ app/
     ui/                 # ViewModels, state holders, screens
       components/       # Reusable top bars, dialogs, media items
       theme/            # Material 3 theme
+  src/main/assets/
+    gazetteer/          # GeoNames place data (CC BY 4.0), generated and committed; its
+                        # attribution is the Place data row in Settings and must not be lost
   src/test/             # Plain-JVM unit tests
   src/androidTest/      # Instrumented Compose UI tests
+tools/
+  gazetteer/            # Hand-run Python generator for the assets above; raw/ holds the GeoNames
+                        # downloads, gitignored. Download with normal TLS checks, never `curl -k`
 ```
 
 There is no `domain/` module. Pure, Android-free logic lives in `data/` and in `ui/components/`
@@ -235,7 +243,9 @@ database is backed up (ADR-0014) while the index must not be.
   `Migration(2, 3)`, changes data rather than schema: it clears a video container's zero date
   wrongly stored as a capture date. A fix to extraction does not reach rows already stored, because
   delta detection never re-extracts unchanged media, and a migration was the cheap exact repair —
-  ADR-0018 Amendment 3 records why. Each database's current version is its `@Database` annotation;
+  ADR-0018 Amendment 3 records why. A third, `Migration(3, 4)`, adds the place resolver's version
+  marker (ADR-0018 Amendment 4); a bump of `PLACE_RESOLVER_VERSION` re-resolves rows without
+  another migration. Each database's current version is its `@Database` annotation;
   read it there rather than from a document.
 - Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
   committed — and so does a data migration, which bumps the version even when the schema is

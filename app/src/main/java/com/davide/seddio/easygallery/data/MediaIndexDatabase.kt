@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [MediaIndexEntity::class, MediaIndexWatermarkEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class MediaIndexDatabase : RoomDatabase() {
@@ -24,7 +24,7 @@ abstract class MediaIndexDatabase : RoomDatabase() {
                 MediaIndexDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         }
 
@@ -51,6 +51,13 @@ abstract class MediaIndexDatabase : RoomDatabase() {
                     "UPDATE `media_index` SET `capturedDateTakenEpochMillis` = NULL " +
                         "WHERE `capturedDateTakenEpochMillis` = $QUICKTIME_ZERO_EPOCH_MILLIS"
                 )
+            }
+        }
+
+        // No default: every existing row reads null, which means no resolver has written its derived columns yet.
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `media_index` ADD COLUMN `derivedPlaceResolverVersion` INTEGER")
             }
         }
     }

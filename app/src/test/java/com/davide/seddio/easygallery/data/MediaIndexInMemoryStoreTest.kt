@@ -80,6 +80,34 @@ class MediaIndexInMemoryStoreTest {
     }
 
     @Test
+    fun `a chunk of conditional writes publishes one snapshot with every matching row written`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val first = sampleEntry(mediaUri = "content://media/external/images/media/8")
+        val second = sampleEntry(mediaUri = "content://media/external/images/media/9")
+        store.upsert(listOf(first, second))
+
+        store.observeAll().test {
+            assertEquals(2, awaitItem().size)
+
+            val written = store.writeResolvedPlaces(
+                listOf(first, second).map {
+                    ResolvedPlaceWrite(it.mediaUri, 43.7696, 11.2558, "IT", "52", "Firenze", 3)
+                }
+            )
+
+            assertEquals(2, written)
+            assertEquals(listOf(3, 3), awaitItem().map { it.derivedPlaceResolverVersion })
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `an entry built without a marker carries null so it reads as pending`() {
+        assertNull(sampleEntry(mediaUri = "content://media/external/images/media/10").derivedPlaceResolverVersion)
+    }
+
+    @Test
     fun `entity identity equals live media identity for matching fields`() {
         val mediaUri = "content://media/external/images/media/71"
         val displayName = "identity.jpg"
@@ -101,7 +129,8 @@ class MediaIndexInMemoryStoreTest {
             capturedHeight = null,
             derivedCountryCode = null,
             derivedRegionCode = null,
-            derivedPlaceName = null
+            derivedPlaceName = null,
+            derivedPlaceResolverVersion = null
         )
 
         val liveItem = sampleMediaItem(

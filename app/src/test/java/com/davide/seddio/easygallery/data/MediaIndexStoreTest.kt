@@ -5,11 +5,13 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -132,7 +134,8 @@ class MediaIndexStoreTest {
             capturedHeight = 567,
             derivedCountryCode = "AA",
             derivedRegionCode = "BB-77",
-            derivedPlaceName = "Distinct Place"
+            derivedPlaceName = "Distinct Place",
+            derivedPlaceResolverVersion = 9
         )
 
         store.upsert(listOf(entry))
@@ -154,6 +157,7 @@ class MediaIndexStoreTest {
         assertEquals(entry.derivedCountryCode, stored?.derivedCountryCode)
         assertEquals(entry.derivedRegionCode, stored?.derivedRegionCode)
         assertEquals(entry.derivedPlaceName, stored?.derivedPlaceName)
+        assertEquals(entry.derivedPlaceResolverVersion, stored?.derivedPlaceResolverVersion)
     }
 
     @Test
@@ -174,7 +178,8 @@ class MediaIndexStoreTest {
             capturedHeight = 135,
             derivedCountryCode = "IT",
             derivedRegionCode = "52",
-            derivedPlaceName = "Firenze"
+            derivedPlaceName = "Firenze",
+            derivedPlaceResolverVersion = 7
         )
 
         dao.upsert(listOf(entity))
@@ -196,7 +201,235 @@ class MediaIndexStoreTest {
         assertEquals(entity.derivedCountryCode, stored?.derivedCountryCode)
         assertEquals(entity.derivedRegionCode, stored?.derivedRegionCode)
         assertEquals(entity.derivedPlaceName, stored?.derivedPlaceName)
+        assertEquals(entity.derivedPlaceResolverVersion, stored?.derivedPlaceResolverVersion)
     }
+
+    @Test
+    fun `pending selection returns located rows whose marker is null or not current`() = runTest {
+        forEachStore { store ->
+            store.upsert(
+                listOf(
+                    sampleEntry(uri(1), derivedPlaceResolverVersion = null),
+                    sampleEntry(uri(2), derivedPlaceResolverVersion = 1),
+                    sampleEntry(uri(3), derivedPlaceResolverVersion = CURRENT),
+                    sampleEntry(uri(4), capturedLatitude = null, capturedLongitude = null),
+                    sampleEntry(uri(5), capturedLongitude = null),
+                    sampleEntry(uri(6), capturedLatitude = null, derivedPlaceResolverVersion = 1)
+                )
+            )
+
+            val pending = store.listPendingPlaceResolution(CURRENT, afterMediaUri = null, limit = 100)
+
+            assertEquals(listOf(uri(1), uri(2)), pending.map { it.mediaUri })
+        }
+    }
+
+    @Test
+    fun `pending selection pages by cursor and terminates when nothing is written`() = runTest {
+        forEachStore { store ->
+            store.upsert((1..5).map { sampleEntry(uri(it)) })
+
+            val pages = mutableListOf<List<String>>()
+            var cursor: String? = null
+            while (true) {
+                val page = store.listPendingPlaceResolution(CURRENT, cursor, limit = 2)
+                if (page.isEmpty()) break
+                pages += page.map { it.mediaUri }
+                cursor = page.last().mediaUri
+            }
+
+            assertEquals(listOf(listOf(uri(1), uri(2)), listOf(uri(3), uri(4)), listOf(uri(5))), pages)
+            assertEquals(5, store.listPendingPlaceResolution(CURRENT, null, limit = 100).size)
+        }
+    }
+
+    @Test
+    fun `pending selection rejects a non-positive limit`() = runTest {
+        forEachStore { store ->
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { store.listPendingPlaceResolution(CURRENT, null, limit = 0) }
+            }
+        }
+    }
+
+    @Test
+    fun `conditional write sets the three derived columns and the marker and leaves the rest`() = runTest {
+        forEachStore { store ->
+            val before = sampleEntry(uri(1))
+            val other = sampleEntry(uri(2))
+            store.upsert(listOf(before, other))
+
+            val written = store.writeResolvedPlaces(
+                listOf(resolved(uri(1), countryCode = "IT", regionCode = "52", placeName = "Firenze"))
+            )
+
+            assertEquals(1, written)
+            assertEquals(
+                before.copy(
+                    derivedCountryCode = "IT",
+                    derivedRegionCode = "52",
+                    derivedPlaceName = "Firenze",
+                    derivedPlaceResolverVersion = CURRENT
+                ),
+                store.getByMediaUri(uri(1))
+            )
+            assertEquals(other, store.getByMediaUri(uri(2)))
+            assertEquals(listOf(uri(2)), store.listPendingPlaceResolution(CURRENT, null, 100).map { it.mediaUri })
+        }
+    }
+
+    @Test
+    fun `conditional write of a result beyond the cap stamps the marker with null codes`() = runTest {
+        forEachStore { store ->
+            store.upsert(listOf(sampleEntry(uri(1), derivedCountryCode = "XX", derivedPlaceName = "Stale")))
+
+            val written = store.writeResolvedPlaces(listOf(resolved(uri(1))))
+
+            assertEquals(1, written)
+            val row = store.getByMediaUri(uri(1))!!
+            assertNull(row.derivedCountryCode)
+            assertNull(row.derivedRegionCode)
+            assertNull(row.derivedPlaceName)
+            assertEquals(CURRENT, row.derivedPlaceResolverVersion)
+            assertTrue(store.listPendingPlaceResolution(CURRENT, null, 100).isEmpty())
+        }
+    }
+
+    @Test
+    fun `conditional write is skipped when the coordinates changed since they were read`() = runTest {
+        forEachStore { store ->
+            store.upsert(listOf(sampleEntry(uri(1)), sampleEntry(uri(2))))
+            // Tier A re-extracts both rows after the resolver read them: one latitude, one longitude differs.
+            val reExtracted = listOf(
+                sampleEntry(uri(1), capturedLatitude = 44.0, derivedCountryCode = "IT"),
+                sampleEntry(uri(2), capturedLongitude = 12.0, derivedCountryCode = "IT")
+            )
+            store.upsert(reExtracted)
+
+            val written = store.writeResolvedPlaces(listOf(resolved(uri(1)), resolved(uri(2))))
+
+            assertEquals(0, written)
+            assertEquals(reExtracted[0], store.getByMediaUri(uri(1)))
+            assertEquals(reExtracted[1], store.getByMediaUri(uri(2)))
+            assertEquals(2, store.listPendingPlaceResolution(CURRENT, null, 100).size)
+        }
+    }
+
+    @Test
+    fun `conditional write skips a deleted row and still writes the others in the same chunk`() = runTest {
+        forEachStore { store ->
+            store.upsert(listOf(sampleEntry(uri(1)), sampleEntry(uri(2))))
+            store.deleteByMediaUri(uri(1))
+
+            val written = store.writeResolvedPlaces(listOf(resolved(uri(1)), resolved(uri(2))))
+
+            assertEquals(1, written)
+            assertNull(store.getByMediaUri(uri(1)))
+            assertEquals(CURRENT, store.getByMediaUri(uri(2))?.derivedPlaceResolverVersion)
+        }
+    }
+
+    @Test
+    fun `conditional write of an empty chunk writes nothing`() = runTest {
+        forEachStore { store ->
+            assertEquals(0, store.writeResolvedPlaces(emptyList()))
+        }
+    }
+
+    @Test
+    fun `a re-extracting upsert resets the marker to the entry's and keeps the carried derived values`() = runTest {
+        forEachStore { store ->
+            store.upsert(listOf(sampleEntry(uri(1))))
+            store.writeResolvedPlaces(listOf(resolved(uri(1), countryCode = "IT", regionCode = "52", placeName = "Firenze")))
+            val resolvedRow = store.getByMediaUri(uri(1))!!
+
+            // What Tier A writes: the old derived values, the marker left at its default of null.
+            store.upsert(
+                listOf(
+                    MediaIndexEntry(
+                        mediaUri = resolvedRow.mediaUri,
+                        displayName = resolvedRow.displayName,
+                        size = resolvedRow.size,
+                        dateModified = resolvedRow.dateModified,
+                        volumeName = resolvedRow.volumeName,
+                        generationAdded = resolvedRow.generationAdded,
+                        generationModified = resolvedRow.generationModified,
+                        capturedDateTakenEpochMillis = resolvedRow.capturedDateTakenEpochMillis,
+                        capturedLatitude = resolvedRow.capturedLatitude,
+                        capturedLongitude = resolvedRow.capturedLongitude,
+                        capturedWidth = resolvedRow.capturedWidth,
+                        capturedHeight = resolvedRow.capturedHeight,
+                        derivedCountryCode = resolvedRow.derivedCountryCode,
+                        derivedRegionCode = resolvedRow.derivedRegionCode,
+                        derivedPlaceName = resolvedRow.derivedPlaceName
+                    )
+                )
+            )
+
+            val row = store.getByMediaUri(uri(1))!!
+            assertNull(row.derivedPlaceResolverVersion)
+            assertEquals("Firenze", row.derivedPlaceName)
+            assertEquals(listOf(uri(1)), store.listPendingPlaceResolution(CURRENT, null, 100).map { it.mediaUri })
+        }
+    }
+
+    @Test
+    fun `a heal through delete and upsert keeps the marker`() = runTest {
+        forEachStore { store ->
+            store.upsert(listOf(sampleEntry(uri(1))))
+            store.writeResolvedPlaces(listOf(resolved(uri(1), countryCode = "IT", regionCode = "52", placeName = "Firenze")))
+            val resolvedRow = store.getByMediaUri(uri(1))!!
+
+            // The reconciler's rewrite: copy the row under the healed URI and healing triple.
+            val healed = resolvedRow.copy(mediaUri = uri(2), displayName = "healed.jpg", size = 501L, dateModified = 1_001L)
+            store.deleteByMediaUri(resolvedRow.mediaUri)
+            store.upsert(listOf(healed))
+
+            assertNull(store.getByMediaUri(uri(1)))
+            assertEquals(healed, store.getByMediaUri(uri(2)))
+            assertEquals(CURRENT, store.getByMediaUri(uri(2))?.derivedPlaceResolverVersion)
+            assertTrue(store.listPendingPlaceResolution(CURRENT, null, 100).isEmpty())
+        }
+    }
+
+    @Test
+    fun `a skipped conditional write does not re-emit observers`() = runTest {
+        val store = RoomMediaIndexStore(database)
+        store.upsert(listOf(sampleEntry(uri(1), capturedLatitude = 44.0)))
+
+        store.observeAll().test {
+            assertEquals(1, awaitItem().size)
+
+            assertEquals(0, store.writeResolvedPlaces(listOf(resolved(uri(1)))))
+            expectNoEvents()
+
+            assertEquals(1, store.writeResolvedPlaces(listOf(resolved(uri(1), latitude = 44.0))))
+            assertEquals(CURRENT, awaitItem().single().derivedPlaceResolverVersion)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private suspend fun forEachStore(check: suspend (MediaIndexStore) -> Unit) {
+        listOf("in-memory" to InMemoryMediaIndexStore(), "room" to RoomMediaIndexStore(database)).forEach { (name, store) ->
+            try {
+                check(store)
+            } catch (e: AssertionError) {
+                throw AssertionError("[$name store] ${e.message}", e)
+            }
+        }
+    }
+
+    private fun uri(n: Int) = "content://media/external/images/media/$n"
+
+    // Defaults match sampleEntry's coordinates, so a write built with no arguments is computed from the stored ones.
+    private fun resolved(
+        mediaUri: String,
+        latitude: Double = 43.7696,
+        longitude: Double = 11.2558,
+        countryCode: String? = null,
+        regionCode: String? = null,
+        placeName: String? = null
+    ) = ResolvedPlaceWrite(mediaUri, latitude, longitude, countryCode, regionCode, placeName, CURRENT)
 
     private suspend fun runScenario(store: MediaIndexStore): List<MediaIndexEntry> {
         store.upsert(
@@ -241,7 +474,10 @@ class MediaIndexStoreTest {
         capturedDateTakenEpochMillis: Long? = 1_726_000_000_000L,
         derivedCountryCode: String? = null,
         derivedRegionCode: String? = null,
-        derivedPlaceName: String? = null
+        derivedPlaceName: String? = null,
+        capturedLatitude: Double? = 43.7696,
+        capturedLongitude: Double? = 11.2558,
+        derivedPlaceResolverVersion: Int? = null
     ): MediaIndexEntry {
         return MediaIndexEntry(
             mediaUri = mediaUri,
@@ -252,13 +488,18 @@ class MediaIndexStoreTest {
             generationAdded = 5L,
             generationModified = 6L,
             capturedDateTakenEpochMillis = capturedDateTakenEpochMillis,
-            capturedLatitude = 43.7696,
-            capturedLongitude = 11.2558,
+            capturedLatitude = capturedLatitude,
+            capturedLongitude = capturedLongitude,
             capturedWidth = 1080,
             capturedHeight = 1920,
             derivedCountryCode = derivedCountryCode,
             derivedRegionCode = derivedRegionCode,
-            derivedPlaceName = derivedPlaceName
+            derivedPlaceName = derivedPlaceName,
+            derivedPlaceResolverVersion = derivedPlaceResolverVersion
         )
+    }
+
+    private companion object {
+        const val CURRENT = 2
     }
 }

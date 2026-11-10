@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Gazetteer raw GeoNames downloads (tools/gazetteer/build_gazetteer.py)
+tools/gazetteer/raw/

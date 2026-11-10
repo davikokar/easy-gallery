@@ -49,24 +49,18 @@ class MediaIndexReconciler(
             )
         }
 
-        val liveByUri = HashMap<String, MediaItem>(liveMedia.size)
-        val liveByHealingKey = HashMap<MediaHealingKey, MediaItem>(liveMedia.size)
-        liveMedia.forEach { item ->
-            val identity = item.toMediaIdentity()
-            liveByUri.putIfAbsent(identity.mediaUri, item)
-            liveByHealingKey.putIfAbsent(identity.healingKey, item)
-        }
+        // Canonical key: a per-volume spelling of a live item's URI is a direct match, not a move.
+        val lookup = LiveMediaLookup(liveMedia, ::canonicalMediaStoreUriForJoin)
 
         val deleted = linkedSetOf<String>()
         val rewrites = mutableListOf<MediaIndexUriRewrite>()
 
         indexedRows.forEach { row ->
-            val direct = liveByUri[row.mediaUri]
-            if (direct != null) return@forEach
+            val match = lookup.find(row.toMediaIdentity())
+            if (match != null && !match.requiresUriRewrite) return@forEach
 
-            val healed = liveByHealingKey[row.toMediaIdentity().healingKey]
-            if (healed != null) {
-                val healedIdentity = healed.toMediaIdentity()
+            if (match != null) {
+                val healedIdentity = match.item.toMediaIdentity()
                 val healedVolume =
                     reconciledVolumeNameForHealedUri(healedIdentity.mediaUri, volumeName)
                         ?: row.volumeName

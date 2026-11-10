@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -74,7 +75,11 @@ class MediaIndexDatabaseMigrationTest {
         sqlite.close()
 
         val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
-            .addMigrations(MediaIndexDatabase.MIGRATION_1_2, MediaIndexDatabase.MIGRATION_2_3)
+            .addMigrations(
+                MediaIndexDatabase.MIGRATION_1_2,
+                MediaIndexDatabase.MIGRATION_2_3,
+                MediaIndexDatabase.MIGRATION_3_4
+            )
             .build()
 
         runBlocking {
@@ -99,14 +104,14 @@ class MediaIndexDatabaseMigrationTest {
         val context: Context = ApplicationProvider.getApplicationContext()
         val databaseName = "media_index.db"
         context.deleteDatabase(databaseName)
-        val seeded = createVersion2Database(context, databaseName)
+        val seeded = createSeededDatabase(context, databaseName, version = 2)
 
         val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
-            .addMigrations(MediaIndexDatabase.MIGRATION_1_2, MediaIndexDatabase.MIGRATION_2_3)
+            .addMigrations(MediaIndexDatabase.MIGRATION_2_3, MediaIndexDatabase.MIGRATION_3_4)
             .build()
         val db = roomDb.openHelper.writableDatabase
 
-        assertEquals(3, db.version)
+        assertEquals(4, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         assertEquals(
@@ -123,7 +128,7 @@ class MediaIndexDatabaseMigrationTest {
         val context: Context = ApplicationProvider.getApplicationContext()
         val databaseName = "media_index.db"
         context.deleteDatabase(databaseName)
-        val seeded = createVersion2Database(context, databaseName)
+        val seeded = createSeededDatabase(context, databaseName, version = 2)
 
         val migrated = MediaIndexDatabase.create(context)
         migrated.openHelper.writableDatabase
@@ -131,7 +136,7 @@ class MediaIndexDatabaseMigrationTest {
 
         val reopened = MediaIndexDatabase.create(context)
         val db = reopened.openHelper.writableDatabase
-        assertEquals(3, db.version)
+        assertEquals(4, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         runBlocking {
@@ -145,14 +150,94 @@ class MediaIndexDatabaseMigrationTest {
     }
 
     @Test
+    fun `migration 3 to 4 adds a null resolver marker and preserves every existing column`() {
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val databaseName = "media_index.db"
+        context.deleteDatabase(databaseName)
+        val seeded = createSeededDatabase(context, databaseName, version = 3)
+
+        val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
+            .addMigrations(MediaIndexDatabase.MIGRATION_3_4)
+            .build()
+        val db = roomDb.openHelper.writableDatabase
+
+        assertEquals(4, db.version)
+        assertEquals(seeded.allColumns, db.query(ALL_COLUMNS_SQL).use(::snapshot))
+        assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
+        assertEquals(listOf<Long?>(null, null, null, null), db.query(MARKER_SQL).use(::dates))
+        // The sentinel survives: 3 to 4 touches no data.
+        assertEquals(
+            listOf(QUICKTIME_ZERO_EPOCH_MILLIS, REAL_1950_DATE, null, ONE_SECOND_AFTER_SENTINEL),
+            db.query(DATES_SQL).use(::dates)
+        )
+
+        roomDb.close()
+        context.deleteDatabase(databaseName)
+    }
+
+    @Test
+    fun `a migrated 3 to 4 database reopens with the production builder and takes marker writes`() {
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val databaseName = "media_index.db"
+        context.deleteDatabase(databaseName)
+        createSeededDatabase(context, databaseName, version = 3)
+
+        val migrated = MediaIndexDatabase.create(context)
+        migrated.openHelper.writableDatabase
+        migrated.close()
+
+        val reopened = MediaIndexDatabase.create(context)
+        runBlocking {
+            val uri = "content://media/external/video/media/2"
+            val before = reopened.mediaIndexDao().getByMediaUri(uri)
+            assertNull(before?.derivedPlaceResolverVersion)
+            assertEquals(1, reopened.mediaIndexDao().updateResolvedPlace(uri, 45.5, 9.25, "IT", "25", "Milan", 1))
+            assertEquals(1, reopened.mediaIndexDao().getByMediaUri(uri)?.derivedPlaceResolverVersion)
+        }
+
+        reopened.close()
+        context.deleteDatabase(databaseName)
+    }
+
+    @Test
+    fun `the full chain from version 1 to 4 opens with the production builder`() {
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val databaseName = "media_index.db"
+        context.deleteDatabase(databaseName)
+        val seeded = createSeededDatabase(context, databaseName, version = 1)
+
+        val migrated = MediaIndexDatabase.create(context)
+        val db = migrated.openHelper.writableDatabase
+
+        assertEquals(4, db.version)
+        assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
+        assertEquals(
+            listOf(null, REAL_1950_DATE, null, ONE_SECOND_AFTER_SENTINEL),
+            db.query(DATES_SQL).use(::dates)
+        )
+        assertEquals(listOf<Long?>(null, null, null, null), db.query(MARKER_SQL).use(::dates))
+        assertEquals(emptyList<List<String?>>(), db.query(WATERMARK_SQL).use(::snapshot))
+        runBlocking {
+            assertEquals(4, migrated.mediaIndexDao().observeAll().first().size)
+        }
+
+        migrated.close()
+        context.deleteDatabase(databaseName)
+    }
+
+    @Test
     fun `the shared sentinel is the quicktime zero date`() {
         assertEquals(-2_082_844_800_000L, QUICKTIME_ZERO_EPOCH_MILLIS)
     }
 
-    private class Seeded(val otherColumns: List<List<String?>>, val watermarks: List<List<String?>>)
+    private class Seeded(
+        val otherColumns: List<List<String?>>,
+        val allColumns: List<List<String?>>,
+        val watermarks: List<List<String?>>
+    )
 
-    // Builds a version-2 file with rows at the sentinel, a real 1950 date, null, and sentinel + 1 second.
-    private fun createVersion2Database(context: Context, databaseName: String): Seeded {
+    // Builds a file at the given version (1 to 3) with rows at the sentinel, a real 1950 date, null, and sentinel + 1 second.
+    private fun createSeededDatabase(context: Context, databaseName: String, version: Int): Seeded {
         val dbFile = context.getDatabasePath(databaseName)
         dbFile.parentFile?.mkdirs()
         val sqlite = SQLiteDatabase.openOrCreateDatabase(dbFile, null)
@@ -182,17 +267,19 @@ class MediaIndexDatabaseMigrationTest {
         sqlite.execSQL("CREATE INDEX IF NOT EXISTS `index_media_index_capturedDateTakenEpochMillis` ON `media_index` (`capturedDateTakenEpochMillis`)")
         sqlite.execSQL("CREATE INDEX IF NOT EXISTS `index_media_index_capturedLatitude_capturedLongitude` ON `media_index` (`capturedLatitude`, `capturedLongitude`)")
         sqlite.execSQL("CREATE INDEX IF NOT EXISTS `index_media_index_derivedCountryCode_derivedRegionCode_derivedPlaceName` ON `media_index` (`derivedCountryCode`, `derivedRegionCode`, `derivedPlaceName`)")
-        sqlite.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS `media_index_watermark` (
-                `volumeName` TEXT NOT NULL,
-                `version` TEXT,
-                `generation` INTEGER,
-                `dateModifiedWatermarkSeconds` INTEGER,
-                PRIMARY KEY(`volumeName`)
+        if (version >= 2) {
+            sqlite.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `media_index_watermark` (
+                    `volumeName` TEXT NOT NULL,
+                    `version` TEXT,
+                    `generation` INTEGER,
+                    `dateModifiedWatermarkSeconds` INTEGER,
+                    PRIMARY KEY(`volumeName`)
+                )
+                """.trimIndent()
             )
-            """.trimIndent()
-        )
+        }
         val dates = listOf(QUICKTIME_ZERO_EPOCH_MILLIS, REAL_1950_DATE, null, ONE_SECOND_AFTER_SENTINEL)
         dates.forEachIndexed { i, date ->
             sqlite.execSQL(
@@ -205,12 +292,15 @@ class MediaIndexDatabaseMigrationTest {
                 """.trimIndent()
             )
         }
-        sqlite.execSQL("INSERT INTO `media_index_watermark` VALUES('external_primary', '1234', 77, 1700000000)")
+        if (version >= 2) {
+            sqlite.execSQL("INSERT INTO `media_index_watermark` VALUES('external_primary', '1234', 77, 1700000000)")
+        }
         val seeded = Seeded(
             otherColumns = sqlite.rawQuery(OTHER_COLUMNS_SQL, null).use(::snapshot),
-            watermarks = sqlite.rawQuery(WATERMARK_SQL, null).use(::snapshot)
+            allColumns = sqlite.rawQuery(ALL_COLUMNS_SQL, null).use(::snapshot),
+            watermarks = if (version >= 2) sqlite.rawQuery(WATERMARK_SQL, null).use(::snapshot) else emptyList()
         )
-        sqlite.version = 2
+        sqlite.version = version
         sqlite.close()
         return seeded
     }
@@ -236,6 +326,12 @@ class MediaIndexDatabaseMigrationTest {
                 "`derivedCountryCode`, `derivedRegionCode`, `derivedPlaceName` FROM `media_index` ORDER BY `mediaUri`"
         const val WATERMARK_SQL = "SELECT * FROM `media_index_watermark` ORDER BY `volumeName`"
         const val DATES_SQL = "SELECT `capturedDateTakenEpochMillis` FROM `media_index` ORDER BY `mediaUri`"
+        const val MARKER_SQL = "SELECT `derivedPlaceResolverVersion` FROM `media_index` ORDER BY `mediaUri`"
+        const val ALL_COLUMNS_SQL =
+            "SELECT `mediaUri`, `displayName`, `size`, `dateModified`, `volumeName`, `generationAdded`, " +
+                "`generationModified`, `capturedDateTakenEpochMillis`, `capturedLatitude`, `capturedLongitude`, " +
+                "`capturedWidth`, `capturedHeight`, `derivedCountryCode`, `derivedRegionCode`, `derivedPlaceName` " +
+                "FROM `media_index` ORDER BY `mediaUri`"
 
         val REAL_1950_DATE: Long =
             LocalDate.of(1950, 6, 15).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()

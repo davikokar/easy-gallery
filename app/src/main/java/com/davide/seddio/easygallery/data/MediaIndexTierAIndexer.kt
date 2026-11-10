@@ -343,9 +343,11 @@ class MediaIndexTierABatchIndexer(
                         capturedLongitude = extracted.capturedLongitude,
                         capturedWidth = extracted.capturedWidth,
                         capturedHeight = extracted.capturedHeight,
+                        // Old answer kept as a label; a null marker makes the resolver check it again (ADR-0018 Amendment 4).
                         derivedCountryCode = existing?.derivedCountryCode,
                         derivedRegionCode = existing?.derivedRegionCode,
-                        derivedPlaceName = existing?.derivedPlaceName
+                        derivedPlaceName = existing?.derivedPlaceName,
+                        derivedPlaceResolverVersion = null
                     )
                     maxIndexedDateByVolume[row.volumeName] = maxOf(
                         maxIndexedDateByVolume[row.volumeName] ?: Long.MIN_VALUE,

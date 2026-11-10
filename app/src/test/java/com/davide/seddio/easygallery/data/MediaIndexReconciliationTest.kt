@@ -284,6 +284,183 @@ class MediaIndexReconciliationTest {
     }
 
     @Test
+    fun `row with the identical external live uri is a direct match and is left alone`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val uri = "content://media/external/images/media/51"
+        val row = entry(uri, "external", "direct.jpg", size = 10L, dateModified = 20L)
+        store.upsert(listOf(row))
+
+        val result = MediaIndexReconciler(store).reconcileVolume(
+            volumeName = "external",
+            liveMedia = listOf(mediaItem(uri, "direct.jpg", size = 10L, dateModified = 20L)),
+            presentVolumes = setOf("external")
+        )
+
+        assertTrue(result.deletedMediaUris.isEmpty())
+        assertTrue(result.healedRewrites.isEmpty())
+        assertEquals(listOf(row), store.listByVolume("external"))
+    }
+
+    @Test
+    fun `per-volume spellings of a live external uri are direct matches`() = runTest {
+        listOf(
+            "external_primary" to "content://media/external_primary/images/media/52",
+            "0123-4567" to "content://media/0123-4567/images/media/52"
+        ).forEach { (volume, storedUri) ->
+            val store = InMemoryMediaIndexStore()
+            val row = entry(storedUri, volume, "spelled.jpg", size = 10L, dateModified = 20L)
+            store.upsert(listOf(row))
+
+            val result = MediaIndexReconciler(store).reconcileVolume(
+                volumeName = volume,
+                liveMedia = listOf(
+                    mediaItem(
+                        "content://media/external/images/media/52",
+                        "spelled.jpg",
+                        size = 10L,
+                        dateModified = 20L
+                    )
+                ),
+                presentVolumes = setOf(volume)
+            )
+
+            assertTrue(volume, result.deletedMediaUris.isEmpty())
+            assertTrue(volume, result.healedRewrites.isEmpty())
+            assertEquals(volume, listOf(row), store.listByVolume(volume))
+        }
+    }
+
+    @Test
+    fun `per-volume spelling with a changed healing triple is still kept`() = runTest {
+        listOf(
+            "external_primary" to "content://media/external_primary/video/media/53",
+            "0123-4567" to "content://media/0123-4567/video/media/53"
+        ).forEach { (volume, storedUri) ->
+            val store = InMemoryMediaIndexStore()
+            val row = entry(storedUri, volume, "edited.mp4", size = 10L, dateModified = 20L)
+            store.upsert(listOf(row))
+
+            val result = MediaIndexReconciler(store).reconcileVolume(
+                volumeName = volume,
+                liveMedia = listOf(
+                    mediaItem(
+                        "content://media/external/video/media/53",
+                        "edited.mp4",
+                        size = 99L,
+                        dateModified = 300L
+                    )
+                ),
+                presentVolumes = setOf(volume)
+            )
+
+            assertTrue(volume, result.deletedMediaUris.isEmpty())
+            assertTrue(volume, result.healedRewrites.isEmpty())
+            assertEquals(volume, listOf(row), store.listByVolume(volume))
+        }
+    }
+
+    @Test
+    fun `missing row is deleted while a live row on the same volume is kept`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val liveUri = "content://media/external_primary/images/media/54"
+        val goneUri = "content://media/external_primary/images/media/55"
+        store.upsert(
+            listOf(
+                entry(liveUri, "external_primary", "live.jpg", size = 1L, dateModified = 2L),
+                entry(goneUri, "external_primary", "gone.jpg", size = 3L, dateModified = 4L)
+            )
+        )
+
+        val result = MediaIndexReconciler(store).reconcileVolume(
+            volumeName = "external_primary",
+            liveMedia = listOf(
+                mediaItem("content://media/external/images/media/54", "live.jpg", size = 1L, dateModified = 2L)
+            ),
+            presentVolumes = setOf("external_primary")
+        )
+
+        assertEquals(setOf(goneUri), result.deletedMediaUris)
+        assertTrue(result.healedRewrites.isEmpty())
+        assertEquals(listOf(liveUri), store.listByVolume("external_primary").map { it.mediaUri })
+    }
+
+    @Test
+    fun `healing key collision heals onto the first live item`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val staleUri = "content://media/external/images/media/56"
+        val firstUri = "content://media/external/images/media/156"
+        val secondUri = "content://media/external/images/media/256"
+        store.upsert(listOf(entry(staleUri, "external", "twin.jpg", size = 7L, dateModified = 8L)))
+
+        val result = MediaIndexReconciler(store).reconcileVolume(
+            volumeName = "external",
+            liveMedia = listOf(
+                mediaItem(firstUri, "twin.jpg", size = 7L, dateModified = 8L),
+                mediaItem(secondUri, "twin.jpg", size = 7L, dateModified = 8L)
+            ),
+            presentVolumes = setOf("external")
+        )
+
+        assertTrue(result.deletedMediaUris.isEmpty())
+        assertEquals(firstUri, result.healedRewrites.single().toMediaUri)
+        assertEquals(listOf(firstUri), store.listByVolume("external").map { it.mediaUri })
+    }
+
+    @Test
+    fun `heal preserves captured and derived place columns and writes the live uri`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val staleUri = "content://media/external/images/media/57"
+        val liveUri = "content://media/external/images/media/157"
+        val row = entry(staleUri, "external", "place.jpg", size = 5L, dateModified = 6L).copy(
+            capturedDateTakenEpochMillis = 1_700_000_000_000L,
+            capturedLatitude = 48.85,
+            capturedLongitude = 2.35,
+            capturedWidth = 4000,
+            capturedHeight = 3000,
+            derivedCountryCode = "FR",
+            derivedRegionCode = "IDF",
+            derivedPlaceName = "Paris"
+        )
+        store.upsert(listOf(row))
+
+        MediaIndexReconciler(store).reconcileVolume(
+            volumeName = "external",
+            liveMedia = listOf(mediaItem(liveUri, "place.jpg", size = 5L, dateModified = 6L)),
+            presentVolumes = setOf("external")
+        )
+
+        assertEquals(listOf(row.copy(mediaUri = liveUri)), store.listByVolume("external"))
+    }
+
+    @Test
+    fun `heal keeps the resolver marker whether a row was resolved or still pending`() = runTest {
+        listOf(PLACE_RESOLVER_VERSION, null).forEach { marker ->
+            val store = InMemoryMediaIndexStore()
+            val staleUri = "content://media/external/images/media/58"
+            val liveUri = "content://media/external/images/media/158"
+            store.upsert(
+                listOf(
+                    entry(staleUri, "external", "marked.jpg", size = 5L, dateModified = 6L).copy(
+                        capturedLatitude = 48.85,
+                        capturedLongitude = 2.35,
+                        derivedPlaceResolverVersion = marker
+                    )
+                )
+            )
+
+            MediaIndexReconciler(store).reconcileVolume(
+                volumeName = "external",
+                liveMedia = listOf(mediaItem(liveUri, "marked.jpg", size = 5L, dateModified = 6L)),
+                presentVolumes = setOf("external")
+            )
+
+            val healed = store.listByVolume("external").single()
+            assertEquals("marker $marker", liveUri, healed.mediaUri)
+            assertEquals("marker $marker", marker, healed.derivedPlaceResolverVersion)
+        }
+    }
+
+    @Test
     fun `mediaStoreVolumeNameFromUri parses standard media uris without Uri parse`() {
         assertEquals(
             "external_primary",
@@ -313,6 +490,20 @@ class MediaIndexReconciliationTest {
             derivedCountryCode = null,
             derivedRegionCode = null,
             derivedPlaceName = null
+        )
+    }
+
+    private fun entry(
+        mediaUri: String,
+        volumeName: String,
+        displayName: String,
+        size: Long,
+        dateModified: Long
+    ): MediaIndexEntry {
+        return sampleEntry(mediaUri, volumeName).copy(
+            displayName = displayName,
+            size = size,
+            dateModified = dateModified
         )
     }
 

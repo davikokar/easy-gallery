@@ -57,6 +57,8 @@ the thing under test *is* the Android boundary — which is what every current u
   runner plus `Room.inMemoryDatabaseBuilder`, because Room's generated code needs a real `Context`
   and a working SQLite. Both databases are tested this way; it is the pattern for any new DAO or
   `Room*` store.
+- `MediaIndexingWorkerTest` — Robolectric runner plus `work-testing`'s `TestListenableWorkerBuilder`,
+  driving the real `doWork` through the worker's injectable constructor; the pattern for a worker.
 
 The `InMemory*` half of a store is the counter-example: `MediaIndexInMemoryStoreTest` runs plain,
 because an in-memory implementation touches no Android API. Do not put a Robolectric runner on one
@@ -107,5 +109,10 @@ otherwise run plain.
   With one, `./gradlew connectedDebugAndroidTest` runs the suite and instrumented behaviour can be
   verified for real. With none, `compileDebugAndroidTestKotlin` is the fallback, and instrumented
   behaviour must then be reported as compile-verified only, never as observed.
+- A device test that measures or depends on device content must **fail** with a message starting
+  `ENVIRONMENT:` when the device lacks what it needs — no live media, no item with a date or
+  coordinates, a batch that indexed nothing — rather than passing vacuously.
+- `androidTest` is in the same module, so it may use the app's `internal` members — the
+  gazetteer's linear-scan oracle is the example. Acceptable for oracles and test seams.
 - A device's real screen size matters: an item below the fold is not in the semantics tree in a
   usable state. Call `performScrollTo()` before asserting on anything low in a scrollable screen.

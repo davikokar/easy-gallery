@@ -9,6 +9,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -153,6 +154,88 @@ class SettingsScreenTest {
             .performClick()
 
         assertEquals(1, clicks)
+    }
+
+    @Test
+    fun placeDataRowShowsTitleAndShortCreditWithoutATap() {
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("place_data_row")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextEquals("Place data", "Place names: GeoNames, CC BY 4.0")
+    }
+
+    @Test
+    fun placeDataRowIsInTheLegalSectionAfterPrivacyAndTerms() {
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("place_data_row").performScrollTo()
+        val legalTop = composeTestRule.onNodeWithText("Legal").fetchSemanticsNode().boundsInRoot.top
+        val termsBottom = composeTestRule.onNodeWithText("Terms").fetchSemanticsNode().boundsInRoot.bottom
+        val placeDataTop = composeTestRule.onNodeWithTag("place_data_row").fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue(legalTop < termsBottom)
+        assertTrue(termsBottom <= placeDataTop)
+    }
+
+    @Test
+    fun tappingPlaceDataRowOpensDialogWithTheFullNotice() {
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("place_data_notice").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("place_data_row").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithTag("place_data_notice").assertExists()
+        assertNoticeContains("GeoNames")
+        assertNoticeContains("CC BY 4.0")
+        assertNoticeContains("https://www.geonames.org/")
+        assertNoticeContains("https://creativecommons.org/licenses/by/4.0/")
+        assertNoticeContains("was modified")
+        assertNoticeContains("cities15000")
+        assertNoticeContains("admin1CodesASCII")
+        assertNoticeContains("countryInfo")
+        assertNoticeContains("as is")
+        assertNoticeContains("without warranty or any representation of accuracy, timeliness or completeness")
+    }
+
+    @Test
+    fun placeDataDialogUrlsAreTappable() {
+        setSettingsContent()
+        composeTestRule.onNodeWithTag("place_data_row").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithTag("place_data_source_link").assertHasClickAction()
+        composeTestRule.onNodeWithTag("place_data_licence_link").assertHasClickAction()
+    }
+
+    @Test
+    fun dismissingPlaceDataDialogClosesIt() {
+        setSettingsContent()
+        composeTestRule.onNodeWithTag("place_data_row").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("place_data_notice").assertExists()
+
+        composeTestRule.onNodeWithText("OK").performClick()
+
+        composeTestRule.onNodeWithTag("place_data_notice").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("place_data_row").assertExists()
+    }
+
+    private fun setSettingsContent() {
+        composeTestRule.setContent {
+            SettingsScreen(
+                viewModel = viewModel,
+                billingViewModel = billingViewModel,
+                mediaIndexingViewModel = mediaIndexingViewModel
+            )
+        }
+    }
+
+    // The same text also sits behind the dialog (the row credit), so match inside the notice only.
+    private fun assertNoticeContains(text: String) {
+        composeTestRule
+            .onAllNodes(hasText(text, substring = true) and hasAnyAncestor(hasTestTag("place_data_notice")))
+            .onFirst()
+            .assertExists()
     }
 
     companion object {

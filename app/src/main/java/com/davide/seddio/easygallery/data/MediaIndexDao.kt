@@ -54,6 +54,36 @@ interface MediaIndexDao {
     @Query("DELETE FROM media_index")
     suspend fun deleteAll()
 
+    // A null cursor starts from the first row; the cursor is the last URI of the previous page.
+    @Query(
+        "SELECT * FROM media_index " +
+            "WHERE capturedLatitude IS NOT NULL AND capturedLongitude IS NOT NULL " +
+            "AND (derivedPlaceResolverVersion IS NULL OR derivedPlaceResolverVersion != :currentVersion) " +
+            "AND (:afterMediaUri IS NULL OR mediaUri > :afterMediaUri) " +
+            "ORDER BY mediaUri ASC LIMIT :limit"
+    )
+    suspend fun listPendingPlaceResolution(
+        currentVersion: Int,
+        afterMediaUri: String?,
+        limit: Int
+    ): List<MediaIndexEntity>
+
+    // Matches the exact coordinates the answer was computed from; returns the rows written (0 or 1).
+    @Query(
+        "UPDATE media_index SET derivedCountryCode = :countryCode, derivedRegionCode = :regionCode, " +
+            "derivedPlaceName = :placeName, derivedPlaceResolverVersion = :resolverVersion " +
+            "WHERE mediaUri = :mediaUri AND capturedLatitude = :latitude AND capturedLongitude = :longitude"
+    )
+    suspend fun updateResolvedPlace(
+        mediaUri: String,
+        latitude: Double,
+        longitude: Double,
+        countryCode: String?,
+        regionCode: String?,
+        placeName: String?,
+        resolverVersion: Int
+    ): Int
+
     @Query("SELECT * FROM media_index_watermark")
     fun listWatermarks(): List<MediaIndexWatermarkEntity>
 

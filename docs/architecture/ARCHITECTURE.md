@@ -90,6 +90,7 @@ FavouritesDataSource                                │                         
         │                                    RoomAlbumStore ──▶ AlbumStore  RoomMediaIndexStore
         │                                           │                            │
         │                                           │              MediaIndexingWorker (WorkManager)
+        │                                           │               Tier A, then the place resolve pass
         │                                           │                            │
 GalleryViewModel  ──delegates state to──▶  DisplayPreferencesState    MediaIndexDateTakenState
    (central hub)                            FolderViewPreferencesState
@@ -113,7 +114,9 @@ Albums and media meet only in the ViewModel layer: `AlbumsViewModel` is handed t
 `allMedia` list and resolves stored memberships against it. The database never holds a media row.
 
 The second database — the media index, `media_index.db` — **is in that flow, written on one path
-and read on three**. It is *filled* by `MediaIndexingWorker` under WorkManager. It is *read* by
+and read on three**. It is *filled* by `MediaIndexingWorker` under WorkManager, in two passes per
+run: Tier A extraction, then the **place resolve pass**, which fills the derived place columns from
+the coordinates Tier A stored, against the bundled gazetteer, and opens no media file. It is *read* by
 `MediaIndexDateTakenState`, a `GalleryViewModel` delegate that projects captured date-taken by media
 URI so `SortType.DATE_TAKEN` can sort by it; by `MediaIndexingViewModel`, which also schedules the
 work and reports progress and last-indexed state to the Settings screen; and by `AlbumsViewModel`,
@@ -167,19 +170,22 @@ below every property it reads, or the class does not compile. Do not work around
 | `AlbumRule.kt` | The rule model of **[ADR-0017](decisions/0017-composable-album-rule-representation.md)**: `AlbumRule.Evaluatable`, a non-empty conjunction of clauses; `AlbumRule.Unevaluatable`, which keeps the stored text verbatim with an `UnevaluatableReason`; and the `time` clause as inclusive calendar-date bounds. A `NULL` column is a manual album and has no `AlbumRule` at all. |
 | `AlbumRuleJson.kt` | The strict, hand-written reader and writer for `albums.rule`. Anything it does not fully understand becomes `Unevaluatable` and `parse` never throws; `encode` takes `Evaluatable` only, so an unevaluatable rule cannot be re-encoded. Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is approved. |
 | `AlbumRuleEvaluation.kt` | `AlbumRuleEvaluator` — pure evaluation of `(rule matches ∪ additions) − exclusions` against index rows and live media, in a zone the caller passes in, writing nothing back — and `AlbumEvaluationStatus`: `MANUAL`, `COMPLETE`, `WAITING_ON_INDEX` (live media not supplied yet, or a live item the rule could match is not indexed) and `UNEVALUATABLE`. |
-| `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories, and `LiveMediaLookup` — the one lookup of a stored identity against live media, direct URI then healing key, with the URI key injectable: raw for album memberships, canonical for the index join. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. Membership resolution and rule evaluation use the lookup; index reconciliation does not yet — see §11. |
-| `MediaIndexDatabase.kt` | The media index Room database: two entities, schema version 3, `exportSchema = true`, with `MIGRATION_1_2` and `MIGRATION_2_3` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only — see §6. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
-| `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, and ADR-0018's captured and derived column split — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name. |
-| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeIdentityDateTaken`, the identity-plus-date projection rule evaluation reads; deletion is per row, per volume, or whole-index. It also carries the watermark queries — list, get, upsert, delete by volume. |
-| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry` and `MediaIndexIdentityDateTaken` models. `observeIdentityDateTaken()` returns every row unfiltered, with stored rather than canonicalised URIs, so the evaluator can heal a moved item through the shared lookup. |
+| `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories, and `LiveMediaLookup` — the one lookup of a stored identity against live media, direct URI then healing key, with the URI key injectable: raw for album memberships, canonical for the index join. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. Membership resolution, rule evaluation and index reconciliation all use the lookup — reconciliation with the canonical key (§11 has why). |
+| `MediaIndexDatabase.kt` | The media index Room database: two entities, schema version 4, `exportSchema = true`, with `MIGRATION_1_2`, `MIGRATION_2_3` and `MIGRATION_3_4` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker — see §6. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
+| `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, ADR-0018's captured and derived column split, and `derivedPlaceResolverVersion`, the marker that says which resolver wrote the derived columns — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name. |
+| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeIdentityDateTaken`, the identity-plus-date projection rule evaluation reads; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. |
+| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexIdentityDateTaken` and `ResolvedPlaceWrite` models. `observeIdentityDateTaken()` returns every row unfiltered, with stored rather than canonicalised URIs, so the evaluator can heal a moved item through the shared lookup. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. |
 | `MediaIndexWatermarkStore.kt` | `MediaIndexWatermarkStore` plus `RoomMediaIndexWatermarkStore` and `InMemoryMediaIndexWatermarkStore`, and the `MediaIndexVolumeWatermark` model — version, generation, and the API 28–29 date fallback, one entry per volume. |
 | `MediaIndexDeltaDetection.kt` | Pure, Android-free delta detection: the API-branch resolution, the volume plan (which volumes resync and what the next watermarks are), the per-row selection, the `DATE_MODIFIED` fallback predicate, and the `MediaIndexDeltaDetector` that composes a snapshot provider with the watermark store. |
-| `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared identity with an in-memory join, and returns without touching a volume that is not present. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
+| `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared `LiveMediaLookup` keyed on `canonicalMediaStoreUriForJoin`, keeping the row's resolver marker, and returns without touching a volume that is not present. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
 | `MediaStoreVolumeSnapshotProvider.kt` | The `MediaStoreVolumeSnapshotProvider` interface, the `MediaStoreVolumeGateway` that isolates the four level-gated `MediaStore` calls, and the Android implementation that builds one snapshot per API branch. |
 | `MediaStoreRowDeltaProvider.kt` | The `ContentResolver` query behind row selection: the per-volume image and video collections, the generation columns where they exist, and the legacy `external` collections on API 28. It canonicalises every observed URI at the source, so a row's spelling does not depend on which collection it was observed through, while the row keeps its own concrete volume name. |
 | `AndroidMediaStoreVolumeVersionProvider.kt` | Reads a single volume's version string — the no-argument call for the primary volume, the per-volume call on API 29+. |
-| `MediaIndexTierAIndexer.kt` | Tier A extraction and the batch that applies it: the `MediaIndexTierAExtractor` interface, its Android implementation (`ExifInterface` for images, `MediaMetadataRetriever` for video), the two pure date-taken parsers, and `MediaIndexTierABatchIndexer`, which composes detection, row selection, extraction, upsert, reconciliation and watermark persistence into one cancellable pass. The video parser treats a container's zero creation date as absent, and its `QUICKTIME_ZERO_EPOCH_MILLIS` constant is shared with `MediaIndexDatabase.MIGRATION_2_3`. `MediaIndexingWorker` is its only caller. |
-| `MediaIndexingWork.kt` | The WorkManager boundary: `MediaIndexingWorker` (a `CoroutineWorker` that runs one batch and reports progress), and `MediaIndexingWorkScheduler` with its `WorkManager*` implementation — the periodic request and its constraints under the unique work name `media-index-periodic`, and the one-time "Index now" request under its own, `media-index-now`. The worker runs in the app's process and writes through the shared index singleton, which is what lets evaluation follow a batch (§2). It **refuses to index without media read permission** and fails rather than running, because a run that cannot read rows would otherwise advance the watermark past the whole library — step 2.4's record in [the Stage 2 plan](../design/albums-stage-2.md) holds the detail. |
+| `MediaIndexTierAIndexer.kt` | Tier A extraction and the batch that applies it: the `MediaIndexTierAExtractor` interface, its Android implementation (`ExifInterface` for images, `MediaMetadataRetriever` for video), the two pure date-taken parsers, and `MediaIndexTierABatchIndexer`, which composes detection, row selection, extraction, upsert, reconciliation and watermark persistence into one cancellable pass. The video parser treats a container's zero creation date as absent, and its `QUICKTIME_ZERO_EPOCH_MILLIS` constant is shared with `MediaIndexDatabase.MIGRATION_2_3`. A re-extracted row gets a null resolver marker and keeps its old derived values as labels until the resolve pass revisits it. `MediaIndexingWorker` is its only caller. |
+| `Gazetteer.kt` | The pure nearest-place lookup of **[ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md)** Amendment 1: parses the three gazetteer assets into primitive arrays, rejecting an empty, truncated, mis-versioned or malformed one with `GazetteerLoadException`; answers `nearest` on a 1° bucket grid with haversine and the global distance cap; and owns `PLACE_RESOLVER_VERSION`, which the asset headers must equal. |
+| `GazetteerAssets.kt` | The Android side of the gazetteer: opens the three packaged assets and hands them to `Gazetteer.load`. |
+| `MediaIndexPlaceResolution.kt` | `MediaIndexPlaceResolver` — the resolve pass. Pages pending located rows by URI cursor, loads the gazetteer once and only if a row is pending, and writes each chunk's answers through the store's conditional write; a load failure propagates before anything is written. It reads only stored coordinates and emits one log line per pass carrying ADR-0019's M2 and M4 figures. `MediaIndexingWorker` is its only caller. |
+| `MediaIndexingWork.kt` | The WorkManager boundary: `MediaIndexingWorker` (a `CoroutineWorker` that runs one Tier A batch, reports progress, and then runs the place resolve pass on every run, even one where Tier A selected nothing; a resolver failure fails the run; its `@JvmOverloads` constructor takes the run-state store and factories for the batch indexer and the place resolver, defaulting to `EasyGalleryApp`'s wiring, so tests can inject fakes while WorkManager still uses the two-argument form), and `MediaIndexingWorkScheduler` with its `WorkManager*` implementation — the periodic request and its constraints under the unique work name `media-index-periodic`, and the one-time "Index now" request under its own, `media-index-now`. The worker runs in the app's process and writes through the shared index singleton, which is what lets evaluation follow a batch (§2). It **refuses to index without media read permission** and fails rather than running, because a run that cannot read rows would otherwise advance the watermark past the whole library — step 2.4's record in [the Stage 2 plan](../design/albums-stage-2.md) holds the detail. |
 | `MediaIndexRunStateStore.kt` | The index run-state store (`SharedPreferences*` and `InMemory*`) — last outcome, timestamps and row counters for the Settings surface. Liveness is deliberately **not** among them; see *Persistence*. |
 | `MediaIndexingLivenessStore.kt` | `MediaIndexingLivenessStore`, whose `WorkManager*` implementation derives a three-state `MediaIndexingWorkStatus` from `WorkInfo` across both unique work names rather than from anything persisted, and an `InMemory*` implementation for tests. `RUNNING` means a pass is executing; `WAITING` means WorkManager has work enqueued that its constraints keep from starting; `IDLE` means neither. Only `RUNNING` disables the Index now action. |
 | `MediaStoreUriAliases.kt` | The single rule for `MediaStore` URI spellings: parse one into volume, kind and id, and canonicalise any volume into the `content://media/external/…` union namespace, so observed rows and live media join on one spelling. |
@@ -191,7 +197,8 @@ below every property it reads, or the class does not compile. Do not work around
 There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 (`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
 `AlbumMembership`, `MediaIdentity`, `AlbumRule`, `AlbumRuleJson`, `AlbumRuleEvaluation`,
-`MediaIndexDeltaDetection`, `MediaIndexReconciliation`, `AlbumNaming`, `Favourites`) and in `ui/components/` helper files (`MediaDuration`, `ShareIntents`,
+`MediaIndexDeltaDetection`, `MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`,
+`AlbumNaming`, `Favourites`) and in `ui/components/` helper files (`MediaDuration`, `ShareIntents`,
 `WallpaperIntents`) specifically so it can be unit tested on a plain JVM without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
 the `AlbumMembership` precedent `MediaIndexReconciliation` follows.
@@ -293,7 +300,9 @@ helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, plus `MediaLocatio
   database singletons, `EasyGalleryDatabase` and `MediaIndexDatabase`, as `lazy` properties. There
   is no DI framework to own them and a second instance of either would defeat Room's invalidation
   tracking — **[ADR-0009](decisions/0009-room-as-first-owned-datastore.md)**. Two databases rather
-  than one is **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)**.
+  than one is **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)**. It also builds the
+  worker's collaborators over the index singleton — `createMediaIndexTierABatchIndexer()` and
+  `createMediaIndexPlaceResolver()`, the latter loading the gazetteer through `GazetteerAssets`.
 - **`MainActivity`** — hosts the Compose tree, checks media permissions, and registers the
   `IntentSender` launchers for scoped-storage delete/write requests and for favourite writes.
 - **`LocaleHelper`** — persists the BCP-47 language tag and wraps a `Context` with it via
@@ -510,16 +519,16 @@ extension version — **[ADR-0011](decisions/0011-favourites-backed-by-mediastor
 
 ### The media index database
 
-`media_index.db`, Room, schema version 3, exported to `app/schemas/` under its own directory. Two
+`media_index.db`, Room, schema version 4, exported to `app/schemas/` under its own directory. Two
 tables:
 
 | Table | Holds |
 |---|---|
-| `media_index` | one row per indexed item: the content URI, the same healing triple an album membership carries, the volume name, the generation numbers, the captured EXIF columns, and the derived place columns |
+| `media_index` | one row per indexed item: the content URI, the same healing triple an album membership carries, the volume name, the generation numbers, the captured EXIF columns, the derived place columns, and the resolver-version marker |
 | `media_index_watermark` | one row per volume: the last-seen version string, the last-seen generation, and the API 28–29 `DATE_MODIFIED` fallback watermark |
 
 EXIF facts captured from a file and the place codes later derived from them are **separate
-columns**, and the derived ones are written by no code yet —
+columns**, and the derived ones are written only by the place resolve pass —
 **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** owns both rules and the reason
 this is a second database rather than two more tables in the first. Its Amendment 1 records why the
 watermark table is here rather than in `SharedPreferences`.
@@ -535,6 +544,23 @@ The second migration, `Migration(2, 3)`, changes **data, not schema**: it nulls 
 equal to a video container's zero creation date, which earlier builds stored as a real date and
 which delta detection would never re-extract. The entity, and so the identity hash, did not change.
 ADR-0018 **Amendment 3** records why a migration rather than a read-time filter or a resync.
+
+The third, `Migration(3, 4)`, is a schema change: it adds `derivedPlaceResolverVersion`, with no
+default, so every existing row reads as not yet resolved. The marker is what tells a row resolved
+beyond the distance cap — null country, region and place — from one nobody has resolved, and a
+bump of `PLACE_RESOLVER_VERSION` makes every older row pending again with no file I/O. ADR-0018
+**Amendment 4** owns who writes it: Tier A writes it null, a reconciler heal keeps it, and the
+resolver writes it with the derived columns only where the row's coordinates are unchanged, because
+the periodic job and Index now can run at once.
+
+**The gazetteer the resolve pass reads is not a database.** It is three UTF-8 TSV assets under
+`app/src/main/assets/gazetteer/` — places, admin1 names, country names — generated by hand from
+GeoNames with `tools/gazetteer/build_gazetteer.py`, committed, and parsed into memory by a worker
+run that finds a pending row; nothing writes it at runtime. Each asset's header records its sources,
+their SHA-256, row counts and the resolver version it was stamped with —
+**[ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md)** Amendment 1. The data
+is GeoNames' under **CC BY 4.0**, and its attribution is the Settings screen's **Place data row**
+in the Legal section, which must survive any reorganisation of Settings.
 
 It is **excluded** from backup and device transfer — the file and its `-wal` / `-shm` sidecars, in
 `backup_rules.xml` and in both sections of `data_extraction_rules.xml`. The
@@ -554,10 +580,9 @@ user's choice and an index row is not.
 
 It is filled by `MediaIndexingWorker` under WorkManager and read by `MediaIndexDateTakenState` for
 `SortType.DATE_TAKEN`, by `MediaIndexingViewModel` for the Settings figures, and by
-`AlbumsViewModel` for automatic-album evaluation — see §2. The **derived place columns are still
-written by nothing**, which is why `time` is the only clause evaluation implements: a clause testing
-place would match nothing, everywhere, until a later step of
-[the Stage 2 plan](../design/albums-stage-2.md) fills them.
+`AlbumsViewModel` for automatic-album evaluation — see §2. **`time` is still the only clause
+evaluation implements.** The derived place columns are filled now, but nothing reads them until a
+`region` clause exists, which is step 2.7 of [the Stage 2 plan](../design/albums-stage-2.md).
 
 ---
 
@@ -632,7 +657,7 @@ Anything machine-parsed — coordinates, durations — is formatted with `Locale
 | Billing | Google Play Billing (`billing-ktx`) — the tip jar |
 | Media data | Android `MediaStore` — all media, and the favourite flag |
 | App-owned data | Room, with KSP as the annotation processor — two databases: albums, and the media index |
-| Unit tests | JUnit4, MockK, Turbine, coroutines-test; Robolectric for the `data/` Android-boundary tests; `room-testing` and `inMemoryDatabaseBuilder` for the DAO |
+| Unit tests | JUnit4, MockK, Turbine, coroutines-test; Robolectric for the `data/` Android-boundary tests; `room-testing` and `inMemoryDatabaseBuilder` for the DAO; `work-testing` (`TestListenableWorkerBuilder`) for `MediaIndexingWorker` |
 | Instrumented tests | Compose UI test + Espresso |
 
 Versions are centralised in `gradle/libs.versions.toml`; app config in `app/build.gradle.kts`.
@@ -704,7 +729,7 @@ KSP.
   tile, row or Album Detail View of the installed app**, because nothing shipped can create a rule
   album to show one; [the Stage 2 plan](../design/albums-stage-2.md) carries that as a residual
   check.
-- **Index reconciliation still has its own copy of the live-media lookup.** `LiveMediaLookup` in
+- ~~**Index reconciliation still has its own copy of the live-media lookup.** `LiveMediaLookup` in
   `data/MediaIdentity.kt` was extracted at step 2.5 and is used by membership resolution and rule
   evaluation, but `MediaIndexReconciler` in `data/MediaIndexReconciliation.kt` still builds its own
   private by-URI and by-healing-key maps and runs the same direct-then-healing match — the second
@@ -712,10 +737,29 @@ KSP.
   It was out of step 2.5's scope and is not fixed. It is not a mechanical swap: reconciliation
   compares **raw** stored URIs, so moving it onto the lookup means choosing its URI key, and the
   canonical `canonicalMediaStoreUriForJoin` key the index join uses may be the right one — which
-  changes which rows reconciliation treats as direct matches and needs its own tests.
-  `MediaIndexTierAIndexer.kt` also builds its own `liveByUri`, from canonical URIs and with no
-  healing key; that is a different, narrower join — selected rows to live items — and not a copy
-  of this lookup.
+  changes which rows reconciliation treats as direct matches and needs its own tests.~~
+  **Resolved at Stage 2 step 2.6**: the reconciler resolves through `LiveMediaLookup` keyed on
+  `canonicalMediaStoreUriForJoin`, and holds no map of its own. **Canonical, because index rows and
+  live media can spell one item's URI in different volume namespaces**: under the raw key a
+  per-volume spelling of a live `external` URI missed the direct match, so it was rewritten as a
+  move when its healing triple matched and deleted as gone when the file had also been edited.
+  Under the canonical key it is a direct match and left alone;
+  `MediaIndexReconciliationTest` pins which rows count as direct. The change made several Tier A
+  tests vacuous, because their fakes seeded URI spellings production never produces — they were
+  aligned with production's canonical URIs. `MediaIndexTierAIndexer.kt`'s own `liveByUri` is still
+  a different, narrower join — selected rows to live items — and not a copy of this lookup.
+- ~~**No unit test proves that a failed place resolve pass marks the indexing run failed.**
+  `MediaIndexingWorker` rethrows a resolver failure into the catch that records the run as failed,
+  and that is verified by reading only: the worker has no unit test, and writing one needs
+  `androidx.work:work-testing`, a new dependency and so an `AGENTS.md` ask-before-doing item. A
+  later change that swallowed the failure would leave Settings reporting success while no row was
+  resolved — this stage's "indexed nothing and looked like it worked" shape — and nothing would
+  fail.~~ **Resolved at Stage 2 step 2.6**: the maintainer approved `work-testing` as a test
+  dependency, and `MediaIndexingWorkerTest` drives the real `doWork` through the worker's injectable
+  constructor (§3). A resolver failure returns failure and marks the run failed without stamping a
+  row — mutation-proven — alongside the success, cancellation and missing-permission paths. The
+  run-state store records no error message by design; the message travels in the `Result`'s output
+  data.
 - ~~**App open hands `AlbumsViewModel` an empty media list before the real one.** The ViewModel
   starts with no live list and writes nothing back until it has one, but `MainActivity` and
   `FolderListScreen` forward `GalleryViewModel.allMedia` in a `LaunchedEffect`, and that flow starts

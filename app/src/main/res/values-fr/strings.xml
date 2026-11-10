@@ -122,6 +122,13 @@
     <string name="billing_thanks">Merci beaucoup pour votre soutien ! ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">Mentions légales</string>
+    <string name="settings_place_data">Données de lieux</string>
+    <string name="settings_place_data_credit">Noms de lieux&#160;: GeoNames, CC BY 4.0</string>
+    <string name="place_data_intro">Les noms de lieux et de régions associés à l’emplacement des photos proviennent de GeoNames. Les données sont intégrées à l’application et utilisées hors connexion.</string>
+    <string name="place_data_label_source">Auteur et source</string>
+    <string name="place_data_label_licence">Licence</string>
+    <string name="place_data_changes">Les données ont été modifiées. Elles ont été filtrées et réduites au nom, aux coordonnées, au pays et à la région de chaque lieu, à partir des fichiers GeoNames cities15000, admin1CodesASCII et countryInfo.</string>
+    <string name="place_data_disclaimer">Les données sont fournies «&#160;en l’état&#160;», sans garantie ni déclaration d’exactitude, d’actualité ou d’exhaustivité.</string>
     <string name="settings_about">À propos</string>
     <string name="about_version">Version %1$s</string>
     <string name="folders_title">Dossiers</string>

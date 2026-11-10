@@ -20,6 +20,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import android.util.Log
 import com.davide.seddio.easygallery.EasyGalleryApp
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -31,14 +32,18 @@ data class MediaIndexTierAProgress(
     val skippedRows: Int
 )
 
-class MediaIndexingWorker(
+// The seams default to the app's own wiring; WorkManager's reflective factory only sees the two-argument constructor.
+class MediaIndexingWorker @JvmOverloads constructor(
     appContext: Context,
-    params: WorkerParameters
+    params: WorkerParameters,
+    private val runStateStore: MediaIndexRunStateStore = (appContext as EasyGalleryApp).mediaIndexRunStateStore,
+    private val createBatchIndexer: () -> MediaIndexTierABatchIndexer =
+        { (appContext as EasyGalleryApp).createMediaIndexTierABatchIndexer() },
+    private val createPlaceResolver: () -> MediaIndexPlaceResolver =
+        { (appContext as EasyGalleryApp).createMediaIndexPlaceResolver() }
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val app = applicationContext as EasyGalleryApp
-        val runStateStore = app.mediaIndexRunStateStore
         val startedAt = System.currentTimeMillis()
 
         runStateStore.markStarted(startedAt)
@@ -47,7 +52,7 @@ class MediaIndexingWorker(
         return try {
             ensureMediaReadPermission(applicationContext)
 
-            val result = app.createMediaIndexTierABatchIndexer().indexDelta(
+            val result = createBatchIndexer().indexDelta(
                 sdkInt = Build.VERSION.SDK_INT,
                 onProgress = { progress ->
                     runStateStore.updateProgress(
@@ -59,6 +64,9 @@ class MediaIndexingWorker(
                     setProgressAsync(progressData(progress))
                 }
             )
+
+            // Every run, even when Tier A selected nothing, so rows indexed before the resolver existed get resolved.
+            resolvePendingPlaces()
 
             runStateStore.markSucceeded(System.currentTimeMillis(), result)
             Result.success(
@@ -76,6 +84,19 @@ class MediaIndexingWorker(
         } catch (error: Exception) {
             runStateStore.markFailed(System.currentTimeMillis())
             Result.failure(workDataOf(KEY_ERROR_MESSAGE to (error.message ?: "unknown")))
+        }
+    }
+
+    // A failure propagates to doWork's catch, which marks the run failed; Tier A's watermarks are already persisted and untouched.
+    private suspend fun resolvePendingPlaces() {
+        try {
+            val placeResult = createPlaceResolver().resolvePending()
+            Log.i(PLACE_RESOLUTION_LOG_TAG, placeResult.toLogLine())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.e(PLACE_RESOLUTION_LOG_TAG, "Place resolution failed: ${error.message}", error)
+            throw error
         }
     }
 

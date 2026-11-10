@@ -287,6 +287,12 @@ Shared parts:
   call either one just "the properties dialog".
 - **Language selection dialog** (`LanguageSelectionDialog`): The in-app language override.
 - **About dialog** (`AboutDialog`): The app information shown from the Settings screen.
+- **Place data dialog** (`PlaceDataDialog`, content tagged `place_data_notice`): The full
+  GeoNames notice opened from the **Place data row** — creator and source, licence name and link,
+  the statement that the data was modified, and GeoNames' as-is disclaimer. It scrolls, closes with
+  OK, and shows each URL as tappable text, tagged `place_data_source_link` and
+  `place_data_licence_link`. "GeoNames", "CC BY 4.0" and the URLs are never translated.
+  Aliases: **attribution dialog**, **GeoNames notice**
 - **Add excluded folder dialog** (`AddExcludedFolderDialog`): Excludes a folder by browsing to it
   from the Manage excluded screen.
 - **Album type dialog** (`AlbumTypeDialog`): Chooses between a **Manual album** and an
@@ -315,6 +321,10 @@ OK is pressed (ADR-0006).
   Legal.
 - **Settings row** (`SettingsItem`): One tappable row within a Settings section.
 - **Change language**: The row that opens the Language selection dialog.
+- **Place data row** (tagged `place_data_row`): The last row of the Legal section, under Privacy and
+  Terms. Its subtitle is the short credit, visible without a tap; tapping it opens the **Place data
+  dialog**. It is the app's attribution surface for the GeoNames place data and must survive any
+  reorganisation of Settings (ADR-0019 Amendment 1). Aliases: **GeoNames credit**, **attribution row**
 - **Tip jar**: The in-app purchase that supports the developer, driven by `BillingViewModel`.
   It is the app's only use of the network or a Play account.
 

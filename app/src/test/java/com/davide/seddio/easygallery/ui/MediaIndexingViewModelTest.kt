@@ -9,6 +9,7 @@ import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaIndexEntry
 import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import com.davide.seddio.easygallery.data.MediaIndexingWorkScheduler
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import io.mockk.every
 import io.mockk.mockk
@@ -43,7 +44,7 @@ class MediaIndexingViewModelTest {
         )
 
         viewModel.uiState.test {
-            awaitItem()
+            awaitState { it.notYetIndexedCount == 3 }
 
             indexStore.upsert(
                 listOf(
@@ -51,7 +52,7 @@ class MediaIndexingViewModelTest {
                     entry("content://media/external/images/2", null)
                 )
             )
-            val state = awaitItem()
+            val state = awaitState { it.indexedWithDateCount == 1 }
 
             assertEquals(2, state.indexedItemsCount)
             assertEquals(1, state.indexedWithDateCount)
@@ -74,7 +75,7 @@ class MediaIndexingViewModelTest {
         viewModel.setLiveMedia(listOf(mediaItem("content://media/external/images/1")))
 
         viewModel.uiState.test {
-            awaitItem()
+            awaitState { it.notYetIndexedCount == 1 }
 
             indexStore.upsert(
                 listOf(
@@ -82,7 +83,7 @@ class MediaIndexingViewModelTest {
                     entry("content://media/external/images/2", null)
                 )
             )
-            val state = awaitItem()
+            val state = awaitState { it.indexedWithDateCount == 1 }
 
             assertEquals(1, state.indexedItemsCount)
             assertEquals(1, state.indexedWithDateCount)
@@ -115,6 +116,16 @@ class MediaIndexingViewModelTest {
             }
             assertEquals(status, state.workStatus)
             assertEquals(expectedRunning, state.isRunning)
+        }
+    }
+
+    // uiState starts with a placeholder and the combine can emit intermediate states; skip to the one the test means.
+    private suspend fun ReceiveTurbine<MediaIndexingUiState>.awaitState(
+        predicate: (MediaIndexingUiState) -> Boolean
+    ): MediaIndexingUiState {
+        while (true) {
+            val state = awaitItem()
+            if (predicate(state)) return state
         }
     }
 

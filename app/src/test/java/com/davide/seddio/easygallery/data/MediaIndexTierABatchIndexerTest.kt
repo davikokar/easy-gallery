@@ -33,7 +33,7 @@ class MediaIndexTierABatchIndexerTest {
         val rowProvider = FixedRowDeltaProvider(
             mapOf(
                 PRIMARY to listOf(
-                    observedRow("content://media/external_primary/images/media/1", generation = 15L)
+                    observedRow("content://media/external/images/media/1", generation = 15L)
                 )
             )
         )
@@ -80,9 +80,9 @@ class MediaIndexTierABatchIndexerTest {
             snapshotProvider = FixedSnapshotProvider(snapshot)
         )
         val uris = listOf(
-            "content://media/external_primary/images/media/1",
-            "content://media/external_primary/images/media/2",
-            "content://media/external_primary/images/media/3"
+            "content://media/external/images/media/1",
+            "content://media/external/images/media/2",
+            "content://media/external/images/media/3"
         )
         val rowProvider = FixedRowDeltaProvider(
             mapOf(
@@ -145,7 +145,7 @@ class MediaIndexTierABatchIndexerTest {
         )
         val rows = (1..5).map { index ->
             MediaStoreObservedRowDelta(
-                mediaUri = "content://media/external_primary/images/media/$index",
+                mediaUri = "content://media/external/images/media/$index",
                 volumeName = PRIMARY,
                 generationAdded = null,
                 generationModified = null,
@@ -197,11 +197,11 @@ class MediaIndexTierABatchIndexerTest {
             snapshotProvider = FixedSnapshotProvider(snapshot)
         )
         val rows = (1..5).map { index ->
-            observedRow("content://media/external_primary/images/media/$index", generation = 10L + index)
+            observedRow("content://media/external/images/media/$index", generation = 10L + index)
         }
         val rowProvider = FixedRowDeltaProvider(mapOf(PRIMARY to rows))
         val repository = FakeMediaRepository().apply {
-            mediaItems = rows.map { media(it.mediaUri.replace("/external_primary/", "/external/")) }
+            mediaItems = rows.map { media(it.mediaUri) }
         }
         val indexStore = InMemoryMediaIndexStore()
         val extractor = CancellingExtractor(cancelOnCall = 3)
@@ -245,7 +245,7 @@ class MediaIndexTierABatchIndexerTest {
         )
         val rowUri = "content://media/external/images/media/7"
         val rowProvider = FixedRowDeltaProvider(
-            mapOf(PRIMARY to listOf(observedRow(rowUri.replace("/external/", "/external_primary/"), generation = 8L)))
+            mapOf(PRIMARY to listOf(observedRow(rowUri, generation = 8L)))
         )
         val repository = FakeMediaRepository().apply {
             mediaItems = listOf(media(rowUri))
@@ -294,7 +294,142 @@ class MediaIndexTierABatchIndexerTest {
     }
 
     @Test
-    fun `indexDelta keeps secondary-volume rows by canonicalizing observed uri namespace`() = runTest {
+    fun `indexDelta carries derived place fields over from a row stored under a per-volume spelling`() = runTest {
+        val store = InMemoryMediaIndexWatermarkStore(
+            mapOf(PRIMARY to MediaIndexVolumeWatermark(version = "v1", generation = 5L, dateModifiedWatermarkSeconds = null))
+        )
+        val snapshot = MediaStoreVolumeSnapshot(
+            apiBranch = MediaStoreDeltaApiBranch.API_30_PLUS,
+            observedVolumes = listOf(
+                ObservedMediaStoreVolume(volumeName = PRIMARY, version = "v1", generation = 9L)
+            ),
+            presentVolumes = setOf(PRIMARY),
+            knownButUnavailableVolumes = emptySet()
+        )
+        val detector = MediaIndexDeltaDetector(
+            watermarkStore = store,
+            snapshotProvider = FixedSnapshotProvider(snapshot)
+        )
+        val canonicalUri = "content://media/external/images/media/9"
+        val rowProvider = FixedRowDeltaProvider(
+            mapOf(PRIMARY to listOf(observedRow(canonicalUri, generation = 8L)))
+        )
+        val repository = FakeMediaRepository().apply {
+            mediaItems = listOf(media(canonicalUri))
+        }
+        val indexStore = InMemoryMediaIndexStore().apply {
+            upsert(
+                listOf(
+                    MediaIndexEntry(
+                        mediaUri = "content://media/external_primary/images/media/9",
+                        displayName = "old-name.jpg",
+                        size = 111L,
+                        dateModified = 222L,
+                        volumeName = PRIMARY,
+                        generationAdded = 1L,
+                        generationModified = 2L,
+                        capturedDateTakenEpochMillis = null,
+                        capturedLatitude = null,
+                        capturedLongitude = null,
+                        capturedWidth = null,
+                        capturedHeight = null,
+                        derivedCountryCode = "IT",
+                        derivedRegionCode = "52",
+                        derivedPlaceName = "Firenze"
+                    )
+                )
+            )
+        }
+        val indexer = MediaIndexTierABatchIndexer(
+            mediaRepository = repository,
+            mediaIndexStore = indexStore,
+            deltaDetector = detector,
+            rowDeltaProvider = rowProvider,
+            reconciler = MediaIndexReconciler(indexStore),
+            extractor = ConstantExtractor(),
+            chunkSize = 10
+        )
+
+        indexer.indexDelta(sdkInt = 30)
+
+        val indexed = indexStore.getByMediaUri(canonicalUri)
+        assertEquals("IT", indexed?.derivedCountryCode)
+        assertEquals("52", indexed?.derivedRegionCode)
+        assertEquals("Firenze", indexed?.derivedPlaceName)
+    }
+
+    @Test
+    fun `indexDelta re-extraction of a resolved row writes the marker null and keeps the old derived values`() = runTest {
+        val store = InMemoryMediaIndexWatermarkStore(
+            mapOf(PRIMARY to MediaIndexVolumeWatermark(version = "v1", generation = 5L, dateModifiedWatermarkSeconds = null))
+        )
+        val snapshot = MediaStoreVolumeSnapshot(
+            apiBranch = MediaStoreDeltaApiBranch.API_30_PLUS,
+            observedVolumes = listOf(
+                ObservedMediaStoreVolume(volumeName = PRIMARY, version = "v1", generation = 9L)
+            ),
+            presentVolumes = setOf(PRIMARY),
+            knownButUnavailableVolumes = emptySet()
+        )
+        val detector = MediaIndexDeltaDetector(
+            watermarkStore = store,
+            snapshotProvider = FixedSnapshotProvider(snapshot)
+        )
+        val rowUri = "content://media/external/images/media/8"
+        val rowProvider = FixedRowDeltaProvider(
+            mapOf(PRIMARY to listOf(observedRow(rowUri, generation = 8L)))
+        )
+        val repository = FakeMediaRepository().apply {
+            mediaItems = listOf(media(rowUri))
+        }
+        val indexStore = InMemoryMediaIndexStore().apply {
+            upsert(
+                listOf(
+                    MediaIndexEntry(
+                        mediaUri = rowUri,
+                        displayName = "old-name.jpg",
+                        size = 111L,
+                        dateModified = 222L,
+                        volumeName = PRIMARY,
+                        generationAdded = 1L,
+                        generationModified = 2L,
+                        capturedDateTakenEpochMillis = null,
+                        capturedLatitude = 43.77,
+                        capturedLongitude = 11.26,
+                        capturedWidth = null,
+                        capturedHeight = null,
+                        derivedCountryCode = "IT",
+                        derivedRegionCode = "16",
+                        derivedPlaceName = "Florence",
+                        derivedPlaceResolverVersion = PLACE_RESOLVER_VERSION
+                    )
+                )
+            )
+        }
+        val indexer = MediaIndexTierABatchIndexer(
+            mediaRepository = repository,
+            mediaIndexStore = indexStore,
+            deltaDetector = detector,
+            rowDeltaProvider = rowProvider,
+            reconciler = MediaIndexReconciler(indexStore),
+            extractor = ConstantExtractor(),
+            chunkSize = 10
+        )
+
+        val result = indexer.indexDelta(sdkInt = 30)
+
+        assertEquals(1, result.indexedRows)
+        val indexed = indexStore.getByMediaUri(rowUri)!!
+        assertEquals(45.0, indexed.capturedLatitude)
+        assertEquals(9.0, indexed.capturedLongitude)
+        assertNull(indexed.derivedPlaceResolverVersion)
+        assertEquals("IT", indexed.derivedCountryCode)
+        assertEquals("16", indexed.derivedRegionCode)
+        assertEquals("Florence", indexed.derivedPlaceName)
+    }
+
+    @Test
+    fun `indexDelta stores a secondary-volume row under the external uri with its own volume name`() = runTest {
         val secondaryVolume = "0123-4567"
         val store = InMemoryMediaIndexWatermarkStore(
             mapOf(
@@ -326,7 +461,7 @@ class MediaIndexTierABatchIndexerTest {
                 ),
                 secondaryVolume to listOf(
                     observedRow(
-                        mediaUri = "content://media/0123-4567/images/media/2",
+                        mediaUri = "content://media/external/images/media/2",
                         generation = 16L,
                         volumeName = secondaryVolume
                     )
@@ -356,7 +491,11 @@ class MediaIndexTierABatchIndexerTest {
         assertEquals(2, result.indexedRows)
         assertEquals(0, result.skippedRows)
         assertEquals(0, result.deletedRows)
-        assertEquals(1, result.healedRows)
+        assertEquals(0, result.healedRows)
+        assertEquals(
+            "content://media/external/images/media/2",
+            indexStore.listByVolume(secondaryVolume).single().mediaUri
+        )
         assertEquals(
             MediaIndexVolumeWatermark("v1", 25L, null),
             store.read(secondaryVolume)
@@ -389,14 +528,14 @@ class MediaIndexTierABatchIndexerTest {
             mapOf(
                 PRIMARY to listOf(
                     observedRow(
-                        mediaUri = "content://media/external_primary/images/media/1",
+                        mediaUri = "content://media/external/images/media/1",
                         generation = 11L,
                         volumeName = PRIMARY
                     )
                 ),
                 secondaryVolume to listOf(
                     observedRow(
-                        mediaUri = "content://media/0123-4567/images/media/2",
+                        mediaUri = "content://media/external/images/media/2",
                         generation = 12L,
                         volumeName = secondaryVolume
                     )
@@ -447,7 +586,7 @@ class MediaIndexTierABatchIndexerTest {
             mapOf(
                 PRIMARY to listOf(
                     observedRow(
-                        mediaUri = "content://media/external_primary/images/media/1",
+                        mediaUri = "content://media/external/images/media/1",
                         generation = 11L,
                         volumeName = PRIMARY
                     )
@@ -544,6 +683,7 @@ class MediaIndexTierABatchIndexerTest {
         override fun versionForVolume(volumeName: String): String? = versionsByVolume[volumeName]
     }
 
+    // MediaStoreRowDeltaProvider canonicalises every observed uri to the external namespace; a row in any other spelling is unreachable.
     private class FixedRowDeltaProvider(
         private val rowsByVolume: Map<String, List<MediaStoreObservedRowDelta>>
     ) : MediaStoreRowDeltaProvider {
@@ -551,7 +691,13 @@ class MediaIndexTierABatchIndexerTest {
             volumeName: String,
             apiBranch: MediaStoreDeltaApiBranch
         ): List<MediaStoreObservedRowDelta> {
-            return rowsByVolume[volumeName].orEmpty()
+            val rows = rowsByVolume[volumeName].orEmpty()
+            rows.forEach {
+                require(it.mediaUri == canonicalMediaStoreUriForJoin(it.mediaUri)) {
+                    "Fixture row must carry the canonical uri production emits: ${it.mediaUri}"
+                }
+            }
+            return rows
         }
     }
 

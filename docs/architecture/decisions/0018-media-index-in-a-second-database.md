@@ -400,3 +400,121 @@ the change that produces it, as Amendment 1 requires of every version.
 - [ADR-0017](0017-composable-album-rule-representation.md) Amendment 1, *Items with no date*
 - [docs/design/albums.md](../../design/albums.md) §8 decision 21 — what an undated item gets instead
   of a second date source
+
+## Amendment 4 — 2026-11-09 — A resolver-version marker, and the index reaches version 4
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–3. It
+is an amendment rather than a new ADR for the reason Amendment 1 gives: the index is still the
+separate, backup-excluded, recomputable database this record chose, and what follows applies
+Amendment 1's precedent — bump, migrate, commit the JSON. Amendment 3's statement that the index is
+at version 3 was true when written and is left as written.
+
+It is written **before** the code, as step 2.6 of [albums-stage-2.md](../../design/albums-stage-2.md)
+requires of a decision; the version the index has actually reached is its `@Database` annotation's.
+
+### The problem
+
+The Decision split captured from derived columns so that the gazetteer could be swapped by a resolve
+pass. It did not say how a row records that it **has** been resolved, and the three derived columns
+cannot say it alone: a row resolved beyond
+[ADR-0019](0019-offline-reverse-geocoding-for-region-albums.md)'s distance cap has null country,
+region and place — exactly what a row nobody has resolved yet has. Step 2.7 needs three states for a
+row that has coordinates:
+
+1. **resolved, with a place;**
+2. **resolved, without one** — beyond the cap;
+3. **not yet resolved.**
+
+Without a marker, states 2 and 3 are the same row, and both consumers go wrong:
+
+- **The resolve pass** can only select "derived columns are null", so every out-of-cap row is
+  selected and recomputed on every run, forever.
+- **The evaluator** cannot tell waiting from out-of-cap. Read null as waiting, and one mid-ocean
+  photo keeps a region album waiting permanently; read null as resolved, and an album reports
+  complete while rows are still unresolved. Those are the **permanent-waiting and false-complete**
+  failures the review of step 2.5 named, now with a second cause.
+
+### Decision
+
+- **A nullable `INTEGER` column, `derivedPlaceResolverVersion`, on the index row.** Null means no
+  resolver has written the row's derived columns. A value is the `PLACE_RESOLVER_VERSION` that
+  wrote them. A row with coordinates is **pending** when the marker is null or differs from the
+  current constant, and **resolved** otherwise — with a place or without one.
+- **The index goes to version 4 through `MIGRATION_3_4`**, an `ALTER TABLE … ADD COLUMN` with no
+  default, so every existing row reads null — pending, which is true: nothing has ever resolved it.
+  It is registered beside `MIGRATION_1_2` and `MIGRATION_2_3` with no destructive fallback. This is a
+  schema change, so the identity hash changes, and `4.json` is exported and must be committed by the
+  change that produces it.
+- **No database index on the column.** The pass reads the located rows in any case, and adding one
+  later costs a version bump — the same cost as now, without a measured reason to pay it.
+- **A row without coordinates is never stamped.** "No location" is read from the captured columns,
+  not from the marker, and no resolver has anything to say about it.
+
+### Who writes the marker
+
+- **Tier A writes it null on every row it re-extracts, and keeps the row's old derived values.** A
+  re-extracted file may have new coordinates, so the old answer may be wrong — but it is still the
+  best label until the resolver catches up, and blanking it would make labels flicker on every edit.
+  Null says "check this again". It also makes Tier A's read-then-replace safe against a resolver
+  write that lands between the read and the write: the row ends pending and is resolved again.
+- **A reconciler heal keeps the marker.** A heal rewrites the URI and the healing triple, never the
+  coordinates, so the answer is still right. A heal copies the row, so this holds as long as the
+  store's row model carries the marker — and the `InMemory*` store must carry it too, or the unit
+  tests stop describing production.
+- **The resolver writes the derived columns and the marker together, conditionally**: the update
+  matches on `mediaUri` **and** the exact `capturedLatitude` and `capturedLongitude` the answer was
+  computed from. If the row was re-extracted, healed or deleted in the meantime, the update matches
+  nothing and the row is left as it is — pending, if Tier A touched it — for the next run. The
+  periodic job and Index now are separate unique works and **can run at the same time**; an
+  unconditional write could stamp an answer computed from coordinates the row no longer holds,
+  marked current and therefore never revisited. Comparing `REAL`s for equality is sound here, because
+  the values compared are the ones read from the same column.
+
+### Re-resolution is one constant
+
+`PLACE_RESOLVER_VERSION` is bumped when the dataset is regenerated, the cap changes, or the
+algorithm changes. Every row stamped with an older value becomes pending, and the next pass
+resolves it again with **no file I/O** — the captured/derived split doing what it was chosen for.
+A bump needs **no migration**. The asset header carries the same number and a unit test fails unless
+the two are equal; [ADR-0019](0019-offline-reverse-geocoding-for-region-albums.md) Amendment 1 §7
+holds that rule. One number serves all three causes because to a stored row they mean the same
+thing: computed by a resolver that is no longer the current one.
+
+### Alternatives considered
+
+- **Recompute every located row on every run**, with no column and no migration. Rejected. It does
+  not remove the ambiguity — a row Tier A writes after a pass reads exactly like an out-of-cap row
+  until the next one, so the evaluator still cannot tell waiting from out-of-cap. And it rewrites
+  every located row on every run: each write invalidates the index table, so every rule album
+  re-evaluates after every batch — the cost the review of 2.5 already flagged — and the index
+  churns for answers that did not change.
+- **A sentinel in the derived columns** — an empty-string country for "beyond the cap". Rejected.
+  It stores "no value" as a value, the trap Null Island and the 1904 container date both are, and
+  it cannot say which resolver produced a row, so a dataset change could not mark rows stale.
+- **A boolean "resolved" flag.** Rejected: it cannot express "resolved by an older resolver", so a
+  dataset change would need a data migration to clear every flag instead of a constant bump.
+
+### Consequences
+
+- The three states are derivable from the row alone, by the resolve pass and the evaluator alike.
+- **A pending row can carry derived values** — the last answer, kept so labels do not flicker. That
+  is a label, not a resolution: whether step 2.7's evaluator counts a pending located row as waiting
+  is 2.7's to decide, and the marker is what lets it decide.
+- **A photo with GPS gets its place only after the next worker run**, because the resolver runs in
+  the worker. Same shape as [albums.md](../../design/albums.md) §10 question 7; recorded as a risk
+  for 2.7 rather than solved here.
+- Every writer of index rows must carry the marker, and a writer that builds a row without it
+  silently resets it. That is one more field for the next writer to know about; the Tier A rule
+  above is the one place a reset is deliberate.
+- The album database is untouched; the two still version independently.
+
+### References
+
+- `data/MediaIndexEntities.kt` — the derived columns; `data/MediaIndexDatabase.kt` — the migrations
+- `data/MediaIndexTierAIndexer.kt` — re-extraction already carries the existing derived values
+- `data/MediaIndexReconciliation.kt` — a heal copies the row
+- `data/MediaIndexingWork.kt` — the two unique work names that let runs overlap
+- [ADR-0019](0019-offline-reverse-geocoding-for-region-albums.md) Amendment 1 — the cap, the
+  dataset stamp, and the rule that an unusable asset stamps nothing
+- [docs/design/albums-stage-2.md](../../design/albums-stage-2.md) step 2.6, and the review notes
+  under 2.5 that name the permanent-waiting and false-complete failures

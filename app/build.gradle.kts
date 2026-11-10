@@ -98,6 +98,7 @@ dependencies {
     testImplementation(libs.androidx.lifecycle.runtime.testing)
     testImplementation(libs.mockk)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.work.testing)
     androidTestImplementation(libs.mockkAndroid)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

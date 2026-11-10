@@ -20,29 +20,59 @@
 > before anything else — and then whatever the step itself requires. *Session protocol* below says
 > what that means.
 
-- **2.5 is ✅ Complete (2026-10-26); 2.6 — the gazetteer — is next.** Work has landed since 2.5
-  closed, outside any step, and its gate has not fully run. Read the next two items before starting.
-- **What landed after 2.5, and how far it is verified.** *Between 2.5 and 2.6* below is the record.
-  - **The container zero date.** A video container writes 0 for "no date", the platform renders it
-    as 1904-01-01, and the extractor stored that as a capture date. The parser now treats it as
-    absent, and `MIGRATION_2_3` clears the stored copies, taking the index database to version 3 —
-    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 3.
-  - **A ViewModel-level API 28 test** for [albums.md](albums.md) §10 question 5, which the
-    maintainer then answered (below).
-  - **Gates: compiled and unit-tested only.** The full definition-of-done gate has **not** run over
-    this work — not the connected suite, and not the v2→v3 migration of a real index on a device.
-    Whoever runs the next gate owns both; neither is to be claimed from the unit tests. Two of its
-    files are new rather than modified — the index's `3.json` and the API 28 test — and must be
-    committed with it; `git status` and `git ls-files app/schemas` settle whether they have been.
+- **2.6 — the gazetteer — is ✅ Complete, 2026-11-10.** Every exit criterion holds, checked
+  against the repository and the final gate on the SM-G990B. The last to hold was the cap: the
+  maintainer kept 100 km with its known gaps, answering [albums.md](albums.md) §10 question 8.
+  [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)
+  Amendment 1's *Measured* section has M1–M5 and the verdict; 2.6's *Record* below has what each
+  step delivered, the review and its remediation, and the known gaps. **2.6 closed; run `git log` /
+  `git status` to see what is committed** — this document does not say. Stage 2 itself stays In
+  progress; albums.md §7 owns that.
+- **Next: 2.7 — region rules and the place picker.** Its entry below has the exit criteria. It
+  delivers the `region` clause and region rules, the browse-don't-type place picker, the Album type
+  dialog's Automatic option enabled, the **date-coverage notice** criterion of [albums.md](albums.md)
+  §8 decision 21, and the **location coverage notice** ADR-0019 requires. Open question 4 below —
+  where both notices live — is the first design question it meets. 2.7 is the first step to write a
+  rule from a shipped code path, so ADR-0017 Amendment 1's *When this format becomes binding*
+  applies from it.
+- **2.7's known risks.**
+  1. **Unstable admin1 codes in user rules.** GeoNames admin1 codes can change between dataset
+     versions; re-resolution keeps the index right but not a code stored in a rule. **Do not store
+     raw admin1 codes in a user rule without a plan for their stability.**
+  2. **A pending row carries old derived values**, so labels do not flicker. Whether a pending
+     located row counts as waiting is the evaluator's call;
+     [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 4
+     gives it the marker to decide with.
+  3. **A place arrives only after the next worker run**, because the resolver runs in the worker —
+     the shape of [albums.md](albums.md) §10 question 7, and to be answered with it.
+  4. **Stage 2 exit criteria that 2.7 alone does not close** — the Play Console declaration, the
+     documentation audit, among others; *Stage 2 exit criteria* below is the list. Two notes from
+     2.5's review under *Known debt* below — evaluation cost and `WhileSubscribed` — say to
+     revisit them before 2.7 makes rule albums common.
+- **The only outstanding hardware check is question 6's reboot spike** — item 2 of the maintainer's
+  list below. The v2→v3 migration of a real index is settled: before the v4 install, the
+  SM-G990B's own index was already at v3, holding 427 rows and none of the 13 sentinel rows seen
+  earlier, so `MIGRATION_2_3` ran correctly on hardware. The connected suite has since run over
+  work containing `1162914`, at 2.6's final gate.
+- **What landed after 2.5.** *Between 2.5 and 2.6* below is the record: the container zero date,
+  `MIGRATION_2_3` and index v3 —
+  [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 3 — and
+  the API 28 test behind [albums.md](albums.md) §10 question 5. It was committed as `1162914`.
 - **Decided by the maintainer on 2026-10-30 — do not reopen:**
   - **[albums.md](albums.md) §10 question 5: the `< R` guard's removal stays.** Healing
     re-evaluation on API 28–29 was a latent bug, now fixed. The question keeps its history and the
     evidence's limits.
-  - **The reconciler criterion under 2.6 is accepted, and binding.** It is an ordinary exit
-    criterion of 2.6 now.
+  - **The reconciler criterion under 2.6 is accepted, and binding.** Met at S4; 2.6's exit criteria
+    have the evidence.
   - **An undated item gets a coverage notice, not a second date source** — [albums.md](albums.md)
     §8 decision 21, with the measurement behind it. 2.7 carries a date-coverage notice as an exit
     criterion. **Do not add a `dateAdded` fallback or any other date source.**
+- **Decided by the maintainer on 2026-11-10 — do not reopen:**
+  - **[albums.md](albums.md) §10 question 8: the 100 km cap stays, with its known gaps.** A photo in
+    a gap gets no place rather than a wrong one. Changing it is a new decision and a
+    `PLACE_RESOLVER_VERSION` bump with regenerated assets, not a constant — the question says why.
+  - **`androidx.work:work-testing` is approved as a test dependency**, and landed with
+    `MediaIndexingWorkerTest`. 2.6's *Record* has what it proves.
 - **Still the maintainer's, in this order.** None is any agent's to take, and each is owned where
   it is linked.
   1. **[albums.md](albums.md) §10 question 7 — app-open timing.** Whether a photo that has a date
@@ -57,11 +87,11 @@
      interrupted: install, tap Index now, reboot once, and observe whether the periodic job is
      scheduled again **without** opening the app. The spike changed nothing in the manifest; **do
      not add, remove or silence any of the four** until the maintainer decides.
-  3. **Bring time-only creation forward, or not.** No user can create an automatic album until 2.7;
-     bringing it forward is a scope change to this plan, and 2.5's correction note says what it
-     would replace. Open. **The maintainer's lean — a lean, not a decision:** yes, but only after
-     question 7 is answered at least as "accept the gap and soften §6", and only after the
-     date-coverage notice exists. Do not schedule it on the strength of the lean.
+  3. **Bring time-only creation forward, or not — now moot if 2.7 is next**, because 2.7 enables
+     the Automatic option for time and region rules together. It matters again only if 2.7 is
+     deferred. **The maintainer's lean — a lean, not a decision:** yes, but only after question 7 is
+     answered at least as "accept the gap and soften §6", and only after the date-coverage notice
+     exists.
   4. **The Play Console restricted-permission declaration is the maintainer's own action, in the
      console.** It is to be made after question 6 is settled and before the first release that
      contains Stage 2, and it must describe the **merged** manifest — which is why it waits for
@@ -69,32 +99,28 @@
      criterion below, met only by checking the console and recording the outcome.
   5. **[albums.md](albums.md) §10 question 2** — a notification, and with it `POST_NOTIFICATIONS` —
      is still open, so every progress surface stays in-app. It blocks no step.
-- **Then 2.6 — the gazetteer — and what it starts from.**
-  - **It is offline**, per [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md):
-    a trimmed dataset shipped as an APK asset, and every figure the ADR lists under *To be measured*
-    measured and recorded. 2.6's exit criteria below are the checklist.
-  - **The derived place columns are still written by nothing.** They have existed since 2.1 and are
-    null on every device; 2.6's resolve pass is their first writer. Until it lands, anything that
-    tests country, region or place matches nothing, everywhere, silently.
+  6. ~~**A unit test for `MediaIndexingWorker` needs `androidx.work:work-testing`**, a new test
+     dependency and so an `AGENTS.md` ask-before-doing item.~~ **Resolved 2026-11-10**: approved,
+     and `MediaIndexingWorkerTest` now proves a resolver failure marks the run FAILED — 2.6's
+     *Record*.
+- **What 2.7 starts from.**
+  - **The derived place columns are written now**, by the resolve pass, after Tier A in every
+    worker run, and each resolved row carries `derivedPlaceResolverVersion`. Pending, resolved with
+    a place, and resolved beyond the cap are distinguishable from the row alone —
+    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 4.
+  - **Coverage is thin on the one library measured** — M3 in ADR-0019 Amendment 1. One library is
+    not a rule, but it is the figure 2.7's coverage notice and open question 4 have to design for.
   - **A `region` clause is an unknown clause type until 2.7**, so a rule carrying one parses to
-    `Unevaluatable` and shows the newer-app notice. That is ADR-0017's rule applied, not a gap for
-    2.6 to close; 2.7 is the step that makes it evaluatable.
+    `Unevaluatable` and shows the newer-app notice. That is ADR-0017's rule applied; 2.7 is the step
+    that makes it evaluatable.
   - **[ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)
     Amendment 1 holds the decisions 2.5 was built on** — the `time` clause's shape, the zone it is
     read in, how strict the parser is, and the rule that an undated or unindexed item never matches.
     Read them there. Its *When this format becomes binding* section is the one that matters next:
     the format is freely revisable until 2.7 first writes a rule, and not afterwards.
-  - **No migration was needed for 2.5 and none was made**, to either database. The index has
-    migrated since — `MIGRATION_2_3`, after 2.5, data only — and the album database never has. If
-    2.6 changes the index schema, it is the next bump, migration and committed JSON; read the
-    current version from the `@Database` annotation, not from here.
-  - **The reconciler criterion is binding on 2.6**, accepted by the maintainer on 2026-10-30: 2.6
-    closes the ADR-0020 clause 3 breach in `MediaIndexReconciler`. Its exit criteria have the detail.
-  - **The trap waiting at 2.6, cheap now and a migration later:** a row whose coordinates fall
-    outside [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)'s
-    distance cap resolves to null country, null region and null place — **indistinguishable from
-    "not yet resolved"** — so a resolve pass selecting on "derived columns are null" would retry
-    those rows forever. Not worth a column yet; decide it at 2.6.
+  - **The index migrated again at 2.6, and the album database never has.** `MIGRATION_3_4` is
+    2.6's, a schema change with its own exported JSON. Read the current version from the
+    `@Database` annotation, not from here.
 - **Still true, and binding on what follows:**
   - **2.5 depends on 2.4 having filled the index, and must behave when it has not.** An evaluation
     over an empty or partial index would render an automatic album as simply *empty*; 2.5 answers
@@ -194,11 +220,14 @@
     is verified by reading it. `ARCHITECTURE.md` §11.
   - **Folder-level date-taken sorting and date-taken grouping still use `dateAdded`**, so a date
     header can disagree with the order beneath it. `ARCHITECTURE.md` §11.
-  - **`MediaIndexReconciler` still holds a private live lookup** — its own by-URI and by-healing-key
-    maps — which is the second copy ADR-0020 clause 3 forbids. Out of 2.5's scope and not fixed, and
-    not a mechanical swap onto `LiveMediaLookup`, because reconciliation compares raw URIs.
-    `ARCHITECTURE.md` §11 has the detail. **2.6 carries the binding exit criterion that closes it**,
-    accepted by the maintainer on 2026-10-30, so Stage 2 cannot complete with the breach open.
+  - ~~**`MediaIndexReconciler` still holds a private live lookup** — its own by-URI and
+    by-healing-key maps — which is the second copy ADR-0020 clause 3 forbids.~~ **Closed at 2.6 S4**:
+    the reconciler resolves through `LiveMediaLookup` with the canonical key. `ARCHITECTURE.md` §11
+    keeps the struck entry and the reason the canonical key was chosen.
+  - ~~**No unit test proves that a resolver failure marks the run FAILED.** `MediaIndexingWorker` has
+    no unit test; writing one needs `work-testing`, item 7 of the maintainer's list above.~~
+    **Closed at 2.6**: `work-testing` was approved and `MediaIndexingWorkerTest` proves it.
+    `ARCHITECTURE.md` §11 keeps the struck entry.
   - **The app-open empty-list defect is fixed (R1); two ungated siblings remain**, both found by
     reading and neither device-observed. The Settings Media index figures read zero until media has
     loaded, because `setLiveMedia` is not gated on `isMediaLoaded`; and the New album screen can open
@@ -241,12 +270,14 @@
     check `isMediaLoaded` but forward `allMedia`, so a third forwarder that forgets the check brings
     the cold-start defect back. A single nullable-until-loaded flow would remove that risk; not done.
     The failed-first-load consequence is `ARCHITECTURE.md` §11's.
-- **Working-tree hygiene — the maintainer's, before anything is committed.** What is or is not
+- **Working-tree hygiene — before any commit.** What is or is not
   pending is a property of the working tree, not of this document: run `git status`, untracked
-  files included, and `git ls-files app/schemas`, rather than trusting a sentence here.
-  - **The post-2.5 work has to be reviewed and committed by the maintainer**, with its two new files
-    — `app/schemas/com.davide.seddio.easygallery.data.MediaIndexDatabase/3.json` and
-    `AlbumsViewModelMediaStoreVersionApi28Test` — which a `git add` aimed at modified files misses.
+  files included, and `git ls-files app/schemas app/src/main/assets tools`, rather than trusting a
+  sentence here.
+  - **Stage 2 work adds files outside `app/src/main/java/`** — at 2.6 the index's `4.json`, the
+    gazetteer assets, `tools/gazetteer/`'s two scripts, and a new androidTest package — which a
+    `git add` aimed at modified files misses. `tools/gazetteer/raw/` is gitignored on purpose and
+    must stay out.
   - **The tracked `.artifacts/tmp/connectedDebugAndroidTest-20261012.logcat.txt` must be restored to
     its committed state before any commit.** It grows when a connected run writes to it, and
     `.artifacts/` is history that must not be edited (`AGENTS.md`).
@@ -257,7 +288,8 @@
     this block survived one pass still announcing 2.5 as "the first genuinely automatic album".
 - **Open questions** are at the end of this document: 1 and 5 are answered and struck through; 3
   (volume resync frequency and size, and the mount/unmount unknown) and 4 (where the coverage
-  notices live — location and date) are live and belong to later steps.
+  notices live — location and date) are live and belong to later steps. The epic-level ones are
+  [albums.md](albums.md) §10's; question 8, on the cap, was answered on 2026-11-10.
 
 ---
 
@@ -271,7 +303,7 @@
 | **2.3** | Tier A extraction | ✅ Complete — 2026-10-09 |
 | **2.4** | WorkManager pipeline, "Index now", progress and staleness | ✅ Complete — 2026-10-12 |
 | **2.5** | Evaluation engine and time-only rules | ✅ Complete — 2026-10-26 |
-| **2.6** | The gazetteer | ⬜ Not started |
+| **2.6** | The gazetteer | ✅ Complete — 2026-11-10 |
 | **2.7** | Region rules and the place picker | ⬜ Not started |
 
 Status uses albums.md §7's vocabulary.
@@ -755,7 +787,9 @@ rewritten every session and this is the record that outlives it.
 - **Verification: compiled and unit-tested only.** The migration has Robolectric tests, including
   a reopen through the production builder, and the parser has plain-JVM tests. The full gate has not
   run over this work: not the connected suite, and not the v2→v3 migration of a real index on a
-  device. The handoff block carries both to the next gate.
+  device. The handoff block carries both to the next gate. **Both since settled**: the connected
+  suite ran over work containing this change at 2.6, and the SM-G990B's real index was found at v3
+  before the v4 install, without the earlier sentinel rows.
 
 ### 2.6 — The gazetteer
 
@@ -763,25 +797,153 @@ rewritten every session and this is the record that outlives it.
 lookup, the distance cap, the resolve pass that fills ADR-0018's derived columns, and the CC BY
 attribution surface.
 
+**Approved by the maintainer on 2026-11-09** — the five recommendations of the 2.6 plan. The
+reasons are in [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)
+Amendment 1 and [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md)
+Amendment 4; this is the list, not the argument.
+
+1. **Commit index v3 first.** Done: `1162914`.
+2. **The dataset is regenerated by a checked-in Python 3 script using only the standard library**,
+   run by hand and never by Gradle. Raw GeoNames downloads are gitignored; the generated assets
+   are committed.
+3. **An APK increase of up to 1 MB is accepted**, against an estimate of roughly 0.4–0.5 MB. **If
+   M1 measures above 1 MB, 2.6 stops and returns to the maintainer.**
+4. **One global distance cap, provisionally 100 km**, confirmed or changed from M5 before 2.6
+   closes.
+5. **Place and region names in GeoNames' `name` form**, Latin script in all ten locales; country
+   names localised at display time by the platform, with `countries.tsv` as the fallback. Localised
+   place names via alternate names are recorded as the upgrade path, not adopted.
+
+**Steps.** S0 was the decisions. The order column said what each step waited for while the
+Orchestrator sequenced them; it now records when each landed.
+
+| | Delivers | Owner | Order |
+|---|---|---|---|
+| **S0** | ADR-0019 Amendment 1, ADR-0018 Amendment 4, and this entry. No code. | Planner | ✅ 2026-11-09 |
+| **S1** | The generator script, the gitignore entry for raw downloads, and the three assets with their provenance headers; M1, and the script's half of M5 | Coder | ✅ 2026-11-10. M1 under 1 MB |
+| **S2** | The pure lookup: an asset parser that rejects an empty, truncated or wrong-version asset; the 1° grid and its ring; haversine, the cap and the tie-break; the country-name fallback. Plain-JVM tests, including the antimeridian, the poles, the linear-scan equivalence on the real asset, and the header-versus-constant test | Coder | ✅ 2026-11-10 |
+| **S3** | Index v4: the marker column, `MIGRATION_3_4`, a committed `4.json` and its migration test; Tier A writing the marker null; the conditional resolver write in the DAO and in both stores | Coder | ✅ 2026-11-10 |
+| **S4** | `MediaIndexReconciler` onto `LiveMediaLookup` — the binding criterion below — with heals keeping the marker | Coder | ✅ 2026-11-10 |
+| **S5** | The resolve pass: loading the assets at the Android boundary, selecting pending located rows, chunked and cancellable as Tier A is, run by `MediaIndexingWorker` after Tier A; failing loudly and stamping nothing on a rejected asset; log lines for M2 and M4 | Coder | ✅ 2026-11-10 |
+| **S6** | The attribution: the Place data row in the Settings screen's Legal section and its dialog, strings in all ten locales, and the UI vocabulary additions | Designer | ✅ 2026-11-10 |
+| **S7** | Verification, once, over the integrated change: the definition of done with `adb devices` checked; on the device, v3→v4 over a real index and Index now; M2–M5 measured. The outstanding device checks in the handoff block can ride on the same attachment | Coder, as the verification phase — **owns the definition-of-done gate** | ✅ 2026-11-10, on the SM-G990B; then a review and its remediation (*Record* below) |
+| **S8** | The figures into ADR-0019 Amendment 1, the cap confirmed or changed — a change is a `PLACE_RESOLVER_VERSION` bump and a return to S7 for the rows; `ARCHITECTURE.md` for what landed, including the ADR-0019 link and §11's reconciler entry; repo memory | Planner | ✅ 2026-11-10, except the cap: **kept, not confirmed** — then kept by the maintainer the same day, albums.md §10 question 8 |
+| **S9** | Close 2.6: every exit criterion checked against the repository, the status, the handoff | Planner | ✅ 2026-11-10, after the maintainer's answer to albums.md §10 question 8 |
+
 **Exit criteria**
 
-- Every figure ADR-0019 lists under *To be measured* has been measured, and the measurements are
-  recorded — in the ADR where they change a stated consequence, otherwise in repo memory.
-- The lookup uses a coarse grid bucket index. A linear scan does not pass this step.
-- The distance cap exists, and beyond it place, region and country are all null rather than guessed.
-- The resolve pass reads only the index's stored coordinates. It opens no media file.
-- **A CC BY attribution is visible in Settings.** There is no attribution surface today, so this
-  creates one; its string is in all ten locales.
-- Nearest-place matching, bucketing and the cap are pure and unit-tested on a plain JVM, including
-  the antimeridian and the poles.
-- `MediaIndexReconciler` resolves live media through `LiveMediaLookup` and holds no private by-URI
+Checked at S9 on 2026-11-10, each against the repository or against S7's run on the SM-G990B at
+API 36 — never against an implementation report alone. **All hold.** The last held only on
+2026-11-10, when the maintainer answered the cap question; approval 4 had made a decision on the cap
+a condition of closing the step. This document ran no build; the definition-of-done gate was S7's,
+and the final gate after the review's remediation and the worker test.
+
+- [x] Every figure ADR-0019 lists under *To be measured* has been measured, and the measurements are
+  recorded — in the ADR where they change a stated consequence, otherwise in repo memory. Since
+  S0 that list is M1–M5 in Amendment 1, which records each figure in the amendment itself. **In
+  its *Measured* section, M1–M5 with device, date and method.** M2 as defined — resolve-pass rows
+  per second — was read from the log line and is recorded as not meaningful on an 18-row library,
+  with the lookup's own throughput beside it; that is the honest reading of the measurement, not a
+  gap in it.
+- [x] The lookup uses a coarse grid bucket index. A linear scan does not pass this step.
+  `Gazetteer.nearest` searches a 1° grid; the linear scan is `nearestLinear`, `internal` and used
+  only as the tests' oracle.
+- [x] The distance cap exists, and beyond it place, region and country are all null rather than guessed.
+  `GAZETTEER_CAP_KM`; the resolver takes all three from one match or none, and a plain-JVM test
+  stamps an out-of-cap row with all three null and never reselects it.
+- [x] The resolve pass reads only the index's stored coordinates. It opens no media file.
+  `MediaIndexPlaceResolver` reads `capturedLatitude` / `capturedLongitude` from the store and has
+  no `android.*` import, so it has no way to open one.
+- [x] **A CC BY attribution is visible in Settings.** There is no attribution surface today, so this
+  creates one; its string is in all ten locales. The Place data row and dialog; their keys counted
+  in each of the ten `strings.xml` files; the UI vocabulary carries both. *Record* below has the
+  wording gap, which is not a licence breach.
+- [x] Nearest-place matching, bucketing and the cap are pure and unit-tested on a plain JVM, including
+  the antimeridian and the poles. `GazetteerTest`, with no Robolectric runner.
+- [x] `MediaIndexReconciler` resolves live media through `LiveMediaLookup` and holds no private by-URI
   or by-healing-key map; its URI key — raw or canonical — is chosen explicitly, and tests pin which
   rows count as direct matches under it. This closes the
   [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)
   clause 3 breach recorded in `ARCHITECTURE.md` §11. **Proposed 2026-10-26 and accepted by the
   maintainer on 2026-10-30**, here rather than as a standalone step, because 2.6's resolve pass is
   the next change to the index's write side, and because it has to land before 2.7 makes rules
-  user-writable: a reconciliation mistake then shows up in a user's album.
+  user-writable: a reconciliation mistake then shows up in a user's album. **The key is canonical**,
+  `canonicalMediaStoreUriForJoin`, so a per-volume spelling of a live item's URI is a direct match
+  rather than a move; `MediaIndexReconciliationTest` pins it.
+- [x] **The asset loads or fails loudly.** An empty, truncated or wrong-version asset is rejected and
+  nothing is stamped — each of the three has a test. Added at S0. The three rejections are in
+  `GazetteerTest`; "nothing is stamped" is `MediaIndexPlaceResolutionTest`'s failing-loader test.
+- [x] **The bucketed search equals a linear scan on the real data** — the shipped asset, not a
+  fixture. Added at S0. 20,000 seeded points on the JVM, and 3,000 on the device.
+- [x] **After Index now on a device, no row with coordinates is still pending**, read from the device's
+  index rather than inferred from the worker's success. Added at S0. Read by S7 on the SM-G990B:
+  every located row resolved, each with a place.
+- [x] **The APK delta is measured and is no more than 1 MB** (M1). Added at S0.
+- [x] **The cap is confirmed or changed from M5** — approval 4. M5 found the cap failing in sparse
+  regions, so it was kept with known gaps rather than confirmed, and the choice went to the
+  maintainer as [albums.md](albums.md) §10 question 8. **Met 2026-11-10 by the maintainer's
+  decision**: 100 km kept, gaps accepted — a confirmation by decision, not by M5's test, which still
+  fails in sparse regions. Added at S9, because approval 4 already made it a condition and the list
+  above did not carry it.
+
+**Record — what 2.6 delivered, and what it did not.** The handoff block is rewritten every session;
+this is what outlives it.
+
+- **S1–S6, as built.** The generator reads hand-downloaded GeoNames files, writes three TSV assets
+  with provenance headers, and has a `--check` mode; a second script measures M5's script half. The
+  pure `Gazetteer` loads the assets, rejects an unusable one, and answers on a 1° grid. Index v4
+  adds the marker through `MIGRATION_3_4`; Tier A writes it null and keeps the old labels; the
+  conditional write lives in the DAO and in both stores. The reconciler moved onto
+  `LiveMediaLookup`. `MediaIndexPlaceResolver` runs after Tier A in every worker run. The Place data
+  row and dialog are the attribution surface.
+- **S7 on the SM-G990B, 2026-11-10.** The figures are ADR-0019 Amendment 1's. Two device tests are
+  the first in an androidTest `data` package: `GazetteerDeviceTest` measures load and lookup, and
+  `MediaIndexPlaceCoverageDeviceTest` runs a real batch and the resolve pass over live media. Both
+  fail with an `ENVIRONMENT:` message, not a vacuous pass, when the device lacks what they measure.
+- **S8, the cap.** Kept with known gaps, not confirmed — Amendment 1's M5 verdict — and then kept
+  by the maintainer's decision on 2026-11-10, [albums.md](albums.md) §10 question 8.
+- **After the review, 2026-11-10.**
+  - **`MediaIndexingWorkerTest`**, with `androidx.work:work-testing` approved as a test dependency.
+    Under Robolectric with `TestListenableWorkerBuilder` it drives the real `doWork` and proves that
+    a resolver failure returns failure and marks the run FAILED without stamping a row —
+    mutation-proven — that success marks it SUCCEEDED and resolves rows, that cancellation takes the
+    cancelled path, and that a missing media permission fails without creating the indexer. The
+    worker gained a `@JvmOverloads` constructor with an injectable run-state store and factories
+    for the batch indexer and the place resolver, defaulting to the previous `EasyGalleryApp`
+    wiring; the two-argument constructor WorkManager uses still exists. The merged manifest is
+    unchanged. The run-state store records no error message by design — `lastRunErrorMessage` is
+    always null — and the message travels in the `Result`'s output data.
+  - **`MediaIndexingViewModelTest` was flaky** — it awaited an exact sequence of `combine`
+    emissions from a `StateFlow` that can emit intermediate states. Fixed in the test by awaiting
+    the settled state; 12 consecutive passes; production code unchanged.
+  - **The final gate passed**: unit tests, and the connected suite on the SM-G990B. The result XML
+    holds the counts.
+- **The review, and its remediation.** Four findings, each fixed in a remediation round after S7,
+  in tests and comments only — no production behaviour changed:
+  - **Tier A test fakes used URIs production never produces.** After S4 made per-volume spellings
+    direct matches, tests that seeded one spelling and observed another went vacuous. The fakes now
+    use the canonical URIs production observes.
+  - **Robolectric was wider than the boundary.** It is narrowed to a single packaging test; the
+    rest of the gazetteer's tests run plain, as `tests.instructions.md` asks.
+  - **A timing test could not fail** — it logged a duration and asserted nothing about it. Removed;
+    M4 is measured on the device instead.
+  - **Comments ran long** against the one-line comment rule. Trimmed.
+- **Known gaps, none an exit criterion:**
+  - ~~**No unit test proves that a resolver failure makes the run FAILED.** The worker rethrows into
+    the catch that marks the run failed, which is verified by reading. `MediaIndexingWorker` has no
+    unit test, and one needs `work-testing`, a new dependency — the maintainer's, item 7 of the
+    handoff's list.~~ **Resolved 2026-11-10** by `MediaIndexingWorkerTest`, above.
+  - **The dialog's modification notice is narrower than ADR-0019 Amendment 1 §8 asked.** It says the
+    data was filtered and trimmed, not that historical and abandoned places were removed. CC BY 4.0
+    asks only that modification be indicated, so it is compliant; a wording change is a Designer
+    task across ten locales, not done.
+  - **The nine translations have had no native-speaker pass.** ar, ja, ko first, as for 2.5's.
+  - **The dialog has not been seen on a device at a large font scale or in Arabic.** Its Compose
+    tests are the only evidence of its layout.
+  - **M3 is one library.** No second device has a coordinate figure.
+- **Risks carried to 2.7** are under 2.7 below, unchanged in substance by what landed: admin1 codes
+  unstable across dataset versions, a pending row carrying old derived values, and a new GPS photo
+  getting its place only after the next worker run.
 
 ### 2.7 — Region rules and the place picker
 
@@ -808,6 +970,20 @@ flipping of ADR-0016's **Automatic album** option from disabled to live.
   [ui-vocabulary.instructions.md](../../.github/instructions/ui-vocabulary.instructions.md) in this
   step, per albums.md §8 decision 8 — in the same change that builds the screens it names.
 - Every new string is in all ten locales.
+
+**Risks recorded at 2.6's planning, for 2.7's.** None is a criterion yet; 2.7's plan decides how
+each becomes one.
+
+- **GeoNames admin1 codes can change between dataset versions** — most are FIPS codes, "subject to
+  change to iso code" in GeoNames' own readme. Re-resolution keeps the index right, but a code
+  stored in a user's rule is not re-resolved. **2.7's `region` clause must not store raw admin1
+  codes in a user rule without a plan for their stability.**
+- **A new GPS photo gets its place only after the next worker run**, because the resolver runs in
+  the worker. Same shape as [albums.md](albums.md) §10 question 7, and to be answered with it.
+- **A pending row can still carry derived values** — Tier A keeps the old ones so labels do not
+  flicker. Whether a pending located row counts as waiting is the evaluator's to decide;
+  [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 4 gives
+  it the marker to decide with.
 
 ### Why the order is what it is
 
@@ -869,8 +1045,8 @@ change.
   two paths through the data flow in §2, the `MediaIndexingViewModel` and `MediaIndexDateTakenState`
   entries in §3, the sixth preference store and the `sharedpref` backup exclusion in §6, and
   narrowed — rather than struck — the `SortType.DATE_TAKEN` item in §11. ADR-0017 went in with 2.5,
-  on the `data/` rows of the rule files in §3, and ADR-0019 goes in with 2.6, the step that builds
-  what it governs.
+  on the `data/` rows of the rule files in §3, and ADR-0019 went in with 2.6, on the gazetteer's
+  `data/` rows in §3 and the index database in §6, which also struck §11's reconciler entry.
 - **The Play Console restricted-permission declaration is confirmed done.** albums.md §9 carries it
   forward from Stage 1 with no record that it was ever completed, and names the permissions at
   stake. Stage 2 adds one more: it makes `ACCESS_MEDIA_LOCATION` load-bearing for a user-facing

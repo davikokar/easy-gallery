@@ -125,6 +125,13 @@
     <string name="billing_thanks">Thank you so much for your support! ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">Legal</string>
+    <string name="settings_place_data">Place data</string>
+    <string name="settings_place_data_credit">Place names: GeoNames, CC BY 4.0</string>
+    <string name="place_data_intro">Place and region names for photo locations come from GeoNames. The data is bundled with the app and used offline.</string>
+    <string name="place_data_label_source">Creator and source</string>
+    <string name="place_data_label_licence">Licence</string>
+    <string name="place_data_changes">The data was modified. It was filtered and trimmed to the name, coordinates, country and region of each place, using the GeoNames files cities15000, admin1CodesASCII and countryInfo.</string>
+    <string name="place_data_disclaimer">The data is provided “as is” without warranty or any representation of accuracy, timeliness or completeness.</string>
     <string name="settings_about">About</string>
     <string name="about_version">Version %1$s</string>
     <string name="folders_title">Folders</string>

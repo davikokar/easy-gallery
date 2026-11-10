@@ -121,6 +121,13 @@
     <string name="billing_thanks">非常感谢您的支持！ ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">法律</string>
+    <string name="settings_place_data">地点数据</string>
+    <string name="settings_place_data_credit">地名：GeoNames，CC BY 4.0</string>
+    <string name="place_data_intro">照片位置对应的地点和地区名称来自 GeoNames。这些数据已内置于应用中，可离线使用。</string>
+    <string name="place_data_label_source">创作者与来源</string>
+    <string name="place_data_label_licence">许可协议</string>
+    <string name="place_data_changes">数据已被修改：经过筛选，并从 GeoNames 的 cities15000、admin1CodesASCII 和 countryInfo 文件中精简为每个地点的名称、坐标、国家和地区。</string>
+    <string name="place_data_disclaimer">数据按“现状”提供，不对其准确性、时效性或完整性作任何保证或声明。</string>
     <string name="settings_about">关于</string>
     <string name="about_version">版本 %1$s</string>
     <string name="folders_title">文件夹</string>

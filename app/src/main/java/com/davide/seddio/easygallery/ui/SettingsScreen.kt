@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.LocaleHelper
@@ -55,10 +56,15 @@ fun SettingsScreen(
     val activity = context.findActivity()
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showPlaceDataDialog by remember { mutableStateOf(false) }
     val indexingState by mediaIndexingViewModel.uiState.collectAsState()
 
     if (showAboutDialog) {
         AboutDialog(onDismiss = { showAboutDialog = false })
+    }
+
+    if (showPlaceDataDialog) {
+        PlaceDataDialog(onDismiss = { showPlaceDataDialog = false })
     }
 
     if (showLanguageDialog) {
@@ -186,6 +192,13 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_terms),
                 icon = Icons.Default.Description,
                 onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/terms.html") }
+            )
+            SettingsItem(
+                title = stringResource(R.string.settings_place_data),
+                subtitle = stringResource(R.string.settings_place_data_credit),
+                icon = Icons.Default.Public,
+                onClick = { showPlaceDataDialog = true },
+                modifier = Modifier.testTag(PLACE_DATA_ROW_TAG)
             )
         }
     }
@@ -513,6 +526,100 @@ fun AboutDialog(onDismiss: () -> Unit) {
             }
         }
     )
+}
+
+internal const val PLACE_DATA_ROW_TAG = "place_data_row"
+internal const val PLACE_DATA_NOTICE_TAG = "place_data_notice"
+internal const val PLACE_DATA_SOURCE_LINK_TAG = "place_data_source_link"
+internal const val PLACE_DATA_LICENCE_LINK_TAG = "place_data_licence_link"
+
+// Proper names and URLs are never translated (ADR-0019 Amendment 1, section 8).
+private const val GEONAMES_NAME = "GeoNames"
+private const val GEONAMES_URL = "https://www.geonames.org/"
+private const val CC_BY_NAME = "Creative Commons Attribution 4.0 International (CC BY 4.0)"
+private const val CC_BY_URL = "https://creativecommons.org/licenses/by/4.0/"
+
+@Composable
+fun PlaceDataDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_place_data)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .testTag(PLACE_DATA_NOTICE_TAG),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.place_data_intro),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                PlaceDataNoticeBlock(
+                    label = stringResource(R.string.place_data_label_source),
+                    name = GEONAMES_NAME,
+                    url = GEONAMES_URL,
+                    linkTag = PLACE_DATA_SOURCE_LINK_TAG,
+                    onOpenUrl = { openUrl(context, it) }
+                )
+                PlaceDataNoticeBlock(
+                    label = stringResource(R.string.place_data_label_licence),
+                    name = CC_BY_NAME,
+                    url = CC_BY_URL,
+                    linkTag = PLACE_DATA_LICENCE_LINK_TAG,
+                    onOpenUrl = { openUrl(context, it) }
+                )
+                Text(
+                    text = stringResource(R.string.place_data_changes),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = stringResource(R.string.place_data_disclaimer),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_ok))
+            }
+        }
+    )
+}
+
+@Composable
+private fun PlaceDataNoticeBlock(
+    label: String,
+    name: String,
+    url: String,
+    linkTag: String,
+    onOpenUrl: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(text = name, style = MaterialTheme.typography.bodyLarge)
+        Box(
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .clickable(role = Role.Button) { onOpenUrl(url) }
+                .testTag(linkTag),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline
+            )
+        }
+    }
 }
 
 private fun getAppVersionName(context: Context): String {

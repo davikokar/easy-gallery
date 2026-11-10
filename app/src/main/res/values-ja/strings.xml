@@ -121,6 +121,13 @@
     <string name="billing_thanks">応援していただき、本当にありがとうございます！ ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">法的情報</string>
+    <string name="settings_place_data">地名データ</string>
+    <string name="settings_place_data_credit">地名：GeoNames、CC BY 4.0</string>
+    <string name="place_data_intro">写真の位置情報に対応する地名と地域名は GeoNames のデータに基づいています。このデータはアプリに内蔵されており、オフラインで使用されます。</string>
+    <string name="place_data_label_source">作成者と提供元</string>
+    <string name="place_data_label_licence">ライセンス</string>
+    <string name="place_data_changes">データは改変されています。GeoNames のファイル cities15000、admin1CodesASCII、countryInfo から、各地点の名称、座標、国、地域のみに絞り込んで抽出しています。</string>
+    <string name="place_data_disclaimer">このデータは「現状有姿」で提供され、正確性、適時性、完全性について、いかなる保証も表明も行われません。</string>
     <string name="settings_about">このアプリについて</string>
     <string name="about_version">バージョン %1$s</string>
     <string name="folders_title">フォルダ</string>
