@@ -321,6 +321,86 @@ class GalleryTransformationsTest {
     }
 
     @Test
+    fun `date taken sort uses indexed capture when available`() {
+        val itemAUri = createMockUri("content://media/external/images/media/1")
+        val itemBUri = createMockUri("content://media/external/images/media/2")
+
+        val itemA = createMediaItem(uri = itemAUri, dateAdded = 10L)
+        val itemB = createMediaItem(uri = itemBUri, dateAdded = 20L)
+
+        val sorted = GalleryTransformations.sortMedia(
+            media = listOf(itemA, itemB),
+            sort = SortType.DATE_TAKEN,
+            order = SortOrder.DESCENDING,
+            indexedDateTakenByCanonicalMediaUri = mapOf(
+                itemAUri.toString() to 1_000L,
+                itemBUri.toString() to 2_000L
+            )
+        )
+
+        assertEquals(itemBUri, sorted[0].uri)
+        assertEquals(itemAUri, sorted[1].uri)
+    }
+
+    @Test
+    fun `date taken sort degrades indexed null and not-indexed rows to existing dateAdded behaviour`() {
+        val indexedWithDateUri = createMockUri("content://media/external/images/media/10")
+        val indexedWithoutDateUri = createMockUri("content://media/external/images/media/20")
+        val notIndexedUri = createMockUri("content://media/external/images/media/30")
+
+        val indexedWithDate = createMediaItem(uri = indexedWithDateUri, dateAdded = 5L)
+        val indexedWithoutDate = createMediaItem(uri = indexedWithoutDateUri, dateAdded = 20L)
+        val notIndexed = createMediaItem(uri = notIndexedUri, dateAdded = 30L)
+
+        val sorted = GalleryTransformations.sortMedia(
+            media = listOf(indexedWithDate, indexedWithoutDate, notIndexed),
+            sort = SortType.DATE_TAKEN,
+            order = SortOrder.ASCENDING,
+            indexedDateTakenByCanonicalMediaUri = mapOf(
+                indexedWithDateUri.toString() to 1_000_000L,
+                indexedWithoutDateUri.toString() to null
+            )
+        )
+
+        assertEquals(indexedWithoutDateUri, sorted[0].uri)
+        assertEquals(notIndexedUri, sorted[1].uri)
+        assertEquals(indexedWithDateUri, sorted[2].uri)
+    }
+
+    @Test
+    fun `date taken sort canonicalizes item uri lookup and requires canonical projection keys`() {
+        val itemUri = createMockUri("content://media/external_primary/images/media/99")
+        val otherUri = createMockUri("content://media/external/images/media/100")
+
+        val withIndexedDate = createMediaItem(uri = itemUri, dateAdded = 10L)
+        val fallbackItem = createMediaItem(uri = otherUri, dateAdded = 50L)
+
+        val sortedWithCanonicalProjection = GalleryTransformations.sortMedia(
+            media = listOf(withIndexedDate, fallbackItem),
+            sort = SortType.DATE_TAKEN,
+            order = SortOrder.DESCENDING,
+            indexedDateTakenByCanonicalMediaUri = mapOf(
+                "content://media/external/images/media/99" to 5_000_000L
+            )
+        )
+
+        assertEquals(itemUri, sortedWithCanonicalProjection[0].uri)
+        assertEquals(otherUri, sortedWithCanonicalProjection[1].uri)
+
+        val sortedWithNonCanonicalProjection = GalleryTransformations.sortMedia(
+            media = listOf(withIndexedDate, fallbackItem),
+            sort = SortType.DATE_TAKEN,
+            order = SortOrder.DESCENDING,
+            indexedDateTakenByCanonicalMediaUri = mapOf(
+                "content://media/external_primary/images/media/99" to 5_000_000L
+            )
+        )
+
+        assertEquals(otherUri, sortedWithNonCanonicalProjection[0].uri)
+        assertEquals(itemUri, sortedWithNonCanonicalProjection[1].uri)
+    }
+
+    @Test
     fun `thumbnail overrides resolve independently for multiple folders`() {
         val aFirst = createMockUri("content://media/multi-a-first")
         val aOverride = createMockUri("content://media/multi-a-override")

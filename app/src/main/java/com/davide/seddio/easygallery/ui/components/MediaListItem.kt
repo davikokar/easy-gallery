@@ -32,6 +32,7 @@ fun androidx.compose.foundation.lazy.LazyItemScope.MediaListItem(
     item: MediaItem,
     showInfo: Boolean,
     isSelected: Boolean = false,
+    isFavourite: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {}
 ) {
@@ -79,6 +80,14 @@ fun androidx.compose.foundation.lazy.LazyItemScope.MediaListItem(
                             .size(24.dp)
                             .testTag("selected_checkmark")
                             .background(Color.White, CircleShape)
+                    )
+                }
+
+                if (isFavourite) {
+                    FavouriteIndicator(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
                     )
                 }
             }

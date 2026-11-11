@@ -67,3 +67,23 @@ data class FolderViewOverrides(
 
     private fun normalizedMediaTypes(): Set<MediaType>? = mediaTypes?.ifEmpty { null }
 }
+
+data class FolderDetailPreferenceLayers(
+    val globalPreferences: ViewPreferences,
+    val folderOverrides: Map<String, FolderViewOverrides>,
+    val isSortUserDefined: Boolean
+)
+
+fun resolveFolderDetailPreferences(
+    folderPath: String?,
+    layers: FolderDetailPreferenceLayers
+): ViewPreferences {
+    val implicitDefaults = if (layers.isSortUserDefined) {
+        FolderViewOverrides()
+    } else {
+        CameraFolder.implicitDefaultsForFolder(folderPath)
+    }
+    val explicitOverrides = layers.folderOverrides[folderPath] ?: FolderViewOverrides()
+
+    return explicitOverrides.applyTo(implicitDefaults.applyTo(layers.globalPreferences))
+}

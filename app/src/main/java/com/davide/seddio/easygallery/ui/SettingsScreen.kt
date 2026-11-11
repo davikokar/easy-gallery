@@ -15,6 +15,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,15 +24,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
+import com.davide.seddio.easygallery.data.MediaIndexRunOutcome
+import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
+import java.text.DateFormat
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,15 +49,22 @@ import java.util.Locale
 fun SettingsScreen(
     viewModel: GalleryViewModel,
     billingViewModel: BillingViewModel,
+    mediaIndexingViewModel: MediaIndexingViewModel,
     onContactSupportClick: (Context) -> Unit = { contactSupport(it) }
 ) {
     val context = LocalContext.current
     val activity = context.findActivity()
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showPlaceDataDialog by remember { mutableStateOf(false) }
+    val indexingState by mediaIndexingViewModel.uiState.collectAsState()
 
     if (showAboutDialog) {
         AboutDialog(onDismiss = { showAboutDialog = false })
+    }
+
+    if (showPlaceDataDialog) {
+        PlaceDataDialog(onDismiss = { showPlaceDataDialog = false })
     }
 
     if (showLanguageDialog) {
@@ -111,6 +128,17 @@ fun SettingsScreen(
                 color = Color.Gray.copy(alpha = 0.5f)
             )
 
+            MediaIndexSettingsArea(
+                state = indexingState,
+                onIndexNow = mediaIndexingViewModel::indexNow
+            )
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                thickness = 0.5.dp,
+                color = Color.Gray.copy(alpha = 0.5f)
+            )
+
             SettingsSection(title = stringResource(R.string.settings_app))
             SettingsItem(
                 title = stringResource(R.string.settings_share_app),
@@ -165,6 +193,144 @@ fun SettingsScreen(
                 icon = Icons.Default.Description,
                 onClick = { openUrl(context, "https://davikokar.github.io/android-docs/easy-gallery/terms.html") }
             )
+            SettingsItem(
+                title = stringResource(R.string.settings_place_data),
+                subtitle = stringResource(R.string.settings_place_data_credit),
+                icon = Icons.Default.Public,
+                onClick = { showPlaceDataDialog = true },
+                modifier = Modifier.testTag(PLACE_DATA_ROW_TAG)
+            )
+        }
+    }
+}
+
+@Composable
+fun MediaIndexSettingsArea(
+    state: MediaIndexingUiState,
+    onIndexNow: () -> Unit
+) {
+    SettingsSection(title = stringResource(R.string.settings_media_index))
+    val isRunning = state.workStatus == MediaIndexingWorkStatus.RUNNING
+    val isWaiting = state.workStatus == MediaIndexingWorkStatus.WAITING
+
+    SettingsItem(
+        title = when {
+            isRunning -> {
+            stringResource(R.string.settings_index_running)
+            }
+
+            isWaiting -> {
+                stringResource(R.string.settings_index_waiting)
+            }
+
+            else -> {
+            stringResource(R.string.settings_index_now)
+            }
+        },
+        icon = Icons.AutoMirrored.Filled.ManageSearch,
+        onClick = onIndexNow,
+        enabled = !isRunning,
+        modifier = Modifier.testTag("media_index_now_action")
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 56.dp, vertical = 4.dp)
+            .testTag("media_index_status_area"),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        if (isRunning) {
+            val outstandingRows = (state.selectedRows - state.processedRows).coerceAtLeast(0)
+            if (state.selectedRows > 0) {
+                LinearProgressIndicator(
+                    progress = { state.processedRows.toFloat() / state.selectedRows },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    pluralStringResource(
+                        R.plurals.settings_index_remaining_rows,
+                        outstandingRows,
+                        outstandingRows
+                    ),
+                    color = Color.White.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        } else if (isWaiting) {
+            Text(
+                stringResource(R.string.settings_index_waiting_detail),
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Text(
+            pluralStringResource(
+                R.plurals.settings_index_with_date,
+                state.indexedWithDateCount,
+                state.indexedWithDateCount
+            ),
+            color = Color.White.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            pluralStringResource(
+                R.plurals.settings_index_without_date,
+                state.indexedWithoutDateCount,
+                state.indexedWithoutDateCount
+            ),
+            color = Color.White.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            pluralStringResource(
+                R.plurals.settings_index_not_yet_indexed,
+                state.notYetIndexedCount,
+                state.notYetIndexedCount
+            ),
+            color = Color.White.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        if (state.skippedRows > 0) {
+            Text(
+                pluralStringResource(
+                    R.plurals.settings_index_skipped_rows,
+                    state.skippedRows,
+                    state.skippedRows
+                ),
+                color = MaterialTheme.colorScheme.tertiary,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        val lastIndexedText = state.lastSuccessfulRunFinishedAtMillis?.let { timestamp ->
+            stringResource(
+                R.string.settings_index_last_success,
+                DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(timestamp))
+            )
+        } ?: stringResource(R.string.settings_index_never)
+        Text(
+            lastIndexedText,
+            color = Color.White.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        when (state.lastRunOutcome) {
+            MediaIndexRunOutcome.FAILURE -> Text(
+                stringResource(R.string.settings_index_failed),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            MediaIndexRunOutcome.CANCELLED -> Text(
+                stringResource(R.string.settings_index_cancelled),
+                color = MaterialTheme.colorScheme.tertiary,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            else -> Unit
         }
     }
 }
@@ -227,12 +393,20 @@ fun SettingsItem(
     title: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    subtitle: String? = null
+    subtitle: String? = null,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .then(
+                if (enabled) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier.semantics { disabled() }
+                }
+            ),
         color = Color.Transparent
     ) {
         Row(
@@ -244,14 +418,14 @@ fun SettingsItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color.White,
+                tint = Color.White.copy(alpha = if (enabled) 1f else 0.38f),
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = Color.White.copy(alpha = if (enabled) 1f else 0.38f),
                     style = MaterialTheme.typography.bodyLarge
                 )
                 if (subtitle != null) {
@@ -352,6 +526,100 @@ fun AboutDialog(onDismiss: () -> Unit) {
             }
         }
     )
+}
+
+internal const val PLACE_DATA_ROW_TAG = "place_data_row"
+internal const val PLACE_DATA_NOTICE_TAG = "place_data_notice"
+internal const val PLACE_DATA_SOURCE_LINK_TAG = "place_data_source_link"
+internal const val PLACE_DATA_LICENCE_LINK_TAG = "place_data_licence_link"
+
+// Proper names and URLs are never translated (ADR-0019 Amendment 1, section 8).
+private const val GEONAMES_NAME = "GeoNames"
+private const val GEONAMES_URL = "https://www.geonames.org/"
+private const val CC_BY_NAME = "Creative Commons Attribution 4.0 International (CC BY 4.0)"
+private const val CC_BY_URL = "https://creativecommons.org/licenses/by/4.0/"
+
+@Composable
+fun PlaceDataDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_place_data)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .testTag(PLACE_DATA_NOTICE_TAG),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.place_data_intro),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                PlaceDataNoticeBlock(
+                    label = stringResource(R.string.place_data_label_source),
+                    name = GEONAMES_NAME,
+                    url = GEONAMES_URL,
+                    linkTag = PLACE_DATA_SOURCE_LINK_TAG,
+                    onOpenUrl = { openUrl(context, it) }
+                )
+                PlaceDataNoticeBlock(
+                    label = stringResource(R.string.place_data_label_licence),
+                    name = CC_BY_NAME,
+                    url = CC_BY_URL,
+                    linkTag = PLACE_DATA_LICENCE_LINK_TAG,
+                    onOpenUrl = { openUrl(context, it) }
+                )
+                Text(
+                    text = stringResource(R.string.place_data_changes),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = stringResource(R.string.place_data_disclaimer),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_ok))
+            }
+        }
+    )
+}
+
+@Composable
+private fun PlaceDataNoticeBlock(
+    label: String,
+    name: String,
+    url: String,
+    linkTag: String,
+    onOpenUrl: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(text = name, style = MaterialTheme.typography.bodyLarge)
+        Box(
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .clickable(role = Role.Button) { onOpenUrl(url) }
+                .testTag(linkTag),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline
+            )
+        }
+    }
 }
 
 private fun getAppVersionName(context: Context): String {

@@ -53,7 +53,14 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FolderDetailScreen(viewModel: GalleryViewModel) {
+fun FolderDetailScreen(
+    viewModel: GalleryViewModel,
+    favouritesAvailable: Boolean,
+    favouriteUris: Set<android.net.Uri>,
+    isFavouritePending: Boolean,
+    onToggleFavourites: (Collection<android.net.Uri>) -> Unit,
+    onAddToAlbum: (List<MediaItem>) -> Unit
+) {
     val scope = PreferenceScope.FOLDER_DETAIL
     val media by viewModel.filteredMedia.collectAsState()
     val selectedFolder: com.davide.seddio.easygallery.data.Folder? by viewModel.selectedFolder.collectAsState()
@@ -83,6 +90,9 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         draftThumbnailUri = folderThumbnailDraftUri,
         preselectedThumbnailUri = folderThumbnailPreselectedUri,
         selectedMediaItems = selectedMediaItems,
+        favouritesAvailable = favouritesAvailable,
+        favouriteUris = favouriteUris,
+        isFavouritePending = isFavouritePending,
         isDestinationPickerActive = isDestinationPickerActive,
         pendingOperation = pendingOperation,
         browsingPath = browsingPath,
@@ -91,6 +101,8 @@ fun FolderDetailScreen(viewModel: GalleryViewModel) {
         onDeleteSelectedMedia = { viewModel.deleteSelectedMedia() },
         onStartOperation = { viewModel.startOperation(it) },
         onSelectAllMedia = { viewModel.selectAllMedia() },
+        onToggleFavourites = onToggleFavourites,
+        onAddToAlbum = onAddToAlbum,
         onSetSearchQuery = { viewModel.setSearchQuery(it, scope) },
         onSetSearchActive = { viewModel.setSearchActive(it, scope) },
         onEnterThumbnailPickerMode = { viewModel.enterThumbnailPickerMode() },
@@ -140,6 +152,9 @@ fun FolderDetailContent(
     draftThumbnailUri: android.net.Uri?,
     preselectedThumbnailUri: android.net.Uri?,
     selectedMediaItems: Set<android.net.Uri>,
+    favouritesAvailable: Boolean,
+    favouriteUris: Set<android.net.Uri>,
+    isFavouritePending: Boolean,
     isDestinationPickerActive: Boolean,
     pendingOperation: OperationType?,
     browsingPath: String,
@@ -148,6 +163,8 @@ fun FolderDetailContent(
     onDeleteSelectedMedia: () -> Unit,
     onStartOperation: (OperationType) -> Unit,
     onSelectAllMedia: () -> Unit,
+    onToggleFavourites: (Collection<android.net.Uri>) -> Unit,
+    onAddToAlbum: (List<MediaItem>) -> Unit,
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
     onEnterThumbnailPickerMode: () -> Unit,
@@ -187,6 +204,9 @@ fun FolderDetailContent(
     val resolvedSelectedMedia = remember(selectedMediaItems) { getSelectedMediaData() }
     val wallpaperEligibleMedia = resolvedSelectedMedia.singleOrNull()
         ?.takeIf { supportsWallpaper(it.type) }
+    val allSelectedAreFavourite = resolvedSelectedMedia.isNotEmpty() &&
+        resolvedSelectedMedia.all { it.uri in favouriteUris }
+    val visibleFavouriteUris = if (favouritesAvailable) favouriteUris else emptySet()
 
     if (isThumbnailPickerMode) {
         BackHandler {
@@ -230,6 +250,13 @@ fun FolderDetailContent(
                     onUseAsBackground = {
                         wallpaperEligibleMedia?.let { setImageAsWallpaper(context, it.uri) }
                     },
+                    favouritesAvailable = favouritesAvailable,
+                    allSelectedAreFavourite = allSelectedAreFavourite,
+                    isFavouritePending = isFavouritePending,
+                    onToggleFavourite = {
+                        onToggleFavourites(resolvedSelectedMedia.map { it.uri })
+                    },
+                    onAddToAlbum = { onAddToAlbum(resolvedSelectedMedia) },
                     onCopyTo = { onStartOperation(OperationType.COPY) },
                     onMoveTo = { onStartOperation(OperationType.MOVE) },
                     onSelectAll = { onSelectAllMedia() }
@@ -395,6 +422,7 @@ fun FolderDetailContent(
                         state = gridState,
                         showInfo = preferences.showInfo,
                         selectedItems = displayedSelectedItems,
+                        favouriteUris = visibleFavouriteUris,
                         onItemClick = { onSelectMedia(it) },
                         onItemLongClick = onMediaLongClick,
                         onZoomIn = { onDecreaseColumns() },
@@ -406,6 +434,7 @@ fun FolderDetailContent(
                         state = listState,
                         showInfo = preferences.showInfo,
                         selectedItems = displayedSelectedItems,
+                        favouriteUris = visibleFavouriteUris,
                         onItemClick = { onSelectMedia(it) },
                         onItemLongClick = onMediaLongClick
                     )
@@ -419,6 +448,7 @@ fun FolderDetailContent(
                     listState = listState,
                     showInfo = preferences.showInfo,
                     selectedItems = displayedSelectedItems,
+                    favouriteUris = visibleFavouriteUris,
                     onItemClick = { onSelectMedia(it) },
                     onItemLongClick = onMediaLongClick,
                     onZoomIn = { onDecreaseColumns() },
@@ -436,8 +466,10 @@ fun GroupedMediaContent(
     columns: Int,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     listState: androidx.compose.foundation.lazy.LazyListState,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
+    favouriteUris: Set<android.net.Uri> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
     onZoomIn: () -> Unit,
@@ -449,6 +481,7 @@ fun GroupedMediaContent(
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = gridState,
+            contentPadding = contentPadding,
             horizontalArrangement = Arrangement.spacedBy(1.dp),
             verticalArrangement = Arrangement.spacedBy(1.dp),
             modifier = Modifier
@@ -486,6 +519,7 @@ fun GroupedMediaContent(
                         item = item,
                         showInfo = showInfo,
                         isSelected = selectedItems.contains(item.uri),
+                        isFavourite = favouriteUris.contains(item.uri),
                         onClick = { onItemClick(item) },
                         onLongClick = { onItemLongClick(item) }
                     )
@@ -497,7 +531,8 @@ fun GroupedMediaContent(
             modifier = Modifier
                 .fillMaxSize()
                 .background(AppBackground),
-            state = listState
+            state = listState,
+            contentPadding = contentPadding
         ) {
             groupedMedia.forEach { (header, items) ->
                 if (header.isNotEmpty()) {
@@ -510,6 +545,7 @@ fun GroupedMediaContent(
                         item = item,
                         showInfo = showInfo,
                         isSelected = selectedItems.contains(item.uri),
+                        isFavourite = favouriteUris.contains(item.uri),
                         onClick = { onItemClick(item) },
                         onLongClick = { onItemLongClick(item) }
                     )
@@ -554,8 +590,10 @@ fun MediaGrid(
     media: List<MediaItem>,
     columns: Int,
     state: androidx.compose.foundation.lazy.grid.LazyGridState,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     showInfo: Boolean,
     selectedItems: Set<android.net.Uri>,
+    favouriteUris: Set<android.net.Uri> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit,
     onZoomIn: () -> Unit,
@@ -566,6 +604,7 @@ fun MediaGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(columns),
         state = state,
+        contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalArrangement = Arrangement.spacedBy(1.dp),
         modifier = Modifier
@@ -596,6 +635,7 @@ fun MediaGrid(
                 item = item,
                 showInfo = showInfo,
                 isSelected = selectedItems.contains(item.uri),
+                isFavourite = favouriteUris.contains(item.uri),
                 onClick = { onItemClick(item) },
                 onLongClick = { onItemLongClick(item) }
             )
@@ -608,20 +648,23 @@ fun MediaList(
     media: List<MediaItem>,
     showInfo: Boolean,
     state: androidx.compose.foundation.lazy.LazyListState,
+    contentPadding: PaddingValues = PaddingValues(vertical = 8.dp),
     selectedItems: Set<android.net.Uri>,
+    favouriteUris: Set<android.net.Uri> = emptySet(),
     onItemClick: (MediaItem) -> Unit,
     onItemLongClick: (MediaItem) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(AppBackground),
         state = state,
-        contentPadding = PaddingValues(vertical = 8.dp)
+        contentPadding = contentPadding
     ) {
         items(media, key = { it.uri.toString() }) { item ->
             MediaListItem(
                 item = item,
                 showInfo = showInfo,
                 isSelected = selectedItems.contains(item.uri),
+                isFavourite = favouriteUris.contains(item.uri),
                 onClick = { onItemClick(item) },
                 onLongClick = { onItemLongClick(item) }
             )

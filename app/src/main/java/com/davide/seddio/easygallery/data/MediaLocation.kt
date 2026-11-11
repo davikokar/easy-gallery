@@ -2,8 +2,10 @@ package com.davide.seddio.easygallery.data
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -96,17 +98,11 @@ class MediaLocationReader(context: Context) {
     }
 
     private fun readImageLocation(mediaItem: MediaItem): MediaCoordinates? {
-        val sourceUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.setRequireOriginal(mediaItem.uri)
-        } else {
-            mediaItem.uri
-        }
+        val sourceUri = originalMediaUriForExifRead(mediaItem.uri)
 
         try {
             appContext.contentResolver.openInputStream(sourceUri)?.use { inputStream ->
-                val latLong = ExifInterface(inputStream).latLong ?: return null
-                if (latLong.size < 2) return null
-                return mediaCoordinatesOrNull(latLong[0], latLong[1])
+                return mediaCoordinatesFromExifLatLong(ExifInterface(inputStream).latLong)
             }
             return null
         } catch (cancelled: CancellationException) {
@@ -116,6 +112,24 @@ class MediaLocationReader(context: Context) {
             return null
         }
     }
+}
+
+internal fun originalMediaUriForExifRead(
+    mediaUri: Uri
+): Uri {
+    return if (isAtLeastQ()) {
+        MediaStore.setRequireOriginal(mediaUri)
+    } else {
+        mediaUri
+    }
+}
+
+@ChecksSdkIntAtLeast(api = Build.VERSION_CODES.Q)
+internal fun isAtLeastQ(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+
+internal fun mediaCoordinatesFromExifLatLong(latLong: DoubleArray?): MediaCoordinates? {
+    if (latLong == null || latLong.size < 2) return null
+    return mediaCoordinatesOrNull(latLong[0], latLong[1])
 }
 
 private fun mediaCoordinatesOrNull(latitude: Double, longitude: Double): MediaCoordinates? {

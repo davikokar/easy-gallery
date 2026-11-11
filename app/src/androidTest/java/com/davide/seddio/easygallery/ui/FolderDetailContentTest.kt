@@ -43,6 +43,17 @@ class FolderDetailContentTest {
     private val appContext = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Test
+    fun folderDetailTitleDoesNotShowAppIcon() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper()
+        }
+
+        composeTestRule
+            .onAllNodesWithTag("main_view_app_icon", useUnmergedTree = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
     fun selectedMediaDisplaysCheckmark() {
         composeTestRule.setContent {
             FolderDetailContentWrapper(
@@ -53,6 +64,74 @@ class FolderDetailContentTest {
         }
 
         composeTestRule.onNodeWithTag("selected_checkmark", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun favouriteGridItemDisplaysAccessibleIndicator() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia, secondFakeMedia),
+                favouritesAvailable = true,
+                favouriteUris = setOf(mockUri)
+            )
+        }
+
+        composeTestRule
+            .onAllNodesWithTag("favourite_indicator", useUnmergedTree = true)
+            .assertCountEquals(1)
+        composeTestRule
+            .onNodeWithContentDescription(
+                appContext.getString(R.string.cd_favourite_indicator),
+                useUnmergedTree = true
+            )
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun favouriteIndicatorIsHiddenWhenFavouritesAreUnavailable() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                favouritesAvailable = false,
+                favouriteUris = setOf(mockUri)
+            )
+        }
+
+        composeTestRule
+            .onNodeWithTag("favourite_indicator", useUnmergedTree = true)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun favouriteListItemDisplaysIndicator() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                viewType = ViewType.LIST,
+                favouritesAvailable = true,
+                favouriteUris = setOf(mockUri)
+            )
+        }
+
+        composeTestRule
+            .onNodeWithTag("favourite_indicator", useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun selectedFavouriteDisplaysBothIndicators() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(mockUri),
+                favouritesAvailable = true,
+                favouriteUris = setOf(mockUri)
+            )
+        }
+
+        composeTestRule.onNodeWithTag("selected_checkmark", useUnmergedTree = true).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("favourite_indicator", useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -157,6 +236,40 @@ class FolderDetailContentTest {
     }
 
     @Test
+    fun selectionMenuShowsFavouriteAndAddToAlbumActions() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(mockUri),
+                favouritesAvailable = true
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText("Add to Favourites").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add to album").assertIsDisplayed()
+    }
+
+    @Test
+    fun pendingFavouriteWriteDisablesSelectionAction() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(mockUri),
+                favouritesAvailable = true,
+                isFavouritePending = true
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText("Add to Favourites").assertIsNotEnabled()
+    }
+
+    @Test
     fun sortDialogShowsApplyOnlyToThisFolderCheckedByDefault() {
         composeTestRule.setContent {
             FolderDetailContentWrapper(media = listOf(fakeMedia))
@@ -167,8 +280,7 @@ class FolderDetailContentTest {
 
         composeTestRule
             .onNode(
-                isToggleable() and hasText("Apply only to this folder"),
-                useUnmergedTree = true
+                isToggleable() and hasText("Apply only to this folder")
             )
             .assertIsOn()
     }
@@ -361,11 +473,15 @@ class FolderDetailContentTest {
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
+        viewType: ViewType = ViewType.GRID,
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         isThumbnailPickerMode: Boolean = false,
         draftThumbnailUri: Uri? = null,
         preselectedThumbnailUri: Uri? = null,
+        favouritesAvailable: Boolean = false,
+        favouriteUris: Set<Uri> = emptySet(),
+        isFavouritePending: Boolean = false,
         onEnterThumbnailPickerMode: () -> Unit = {},
         onExitThumbnailPickerMode: () -> Unit = {},
         onCommitThumbnailPickerSelection: () -> Unit = {},
@@ -374,7 +490,9 @@ class FolderDetailContentTest {
         FolderDetailContent(
             media = media,
             selectedFolder = null,
-            preferences = ViewPreferences.defaultFor(PreferenceScope.FOLDER_DETAIL),
+            preferences = ViewPreferences.defaultFor(PreferenceScope.FOLDER_DETAIL).copy(
+                viewType = viewType
+            ),
             searchQuery = "",
             isSearchActive = false,
             groupedMedia = emptyMap(),
@@ -383,6 +501,9 @@ class FolderDetailContentTest {
             draftThumbnailUri = draftThumbnailUri,
             preselectedThumbnailUri = preselectedThumbnailUri,
             selectedMediaItems = selectedMediaItems,
+            favouritesAvailable = favouritesAvailable,
+            favouriteUris = favouriteUris,
+            isFavouritePending = isFavouritePending,
             isDestinationPickerActive = false,
             pendingOperation = null,
             browsingPath = "",
@@ -391,6 +512,8 @@ class FolderDetailContentTest {
             onDeleteSelectedMedia = {},
             onStartOperation = {},
             onSelectAllMedia = {},
+            onToggleFavourites = {},
+            onAddToAlbum = {},
             onSetSearchQuery = {},
             onSetSearchActive = {},
             onEnterThumbnailPickerMode = onEnterThumbnailPickerMode,

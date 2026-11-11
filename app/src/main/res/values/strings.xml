@@ -98,7 +98,6 @@
     <string name="menu_select_all">Select all</string>
     <string name="search_placeholder">Search...</string>
     <string name="cd_cancel_search">Cancel Search</string>
-    <string name="cd_toggle_display_mode">Toggle Display Mode</string>
     <string name="cd_search">Search</string>
     <string name="menu_show_excluded">Temporarily show excluded</string>
     <string name="menu_create_folder">Create new folder</string>
@@ -126,6 +125,111 @@
     <string name="billing_thanks">Thank you so much for your support! ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">Legal</string>
+    <string name="settings_place_data">Place data</string>
+    <string name="settings_place_data_credit">Place names: GeoNames, CC BY 4.0</string>
+    <string name="place_data_intro">Place and region names for photo locations come from GeoNames. The data is bundled with the app and used offline.</string>
+    <string name="place_data_label_source">Creator and source</string>
+    <string name="place_data_label_licence">Licence</string>
+    <string name="place_data_changes">The data was modified. It was filtered and trimmed to the name, coordinates, country and region of each place, using the GeoNames files cities15000, admin1CodesASCII and countryInfo.</string>
+    <string name="place_data_disclaimer">The data is provided “as is” without warranty or any representation of accuracy, timeliness or completeness.</string>
     <string name="settings_about">About</string>
     <string name="about_version">Version %1$s</string>
+    <string name="folders_title">Folders</string>
+    <string name="albums_title">Albums</string>
+    <string name="cd_switch_view">Switch view</string>
+    <string name="albums_empty">No albums yet</string>
+    <string name="menu_new_album">New album</string>
+    <plurals name="album_item_count">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <string name="album_create_title">Create album</string>
+    <string name="album_name_hint">Album name</string>
+    <string name="album_rename_title">Rename album</string>
+    <string name="album_delete_title">Delete album</string>
+    <string name="album_delete_message">Delete this album? No photos or videos will be deleted.</string>
+    <string name="album_name_duplicate">An album with this name already exists</string>
+    <string name="album_name_blank">Album name cannot be blank</string>
+    <string name="menu_add_to_album">Add to album</string>
+    <string name="menu_remove_from_album">Remove from this album</string>
+    <string name="album_add_to_title">Add to album</string>
+    <string name="album_empty">No items in this album</string>
+    <string name="album_hidden_items_notice">Some items are temporarily unavailable. They will reappear in this album when the files are available again.</string>
+    <string name="album_rule_unevaluatable_notice">This album\'s automatic rule needs a newer version of the app. Only the items you added by hand are shown until you update.</string>
+    <string name="album_rule_unevaluatable_notice_short">Needs a newer app version. Only items added by hand are shown.</string>
+    <string name="album_rule_waiting_notice">Some photos and videos have not been scanned yet, so this album may be incomplete. Check “%1$s” in %2$s for the current state.</string>
+    <string name="album_rule_waiting_notice_short">May be incomplete: some items not scanned yet. See %1$s.</string>
+    <string name="album_default_name">My album %1$d</string>
+    <string name="album_type_title">New album</string>
+    <string name="album_type_manual_title">Manual album</string>
+    <string name="album_type_manual_description">You choose the photos and videos yourself.</string>
+    <string name="album_type_automatic_title">Automatic album</string>
+    <string name="album_type_automatic_description">Fills itself from a rule, such as a place or a date range.</string>
+    <string name="automatic_album_hint_choose">Choose a place, a date, or both</string>
+    <plurals name="automatic_album_match_count">
+        <item quantity="one">%1$d photo or video will be in this album</item>
+        <item quantity="other">%1$d photos and videos will be in this album</item>
+    </plurals>
+    <string name="automatic_album_section_place">Place</string>
+    <string name="automatic_album_section_date">Date</string>
+    <string name="automatic_album_all_of">All of %1$s</string>
+    <string name="automatic_album_places_without_region">Places without a region</string>
+    <string name="automatic_album_loading">Loading places</string>
+    <string name="automatic_album_names_failed">Place names could not be loaded</string>
+    <string name="automatic_album_waiting_for_media">Your photos and videos are loading. Places and dates will be listed once they have loaded.</string>
+    <string name="automatic_album_places_empty">No places found in your photos and videos</string>
+    <string name="automatic_album_places_empty_for_date">No places found for the chosen date</string>
+    <string name="automatic_album_dates_empty">No dates found in your photos and videos</string>
+    <string name="automatic_album_dates_empty_for_place">No dated photos or videos found for the chosen place</string>
+    <plurals name="automatic_album_location_coverage">
+        <item quantity="one">%1$d photo or video has no usable location and is left out of place albums.</item>
+        <item quantity="other">%1$d photos and videos have no usable location and are left out of place albums.</item>
+    </plurals>
+    <string name="automatic_album_location_access_off">Location access is off, so photo locations can\'t be read and place albums can\'t include them.</string>
+    <plurals name="automatic_album_date_coverage">
+        <item quantity="one">%1$d photo or video has no capture date and is left out of date albums.</item>
+        <item quantity="other">%1$d photos and videos have no capture date and are left out of date albums.</item>
+    </plurals>
+    <string name="automatic_album_clear_place">Clear place %1$s</string>
+    <string name="automatic_album_clear_date">Clear date %1$s</string>
+    <string name="automatic_album_month_year">%1$s %2$d</string>
+    <string name="new_album_select_media">Choose the photos and videos for this album</string>
+    <string name="favourites_title">Favourites</string>
+    <string name="cd_favourite_indicator">Favourite</string>
+    <string name="cd_favourite">Add to Favourites</string>
+    <string name="cd_unfavourite">Remove from Favourites</string>
+    <string name="menu_favourite">Add to Favourites</string>
+    <string name="manage_media_rationale_title">Manage media without confirmations?</string>
+    <string name="manage_media_rationale_message">Android normally asks you to confirm each change. Allow Easy Gallery to manage media to avoid these prompts. You can use every feature without this permission.</string>
+    <string name="manage_media_not_now">Not now</string>
+    <string name="manage_media_open_settings">Open settings</string>
+    <string name="settings_media_index">Media index</string>
+    <string name="settings_index_now">Index now</string>
+    <string name="settings_index_running">Indexing…</string>
+    <string name="settings_index_waiting">Waiting for conditions</string>
+    <string name="settings_index_waiting_detail">Scheduled and waiting for charging, device idle, and battery-not-low.</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="one">%1$d item still to scan</item>
+        <item quantity="other">%1$d items still to scan</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="one">%1$d media item has an indexed date</item>
+        <item quantity="other">%1$d media items have an indexed date</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="one">%1$d media item is indexed without a date</item>
+        <item quantity="other">%1$d media items are indexed without a date</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="one">%1$d media item is not yet indexed</item>
+        <item quantity="other">%1$d media items are not yet indexed</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="one">%1$d item deferred to the next scan</item>
+        <item quantity="other">%1$d items deferred to the next scan</item>
+    </plurals>
+    <string name="settings_index_last_success">Last indexed: %1$s</string>
+    <string name="settings_index_never">Not indexed yet</string>
+    <string name="settings_index_failed">Last scan failed</string>
+    <string name="settings_index_cancelled">Last scan was interrupted</string>
 </resources>

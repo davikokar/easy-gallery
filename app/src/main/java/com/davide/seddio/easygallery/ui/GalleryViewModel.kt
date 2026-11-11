@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Environment
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.davide.seddio.easygallery.EasyGalleryApp
 import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
@@ -25,7 +26,9 @@ class GalleryViewModel @JvmOverloads constructor(
         SharedPreferencesFolderViewPreferencesStore(application),
     private val folderThumbnailStore: FolderThumbnailStore =
         SharedPreferencesFolderThumbnailStore(application),
-    displayPreferencesStore: DisplayPreferencesStore = SharedPreferencesDisplayStore(application)
+    displayPreferencesStore: DisplayPreferencesStore = SharedPreferencesDisplayStore(application),
+    mediaIndexStore: MediaIndexStore =
+        (application as EasyGalleryApp).mediaIndexStore
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<GalleryUiState>(GalleryUiState.Loading)
@@ -71,6 +74,10 @@ class GalleryViewModel @JvmOverloads constructor(
 
     private val _allMedia = MutableStateFlow<List<MediaItem>>(emptyList())
     val allMedia: StateFlow<List<MediaItem>> = _allMedia.asStateFlow()
+
+    // `allMedia` starts as an empty placeholder; this is true only once getAllMedia() has actually returned.
+    private val _isMediaLoaded = MutableStateFlow(false)
+    val isMediaLoaded: StateFlow<Boolean> = _isMediaLoaded.asStateFlow()
 
     private val _excludedFolders = MutableStateFlow(folderStore.loadExcluded()) // Stores folder paths
     val excludedFolders: StateFlow<Set<String>> = _excludedFolders.asStateFlow()
@@ -128,25 +135,42 @@ class GalleryViewModel @JvmOverloads constructor(
 
     private val _folderThumbnailOverrides = MutableStateFlow(folderThumbnailStore.loadAll())
 
-    private val effectiveFolderDetailPrefs: StateFlow<ViewPreferences> = combine(
+    val folderDetailPreferenceLayers: StateFlow<FolderDetailPreferenceLayers> = combine(
         folderDetailPrefs,
-        _selectedFolder,
         folderViewPrefs.overrides,
         folderDetailSortUserDefined
-    ) { globalPrefs, selectedFolder, overrides, sortUserDefined ->
-        val folderPath = selectedFolder?.path
-        val implicitDefaults = if (sortUserDefined) {
-            FolderViewOverrides()
-        } else {
-            CameraFolder.implicitDefaultsForFolder(folderPath)
-        }
-        val explicitOverrides = overrides[folderPath] ?: FolderViewOverrides()
+    ) { globalPrefs, overrides, sortUserDefined ->
+        FolderDetailPreferenceLayers(
+            globalPreferences = globalPrefs,
+            folderOverrides = overrides,
+            isSortUserDefined = sortUserDefined
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        FolderDetailPreferenceLayers(
+            globalPreferences = folderDetailPrefs.value,
+            folderOverrides = folderViewPrefs.overrides.value,
+            isSortUserDefined = folderDetailSortUserDefined.value
+        )
+    )
 
-        explicitOverrides.applyTo(implicitDefaults.applyTo(globalPrefs))
+    private val effectiveFolderDetailPrefs: StateFlow<ViewPreferences> = combine(
+        _selectedFolder,
+        folderDetailPreferenceLayers
+    ) { selectedFolder, layers ->
+        resolveFolderDetailPreferences(selectedFolder?.path, layers)
     }.stateIn(viewModelScope, SharingStarted.Lazily, folderDetailPrefs.value)
 
     private val _mediaInFolder = MutableStateFlow<List<MediaItem>>(emptyList())
     val mediaInFolder: StateFlow<List<MediaItem>> = _mediaInFolder.asStateFlow()
+
+    private val mediaIndexDateTakenState = MediaIndexDateTakenState(
+        mediaIndexStore = mediaIndexStore,
+        scope = viewModelScope
+    )
+    val indexedDateTakenByMediaUri: StateFlow<Map<String, Long?>> =
+        mediaIndexDateTakenState.indexedDateTakenByMediaUri
 
     private val mediaViewer = MediaViewerState()
     val selectedMedia: StateFlow<MediaItem?> = mediaViewer.selectedMedia
@@ -186,18 +210,62 @@ class GalleryViewModel @JvmOverloads constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
 
+    val newAlbumFolders: StateFlow<GalleryUiState> = combine(
+        _allMedia,
+        foldersPrefs,
+        _pinnedFolders,
+        combine(_excludedFolders, _showExcludedTemporarily, _folderThumbnailOverrides) { excluded, showExcluded, overrides ->
+            Triple(excluded, showExcluded, overrides)
+        }
+    ) { allMedia, viewPrefs, pinned, exclusion ->
+        val (excluded, showExcluded, thumbnailOverrides) = exclusion
+        if (allMedia.isEmpty() && _uiState.value is GalleryUiState.Loading) {
+            GalleryUiState.Loading
+        } else {
+            val folders = GalleryTransformations.filterAndSortFolders(
+                allMedia,
+                query = "",
+                pinned = pinned,
+                sort = viewPrefs.sortType,
+                order = viewPrefs.sortOrder,
+                excluded = excluded,
+                showExcluded = showExcluded,
+                types = MediaType.entries.toSet(),
+                thumbnailOverrides = thumbnailOverrides
+            )
+            GalleryUiState.Success(folders)
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, GalleryUiState.Loading)
+
     val filteredMedia: StateFlow<List<MediaItem>> = combine(
-        _mediaInFolder, effectiveFolderDetailPrefs, prefs.searchQuery(PreferenceScope.FOLDER_DETAIL)
-    ) { media, viewPrefs, query ->
+        _mediaInFolder,
+        effectiveFolderDetailPrefs,
+        prefs.searchQuery(PreferenceScope.FOLDER_DETAIL),
+        mediaIndexDateTakenState.indexedDateTakenByMediaUri
+    ) { media, viewPrefs, query, indexedDateTakenByMediaUri ->
         val filtered = GalleryTransformations.filterMedia(media, query, viewPrefs.mediaTypes)
-        GalleryTransformations.sortMedia(filtered, viewPrefs.sortType, viewPrefs.sortOrder)
+        GalleryTransformations.sortMedia(
+            media = filtered,
+            sort = viewPrefs.sortType,
+            order = viewPrefs.sortOrder,
+            indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val filteredAllMedia: StateFlow<List<MediaItem>> = combine(
-        _allMedia, timelinePrefs, prefs.searchQuery(PreferenceScope.TIMELINE), _excludedFolders
-    ) { media, viewPrefs, query, excluded ->
+        _allMedia,
+        timelinePrefs,
+        prefs.searchQuery(PreferenceScope.TIMELINE),
+        _excludedFolders,
+        mediaIndexDateTakenState.indexedDateTakenByMediaUri
+    ) { media, viewPrefs, query, excluded, indexedDateTakenByMediaUri ->
         val filtered = GalleryTransformations.filterMedia(media, query, viewPrefs.mediaTypes, excluded)
-        GalleryTransformations.sortMedia(filtered, viewPrefs.sortType, viewPrefs.sortOrder)
+        GalleryTransformations.sortMedia(
+            media = filtered,
+            sort = viewPrefs.sortType,
+            order = viewPrefs.sortOrder,
+            indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri
+        )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
@@ -225,6 +293,7 @@ class GalleryViewModel @JvmOverloads constructor(
                 val folders = repository.getFolders()
                 _uiState.value = GalleryUiState.Success(folders)
                 _allMedia.value = repository.getAllMedia()
+                _isMediaLoaded.value = true
 
                 // Refresh current folder media if one is selected
                 _selectedFolder.value?.let { currentFolder ->
@@ -432,6 +501,10 @@ class GalleryViewModel @JvmOverloads constructor(
         mediaViewer.setCurrent(item)
     }
 
+    fun openMedia(item: MediaItem, mediaList: List<MediaItem>) {
+        mediaViewer.open(item, mediaList)
+    }
+
     fun recordVideoPlaybackPosition(uri: android.net.Uri, positionMs: Long, playWhenReady: Boolean) {
         mediaViewer.record(uri, positionMs, playWhenReady)
     }
@@ -452,9 +525,9 @@ class GalleryViewModel @JvmOverloads constructor(
         mediaViewer.rotate()
     }
 
-    fun toggleDisplayMode() {
+    fun setDisplayMode(mode: DisplayMode) {
         _showExcludedTemporarily.value = false
-        prefs.toggleDisplayMode()
+        prefs.setDisplayMode(mode)
     }
 
     fun setShowExcludedTemporarily(show: Boolean) {

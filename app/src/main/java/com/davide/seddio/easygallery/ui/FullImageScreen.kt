@@ -19,12 +19,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FolderCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -73,7 +76,14 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FullImageScreen(viewModel: GalleryViewModel) {
+fun FullImageScreen(
+    viewModel: GalleryViewModel,
+    favouritesAvailable: Boolean,
+    favouriteUris: Set<Uri>,
+    isFavouritePending: Boolean,
+    onToggleFavourite: (Uri) -> Unit,
+    onAddToAlbum: (List<MediaItem>) -> Unit
+) {
     val currentItem by viewModel.selectedMedia.collectAsState()
     val mediaList by viewModel.currentMediaList.collectAsState()
     val isImmersive by viewModel.isImmersiveMode.collectAsState()
@@ -352,6 +362,7 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                     .padding(16.dp),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
+                                val actionTarget = mediaList.getOrNull(pagerState.currentPage) ?: item
                                 IconButton(onClick = { showDeleteDialog = true }) {
                                     Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.action_delete), tint = Color.White)
                                 }
@@ -363,6 +374,37 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                 if (item.type != MediaType.VIDEO) {
                                     IconButton(onClick = { viewModel.rotatePhoto() }) {
                                         Icon(Icons.AutoMirrored.Filled.RotateRight, contentDescription = stringResource(R.string.cd_rotate), tint = Color.White)
+                                    }
+                                }
+                                if (favouritesAvailable) {
+                                    val isFavourite = actionTarget.uri in favouriteUris
+                                    val favouriteDescription = stringResource(
+                                        if (isFavourite) R.string.cd_unfavourite else R.string.cd_favourite
+                                    )
+                                    IconButton(
+                                        onClick = { onToggleFavourite(actionTarget.uri) },
+                                        enabled = !isFavouritePending,
+                                        modifier = Modifier.semantics {
+                                            contentDescription = favouriteDescription
+                                        }
+                                    ) {
+                                        if (isFavouritePending) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                color = Color.White,
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = if (isFavourite) {
+                                                    Icons.Default.Favorite
+                                                } else {
+                                                    Icons.Default.FavoriteBorder
+                                                },
+                                                contentDescription = null,
+                                                tint = Color.White
+                                            )
+                                        }
                                     }
                                 }
                                 IconButton(
@@ -404,6 +446,24 @@ fun FullImageScreen(viewModel: GalleryViewModel) {
                                                 }
                                             )
                                         }
+
+                                        val addToAlbumDescription = stringResource(R.string.menu_add_to_album)
+                                        DropdownMenuItem(
+                                            text = { Text(addToAlbumDescription) },
+                                            modifier = Modifier.semantics {
+                                                contentDescription = addToAlbumDescription
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.PhotoAlbum,
+                                                    contentDescription = null
+                                                )
+                                            },
+                                            onClick = {
+                                                showMoreOptionsMenu = false
+                                                onAddToAlbum(listOf(overflowTarget))
+                                            }
+                                        )
 
                                         DropdownMenuItem(
                                             text = { Text(stringResource(R.string.menu_copy_to)) },

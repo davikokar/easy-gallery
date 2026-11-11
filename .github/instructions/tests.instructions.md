@@ -5,14 +5,23 @@ applyTo: "app/src/test/**/*.kt, app/src/androidTest/**/*.kt"
 
 # Test conventions
 
+> **Maintenance — owner: Planner. Mode: routed.**
+> If a convention or tool here is wrong or missing, say so in your report and name the section;
+> do not edit it yourself. Conventions bind every test in the repo, so they change deliberately.
+
 These rules apply only to test files. They complement the project-wide rules in
 [AGENTS.md](../../AGENTS.md).
 
 ## Structure
 
 - One behavior per test. Prefer several small tests over one big one.
-- Name tests with backticked sentences describing behavior, e.g.
-  `` fun `pre-selection refreshes after a thumbnail is committed`() ``.
+- **Naming differs by source set, and this is not a style preference.**
+  - Unit tests (`app/src/test/`): backticked sentences describing behavior, e.g.
+    `` fun `pre-selection refreshes after a thumbnail is committed`() ``. This is the convention
+    here and it works.
+  - Instrumented tests (`app/src/androidTest/`): **plain identifiers only**, e.g.
+    `fun preSelectionRefreshesAfterThumbnailIsCommitted()`. See the warning under *Instrumented
+    tests* below — a backticked name with spaces breaks the entire suite, not just that test.
 - Follow Arrange / Act / Assert, separated by blank lines.
 - Mirror the production package under `app/src/test/java/com/davide/seddio/easygallery/`.
 
@@ -37,16 +46,26 @@ The module does **not** set `isReturnDefaultValues`, so in a plain JUnit test **
 
 ### Robolectric tests (the Android boundary)
 
-Robolectric **is** a `testImplementation` dependency and an established pattern here. Two tests
-use it, and both sit at the point where the app genuinely has to talk to the framework:
+Robolectric **is** a `testImplementation` dependency and an established pattern here. Use it when
+the thing under test *is* the Android boundary — which is what every current user has in common:
 
 - `DefaultMediaPermissionHandlerTest` — `@RunWith(RobolectricTestRunner::class)` with `@Config`
   and shadows, because it exercises `RecoverableSecurityException` and the `IntentSender` APIs.
 - `MediaStoreDataSourceTest` — Robolectric runner plus MockK for `Context`, `ContentResolver`,
   and `Cursor`, and a `TemporaryFolder` rule for the file operations.
+- `AlbumDaoTest`, `AlbumStoreTest`, `MediaIndexDaoTest` and `MediaIndexStoreTest` — Robolectric
+  runner plus `Room.inMemoryDatabaseBuilder`, because Room's generated code needs a real `Context`
+  and a working SQLite. Both databases are tested this way; it is the pattern for any new DAO or
+  `Room*` store.
+- `MediaIndexingWorkerTest` — Robolectric runner plus `work-testing`'s `TestListenableWorkerBuilder`,
+  driving the real `doWork` through the worker's injectable constructor; the pattern for a worker.
 
-Use Robolectric when the thing under test *is* the Android boundary. Do not reach for it to avoid
-extracting pure logic, and do not add it to a test that would otherwise run plain.
+The `InMemory*` half of a store is the counter-example: `MediaIndexInMemoryStoreTest` runs plain,
+because an in-memory implementation touches no Android API. Do not put a Robolectric runner on one
+out of symmetry with its Room sibling.
+
+Do not reach for it to avoid extracting pure logic, and do not add it to a test that would
+otherwise run plain.
 
 ## Flows and coroutines
 
@@ -65,13 +84,16 @@ extracting pure logic, and do not add it to a test that would otherwise run plai
   defaults, which is safe but means persisted defaults will not match production.
 - Reserve MockK for Android types a fake cannot stand in for — `Context`, `ContentResolver`,
   `Cursor`, `Uri` — as `MediaStoreDataSourceTest` does.
+- MockK records every call on a mock, so a plain-JVM test that builds many mocks and evaluates them
+  thousands of times can exhaust the test heap. Call `clearAllMocks(answers = false)` between
+  evaluations, or avoid the mocks.
 - Assert on observable behavior (emitted state, recorded operations), not on which methods were
   called.
 ## Instrumented tests (`app/src/androidTest/`)
 
-- Drive the stateless `*Content` composable (`FolderListContent`, `FolderDetailContent`), not the
-  `*Screen` wrapper. Pass **every parameter by name**: that is what makes a signature change fail
-  loudly instead of silently binding to the wrong argument.
+- Drive the stateless `*Content` composable (`FolderListContent`, `FolderDetailContent`,
+  `AlbumDetailContent`), not the `*Screen` wrapper. Pass **every parameter by name**: that is what
+  makes a signature change fail loudly instead of silently binding to the wrong argument.
 - Resolve controls by `testTag` or by content description. `testTag("delete_button")` exists on
   **both** the folder selection top bar and the media selection top bar — assert against the one
   the test actually renders.
@@ -79,6 +101,21 @@ extracting pure logic, and do not add it to a test that would otherwise run plai
   `cd_more_options` before the action is reachable.
 - A leading icon in a dropdown item carries `contentDescription = null` on purpose. Do not give
   it one to make a test easier; it would double-announce in TalkBack.
-- **There is no emulator or device on this machine.** Instrumented tests can only be
-  compile-verified with `compileDebugAndroidTestKotlin`. Never report instrumented behavior as
-  verified.
+- **Never use a backticked method name containing spaces here.** R8/D8 rejects them when dexing
+  `androidTest`, with "Space characters in SimpleName ... are not allowed prior to DEX version
+  040". The consequence is not one failing test: **the whole suite fails to build and nothing
+  runs at all**, and the error names a DEX constraint rather than the test, so it does not read
+  as a naming problem. Six methods in `AlbumDetailContentTest` had to be renamed before the suite
+  could execute for the first time. Use plain identifiers; keep the backticked style for
+  `app/src/test/`, where it works.
+- Whether these can be **run** depends on whether a device is attached — `adb devices` settles it.
+  With one, `./gradlew connectedDebugAndroidTest` runs the suite and instrumented behaviour can be
+  verified for real. With none, `compileDebugAndroidTestKotlin` is the fallback, and instrumented
+  behaviour must then be reported as compile-verified only, never as observed.
+- A device test that measures or depends on device content must **fail** with a message starting
+  `ENVIRONMENT:` when the device lacks what it needs — no live media, no item with a date or
+  coordinates, a batch that indexed nothing — rather than passing vacuously.
+- `androidTest` is in the same module, so it may use the app's `internal` members — the
+  gazetteer's linear-scan oracle is the example. Acceptable for oracles and test seams.
+- A device's real screen size matters: an item below the fold is not in the semantics tree in a
+  usable state. Call `performScrollTo()` before asserting on anything low in a scrollable screen.

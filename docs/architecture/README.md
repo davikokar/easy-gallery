@@ -2,11 +2,15 @@
 
 This directory holds the architectural documentation for Easy Gallery.
 
-[ARCHITECTURE.md](ARCHITECTURE.md) describes the current system: the three main views, the MVVM
-data flow, the layer responsibilities, and the project structure. Read it before changing how
+[ARCHITECTURE.md](ARCHITECTURE.md) describes the current system: the five main views carried by
+three screens, the MVVM data flow, the layer responsibilities, and the project structure. Read it
+before changing how
 state is owned or how the views are composed. It is maintained by the Planner and updated in the
 same change as the work it describes; the trigger list is in
 [the architecture documentation instructions](../../.github/instructions/architecture-docs.instructions.md).
+
+In-progress epics are specified under [../design/](../design/). Those documents describe work that
+may not exist yet; ARCHITECTURE.md describes only what has actually shipped.
 
 ## Architecture Decision Records
 
@@ -32,3 +36,15 @@ for the required format and status rules.
 | [ADR-0006](decisions/0006-per-folder-display-preference-overrides.md) | Per-folder display preference overrides layered over global defaults | Active | 2026-09-25 |
 | [ADR-0007](decisions/0007-persisted-folder-thumbnail-override.md) | Persisted per-folder thumbnail override resolved against live media | Active | 2026-09-25 |
 | [ADR-0008](decisions/0008-camera-folder-default-sort-order.md) | Implicit camera-folder sort default resolved beneath explicit preferences | Active | 2026-09-26 |
+| [ADR-0009](decisions/0009-room-as-first-owned-datastore.md) | Room as the app's first owned datastore | Active | 2026-10-07 |
+| [ADR-0010](decisions/0010-album-membership-dual-key-identity.md) | Album membership identifies media by a self-healing dual key | Active | 2026-10-07 |
+| [ADR-0011](decisions/0011-favourites-backed-by-mediastore.md) | Favourites is MediaStore-backed with a version-tiered write path | Active | 2026-10-07 |
+| [ADR-0012](decisions/0012-one-album-type-rule-additions-exclusions.md) | One album type — rule, additions, and exclusions | Active | 2026-10-07 |
+| [ADR-0013](decisions/0013-albums-as-third-display-mode.md) | Albums is a third display mode, and the navigation chain stays | Active | 2026-10-07 |
+| [ADR-0014](decisions/0014-album-database-included-in-auto-backup.md) | The album database is included in Android auto-backup | Active | 2026-10-07 |
+| [ADR-0015](decisions/0015-album-cover-persisted-random-member.md) | An album's cover is a persisted member, chosen at random once | Active | 2026-10-07 |
+| [ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md) | Album creation is a typed choice followed by a dedicated screen | Active | 2026-10-08 |
+| [ADR-0017](decisions/0017-composable-album-rule-representation.md) | An automatic album's rule is a composable predicate | Active | 2026-10-08 |
+| [ADR-0018](decisions/0018-media-index-in-a-second-database.md) | The media index is a second database | Active | 2026-10-08 |
+| [ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md) | Offline reverse geocoding for region albums | Active | 2026-10-08 |
+| [ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md) | An automatic album resolves against live media, and its index rows are a deletable cache | Active | 2026-10-08 |

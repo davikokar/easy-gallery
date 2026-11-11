@@ -94,7 +94,6 @@
     <string name="menu_select_all">全选</string>
     <string name="search_placeholder">搜索…</string>
     <string name="cd_cancel_search">取消搜索</string>
-    <string name="cd_toggle_display_mode">切换显示模式</string>
     <string name="cd_search">搜索</string>
     <string name="menu_show_excluded">暂时显示排除项</string>
     <string name="menu_create_folder">创建新文件夹</string>
@@ -122,6 +121,102 @@
     <string name="billing_thanks">非常感谢您的支持！ ☕</string>
     <string name="selection_count">%1$d / %2$d</string>
     <string name="settings_legal">法律</string>
+    <string name="settings_place_data">地点数据</string>
+    <string name="settings_place_data_credit">地名：GeoNames，CC BY 4.0</string>
+    <string name="place_data_intro">照片位置对应的地点和地区名称来自 GeoNames。这些数据已内置于应用中，可离线使用。</string>
+    <string name="place_data_label_source">创作者与来源</string>
+    <string name="place_data_label_licence">许可协议</string>
+    <string name="place_data_changes">数据已被修改：经过筛选，并从 GeoNames 的 cities15000、admin1CodesASCII 和 countryInfo 文件中精简为每个地点的名称、坐标、国家和地区。</string>
+    <string name="place_data_disclaimer">数据按“现状”提供，不对其准确性、时效性或完整性作任何保证或声明。</string>
     <string name="settings_about">关于</string>
     <string name="about_version">版本 %1$s</string>
+    <string name="folders_title">文件夹</string>
+    <string name="albums_title">相册</string>
+    <string name="cd_switch_view">切换视图</string>
+    <string name="albums_empty">暂无相册</string>
+    <string name="menu_new_album">新建相册</string>
+    <plurals name="album_item_count">
+        <item quantity="other">%1$d 个项目</item>
+    </plurals>
+    <string name="album_create_title">创建相册</string>
+    <string name="album_name_hint">相册名称</string>
+    <string name="album_rename_title">重命名相册</string>
+    <string name="album_delete_title">删除相册</string>
+    <string name="album_delete_message">要删除此相册吗？不会删除任何照片或视频。</string>
+    <string name="album_name_duplicate">已存在同名相册</string>
+    <string name="album_name_blank">相册名称不能为空</string>
+    <string name="menu_add_to_album">添加到相册</string>
+    <string name="menu_remove_from_album">从此相册中移除</string>
+    <string name="album_add_to_title">添加到相册</string>
+    <string name="album_empty">此相册中没有项目</string>
+    <string name="album_hidden_items_notice">部分项目暂时不可用。文件恢复可用后，它们会重新显示在此相册中。</string>
+    <string name="album_rule_unevaluatable_notice">此相册的自动规则需要更新版本的应用。更新之前，仅显示手动添加的项目。</string>
+    <string name="album_rule_unevaluatable_notice_short">需要更新版本的应用。仅显示手动添加的项目。</string>
+    <string name="album_rule_waiting_notice">部分照片和视频尚未扫描，此相册可能不完整。请在%2$s的“%1$s”中查看当前状态。</string>
+    <string name="album_rule_waiting_notice_short">部分项目尚未扫描，可能不完整。请查看%1$s。</string>
+    <string name="album_default_name">我的相册 %1$d</string>
+    <string name="album_type_title">新建相册</string>
+    <string name="album_type_manual_title">手动相册</string>
+    <string name="album_type_manual_description">由你自己挑选照片和视频。</string>
+    <string name="album_type_automatic_title">自动相册</string>
+    <string name="album_type_automatic_description">按规则自动收集，例如地点或日期范围。</string>
+    <string name="automatic_album_hint_choose">选择地点、日期，或两者都选</string>
+    <plurals name="automatic_album_match_count">
+        <item quantity="other">此相册将包含 %1$d 项照片和视频</item>
+    </plurals>
+    <string name="automatic_album_section_place">地点</string>
+    <string name="automatic_album_section_date">日期</string>
+    <string name="automatic_album_all_of">%1$s的全部</string>
+    <string name="automatic_album_places_without_region">无地区的地点</string>
+    <string name="automatic_album_loading">正在加载地点</string>
+    <string name="automatic_album_names_failed">无法加载地点名称</string>
+    <string name="automatic_album_waiting_for_media">正在加载您的照片和视频。加载完成后将列出地点和日期。</string>
+    <string name="automatic_album_places_empty">在您的照片和视频中未找到地点</string>
+    <string name="automatic_album_places_empty_for_date">在所选日期中未找到地点</string>
+    <string name="automatic_album_dates_empty">在您的照片和视频中未找到日期</string>
+    <string name="automatic_album_dates_empty_for_place">在所选地点中未找到带日期的照片或视频</string>
+    <plurals name="automatic_album_location_coverage">
+        <item quantity="other">有 %1$d 项照片和视频没有可用的位置信息，不包含在地点相册中。</item>
+    </plurals>
+    <string name="automatic_album_location_access_off">位置信息访问权限已关闭，因此无法读取照片的位置，地点相册也无法包含这些照片。</string>
+    <plurals name="automatic_album_date_coverage">
+        <item quantity="other">有 %1$d 项照片和视频没有拍摄日期，不包含在日期相册中。</item>
+    </plurals>
+    <string name="automatic_album_clear_place">清除地点 %1$s</string>
+    <string name="automatic_album_clear_date">清除日期 %1$s</string>
+    <string name="automatic_album_month_year">%2$d年%1$s</string>
+    <string name="new_album_select_media">选择要放入此相册的照片和视频</string>
+    <string name="favourites_title">收藏</string>
+    <string name="cd_favourite_indicator">已收藏</string>
+    <string name="cd_favourite">添加到收藏</string>
+    <string name="cd_unfavourite">取消收藏</string>
+    <string name="menu_favourite">添加到收藏</string>
+    <string name="manage_media_rationale_title">无需确认即可管理媒体？</string>
+    <string name="manage_media_rationale_message">Android 通常会要求您确认每项更改。允许 Easy Gallery 管理媒体可避免这些提示。即使不授予此权限，所有功能仍可正常使用。</string>
+    <string name="manage_media_not_now">暂不</string>
+    <string name="manage_media_open_settings">打开设置</string>
+    <string name="settings_media_index">媒体索引</string>
+    <string name="settings_index_now">立即建立索引</string>
+    <string name="settings_index_running">正在建立索引…</string>
+    <string name="settings_index_waiting">等待条件满足</string>
+    <string name="settings_index_waiting_detail">已计划，正在等待充电、设备空闲且电量非低电量状态。</string>
+    <plurals name="settings_index_remaining_rows">
+        <item quantity="other">还有 %1$d 项待扫描</item>
+    </plurals>
+    <plurals name="settings_index_with_date">
+        <item quantity="other">已索引且有日期的媒体项：%1$d 项</item>
+    </plurals>
+    <plurals name="settings_index_without_date">
+        <item quantity="other">已索引但无日期的媒体项：%1$d 项</item>
+    </plurals>
+    <plurals name="settings_index_not_yet_indexed">
+        <item quantity="other">尚未索引的媒体项：%1$d 项</item>
+    </plurals>
+    <plurals name="settings_index_skipped_rows">
+        <item quantity="other">推迟到下次扫描：%1$d 项</item>
+    </plurals>
+    <string name="settings_index_last_success">上次索引：%1$s</string>
+    <string name="settings_index_never">尚未建立索引</string>
+    <string name="settings_index_failed">上次扫描失败</string>
+    <string name="settings_index_cancelled">上次扫描已中断</string>
 </resources>
