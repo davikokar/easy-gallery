@@ -162,7 +162,34 @@
     <string name="album_type_manual_description">Tú eliges las fotos y los vídeos.</string>
     <string name="album_type_automatic_title">Álbum automático</string>
     <string name="album_type_automatic_description">Se llena a partir de una regla, como un lugar o un intervalo de fechas.</string>
-    <string name="album_type_not_available">Aún no disponible</string>
+    <string name="automatic_album_hint_choose">Elige un lugar, una fecha o ambos</string>
+    <plurals name="automatic_album_match_count">
+        <item quantity="one">%1$d foto o vídeo estará en este álbum</item>
+        <item quantity="other">%1$d fotos y vídeos estarán en este álbum</item>
+    </plurals>
+    <string name="automatic_album_section_place">Lugar</string>
+    <string name="automatic_album_section_date">Fecha</string>
+    <string name="automatic_album_all_of">Todo en %1$s</string>
+    <string name="automatic_album_places_without_region">Lugares sin región</string>
+    <string name="automatic_album_loading">Cargando lugares</string>
+    <string name="automatic_album_names_failed">No se pudieron cargar los nombres de los lugares</string>
+    <string name="automatic_album_waiting_for_media">Se están cargando tus fotos y vídeos. Los lugares y las fechas aparecerán cuando se hayan cargado.</string>
+    <string name="automatic_album_places_empty">No se encontraron lugares en tus fotos y vídeos</string>
+    <string name="automatic_album_places_empty_for_date">No se encontraron lugares para la fecha elegida</string>
+    <string name="automatic_album_dates_empty">No se encontraron fechas en tus fotos y vídeos</string>
+    <string name="automatic_album_dates_empty_for_place">No se encontraron fotos ni vídeos con fecha para el lugar elegido</string>
+    <plurals name="automatic_album_location_coverage">
+        <item quantity="one">%1$d foto o vídeo no tiene una ubicación utilizable y queda fuera de los álbumes de lugares.</item>
+        <item quantity="other">%1$d fotos y vídeos no tienen una ubicación utilizable y quedan fuera de los álbumes de lugares.</item>
+    </plurals>
+    <string name="automatic_album_location_access_off">El acceso a la ubicación está desactivado, así que no se pueden leer las ubicaciones de las fotos ni incluirlas en los álbumes de lugares.</string>
+    <plurals name="automatic_album_date_coverage">
+        <item quantity="one">%1$d foto o vídeo no tiene fecha de captura y queda fuera de los álbumes de fechas.</item>
+        <item quantity="other">%1$d fotos y vídeos no tienen fecha de captura y quedan fuera de los álbumes de fechas.</item>
+    </plurals>
+    <string name="automatic_album_clear_place">Quitar el lugar %1$s</string>
+    <string name="automatic_album_clear_date">Quitar la fecha %1$s</string>
+    <string name="automatic_album_month_year">%1$s de %2$d</string>
     <string name="new_album_select_media">Elige las fotos y los vídeos de este álbum</string>
     <string name="favourites_title">Favoritos</string>
     <string name="cd_favourite_indicator">Favorito</string>

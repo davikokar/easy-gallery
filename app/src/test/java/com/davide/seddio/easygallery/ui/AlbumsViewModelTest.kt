@@ -12,16 +12,22 @@ import com.davide.seddio.easygallery.data.AlbumRule
 import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
+import com.davide.seddio.easygallery.data.GazetteerNames
 import com.davide.seddio.easygallery.data.InMemoryAlbumStore
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
 import com.davide.seddio.easygallery.data.InMemoryMediaStoreVersionStore
+import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaIndexEntry
+import com.davide.seddio.easygallery.data.MediaIndexEvaluationProjection
+import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
 import com.davide.seddio.easygallery.data.MediaIndexStore
 import com.davide.seddio.easygallery.data.MediaItem
+import com.davide.seddio.easygallery.data.MediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.MediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.MembershipOrphanStateChange
 import com.davide.seddio.easygallery.data.MembershipUriRewrite
+import com.davide.seddio.easygallery.data.PLACE_RESOLVER_VERSION
 import com.davide.seddio.easygallery.data.StoredAlbum
 import com.davide.seddio.easygallery.data.StoredMembership
 import com.davide.seddio.easygallery.data.StoredMembershipKind
@@ -31,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -43,6 +50,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.StringReader
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -567,8 +575,330 @@ class AlbumsViewModelTest {
         assertTrue(album.isCoverFallback)
     }
 
+    // --- automatic albums: creation, region rules, the shared join (ADR-0016/0017 Amendment 2) -------------
+
+    @Test
+    fun `createAutomaticAlbum writes the encoded rule byte for byte and no membership rows`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = albumStore)
+        val rule = AlbumRule.Evaluatable(
+            listOf(
+                AlbumRuleClause.Region("IT", "16", "Tuscany", "Florence"),
+                AlbumRuleClause.Time(LocalDate.of(2025, 6, 1), LocalDate.of(2025, 6, 30))
+            )
+        )
+
+        val accepted = viewModel.createAutomaticAlbum("  Tuscany 2025 ", rule)
+        advanceUntilIdle()
+
+        assertTrue(accepted)
+        val stored = albumStore.observeAlbums().first().single()
+        assertEquals("Tuscany 2025", stored.name)
+        assertEquals(
+            "{\"version\":1,\"all\":[{\"type\":\"region\",\"dataset\":$PLACE_RESOLVER_VERSION,\"country\":\"IT\"," +
+                "\"admin1\":\"16\",\"admin1Name\":\"Tuscany\",\"place\":\"Florence\"}," +
+                "{\"type\":\"time\",\"from\":\"2025-06-01\",\"to\":\"2025-06-30\"}]}",
+            stored.rule
+        )
+        assertTrue(albumStore.memberships(stored.id).isEmpty())
+        assertEquals(AlbumRule.Evaluatable::class, AlbumRuleJson.parse(stored.rule)!!::class)
+    }
+
+    @Test
+    fun `createAutomaticAlbum rejects a blank or duplicate name and writes nothing`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = albumStore)
+        viewModel.createAlbum("Trips")
+        advanceUntilIdle()
+
+        val blank = viewModel.createAutomaticAlbum("   ", italyRule())
+        assertEquals("Album name cannot be blank", viewModel.errorMessage.value)
+        val duplicate = viewModel.createAutomaticAlbum(" trips ", italyRule())
+        assertEquals("An album with this name already exists", viewModel.errorMessage.value)
+        advanceUntilIdle()
+
+        assertFalse(blank)
+        assertFalse(duplicate)
+        assertEquals(listOf("Trips"), albumStore.observeAlbums().first().map { it.name })
+    }
+
+    @Test
+    fun `a region album moves from waiting to complete on an index store emission alone`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val albumId = albumStore.createAlbum("Italy", 1_000L, italyRuleText())
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+
+        val inItaly = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val inFrance = mediaItem("content://media/external/images/media/2", "2.jpg")
+        viewModel.setAllMedia(listOf(inItaly, inFrance))
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, viewModel.album(albumId).status)
+        assertEquals(0, viewModel.album(albumId).resolvedMemberCount)
+
+        indexStore.upsert(
+            listOf(
+                placedEntry(inItaly, "IT", "16", "Florence", JUNE_15),
+                placedEntry(inFrance, "FR", "11", "Paris", JUNE_15)
+            )
+        )
+        advanceUntilIdle()
+
+        val after = viewModel.album(albumId)
+        assertEquals(AlbumEvaluationStatus.COMPLETE, after.status)
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+        assertEquals(listOf(inItaly), viewModel.selectedAlbumMembers.value.map { it.mediaItem })
+    }
+
+    @Test
+    fun `a time and region album holds only items matching both`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val rule = AlbumRule.Evaluatable(
+            listOf(
+                AlbumRuleClause.Region("IT"),
+                AlbumRuleClause.Time(LocalDate.of(2025, 6, 1), LocalDate.of(2025, 6, 30))
+            )
+        )
+        val albumId = albumStore.createAlbum("Italy in June", 1_000L, AlbumRuleJson.encode(rule))
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+
+        val matching = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val wrongMonth = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val wrongCountry = mediaItem("content://media/external/images/media/3", "3.jpg")
+        indexStore.upsert(
+            listOf(
+                placedEntry(matching, "IT", "16", "Florence", JUNE_15),
+                placedEntry(wrongMonth, "IT", "16", "Florence", JANUARY_15),
+                placedEntry(wrongCountry, "FR", "11", "Paris", JUNE_15)
+            )
+        )
+        viewModel.setAllMedia(listOf(matching, wrongMonth, wrongCountry))
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.COMPLETE, viewModel.album(albumId).status)
+        assertEquals(listOf(matching), viewModel.selectedAlbumMembers.value.map { it.mediaItem })
+    }
+
+    @Test
+    fun `the join is built once per emission whatever the number of albums`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        albumStore.createAlbum("Italy", 1_000L, italyRuleText())
+        albumStore.createAlbum("France", 1_000L, AlbumRuleJson.encode(AlbumRule.Evaluatable(listOf(AlbumRuleClause.Region("FR")))))
+        albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val manualId = albumStore.createAlbum("Manual", 1_000L, null)
+        var builds = 0
+        val viewModel = createViewModel(
+            albumStore = albumStore,
+            mediaIndexStore = indexStore,
+            joinFactory = { projection, live ->
+                builds++
+                MediaIndexLiveJoin.build(projection, live)
+            }
+        )
+
+        val inItaly = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val inFrance = mediaItem("content://media/external/images/media/2", "2.jpg")
+        viewModel.setAllMedia(listOf(inItaly, inFrance))
+        advanceUntilIdle()
+        assertEquals(1, builds)
+
+        indexStore.upsert(
+            listOf(
+                placedEntry(inItaly, "IT", "16", "Florence", JUNE_15),
+                placedEntry(inFrance, "FR", "11", "Paris", JANUARY_15)
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(2, builds)
+        assertEquals(listOf(1, 1, 1), viewModel.albums.value.filter { it.id != manualId }.map { it.resolvedMemberCount })
+
+        viewModel.addMembers(manualId, listOf(inItaly))
+        advanceUntilIdle()
+
+        assertEquals(2, builds)
+    }
+
+    @Test
+    fun `a rename does not subscribe to the index projection again or rebuild the join`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = CountingMediaIndexStore()
+        val albumId = albumStore.createAlbum("Italy", 1_000L, italyRuleText())
+        var builds = 0
+        val viewModel = createViewModel(
+            albumStore = albumStore,
+            mediaIndexStore = indexStore,
+            joinFactory = { projection, live ->
+                builds++
+                MediaIndexLiveJoin.build(projection, live)
+            }
+        )
+        viewModel.setAllMedia(listOf(mediaItem("content://media/external/images/media/1", "1.jpg")))
+        advanceUntilIdle()
+        assertEquals(1, indexStore.projectionSubscriptions)
+        assertEquals(1, builds)
+
+        viewModel.renameAlbum(albumId, "Italia")
+        advanceUntilIdle()
+        viewModel.createAlbum("Another")
+        advanceUntilIdle()
+
+        assertEquals("Italia", viewModel.album(albumId).name)
+        assertEquals(1, indexStore.projectionSubscriptions)
+        assertEquals(1, builds)
+    }
+
+    @Test
+    fun `the index is not read while no album has a rule`() = runTest {
+        val indexStore = CountingMediaIndexStore()
+        val viewModel = createViewModel(mediaIndexStore = indexStore)
+
+        viewModel.createAlbum("Manual")
+        viewModel.setAllMedia(listOf(mediaItem("content://media/external/images/media/1", "1.jpg")))
+        advanceUntilIdle()
+
+        assertEquals(0, indexStore.projectionSubscriptions)
+    }
+
+    @Test
+    fun `an album item carries its clause kinds and the library coverage from the join`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val bothId = albumStore.createAlbum(
+            "Both",
+            1_000L,
+            AlbumRuleJson.encode(
+                AlbumRule.Evaluatable(
+                    listOf(
+                        AlbumRuleClause.Region("IT"),
+                        AlbumRuleClause.Time(LocalDate.of(2025, 6, 1), LocalDate.of(2025, 6, 30))
+                    )
+                )
+            )
+        )
+        val timeOnlyId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val regionOnlyId = albumStore.createAlbum("Italy", 1_000L, italyRuleText())
+        val manualId = albumStore.createAlbum("Manual", 1_000L, null)
+        val futureId = albumStore.createAlbum("Future", 1_000L, UNKNOWN_VERSION_RULE)
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+
+        val located = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val outOfCap = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val bare = mediaItem("content://media/external/images/media/3", "3.jpg")
+        val notIndexed = mediaItem("content://media/external/images/media/4", "4.jpg")
+        indexStore.upsert(
+            listOf(
+                placedEntry(located, "IT", "16", "Florence", JUNE_15),
+                placedEntry(outOfCap, null, null, null, JUNE_15),
+                indexEntry(bare, dateTakenEpochMillis = null)
+            )
+        )
+        viewModel.setAllMedia(listOf(located, outOfCap, bare, notIndexed))
+        advanceUntilIdle()
+
+        val expected = MediaIndexCoverage(withoutLocation = 2, withoutDate = 1)
+        val both = viewModel.album(bothId)
+        assertTrue(both.hasTimeClause && both.hasRegionClause)
+        assertEquals(expected, both.coverage)
+        val timeOnly = viewModel.album(timeOnlyId)
+        assertTrue(timeOnly.hasTimeClause && !timeOnly.hasRegionClause)
+        assertEquals(expected, timeOnly.coverage)
+        val regionOnly = viewModel.album(regionOnlyId)
+        assertTrue(!regionOnly.hasTimeClause && regionOnly.hasRegionClause)
+        assertEquals(expected, regionOnly.coverage)
+        for (id in listOf(manualId, futureId)) {
+            val item = viewModel.album(id)
+            assertTrue(!item.hasTimeClause && !item.hasRegionClause)
+            assertNull(item.coverage)
+        }
+    }
+
+    @Test
+    fun `an album has no coverage before the live media is known`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val albumId = albumStore.createAlbum("Italy", 1_000L, italyRuleText())
+        val viewModel = createViewModel(albumStore = albumStore)
+        advanceUntilIdle()
+
+        val item = viewModel.album(albumId)
+        assertTrue(item.hasRegionClause)
+        assertNull(item.coverage)
+    }
+
+    @Test
+    fun `location access is read only for an album with a region clause`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val regionId = albumStore.createAlbum("Italy", 1_000L, italyRuleText())
+        val timeId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        var reads = 0
+        val viewModel = createViewModel(
+            albumStore = albumStore,
+            locationAccess = { reads++; false }
+        )
+        viewModel.setAllMedia(listOf(mediaItem("content://media/external/images/media/1", "1.jpg")))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.album(regionId).locationAccessGranted)
+        assertTrue(viewModel.album(timeId).locationAccessGranted)
+        assertTrue(reads > 0)
+    }
+
+    @Test
+    fun `the picker match count is the member count of the album created from it`() = runTest {
+        val indexStore = InMemoryMediaIndexStore()
+        val viewModel = createViewModel(mediaIndexStore = indexStore, gazetteerNamesLoader = { pickerNames() })
+        val florenceJune = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val pisaJune = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val florenceJanuary = mediaItem("content://media/external/images/media/3", "3.jpg")
+        val parisJune = mediaItem("content://media/external/images/media/4", "4.jpg")
+        indexStore.upsert(
+            listOf(
+                placedEntry(florenceJune, "IT", "16", "Florence", JUNE_15),
+                placedEntry(pisaJune, "IT", "16", "Pisa", JUNE_15),
+                placedEntry(florenceJanuary, "IT", "16", "Florence", JANUARY_15),
+                placedEntry(parisJune, "FR", "11", "Paris", JUNE_15)
+            )
+        )
+        viewModel.setAllMedia(listOf(florenceJune, pisaJune, florenceJanuary, parisJune))
+        val picker = viewModel.automaticAlbumPicker
+
+        var created: AutomaticAlbumPickerUi? = null
+        picker.uiState.test {
+            picker.open("Italy in June")
+            picker.selectRegion(AlbumRuleClause.Region("IT"))
+            picker.selectTime(TimeSelection.Month(2025, 6))
+            while (created == null) {
+                val ui = awaitItem()
+                if (ui.status == AutomaticAlbumPickerStatus.READY && ui.selection.time != null && ui.canCreate) created = ui
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+        val ui = created!!
+        assertEquals(2, ui.content.matchCount)
+
+        assertTrue(viewModel.createAutomaticAlbum(ui.name, ui.rule!!))
+        advanceUntilIdle()
+
+        val album = viewModel.albums.value.single()
+        assertEquals(AlbumEvaluationStatus.COMPLETE, album.status)
+        assertEquals(ui.content.matchCount, album.resolvedMemberCount)
+        assertEquals(0, album.storedMembershipCount)
+    }
+
     private fun AlbumsViewModel.album(albumId: Long): AlbumListItem =
         albums.value.first { it.id == albumId }
+
+    private fun pickerNames(): GazetteerNames {
+        val header = "# dataset-version: $PLACE_RESOLVER_VERSION\n"
+        return GazetteerNames.load(
+            StringReader(header + "# rows-written: 2\nIT.16\tTuscany\nFR.11\tIle-de-France\n"),
+            StringReader(header + "# rows-written: 2\nIT\tItaly\nFR\tFrance\n")
+        )
+    }
 
     private suspend fun AlbumStore.memberships(albumId: Long): List<StoredMembership> =
         observeMembershipsForAlbum(albumId).first()
@@ -602,13 +932,39 @@ class AlbumsViewModelTest {
         )
     }
 
+    private fun italyRule() = AlbumRule.Evaluatable(listOf(AlbumRuleClause.Region("IT")))
+
+    private fun italyRuleText(): String = AlbumRuleJson.encode(italyRule())
+
+    // A null country is a coordinate the current resolver found no place for: beyond the cap.
+    private fun placedEntry(
+        item: MediaItem,
+        countryCode: String?,
+        regionCode: String?,
+        placeName: String?,
+        dateTakenEpochMillis: Long?
+    ): MediaIndexEntry {
+        return indexEntry(item, dateTakenEpochMillis).copy(
+            capturedLatitude = 43.7696,
+            capturedLongitude = 11.2558,
+            derivedCountryCode = countryCode,
+            derivedRegionCode = regionCode,
+            derivedPlaceName = placeName,
+            derivedPlaceResolverVersion = PLACE_RESOLVER_VERSION
+        )
+    }
+
     private fun createViewModel(
         albumStore: AlbumStore = InMemoryAlbumStore(),
         albumNameFormatter: (Locale, String, Int) -> String = { locale, format, ordinal ->
             String.format(locale, format, ordinal)
         },
         mediaIndexStore: MediaIndexStore = InMemoryMediaIndexStore(),
-        zoneProvider: () -> ZoneId = { ZoneId.of("UTC") }
+        zoneProvider: () -> ZoneId = { ZoneId.of("UTC") },
+        joinFactory: (List<MediaIndexEvaluationProjection>, List<MediaItem>) -> MediaIndexLiveJoin =
+            { projection, live -> MediaIndexLiveJoin.build(projection, live) },
+        locationAccess: MediaLocationAccessChecker = MediaLocationAccessChecker { true },
+        gazetteerNamesLoader: () -> GazetteerNames = { error("this test does not open the picker") }
     ): AlbumsViewModel {
         return AlbumsViewModel(
             application = application,
@@ -619,7 +975,11 @@ class AlbumsViewModelTest {
             mediaStoreVersionProvider = FixedMediaStoreVersionProvider("v1"),
             mediaIndexStore = mediaIndexStore,
             zoneProvider = zoneProvider,
-            evaluationDispatcher = dispatcher
+            evaluationDispatcher = dispatcher,
+            joinFactory = joinFactory,
+            locationAccessChecker = locationAccess,
+            gazetteerNamesLoader = gazetteerNamesLoader,
+            localeProvider = { Locale.US }
         )
     }
 
@@ -661,6 +1021,17 @@ class AlbumsViewModelTest {
         private val value: String?
     ) : MediaStoreVersionProvider {
         override fun currentVersion(context: android.content.Context): String? = value
+    }
+
+    private class CountingMediaIndexStore(
+        private val delegate: MediaIndexStore = InMemoryMediaIndexStore()
+    ) : MediaIndexStore by delegate {
+        var projectionSubscriptions: Int = 0
+            private set
+
+        override fun observeEvaluationProjection(): Flow<List<MediaIndexEvaluationProjection>> {
+            return delegate.observeEvaluationProjection().onStart { projectionSubscriptions += 1 }
+        }
     }
 
     private class CountingAlbumStore(

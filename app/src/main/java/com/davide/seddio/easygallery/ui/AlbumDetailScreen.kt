@@ -18,11 +18,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FolderCopy
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.RemoveCircleOutline
@@ -68,6 +70,7 @@ import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.MediaItem
+import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.OperationType
 import com.davide.seddio.easygallery.data.PreferenceScope
@@ -159,6 +162,10 @@ fun AlbumDetailScreen(
         } else {
             album?.status ?: AlbumEvaluationStatus.MANUAL
         },
+        hasTimeClause = !isFavouritesAlbum && album?.hasTimeClause == true,
+        hasRegionClause = !isFavouritesAlbum && album?.hasRegionClause == true,
+        coverage = if (isFavouritesAlbum) null else album?.coverage,
+        locationAccessGranted = album?.locationAccessGranted ?: true,
         preferences = preferences,
         searchQuery = searchQuery,
         isSearchActive = isSearchActive,
@@ -237,6 +244,10 @@ fun AlbumDetailContent(
     media: List<MediaItem>,
     hiddenMemberCount: Int,
     evaluationStatus: AlbumEvaluationStatus,
+    hasTimeClause: Boolean,
+    hasRegionClause: Boolean,
+    coverage: MediaIndexCoverage?,
+    locationAccessGranted: Boolean,
     preferences: ViewPreferences,
     searchQuery: String,
     isSearchActive: Boolean,
@@ -496,6 +507,24 @@ fun AlbumDetailContent(
                 )
                 AlbumEvaluationStatus.MANUAL, AlbumEvaluationStatus.COMPLETE -> Unit
             }
+            // Coverage describes what a rule can reach, so a manual or unevaluatable album has none.
+            val showsCoverage = evaluationStatus == AlbumEvaluationStatus.COMPLETE ||
+                evaluationStatus == AlbumEvaluationStatus.WAITING_ON_INDEX
+            if (showsCoverage && hasRegionClause) {
+                LocationCoverageNotice(
+                    coverage = coverage,
+                    locationAccessGranted = locationAccessGranted,
+                    testTag = "album_location_coverage_notice",
+                    announce = true
+                )
+            }
+            if (showsCoverage && hasTimeClause) {
+                DateCoverageNotice(
+                    coverage = coverage,
+                    testTag = "album_date_coverage_notice",
+                    announce = true
+                )
+            }
             if (hiddenMemberCount > 0) {
                 AlbumNoticeBand(
                     icon = Icons.Default.Info,
@@ -561,17 +590,68 @@ fun AlbumDetailContent(
 }
 
 @Composable
-private fun AlbumNoticeBand(
+internal fun LocationCoverageNotice(
+    coverage: MediaIndexCoverage?,
+    locationAccessGranted: Boolean,
+    testTag: String,
+    announce: Boolean
+) {
+    if (!locationAccessGranted) {
+        AlbumNoticeBand(
+            icon = Icons.Default.LocationOff,
+            text = stringResource(R.string.automatic_album_location_access_off),
+            testTag = testTag,
+            announce = announce
+        )
+    } else if (coverage != null && coverage.withoutLocation > 0) {
+        AlbumNoticeBand(
+            icon = Icons.Default.LocationOff,
+            text = pluralStringResource(
+                R.plurals.automatic_album_location_coverage,
+                coverage.withoutLocation,
+                coverage.withoutLocation
+            ),
+            testTag = testTag,
+            announce = announce
+        )
+    }
+}
+
+@Composable
+internal fun DateCoverageNotice(
+    coverage: MediaIndexCoverage?,
+    testTag: String,
+    announce: Boolean
+) {
+    if (coverage != null && coverage.withoutDate > 0) {
+        AlbumNoticeBand(
+            icon = Icons.Default.EventBusy,
+            text = pluralStringResource(
+                R.plurals.automatic_album_date_coverage,
+                coverage.withoutDate,
+                coverage.withoutDate
+            ),
+            testTag = testTag,
+            announce = announce
+        )
+    }
+}
+
+@Composable
+internal fun AlbumNoticeBand(
     icon: ImageVector,
     text: String,
-    testTag: String
+    testTag: String,
+    announce: Boolean = true
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
             .fillMaxWidth()
             .testTag(testTag)
-            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
+            .semantics(mergeDescendants = true) {
+                if (announce) liveRegion = LiveRegionMode.Polite
+            }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

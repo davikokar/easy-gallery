@@ -20,5 +20,12 @@ object AlbumNaming {
         return format(ordinal)
     }
 
+    /** A usable new name: not blank, and not equal to an existing one once trimmed and lower-cased. */
+    fun isAvailable(name: String, existingNames: Collection<String>): Boolean {
+        if (name.isBlank()) return false
+        val target = canonical(name)
+        return existingNames.none { canonical(it) == target }
+    }
+
     private fun canonical(name: String): String = name.trim().lowercase(Locale.ROOT)
 }

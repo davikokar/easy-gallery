@@ -53,6 +53,7 @@ import com.davide.seddio.easygallery.ui.BillingViewModel
 import com.davide.seddio.easygallery.ui.FolderDetailScreen
 import com.davide.seddio.easygallery.ui.FolderListScreen
 import com.davide.seddio.easygallery.ui.NewAlbumScreen
+import com.davide.seddio.easygallery.ui.NewAutomaticAlbumScreen
 import com.davide.seddio.easygallery.ui.FavouritesViewModel
 import com.davide.seddio.easygallery.ui.CreateFolderViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
@@ -179,6 +180,8 @@ class MainActivity : ComponentActivity() {
                     var pendingCreatedAlbumName by remember { mutableStateOf<String?>(null) }
                     // Non-null means the New album screen is open, holding the name it opened on.
                     var newAlbumInitialName by rememberSaveable { mutableStateOf<String?>(null) }
+                    // True means the New automatic album screen is open; its draft lives in AlbumsViewModel.
+                    var newAutomaticAlbumOpen by rememberSaveable { mutableStateOf(false) }
 
                     LaunchedEffect(allMedia, isMediaLoaded) {
                         if (isMediaLoaded) albumsViewModel.setAllMedia(allMedia)
@@ -209,6 +212,7 @@ class MainActivity : ComponentActivity() {
                         selectedAlbumId != null -> "album_detail:$selectedAlbumId"
                         isFavouritesSelected -> "album_detail:favourites"
                         newAlbumInitialName != null -> "new_album"
+                        newAutomaticAlbumOpen -> "new_automatic_album"
                         hasPermission -> "folder_list"
                         else -> "permission_denied"
                     }
@@ -219,6 +223,12 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(newAlbumInitialName) {
                         if (newAlbumInitialName == null) {
                             saveableStateHolder.removeState("new_album")
+                        }
+                    }
+                    // Same trap for the New automatic album screen: its tab would reopen on the last visit's.
+                    LaunchedEffect(newAutomaticAlbumOpen) {
+                        if (!newAutomaticAlbumOpen) {
+                            saveableStateHolder.removeState("new_automatic_album")
                         }
                     }
 
@@ -301,6 +311,11 @@ class MainActivity : ComponentActivity() {
                                     initialName = newAlbumInitialName.orEmpty(),
                                     onFinished = { newAlbumInitialName = null }
                                 )
+                            } else if (newAutomaticAlbumOpen) {
+                                NewAutomaticAlbumScreen(
+                                    albumsViewModel = albumsViewModel,
+                                    onFinished = { newAutomaticAlbumOpen = false }
+                                )
                             } else if (hasPermission) {
                                 FolderListScreen(
                                     viewModel = viewModel,
@@ -316,6 +331,10 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onStartManualAlbum = {
                                         newAlbumInitialName = albumsViewModel.suggestAlbumName()
+                                    },
+                                    onStartAutomaticAlbum = {
+                                        albumsViewModel.openAutomaticAlbumPicker()
+                                        newAutomaticAlbumOpen = true
                                     },
                                     onSelectFavourites = { isFavouritesSelected = true }
                                 )

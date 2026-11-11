@@ -13,8 +13,11 @@ interface MediaIndexStore {
     fun observeDateTakenProjection(): Flow<Map<String, Long?>>
     fun observeDateTakenCounts(): Flow<DateTakenCounts>
 
-    /** Every row, unfiltered and with stored (non-canonicalised) URIs, ordered by URI; no row means not indexed. */
-    fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTaken>>
+    /**
+     * Every row, unfiltered and with stored URIs, ordered by URI: what a rule evaluation reads from the index
+     * (ADR-0017 Amendment 2). Live-media filtering is the caller's join (ADR-0020). Re-emits on any index change.
+     */
+    fun observeEvaluationProjection(): Flow<List<MediaIndexEvaluationProjection>>
 
     suspend fun listByVolume(volumeName: String): List<MediaIndexEntry>
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry?
@@ -44,10 +47,20 @@ data class DateTakenCounts(
     val withoutDate: Int
 )
 
-/** A null date means indexed without a date; an absent row means not indexed. */
-data class MediaIndexIdentityDateTaken(
+/**
+ * One index row as a rule evaluation sees it. The derived place values are kept while the row is pending, so
+ * they are only current when [derivedPlaceResolverVersion] matches the resolver's version; a null marker is
+ * pending, and a current marker with null values is a coordinate resolved beyond the cap, which is not the
+ * same as [hasCoordinates] being false.
+ */
+data class MediaIndexEvaluationProjection(
     val identity: MediaIdentity,
-    val capturedDateTakenEpochMillis: Long?
+    val capturedDateTakenEpochMillis: Long?,
+    val hasCoordinates: Boolean,
+    val derivedCountryCode: String?,
+    val derivedRegionCode: String?,
+    val derivedPlaceName: String?,
+    val derivedPlaceResolverVersion: Int?
 )
 
 /** A resolver's answer for one row; [latitude] and [longitude] are the stored coordinates it was computed from. */
@@ -122,17 +135,22 @@ class RoomMediaIndexStore(
         }
     }
 
-    override fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTaken>> {
-        return dao.observeIdentityDateTaken().map { rows ->
+    override fun observeEvaluationProjection(): Flow<List<MediaIndexEvaluationProjection>> {
+        return dao.observeEvaluationProjection().map { rows ->
             rows.map { row ->
-                MediaIndexIdentityDateTaken(
+                MediaIndexEvaluationProjection(
                     identity = mediaIdentityOf(
                         mediaUri = row.mediaUri,
                         displayName = row.displayName,
                         size = row.size,
                         dateModified = row.dateModified
                     ),
-                    capturedDateTakenEpochMillis = row.capturedDateTakenEpochMillis
+                    capturedDateTakenEpochMillis = row.capturedDateTakenEpochMillis,
+                    hasCoordinates = row.hasCoordinates,
+                    derivedCountryCode = row.derivedCountryCode,
+                    derivedRegionCode = row.derivedRegionCode,
+                    derivedPlaceName = row.derivedPlaceName,
+                    derivedPlaceResolverVersion = row.derivedPlaceResolverVersion
                 )
             }
         }
@@ -265,12 +283,17 @@ class InMemoryMediaIndexStore : MediaIndexStore {
         }
     }
 
-    override fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTaken>> {
+    override fun observeEvaluationProjection(): Flow<List<MediaIndexEvaluationProjection>> {
         return rowsFlow.map { current ->
             current.map { entry ->
-                MediaIndexIdentityDateTaken(
+                MediaIndexEvaluationProjection(
                     identity = entry.toMediaIdentity(),
-                    capturedDateTakenEpochMillis = entry.capturedDateTakenEpochMillis
+                    capturedDateTakenEpochMillis = entry.capturedDateTakenEpochMillis,
+                    hasCoordinates = entry.capturedLatitude != null && entry.capturedLongitude != null,
+                    derivedCountryCode = entry.derivedCountryCode,
+                    derivedRegionCode = entry.derivedRegionCode,
+                    derivedPlaceName = entry.derivedPlaceName,
+                    derivedPlaceResolverVersion = entry.derivedPlaceResolverVersion
                 )
             }
         }

@@ -52,7 +52,7 @@ class MediaIndexStoreTest {
     }
 
     @Test
-    fun `room and in-memory stores emit same identity date taken rows`() = runTest {
+    fun `room and in-memory stores emit the same evaluation projection ordered by uri`() = runTest {
         val inMemory = InMemoryMediaIndexStore()
         val roomBacked = RoomMediaIndexStore(database)
         val entries = listOf(
@@ -66,30 +66,15 @@ class MediaIndexStoreTest {
         inMemory.upsert(entries)
         roomBacked.upsert(entries)
 
-        val inMemoryRows = inMemory.observeIdentityDateTaken().first()
-        val roomRows = roomBacked.observeIdentityDateTaken().first()
+        val roomRows = roomBacked.observeEvaluationProjection().first()
 
-        assertEquals(inMemoryRows, roomRows)
         assertEquals(
             listOf("content://media/external/images/media/81", "content://media/external/images/media/82"),
             roomRows.map { it.identity.mediaUri }
         )
         assertEquals(entries[1].toMediaIdentity(), roomRows.first().identity)
         assertNull(roomRows.first().capturedDateTakenEpochMillis)
-    }
-
-    @Test
-    fun `room identity date taken re-emits when only an upsert lands`() = runTest {
-        val store = RoomMediaIndexStore(database)
-
-        store.observeIdentityDateTaken().test {
-            assertTrue(awaitItem().isEmpty())
-
-            store.upsert(listOf(sampleEntry(mediaUri = "content://media/external/images/media/91")))
-
-            assertEquals(1, awaitItem().size)
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(roomRows.toSet(), inMemory.observeEvaluationProjection().first().toSet())
     }
 
     @Test
@@ -407,6 +392,153 @@ class MediaIndexStoreTest {
             assertEquals(CURRENT, awaitItem().single().derivedPlaceResolverVersion)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `evaluation projection carries every column with distinct values`() = runTest {
+        forEachStore { store ->
+            val entry = MediaIndexEntry(
+                mediaUri = uri(41),
+                displayName = "evaluated.jpg",
+                size = 1_414L,
+                dateModified = 2_525L,
+                volumeName = "external_custom",
+                generationAdded = 111L,
+                generationModified = 222L,
+                capturedDateTakenEpochMillis = 1_729_000_000_321L,
+                capturedLatitude = 43.7001,
+                capturedLongitude = 11.1999,
+                capturedWidth = 1234,
+                capturedHeight = 567,
+                derivedCountryCode = "AA",
+                derivedRegionCode = "BB-77",
+                derivedPlaceName = "Distinct Place",
+                derivedPlaceResolverVersion = 9
+            )
+            store.upsert(listOf(entry))
+
+            val rows = store.observeEvaluationProjection().first()
+
+            assertEquals(
+                listOf(
+                    MediaIndexEvaluationProjection(
+                        identity = mediaIdentityOf(uri(41), "evaluated.jpg", 1_414L, 2_525L),
+                        capturedDateTakenEpochMillis = 1_729_000_000_321L,
+                        hasCoordinates = true,
+                        derivedCountryCode = "AA",
+                        derivedRegionCode = "BB-77",
+                        derivedPlaceName = "Distinct Place",
+                        derivedPlaceResolverVersion = 9
+                    )
+                ),
+                rows
+            )
+            assertEquals(entry.toMediaIdentity(), rows.single().identity)
+        }
+    }
+
+    @Test
+    fun `evaluation projection returns a pending row with its old derived values`() = runTest {
+        forEachStore { store ->
+            store.upsert(
+                listOf(
+                    sampleEntry(
+                        uri(1),
+                        derivedCountryCode = "IT",
+                        derivedRegionCode = "52",
+                        derivedPlaceName = "Firenze",
+                        derivedPlaceResolverVersion = null
+                    )
+                )
+            )
+
+            val row = store.observeEvaluationProjection().first().single()
+
+            assertEquals(Triple("IT", "52", "Firenze"), Triple(row.derivedCountryCode, row.derivedRegionCode, row.derivedPlaceName))
+            assertNull(row.derivedPlaceResolverVersion)
+            assertTrue(row.hasCoordinates)
+        }
+    }
+
+    @Test
+    fun `evaluation projection tells an out-of-cap row from a row without coordinates`() = runTest {
+        forEachStore { store ->
+            store.upsert(
+                listOf(
+                    sampleEntry(uri(1), derivedCountryCode = "XX", derivedPlaceName = "Stale"),
+                    sampleEntry(uri(2), capturedLatitude = null, capturedLongitude = null)
+                )
+            )
+            store.writeResolvedPlaces(listOf(resolved(uri(1))))
+
+            val byUri = store.observeEvaluationProjection().first().associateBy { it.identity.mediaUri }
+            val outOfCap = byUri.getValue(uri(1))
+            val noCoordinates = byUri.getValue(uri(2))
+
+            assertTrue(outOfCap.hasCoordinates)
+            assertEquals(CURRENT, outOfCap.derivedPlaceResolverVersion)
+            assertNull(outOfCap.derivedCountryCode)
+            assertNull(outOfCap.derivedRegionCode)
+            assertNull(outOfCap.derivedPlaceName)
+            assertTrue(!noCoordinates.hasCoordinates)
+            assertNull(noCoordinates.derivedPlaceResolverVersion)
+        }
+    }
+
+    @Test
+    fun `evaluation projection is unfiltered and ordered by uri`() = runTest {
+        forEachStore { store ->
+            store.upsert(
+                listOf(
+                    sampleEntry(uri(3), volumeName = "unmounted_volume"),
+                    sampleEntry(uri(1), capturedDateTakenEpochMillis = null),
+                    sampleEntry(uri(2))
+                )
+            )
+
+            val rows = store.observeEvaluationProjection().first()
+
+            assertEquals(listOf(uri(1), uri(2), uri(3)), rows.map { it.identity.mediaUri })
+            assertNull(rows.first().capturedDateTakenEpochMillis)
+        }
+    }
+
+    @Test
+    fun `evaluation projection re-emits on upsert resolver write and delete`() = runTest {
+        forEachStore { store ->
+            store.observeEvaluationProjection().test {
+                assertTrue(awaitItem().isEmpty())
+
+                store.upsert(listOf(sampleEntry(uri(1))))
+                assertNull(awaitItem().single().derivedPlaceResolverVersion)
+
+                store.writeResolvedPlaces(listOf(resolved(uri(1), countryCode = "IT", regionCode = "52", placeName = "Firenze")))
+                val afterWrite = awaitItem().single()
+                assertEquals(CURRENT, afterWrite.derivedPlaceResolverVersion)
+                assertEquals("Firenze", afterWrite.derivedPlaceName)
+
+                store.upsert(listOf(sampleEntry(uri(1), displayName = "renamed.jpg", derivedPlaceResolverVersion = CURRENT)))
+                assertEquals("renamed.jpg", awaitItem().single().identity.healingKey.displayName)
+
+                store.deleteByMediaUri(uri(1))
+                assertTrue(awaitItem().isEmpty())
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+    }
+
+    @Test
+    fun `room and in-memory stores emit the same evaluation projection`() = runTest {
+        val entries = listOf(
+            sampleEntry(uri(4), displayName = "d.jpg", derivedPlaceResolverVersion = null, derivedCountryCode = "IT"),
+            sampleEntry(uri(2), displayName = "b.jpg", capturedLatitude = null, capturedLongitude = null),
+            sampleEntry(uri(3), displayName = "c.jpg", capturedDateTakenEpochMillis = null),
+            sampleEntry(uri(1), displayName = "a.jpg", derivedPlaceResolverVersion = CURRENT)
+        )
+        val inMemory = InMemoryMediaIndexStore().also { it.upsert(entries) }
+        val roomBacked = RoomMediaIndexStore(database).also { it.upsert(entries) }
+
+        assertEquals(inMemory.observeEvaluationProjection().first(), roomBacked.observeEvaluationProjection().first())
     }
 
     private suspend fun forEachStore(check: suspend (MediaIndexStore) -> Unit) {

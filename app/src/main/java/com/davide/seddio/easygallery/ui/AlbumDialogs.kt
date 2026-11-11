@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,12 +60,12 @@ fun CreateAlbumDialog(
 @Composable
 fun AlbumTypeDialog(
     onManualSelected: () -> Unit,
+    onAutomaticSelected: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val cancelLabel = stringResource(R.string.action_cancel)
     val manualTitle = stringResource(R.string.album_type_manual_title)
     val automaticTitle = stringResource(R.string.album_type_automatic_title)
-    val notAvailable = stringResource(R.string.album_type_not_available)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -77,7 +76,6 @@ fun AlbumTypeDialog(
                     icon = Icons.Default.PhotoAlbum,
                     title = manualTitle,
                     description = stringResource(R.string.album_type_manual_description),
-                    enabled = true,
                     testTag = "album_type_manual",
                     onClick = onManualSelected
                 )
@@ -86,10 +84,8 @@ fun AlbumTypeDialog(
                     icon = Icons.Default.AutoAwesome,
                     title = automaticTitle,
                     description = stringResource(R.string.album_type_automatic_description),
-                    enabled = false,
-                    badge = notAvailable,
                     testTag = "album_type_automatic",
-                    onClick = {}
+                    onClick = onAutomaticSelected
                 )
             }
         },
@@ -109,28 +105,19 @@ private fun AlbumTypeOption(
     icon: ImageVector,
     title: String,
     description: String,
-    enabled: Boolean,
     testTag: String,
-    onClick: () -> Unit,
-    badge: String? = null
+    onClick: () -> Unit
 ) {
-    val contentColor = if (enabled) {
-        MaterialTheme.colorScheme.onSurface
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    }
+    val contentColor = MaterialTheme.colorScheme.onSurface
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(onClick = onClick)
             .padding(vertical = 12.dp, horizontal = 8.dp)
             .testTag(testTag)
-            .semantics {
-                contentDescription = if (badge == null) title else "$title, $badge"
-                if (!enabled) disabled()
-            }
+            .semantics { contentDescription = title }
     ) {
         Icon(
             imageVector = icon,
@@ -149,13 +136,6 @@ private fun AlbumTypeOption(
                 style = MaterialTheme.typography.bodySmall,
                 color = contentColor
             )
-            if (badge != null) {
-                Text(
-                    text = badge,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
         }
     }
 }

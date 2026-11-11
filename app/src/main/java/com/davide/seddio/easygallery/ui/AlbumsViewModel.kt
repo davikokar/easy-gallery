@@ -9,14 +9,22 @@ import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumMembership
 import com.davide.seddio.easygallery.data.AlbumNaming
+import com.davide.seddio.easygallery.data.AlbumRule
+import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleEvaluator
 import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
+import com.davide.seddio.easygallery.data.AndroidMediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVersionProvider
+import com.davide.seddio.easygallery.data.GazetteerAssets
+import com.davide.seddio.easygallery.data.GazetteerNames
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
-import com.davide.seddio.easygallery.data.MediaIndexIdentityDateTaken
+import com.davide.seddio.easygallery.data.MediaIndexCoverage
+import com.davide.seddio.easygallery.data.MediaIndexEvaluationProjection
+import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
 import com.davide.seddio.easygallery.data.MediaIndexStore
 import com.davide.seddio.easygallery.data.MediaItem
+import com.davide.seddio.easygallery.data.MediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.MediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.MediaStoreVersionStore
 import com.davide.seddio.easygallery.data.MembershipOrphanStateChange
@@ -57,7 +65,19 @@ data class AlbumListItem(
     /** Stored additions that did not resolve to a live item; rule matches never count. */
     val hiddenMemberCount: Int,
     val storedMembershipCount: Int,
-    val status: AlbumEvaluationStatus
+    val status: AlbumEvaluationStatus,
+    /** The rule has a `time` clause; false for a manual or unevaluatable album. */
+    val hasTimeClause: Boolean = false,
+    /** The rule has a `region` clause; false for a manual or unevaluatable album. */
+    val hasRegionClause: Boolean = false,
+    /**
+     * Library-wide counts from the join (albums.md §8 decision 25). Null for a manual or
+     * unevaluatable album, and until the live media is known; the notice for a clause kind the
+     * album does not have is the caller's to leave out.
+     */
+    val coverage: MediaIndexCoverage? = null,
+    /** False on API 29+ without `ACCESS_MEDIA_LOCATION`; only read for an album with a region clause. */
+    val locationAccessGranted: Boolean = true
 )
 
 /** [membershipId] is null for a rule match that has no addition row. */
@@ -81,7 +101,16 @@ class AlbumsViewModel @JvmOverloads constructor(
         (application as? EasyGalleryApp)?.mediaIndexStore ?: InMemoryMediaIndexStore(),
     // Read at each evaluation, not cached: the user can change the device zone while the app lives.
     private val zoneProvider: () -> ZoneId = { ZoneId.systemDefault() },
-    private val evaluationDispatcher: CoroutineDispatcher = Dispatchers.Default
+    private val evaluationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    // The seam that lets a test count how often the join is built.
+    private val joinFactory: (List<MediaIndexEvaluationProjection>, List<MediaItem>) -> MediaIndexLiveJoin =
+        { projection, liveMedia -> MediaIndexLiveJoin.build(projection, liveMedia) },
+    private val locationAccessChecker: MediaLocationAccessChecker = AndroidMediaLocationAccessChecker(application),
+    private val gazetteerNamesLoader: () -> GazetteerNames = { GazetteerAssets.loadNames(application) },
+    // Read when the picker computes, never cached: a language change recreates the Activity.
+    private val localeProvider: () -> Locale = {
+        LocaleHelper.wrap(application).resources.configuration.locales[0]
+    }
 ) : AndroidViewModel(application) {
 
     private data class ComputedAlbum(
@@ -95,6 +124,10 @@ class AlbumsViewModel @JvmOverloads constructor(
         val hiddenMemberCount: Int,
         val storedMembershipCount: Int,
         val status: AlbumEvaluationStatus,
+        val hasTimeClause: Boolean,
+        val hasRegionClause: Boolean,
+        val coverage: MediaIndexCoverage?,
+        val locationAccessGranted: Boolean,
         val additionIdsByUri: Map<String, List<Long>>,
         val uriRewrites: List<MembershipUriRewrite>,
         val orphanStateChanges: List<MembershipOrphanStateChange>
@@ -114,7 +147,11 @@ class AlbumsViewModel @JvmOverloads constructor(
                 storedMemberCount = storedMemberCount,
                 hiddenMemberCount = hiddenMemberCount,
                 storedMembershipCount = storedMembershipCount,
-                status = status
+                status = status,
+                hasTimeClause = hasTimeClause,
+                hasRegionClause = hasRegionClause,
+                coverage = coverage,
+                locationAccessGranted = locationAccessGranted
             )
         }
     }
@@ -137,25 +174,34 @@ class AlbumsViewModel @JvmOverloads constructor(
     val selectedAlbumId: StateFlow<Long?> = _selectedAlbumId.asStateFlow()
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    // Shared so every rule album reads one index query; only collected while a rule album exists.
-    private val indexEntries: Flow<List<MediaIndexIdentityDateTaken>> = mediaIndexStore
-        .observeIdentityDateTaken()
-        .flowOn(evaluationDispatcher)
-        .shareIn(viewModelScope, SharingStarted.WhileSubscribed(), replay = 1)
+    // The one index-and-live-media join, built once per emission of either input and shared by every rule
+    // album and the picker (ADR-0020). Only collected while a rule album or the open picker needs it, so a
+    // manual-only library pays no Room invalidation. The stop timeout keeps one index query alive across the
+    // album list re-emitting (a rename); the reset drops the join instead of replaying a stale one later.
+    private val liveJoin: Flow<MediaIndexLiveJoin?> = combine(
+        mediaIndexStore.observeEvaluationProjection(),
+        _allMedia
+    ) { projection, media ->
+        media?.let { joinFactory(projection, it) }
+    }.flowOn(evaluationDispatcher)
+        .shareIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000, replayExpirationMillis = 0),
+            replay = 1
+        )
 
     // Re-runs on albums, memberships, live media (app open) and every index store emission (after a batch).
     private val computedAlbums: StateFlow<List<ComputedAlbum>> =
-        combine(albumStore.observeAlbums(), _allMedia, _mediaVersionEpoch) { albums, media, _ ->
-            albums to media
-        }.flatMapLatest { (albums, media) ->
-            if (albums.isEmpty()) {
-                flowOf(emptyList())
-            } else {
-                combine(albums.map { album -> observeComputedAlbum(album, media) }) { computed ->
-                    computed.toList()
+        combine(albumStore.observeAlbums(), _mediaVersionEpoch) { albums, _ -> albums }
+            .flatMapLatest { albums ->
+                if (albums.isEmpty()) {
+                    flowOf(emptyList())
+                } else {
+                    combine(albums.map { album -> observeComputedAlbum(album) }) { computed ->
+                        computed.toList()
+                    }
                 }
-            }
-        }.flowOn(evaluationDispatcher)
+            }.flowOn(evaluationDispatcher)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val albums: StateFlow<List<AlbumListItem>> = computedAlbums
@@ -173,6 +219,18 @@ class AlbumsViewModel @JvmOverloads constructor(
         combine(_selectedAlbumId, computedAlbums) { selectedAlbumId, computed ->
             computed.firstOrNull { it.album.id == selectedAlbumId }?.members.orEmpty()
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // Counts the same join the albums above evaluate over, so a count here is a member count there.
+    val automaticAlbumPicker: AutomaticAlbumPickerState = AutomaticAlbumPickerState(
+        scope = viewModelScope,
+        liveJoin = liveJoin,
+        existingAlbumNames = albums.map { items -> items.map { it.name } },
+        zoneProvider = zoneProvider,
+        localeProvider = localeProvider,
+        locationAccess = locationAccessChecker,
+        namesLoader = gazetteerNamesLoader,
+        workDispatcher = evaluationDispatcher
+    )
 
     init {
         viewModelScope.launch {
@@ -242,6 +300,31 @@ class AlbumsViewModel @JvmOverloads constructor(
             _errorMessage.value = null
         }
         return true
+    }
+
+    /**
+     * Writes the album row with [rule] encoded and no membership rows: the members are whatever the rule
+     * matches (ADR-0016 Amendment 2). Returns false, and sets [errorMessage], when the name is blank or taken.
+     */
+    fun createAutomaticAlbum(name: String, rule: AlbumRule.Evaluatable): Boolean {
+        val sanitizedName = sanitizeName(name)
+        if (!validateAlbumName(sanitizedName, ignoreAlbumId = null)) return false
+
+        val encodedRule = AlbumRuleJson.encode(rule)
+        viewModelScope.launch {
+            albumStore.createAlbum(
+                name = sanitizedName,
+                createdAt = nowProvider(),
+                rule = encodedRule
+            )
+            _errorMessage.value = null
+        }
+        return true
+    }
+
+    /** Starts a fresh picker draft named with the first unused "My album N". */
+    fun openAutomaticAlbumPicker() {
+        automaticAlbumPicker.open(suggestAlbumName())
     }
 
     fun renameAlbum(albumId: Long, newName: String) {
@@ -385,22 +468,28 @@ class AlbumsViewModel @JvmOverloads constructor(
     }
 
     // A manual album never reads the index, so an index emission does not recompute it.
-    private fun observeComputedAlbum(album: StoredAlbum, liveMedia: List<MediaItem>?): Flow<ComputedAlbum> {
+    private fun observeComputedAlbum(album: StoredAlbum): Flow<ComputedAlbum> {
         val memberships = albumStore.observeMembershipsForAlbum(album.id)
-        if (album.rule == null) {
-            return memberships.map { computeAlbum(album, it, liveMedia, emptyList()) }
+        // The stored rule is only read here and never written back, whatever it parses to.
+        val rule = AlbumRuleJson.parse(album.rule)
+        if (rule == null) {
+            return combine(memberships, _allMedia) { currentMemberships, media ->
+                computeAlbum(album, currentMemberships, rule = null, join = null, liveMedia = media)
+            }
         }
 
-        return combine(memberships, indexEntries) { currentMemberships, index ->
-            computeAlbum(album, currentMemberships, liveMedia, index)
+        return combine(memberships, liveJoin) { currentMemberships, join ->
+            computeAlbum(album, currentMemberships, rule, join, liveMedia = join?.liveMedia)
         }
     }
 
+    // [liveMedia] is the join's own list for a rule album, so the one resolve below matches the evaluation.
     private fun computeAlbum(
         album: StoredAlbum,
         memberships: List<StoredMembership>,
-        liveMedia: List<MediaItem>?,
-        indexEntries: List<MediaIndexIdentityDateTaken>
+        rule: AlbumRule?,
+        join: MediaIndexLiveJoin?,
+        liveMedia: List<MediaItem>?
     ): ComputedAlbum {
         val resolution = AlbumMembership.resolve(memberships, liveMedia.orEmpty())
 
@@ -409,13 +498,12 @@ class AlbumsViewModel @JvmOverloads constructor(
             additionIdsByUri.getOrPut(resolved.resolvedMediaUri) { mutableListOf() } += resolved.membershipId
         }
 
-        // The stored rule is only read here and never written back, whatever it parses to.
-        val rule = AlbumRuleJson.parse(album.rule)
-        val evaluation = rule?.let {
-            AlbumRuleEvaluator.evaluate(it, indexEntries, liveMedia, memberships, zoneProvider())
-        }
+        val evaluation = rule?.let { AlbumRuleEvaluator.evaluate(it, join, resolution, zoneProvider()) }
         val items = evaluation?.members ?: resolution.albumItems
         val status = evaluation?.status ?: AlbumEvaluationStatus.MANUAL
+
+        val clauses = (rule as? AlbumRule.Evaluatable)?.clauses.orEmpty()
+        val hasRegionClause = clauses.any { it is AlbumRuleClause.Region }
 
         val members = items.map { item ->
             AlbumDetailMember(
@@ -444,6 +532,11 @@ class AlbumsViewModel @JvmOverloads constructor(
             hiddenMemberCount = storedMemberCount - resolution.resolvedAdditions.size,
             storedMembershipCount = memberships.size,
             status = status,
+            hasTimeClause = clauses.any { it is AlbumRuleClause.Time },
+            hasRegionClause = hasRegionClause,
+            // An unevaluatable rule reaches nothing, so a statement about what it can reach would be false.
+            coverage = if (rule is AlbumRule.Evaluatable) join?.coverage() else null,
+            locationAccessGranted = !hasRegionClause || locationAccessChecker.isGranted(),
             additionIdsByUri = additionIdsByUri,
             // Before MediaStore is read every row looks unresolved; writing that back would be false.
             uriRewrites = if (liveMedia == null) emptyList() else resolution.uriRewrites,

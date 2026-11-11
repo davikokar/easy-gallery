@@ -1,6 +1,8 @@
 package com.davide.seddio.easygallery.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AlbumNamingTest {
@@ -40,5 +42,20 @@ class AlbumNamingTest {
         val suggestion = AlbumNaming.suggestName(listOf("Trips", "Castles"), format)
 
         assertEquals("My album 1", suggestion)
+    }
+
+    @Test
+    fun `a blank name is not available`() {
+        assertFalse(AlbumNaming.isAvailable("   ", emptyList()))
+    }
+
+    @Test
+    fun `a name equal to an existing one ignoring case and space is not available`() {
+        assertFalse(AlbumNaming.isAvailable("  trips ", listOf("Trips")))
+    }
+
+    @Test
+    fun `a distinct name is available`() {
+        assertTrue(AlbumNaming.isAvailable("Castles", listOf("Trips")))
     }
 }

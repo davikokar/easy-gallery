@@ -34,6 +34,31 @@ sealed interface AlbumRuleClause {
             require(to == null || to.year in SUPPORTED_YEARS) { "to year out of range" }
         }
     }
+
+    /**
+     * A place at country, region or place granularity (ADR-0017 Amendment 2). Codes are meaningful
+     * only against [dataset], so a value from any dataset but the current one cannot be built: the
+     * parser refuses such a document, and encoding it would write an album broken from creation.
+     * [admin1] and [admin1Name] come as a pair; [admin1Name] is a guard and remap key, never matched.
+     */
+    data class Region(
+        val country: String,
+        val admin1: String? = null,
+        val admin1Name: String? = null,
+        val place: String? = null,
+        val dataset: Int = PLACE_RESOLVER_VERSION
+    ) : AlbumRuleClause {
+        init {
+            require(country.length == 2 && country.all { it in 'A'..'Z' }) {
+                "country must be two upper-case ASCII letters"
+            }
+            require((admin1 == null) == (admin1Name == null)) { "admin1 and admin1Name come as a pair" }
+            require(admin1 == null || admin1.isNotEmpty()) { "admin1 is empty" }
+            require(admin1Name == null || admin1Name.isNotEmpty()) { "admin1Name is empty" }
+            require(place == null || place.isNotEmpty()) { "place is empty" }
+            require(dataset == PLACE_RESOLVER_VERSION) { "dataset must be the current resolver version" }
+        }
+    }
 }
 
 // The stored form is a four-digit year, so only these years can be written and read back.
@@ -57,5 +82,12 @@ enum class UnevaluatableReason {
     INVALID_DATE,
     INVERTED_RANGE,
     NO_TIME_BOUND,
+    INVALID_COUNTRY,
+    INCOMPLETE_ADMIN1_PAIR,
+    INVALID_REGION_NAME,
+    INVALID_DATASET,
+
+    /** A well-formed region clause stamped with a dataset other than the current one. */
+    UNKNOWN_DATASET,
     UNEXPECTED_ERROR
 }

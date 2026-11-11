@@ -182,4 +182,80 @@ class AlbumRuleStorageTest {
 
         assertRuleUntouched(albumId, nonCanonicalRaw)
     }
+
+    private suspend fun exerciseStore(albumId: Long) {
+        store.renameAlbum(albumId, "Renamed")
+        val first = addMemberTo(albumId, 1)
+        addMemberTo(albumId, 2)
+        store.removeMembership(albumId, first)
+        store.recordExclusion(albumId, "content://media/external/images/media/3", "3.jpg", 3L, 3_000L)
+    }
+
+    @Test
+    fun `a region rule is stored byte for byte in the real rule column`() = runTest {
+        val rule = AlbumRule.Evaluatable(
+            listOf(
+                AlbumRuleClause.Time(LocalDate.of(2025, 1, 1), null),
+                AlbumRuleClause.Region("IT", "16", "Tuscany \"Toscana\" \\ \u00e8 \uD83D\uDE00", "Florence")
+            )
+        )
+        val encoded = AlbumRuleJson.encode(rule)
+
+        val albumId = store.createAlbum(name = "Tuscany", createdAt = 10L, rule = encoded)
+
+        assertEquals(encoded, rawRuleColumn(albumId))
+        assertEquals(rule, AlbumRuleJson.parse(storedAlbum(albumId).rule))
+    }
+
+    @Test
+    fun `region rules with hostile names are stored byte for byte`() = runTest {
+        val names = listOf(
+            "Quote\"Town",
+            "back\\slash",
+            "ctrl\u0000\u001f\n\t\u007f",
+            "\u05E9\u05DC\u05D5\u05DD \u202E",
+            "\uD83D\uDE00",
+            "lone\uD800surrogate"
+        )
+
+        names.forEachIndexed { index, name ->
+            val rule = AlbumRule.Evaluatable(listOf(AlbumRuleClause.Region("IT", "16", name, name)))
+            val encoded = AlbumRuleJson.encode(rule)
+
+            val albumId = store.createAlbum(name = "Hostile $index", createdAt = 20L + index, rule = encoded)
+
+            assertEquals(name, encoded, rawRuleColumn(albumId))
+            assertEquals(name, rule, AlbumRuleJson.parse(storedAlbum(albumId).rule))
+        }
+    }
+
+    @Test
+    fun `a region rule in non canonical form is not rewritten by any store operation`() = runTest {
+        val raw = "{ \"all\": [ { \"place\": \"Singapore\", \"country\": \"SG\", \"type\": \"region\", " +
+            "\"dataset\": 1 } ], \"version\": 1 }\n"
+        val albumId = store.createAlbum(name = "Singapore", createdAt = 11L, rule = raw)
+        assertEquals(
+            listOf(AlbumRuleClause.Region(country = "SG", place = "Singapore")),
+            (AlbumRuleJson.parse(raw) as AlbumRule.Evaluatable).clauses
+        )
+
+        exerciseStore(albumId)
+
+        assertRuleUntouched(albumId, raw)
+    }
+
+    @Test
+    fun `a region rule from another dataset is unevaluatable and byte identical after any store operation`() = runTest {
+        val raw = "{\"version\":1,\"all\":[{\"type\":\"region\",\"dataset\":${PLACE_RESOLVER_VERSION + 1}," +
+            "\"country\":\"IT\",\"admin1\":\"16\",\"admin1Name\":\"Tuscany\"}]}"
+        val albumId = store.createAlbum(name = "Other dataset", createdAt = 12L, rule = raw)
+
+        val parsed = AlbumRuleJson.parse(storedAlbum(albumId).rule)
+        exerciseStore(albumId)
+
+        parsed as AlbumRule.Unevaluatable
+        assertEquals(raw, parsed.raw)
+        assertEquals(UnevaluatableReason.UNKNOWN_DATASET, parsed.reason)
+        assertRuleUntouched(albumId, raw)
+    }
 }

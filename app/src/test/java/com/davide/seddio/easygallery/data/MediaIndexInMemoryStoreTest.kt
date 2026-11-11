@@ -45,7 +45,7 @@ class MediaIndexInMemoryStoreTest {
     }
 
     @Test
-    fun `identity date taken projection carries identity and distinguishes null date from absent row`() = runTest {
+    fun `evaluation projection distinguishes a null date from an absent row`() = runTest {
         val store = InMemoryMediaIndexStore()
         val withDate = sampleEntry(mediaUri = "content://media/external/images/media/3")
         val withoutDate = sampleEntry(
@@ -54,29 +54,12 @@ class MediaIndexInMemoryStoreTest {
         )
         store.upsert(listOf(withoutDate, withDate))
 
-        val rows = store.observeIdentityDateTaken().first().associateBy { it.identity.mediaUri }
+        val rows = store.observeEvaluationProjection().first().associateBy { it.identity.mediaUri }
 
         assertEquals(setOf(withDate.mediaUri, withoutDate.mediaUri), rows.keys)
-        assertEquals(withDate.toMediaIdentity(), rows.getValue(withDate.mediaUri).identity)
         assertEquals(withDate.capturedDateTakenEpochMillis, rows.getValue(withDate.mediaUri).capturedDateTakenEpochMillis)
         assertNull(rows.getValue(withoutDate.mediaUri).capturedDateTakenEpochMillis)
         assertNull(rows["content://media/external/images/media/5"])
-    }
-
-    @Test
-    fun `identity date taken projection re-emits on upsert and on delete`() = runTest {
-        val store = InMemoryMediaIndexStore()
-
-        store.observeIdentityDateTaken().test {
-            assertTrue(awaitItem().isEmpty())
-
-            store.upsert(listOf(sampleEntry(mediaUri = "content://media/external/images/media/6")))
-            assertEquals(1, awaitItem().size)
-
-            store.deleteByMediaUri("content://media/external/images/media/6")
-            assertTrue(awaitItem().isEmpty())
-            cancelAndIgnoreRemainingEvents()
-        }
     }
 
     @Test
@@ -98,6 +81,91 @@ class MediaIndexInMemoryStoreTest {
             assertEquals(2, written)
             assertEquals(listOf(3, 3), awaitItem().map { it.derivedPlaceResolverVersion })
             expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `evaluation projection carries identity date coordinates flag place values and marker`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val entry = sampleEntry(
+            mediaUri = "content://media/external/images/media/101",
+            displayName = "evaluated.jpg",
+            capturedDateTakenEpochMillis = 1_729_000_000_321L,
+            derivedCountryCode = "AA",
+            derivedRegionCode = "BB-77",
+            derivedPlaceName = "Distinct Place",
+            derivedPlaceResolverVersion = 9
+        )
+        store.upsert(listOf(entry))
+
+        assertEquals(
+            listOf(
+                MediaIndexEvaluationProjection(
+                    identity = entry.toMediaIdentity(),
+                    capturedDateTakenEpochMillis = 1_729_000_000_321L,
+                    hasCoordinates = true,
+                    derivedCountryCode = "AA",
+                    derivedRegionCode = "BB-77",
+                    derivedPlaceName = "Distinct Place",
+                    derivedPlaceResolverVersion = 9
+                )
+            ),
+            store.observeEvaluationProjection().first()
+        )
+    }
+
+    @Test
+    fun `evaluation projection keeps a pending row's old values and separates out-of-cap from no coordinates`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        store.upsert(
+            listOf(
+                sampleEntry(
+                    mediaUri = "content://media/external/images/media/111",
+                    derivedCountryCode = "IT",
+                    derivedPlaceName = "Firenze"
+                ),
+                sampleEntry(mediaUri = "content://media/external/images/media/112", derivedPlaceResolverVersion = 2),
+                sampleEntry(
+                    mediaUri = "content://media/external/images/media/113",
+                    capturedLatitude = null,
+                    capturedLongitude = null
+                )
+            )
+        )
+
+        val byUri = store.observeEvaluationProjection().first().associateBy { it.identity.mediaUri }
+        val pending = byUri.getValue("content://media/external/images/media/111")
+        val outOfCap = byUri.getValue("content://media/external/images/media/112")
+        val noCoordinates = byUri.getValue("content://media/external/images/media/113")
+
+        assertNull(pending.derivedPlaceResolverVersion)
+        assertEquals("IT", pending.derivedCountryCode)
+        assertEquals("Firenze", pending.derivedPlaceName)
+        assertTrue(outOfCap.hasCoordinates)
+        assertEquals(2, outOfCap.derivedPlaceResolverVersion)
+        assertNull(outOfCap.derivedCountryCode)
+        assertTrue(!noCoordinates.hasCoordinates)
+        assertNull(noCoordinates.derivedPlaceResolverVersion)
+    }
+
+    @Test
+    fun `evaluation projection re-emits on upsert and on delete`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val uri = "content://media/external/images/media/121"
+
+        store.observeEvaluationProjection().test {
+            assertTrue(awaitItem().isEmpty())
+
+            store.upsert(listOf(sampleEntry(mediaUri = uri)))
+            assertEquals(1, awaitItem().size)
+
+            // A genuinely different row: StateFlow conflates an equal snapshot.
+            store.upsert(listOf(sampleEntry(mediaUri = uri, derivedPlaceResolverVersion = 2)))
+            assertEquals(2, awaitItem().single().derivedPlaceResolverVersion)
+
+            store.deleteByMediaUri(uri)
+            assertTrue(awaitItem().isEmpty())
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -185,7 +253,10 @@ class MediaIndexInMemoryStoreTest {
         capturedDateTakenEpochMillis: Long? = 1_726_000_000_000L,
         derivedCountryCode: String? = null,
         derivedRegionCode: String? = null,
-        derivedPlaceName: String? = null
+        derivedPlaceName: String? = null,
+        capturedLatitude: Double? = 43.7696,
+        capturedLongitude: Double? = 11.2558,
+        derivedPlaceResolverVersion: Int? = null
     ): MediaIndexEntry {
         return MediaIndexEntry(
             mediaUri = mediaUri,
@@ -196,13 +267,14 @@ class MediaIndexInMemoryStoreTest {
             generationAdded = 5L,
             generationModified = 6L,
             capturedDateTakenEpochMillis = capturedDateTakenEpochMillis,
-            capturedLatitude = 43.7696,
-            capturedLongitude = 11.2558,
+            capturedLatitude = capturedLatitude,
+            capturedLongitude = capturedLongitude,
             capturedWidth = 1080,
             capturedHeight = 1920,
             derivedCountryCode = derivedCountryCode,
             derivedRegionCode = derivedRegionCode,
-            derivedPlaceName = derivedPlaceName
+            derivedPlaceName = derivedPlaceName,
+            derivedPlaceResolverVersion = derivedPlaceResolverVersion
         )
     }
 

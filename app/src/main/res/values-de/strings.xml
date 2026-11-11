@@ -162,7 +162,34 @@
     <string name="album_type_manual_description">Du wählst die Fotos und Videos selbst aus.</string>
     <string name="album_type_automatic_title">Automatisches Album</string>
     <string name="album_type_automatic_description">Füllt sich anhand einer Regel, etwa einem Ort oder einem Zeitraum.</string>
-    <string name="album_type_not_available">Noch nicht verfügbar</string>
+    <string name="automatic_album_hint_choose">Wähle einen Ort, ein Datum oder beides</string>
+    <plurals name="automatic_album_match_count">
+        <item quantity="one">%1$d Foto oder Video wird in diesem Album sein</item>
+        <item quantity="other">%1$d Fotos und Videos werden in diesem Album sein</item>
+    </plurals>
+    <string name="automatic_album_section_place">Ort</string>
+    <string name="automatic_album_section_date">Datum</string>
+    <string name="automatic_album_all_of">Alles: %1$s</string>
+    <string name="automatic_album_places_without_region">Orte ohne Region</string>
+    <string name="automatic_album_loading">Orte werden geladen</string>
+    <string name="automatic_album_names_failed">Ortsnamen konnten nicht geladen werden</string>
+    <string name="automatic_album_waiting_for_media">Deine Fotos und Videos werden geladen. Orte und Daten erscheinen, sobald sie geladen sind.</string>
+    <string name="automatic_album_places_empty">In deinen Fotos und Videos wurden keine Orte gefunden</string>
+    <string name="automatic_album_places_empty_for_date">Für das gewählte Datum wurden keine Orte gefunden</string>
+    <string name="automatic_album_dates_empty">In deinen Fotos und Videos wurden keine Daten gefunden</string>
+    <string name="automatic_album_dates_empty_for_place">Für den gewählten Ort wurden keine Fotos oder Videos mit Datum gefunden</string>
+    <plurals name="automatic_album_location_coverage">
+        <item quantity="one">%1$d Foto oder Video hat keinen nutzbaren Standort und wird in Ortsalben nicht berücksichtigt.</item>
+        <item quantity="other">%1$d Fotos und Videos haben keinen nutzbaren Standort und werden in Ortsalben nicht berücksichtigt.</item>
+    </plurals>
+    <string name="automatic_album_location_access_off">Der Standortzugriff ist ausgeschaltet. Fotostandorte können daher nicht gelesen werden und Ortsalben können sie nicht enthalten.</string>
+    <plurals name="automatic_album_date_coverage">
+        <item quantity="one">%1$d Foto oder Video hat kein Aufnahmedatum und wird in Datumsalben nicht berücksichtigt.</item>
+        <item quantity="other">%1$d Fotos und Videos haben kein Aufnahmedatum und werden in Datumsalben nicht berücksichtigt.</item>
+    </plurals>
+    <string name="automatic_album_clear_place">Ort %1$s entfernen</string>
+    <string name="automatic_album_clear_date">Datum %1$s entfernen</string>
+    <string name="automatic_album_month_year">%1$s %2$d</string>
     <string name="new_album_select_media">Wähle die Fotos und Videos für dieses Album</string>
     <string name="favourites_title">Favoriten</string>
     <string name="cd_favourite_indicator">Favorit</string>

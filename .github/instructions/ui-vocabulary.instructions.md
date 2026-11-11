@@ -81,6 +81,51 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
   `new_album_media_list`, or `new_album_media_grouped` inside it. There is no tag that is present
   at the folder level in every state.
   Aliases: **album picker**, **album creation screen**
+- **New automatic album screen** (`NewAutomaticAlbumScreen`, content `NewAutomaticAlbumContent`): The
+  automatic branch of album creation — names the Album and describes it by place and date before it
+  exists. Reached from the **Album type dialog**; it is its own branch in `MainActivity`'s chain, with
+  `screenKey` `new_automatic_album`, and its saved state is dropped when it closes so a second visit
+  never reopens the first visit's draft (ADR-0016 Amendment 2). Nothing is written until **Create**.
+  The draft itself lives in `AlbumsViewModel`'s picker state, not in the screen. Its parts:
+  - the **Album name field** (tagged `new_automatic_album_name_field`), the editable title in its top
+    bar, pre-filled with the first unused `My album N`;
+  - the **Create automatic album action** (tagged `new_automatic_album_create_button`), the
+    bottom-right floating action button with a check icon. Like the **Create album action** it is a
+    disabled circular surface with no click action, not a button, until there is a valid name **and**
+    at least one choice;
+  - the **match-count line** (tagged `new_automatic_album_match_count`), "N photos and videos will be
+    in this album", which is plural-aware and announced as it changes. It shares its slot with the
+    **New automatic album hint** (tagged `new_automatic_album_hint`), which shows the name error or,
+    before anything is chosen, the prompt to choose a place, a date, or both;
+  - the **choice chips** (tagged `new_automatic_album_place_chip` and `new_automatic_album_date_chip`),
+    one per current choice, each clearing that choice when pressed;
+  - two sections reached from tabs (`new_automatic_album_place_tab`, `new_automatic_album_date_tab`):
+    the **Place picker** and the **Date picker**.
+
+  The **Place picker** (list tagged `new_automatic_album_place_list`) opens on countries with counts.
+  Opening a country shows an **All of {country}** row, its regions with counts, and a separate group
+  headed **Places without a region** whose places are selectable one by one but never as a group;
+  opening a region shows **All of {region}** and its places. The **Date picker** (list tagged
+  `new_automatic_album_date_list`) opens on years, newest first; opening a year shows **All of
+  {year}** and its months. A row that opens a list has a trailing chevron; a row that chooses is
+  marked with a check once chosen. **The counts in each picker reflect the other picker's current
+  choice.** Each picker keeps its own open level, and the top bar shows the **New automatic album
+  close button** (`new_automatic_album_close_button`) until the open section has been drilled into,
+  then the **New automatic album back button** (`new_automatic_album_back_button`), which steps out
+  of that section only; so does the in-list back row (`new_automatic_album_place_back`,
+  `new_automatic_album_region_back`, `new_automatic_album_date_back`).
+
+  Before the pickers can list anything the screen shows one of three states instead: loading names
+  (`new_automatic_album_loading`), names failed with **Retry** (`new_automatic_album_names_failed`,
+  `new_automatic_album_retry`), or media still loading (`new_automatic_album_waiting`). A picker with
+  nothing to list says so (`new_automatic_album_place_empty`, `new_automatic_album_date_empty`)
+  rather than showing a blank. Row tags are `new_automatic_album_country_<code>`,
+  `new_automatic_album_region_<admin1>`, `new_automatic_album_place_<name>`,
+  `new_automatic_album_year_<year>`, `new_automatic_album_month_<1-12>` and
+  `new_automatic_album_all_of_country` / `_region` / `_year`. The pickers also carry the **Location
+  coverage notice** and **Date coverage notice** at the top of their lists, tagged
+  `new_automatic_album_location_coverage` and `new_automatic_album_date_coverage`.
+  Aliases: **automatic album picker**, **automatic album creation screen**
 - **Settings screen** (`SettingsScreen`): App preferences, language, support, legal, and the tip
   jar. Its **Media index area** (`MediaIndexSettingsArea`, tagged `media_index_status_area`) reports
   current scan progress, items indexed with a date, items indexed with no date, deferred items,
@@ -189,9 +234,11 @@ Shared parts:
   control that opens the **Album type dialog**. It is shown only in Albums View while
   **Album selection mode** is not active, and mirrors the **New album** overflow action.
 - **Manual album** and **Automatic album**: The two kinds offered by the **Album type dialog**. A
-  Manual album's members are chosen by the user; an Automatic album fills itself from a rule and
-  is **not available yet**, so its option is shown disabled. The distinction is a product one — in
-  storage there is one Album type (ADR-0012).
+  Manual album's members are chosen by the user on the **New album screen**; an Automatic album
+  fills itself from a rule — a place, a date range, or both — chosen on the **New automatic album
+  screen**. An Automatic album's rule is set at creation and cannot be edited afterwards; rename, add,
+  remove and delete work as on any other Album (albums.md §8 decision 26). The distinction is a
+  product one — in storage there is one Album type (ADR-0012).
 - **Favourites** (`FavouritesAlbumGridItem`, `FavouritesAlbumListItem`): The fixed, system-backed
   collection of media marked with `MediaStore.IS_FAVORITE`. It cannot be created, renamed, or
   deleted, and is unavailable on API 28–29.
@@ -201,7 +248,8 @@ Shared parts:
 > use either word for the other operation.
 
 > **A floating action button overlays the scrolling content, and its clearance belongs to the
-> scrolling container.** The **Add album button** and the **Create album action** both float over
+> scrolling container.** The **Add album button**, the **Create album action** and the **Create
+> automatic album action** all float over
 > a scrolling body — Album tiles, Folder tiles, and Media tiles pass beneath them — and the
 > clearance that keeps the last row reachable is `contentPadding` on the lazy grid or list, never
 > an empty strip reserved in the body layout. A reserved strip is wrong twice over: the button
@@ -240,11 +288,27 @@ Shared parts:
   "Still-scanning notice", which implied a running scan; that name is now an alias only, and the
   `testTag` keeps its older `waiting` name because tests depend on it.
   Aliases: **Still-scanning notice**
+- **Location coverage notice** (tagged `album_location_coverage_notice` in Album Detail View;
+  `new_automatic_album_location_coverage` in the **Place picker**) and **Date coverage notice**
+  (`album_date_coverage_notice`; `new_automatic_album_date_coverage` in the **Date picker**): Library-wide
+  *counts* of photos and videos the index reached and found nothing usable in — no usable location,
+  or no capture date — which an album with a `region` or a `time` clause leaves out (albums.md §8
+  decisions 21 and 25). They appear in **exactly two places**: the pickers, at the top of their lists,
+  and Album Detail View. **Never on an Album tile or Album row, and never in Settings.** They are
+  counts, not percentages; an item not yet scanned is in neither count, and the wording never says
+  "yet", "still" or "scanning", because waiting will not change what they count. When location access
+  is off (API 29+ without `ACCESS_MEDIA_LOCATION`) the Location coverage notice says so instead of
+  giving a count. Neither appears when its count is zero, on a Manual album, or on an album with the
+  **Newer-app notice**. In Album Detail View they are announced to screen readers; in the pickers
+  they are not.
 - Either notice may appear together with the **Hidden-members notice** on the same Album. In Album
-  Detail View they stack as separate bands, the **Newer-app notice** or **Incomplete-album notice**
-  first and the **Hidden-members notice** second. The two status notices never appear together,
-  because an Album has one evaluation status. On the tile and row the notices are also announced
-  as the tile's state description, because its content description is the Album name alone.
+  Detail View they stack as separate bands in a fixed order: the **Newer-app notice** or
+  **Incomplete-album notice** first, then the **Location coverage notice**, then the **Date coverage
+  notice**, and the **Hidden-members notice** last. The two status notices never appear together,
+  because an Album has one evaluation status; the two coverage notices can, when the rule has both
+  a place and a date. On the tile and row the status notices are also announced as the tile's state
+  description, because its content description is the Album name alone; the coverage notices are not
+  shown there at all.
 - **Add to album** (`AddToAlbumDialog`): Add the selected media references to an existing Album, or
   start creating a new Album. This never copies or moves files.
 - **Remove from album**: Remove selected media references from the current Album without deleting
@@ -298,7 +362,8 @@ Shared parts:
 - **Album type dialog** (`AlbumTypeDialog`): Chooses between a **Manual album** and an
   **Automatic album** before anything is created. Tagged `album_type_manual` and
   `album_type_automatic`. Opened by the **Add album button** and the **New album** overflow
-  action; Manual leads to the **New album screen**.
+  action; Manual leads to the **New album screen** and Automatic to the **New automatic album
+  screen**. Both options are always enabled.
 - **Create album dialog** (`CreateAlbumDialog`): Names a new Album. Reached only from **Add to
   album**, where the media is already chosen; Albums View uses the **Album type dialog** instead.
 - **Rename album dialog** (`RenameAlbumDialog`): Changes an Album's name, never a folder or file.
@@ -369,8 +434,8 @@ These are mutually exclusive and clearing them is bidirectional. Entering one mu
 
 - **Open**: Navigate to a screen or view, or reveal a menu or dialog.
 - **Select**: Add a folder or media item to the current multi-selection.
-- **Pick**: Choose a single thing that is then committed, as in the Folder thumbnail picker or
-  the Destination picker.
+- **Pick**: Choose a single thing that is then committed, as in the Folder thumbnail picker, the
+  Destination picker, or the **Place picker** and **Date picker**.
 - **Pin** / **Unpin**: Move a folder to the top of Folders View, and undo that.
 - **Favourite** / **Unfavourite**: Add or remove a media item from the system-backed Favourites
   collection. Never use these words for pinning folders.

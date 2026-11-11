@@ -7,6 +7,8 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.Reader
 import java.nio.charset.CodingErrorAction
+import java.util.IllformedLocaleException
+import java.util.Locale
 import kotlin.math.asin
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -225,24 +227,8 @@ class Gazetteer private constructor(
                 throw GazetteerLoadException("Distance cap must be positive and finite, was $capKm")
             }
 
-            val admin1Names = HashMap<String, String>()
-            readTable("admin1.tsv", admin1) { line, lineNumber ->
-                val fields = line.split('\t')
-                val key = fields.firstOrNull().orEmpty()
-                if (fields.size != 2 || key.length < 4 || key[2] != '.' || fields[1].isEmpty()) {
-                    throw malformed("admin1.tsv", lineNumber, line)
-                }
-                admin1Names[key] = fields[1]
-            }
-
-            val countryNames = HashMap<String, String>()
-            readTable("countries.tsv", countries) { line, lineNumber ->
-                val fields = line.split('\t')
-                if (fields.size != 2 || fields[0].length != 2 || fields[1].isEmpty()) {
-                    throw malformed("countries.tsv", lineNumber, line)
-                }
-                countryNames[fields[0]] = fields[1]
-            }
+            val admin1Names = readAdmin1Names(admin1)
+            val countryNames = readCountryNames(countries)
 
             val latitudes = DoubleBuilder()
             val longitudes = DoubleBuilder()
@@ -330,6 +316,33 @@ class Gazetteer private constructor(
             return cellStart to cellRows
         }
 
+        /** `admin1.tsv` as a `CC.code` to English name map; shared with [GazetteerNames]. */
+        internal fun readAdmin1Names(source: Reader): Map<String, String> {
+            val names = HashMap<String, String>()
+            readTable("admin1.tsv", source) { line, lineNumber ->
+                val fields = line.split('\t')
+                val key = fields.firstOrNull().orEmpty()
+                if (fields.size != 2 || key.length < 4 || key[2] != '.' || fields[1].isEmpty()) {
+                    throw malformed("admin1.tsv", lineNumber, line)
+                }
+                names[key] = fields[1]
+            }
+            return names
+        }
+
+        /** `countries.tsv` as an ISO-2 to English name map; shared with [GazetteerNames]. */
+        internal fun readCountryNames(source: Reader): Map<String, String> {
+            val names = HashMap<String, String>()
+            readTable("countries.tsv", source) { line, lineNumber ->
+                val fields = line.split('\t')
+                if (fields.size != 2 || fields[0].length != 2 || fields[1].isEmpty()) {
+                    throw malformed("countries.tsv", lineNumber, line)
+                }
+                names[fields[0]] = fields[1]
+            }
+            return names
+        }
+
         private class TableHeader(val version: Int, val rowsWritten: Int)
 
         // Reads `# key: value` header lines, then data rows, and checks the declared version and row count.
@@ -374,12 +387,50 @@ class Gazetteer private constructor(
             GazetteerLoadException("$name line $lineNumber is malformed: '${line.take(80)}'")
 
         // Invalid bytes must fail the load rather than become U+FFFD inside a place name.
-        private fun strictUtf8(stream: InputStream): Reader = InputStreamReader(
+        internal fun strictUtf8(stream: InputStream): Reader = InputStreamReader(
             stream,
             Charsets.UTF_8.newDecoder()
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT)
         )
+    }
+}
+
+/**
+ * Region and country names only, from `admin1.tsv` and `countries.tsv`. Never reads `places.tsv`,
+ * which costs about half a second on a device; the album picker needs names, not coordinates.
+ */
+class GazetteerNames private constructor(
+    private val admin1NamesByKey: Map<String, String>,
+    private val countryNamesByCode: Map<String, String>
+) {
+    /** The GeoNames `name` form of the admin1 region for [countryCode] and [admin1Code], or null if the asset has none. */
+    fun admin1Name(countryCode: String, admin1Code: String): String? = admin1NamesByKey["$countryCode.$admin1Code"]
+
+    /** English country name from `countries.tsv`. */
+    fun englishCountryName(countryCode: String): String? = countryNamesByCode[countryCode]
+
+    /**
+     * Country name for [locale] from the platform; falls back to the English name, then to [countryCode].
+     * The platform returns the code itself, or nothing, for a region it has no name for.
+     */
+    fun countryDisplayName(countryCode: String, locale: Locale): String {
+        val platformName = try {
+            Locale.Builder().setRegion(countryCode).build().getDisplayCountry(locale)
+        } catch (e: IllformedLocaleException) {
+            ""
+        }
+        if (platformName.isNotBlank() && !platformName.equals(countryCode, ignoreCase = true)) return platformName
+        return countryNamesByCode[countryCode] ?: countryCode
+    }
+
+    companion object {
+        fun load(admin1: InputStream, countries: InputStream): GazetteerNames =
+            load(Gazetteer.strictUtf8(admin1), Gazetteer.strictUtf8(countries))
+
+        /** Same validation as [Gazetteer.load] for these two assets; throws [GazetteerLoadException]. Does not close the readers. */
+        fun load(admin1: Reader, countries: Reader): GazetteerNames =
+            GazetteerNames(Gazetteer.readAdmin1Names(admin1), Gazetteer.readCountryNames(countries))
     }
 }
 

@@ -11,12 +11,17 @@ data class MediaIndexDateTakenProjectionEntity(
     val capturedDateTakenEpochMillis: Long?
 )
 
-data class MediaIndexIdentityDateTakenEntity(
+data class MediaIndexEvaluationProjectionEntity(
     val mediaUri: String,
     val displayName: String,
     val size: Long,
     val dateModified: Long,
-    val capturedDateTakenEpochMillis: Long?
+    val capturedDateTakenEpochMillis: Long?,
+    val hasCoordinates: Boolean,
+    val derivedCountryCode: String?,
+    val derivedRegionCode: String?,
+    val derivedPlaceName: String?,
+    val derivedPlaceResolverVersion: Int?
 )
 
 @Dao
@@ -30,11 +35,14 @@ interface MediaIndexDao {
     @Query("SELECT mediaUri, capturedDateTakenEpochMillis FROM media_index ORDER BY mediaUri ASC")
     fun observeDateTakenProjection(): Flow<List<MediaIndexDateTakenProjectionEntity>>
 
+    // hasCoordinates uses the same both-columns test as listPendingPlaceResolution.
     @Query(
-        "SELECT mediaUri, displayName, size, dateModified, capturedDateTakenEpochMillis " +
+        "SELECT mediaUri, displayName, size, dateModified, capturedDateTakenEpochMillis, " +
+            "(capturedLatitude IS NOT NULL AND capturedLongitude IS NOT NULL) AS hasCoordinates, " +
+            "derivedCountryCode, derivedRegionCode, derivedPlaceName, derivedPlaceResolverVersion " +
             "FROM media_index ORDER BY mediaUri ASC"
     )
-    fun observeIdentityDateTaken(): Flow<List<MediaIndexIdentityDateTakenEntity>>
+    fun observeEvaluationProjection(): Flow<List<MediaIndexEvaluationProjectionEntity>>
 
     @Query("SELECT * FROM media_index WHERE volumeName = :volumeName ORDER BY mediaUri ASC")
     fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntity>>

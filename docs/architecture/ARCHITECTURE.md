@@ -64,12 +64,12 @@ Folders View rather than leaving the app.
 > meantime.
 
 Beyond the five views there are the **full-screen viewer** (`FullImageScreen`), the **New album
-screen** (`NewAlbumScreen`), the **Settings screen**, the **Manage excluded screen**, and the
-**Permission denied screen**.
+screen** (`NewAlbumScreen`), the **New automatic album screen** (`NewAutomaticAlbumScreen`), the
+**Settings screen**, the **Manage excluded screen**, and the **Permission denied screen**.
 
 The New album screen is the manual branch of album creation: the **Album type dialog** offers
-Manual and Automatic, Automatic is disabled until Stage 2, and Manual opens a screen that names
-the album and picks its members before anything is written —
+Manual and Automatic, and Manual opens a screen that names the album and picks its members before
+anything is written —
 **[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)**. Its body is a
 two-level browser rather than a view of its own: folders first, laid out and ordered as Folders
 View lays them out but filtered by neither that view's search query nor its media-type filter,
@@ -77,6 +77,15 @@ then the media inside the folder the user opens, arranged the way Folder Detail 
 arrange it. Only the media level selects, and the selection accumulates across folders. The
 screen reads display preferences and never writes them. Amendment 1 of that ADR records the
 reshape and why, and its Corrections record what the picker stopped inheriting.
+
+The New automatic album screen is the automatic branch, live since Stage 2 step 2.7: it names the
+album and describes it by browsing rather than typing — a **Place picker** of countries, regions
+and places the index found, and a **Date picker** of years and months that have photos, each with
+counts filtered by the other's choice — then writes one row whose `rule` holds the choice and no
+membership rows. Nothing is written until Create.
+**[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)** Amendment 2 owns the
+screen and why it is a screen of its own; its draft and lists live in `AutomaticAlbumPickerState` (§3). A rule
+cannot be edited once written ([albums.md](../design/albums.md) §8 decision 26; §11).
 
 ---
 
@@ -95,8 +104,8 @@ FavouritesDataSource                                │                         
 GalleryViewModel  ──delegates state to──▶  DisplayPreferencesState    MediaIndexDateTakenState
    (central hub)                            FolderViewPreferencesState
         │                                   MediaViewerState
-        │   (+ AlbumsViewModel, FavouritesViewModel, CreateFolderViewModel,
-        │      BillingViewModel, MediaIndexingViewModel as feature ViewModels)
+        │   (+ AlbumsViewModel, which owns AutomaticAlbumPickerState, and FavouritesViewModel,
+        │      CreateFolderViewModel, BillingViewModel, MediaIndexingViewModel as feature ViewModels)
         │
 *Screen composables   ← read the ViewModel, bind a PreferenceScope
         │
@@ -120,7 +129,8 @@ the coordinates Tier A stored, against the bundled gazetteer, and opens no media
 `MediaIndexDateTakenState`, a `GalleryViewModel` delegate that projects captured date-taken by media
 URI so `SortType.DATE_TAKEN` can sort by it; by `MediaIndexingViewModel`, which also schedules the
 work and reports progress and last-indexed state to the Settings screen; and by `AlbumsViewModel`,
-which evaluates automatic-album rules against it (§3).
+which evaluates automatic-album rules against it and counts the New automatic album screen's
+entries over the same data (§3).
 
 **The worker runs in the app's own process, on no screen's lifecycle, and writes through the same
 `EasyGalleryApp` index singleton every reader observes.** That is load-bearing. Re-evaluating
@@ -137,7 +147,10 @@ ViewModel layer, never rendered straight from the database —
 joins the projection onto the live media list it is already sorting, the Settings figures are
 intersected with live media before they are counted, and rule evaluation joins index rows to live
 media through the shared `LiveMediaLookup` — so a deleted photo stops being counted, and leaves an
-automatic album, without waiting for a scan.
+automatic album, without waiting for a scan. That last join is built **once per emission** of the
+index's evaluation projection or of the live media list, as a `MediaIndexLiveJoin`, and every rule
+album and the picker's counts read the same instance — which is what makes a picker count equal the
+member count of the album it would create.
 
 **Kotlin property initialisers run top to bottom.** A derived `combine(...)` flow must be declared
 below every property it reads, or the class does not compile. Do not work around this with
@@ -167,14 +180,14 @@ below every property it reads, or the class does not compile. Do not work around
 | `AlbumDao.kt` | The album DAO. UI-facing queries return `Flow`. |
 | `AlbumStore.kt` | `AlbumStore` plus `RoomAlbumStore` and `InMemoryAlbumStore`, and the `StoredAlbum` model. |
 | `AlbumMembership.kt` | Pure, Android-free membership resolution and healing — direct URI match, then healing key, then orphan — through `LiveMediaLookup` in `MediaIdentity.kt`. It returns resolved additions and exclusions separately, which is what rule evaluation composes with. |
-| `AlbumRule.kt` | The rule model of **[ADR-0017](decisions/0017-composable-album-rule-representation.md)**: `AlbumRule.Evaluatable`, a non-empty conjunction of clauses; `AlbumRule.Unevaluatable`, which keeps the stored text verbatim with an `UnevaluatableReason`; and the `time` clause as inclusive calendar-date bounds. A `NULL` column is a manual album and has no `AlbumRule` at all. |
-| `AlbumRuleJson.kt` | The strict, hand-written reader and writer for `albums.rule`. Anything it does not fully understand becomes `Unevaluatable` and `parse` never throws; `encode` takes `Evaluatable` only, so an unevaluatable rule cannot be re-encoded. Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is approved. |
-| `AlbumRuleEvaluation.kt` | `AlbumRuleEvaluator` — pure evaluation of `(rule matches ∪ additions) − exclusions` against index rows and live media, in a zone the caller passes in, writing nothing back — and `AlbumEvaluationStatus`: `MANUAL`, `COMPLETE`, `WAITING_ON_INDEX` (live media not supplied yet, or a live item the rule could match is not indexed) and `UNEVALUATABLE`. |
+| `AlbumRule.kt` | The rule model of **[ADR-0017](decisions/0017-composable-album-rule-representation.md)**: `AlbumRule.Evaluatable`, a non-empty conjunction of clauses; `AlbumRule.Unevaluatable`, which keeps the stored text verbatim with an `UnevaluatableReason`; the `time` clause as inclusive calendar-date bounds (Amendment 1); and the `region` clause of **Amendment 2** — a country, optionally an admin1 code with its name, optionally a place name, stamped with the gazetteer `dataset` it was written against. A `region` value can be built only for the current `PLACE_RESOLVER_VERSION`. A `NULL` column is a manual album and has no `AlbumRule` at all. |
+| `AlbumRuleJson.kt` | The strict, hand-written reader and writer for `albums.rule`. Anything it does not fully understand becomes `Unevaluatable` and `parse` never throws — a `region` clause stamped with another dataset is `UNKNOWN_DATASET`; `encode` takes `Evaluatable` only, so an unevaluatable rule cannot be re-encoded, and escapes every string it writes so the stored rule is plain ASCII. Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is approved. |
+| `AlbumRuleEvaluation.kt` | `AlbumRuleEvaluator` — pure evaluation of `(rule matches ∪ additions) − exclusions` over a `MediaIndexLiveJoin`, in a zone the caller passes in, writing nothing back — and `AlbumEvaluationStatus`: `MANUAL`, `COMPLETE`, `WAITING_ON_INDEX` and `UNEVALUATABLE`. Each clause answers per item whether it matches and whether that answer is **settled**, ADR-0017 Amendment 2's rule: a pending row matches provisionally on its old place values, and an item makes the album wait only when some clause is unsettled and none is a settled no-match. An overload takes memberships already resolved, so `AlbumsViewModel` resolves each album once. |
 | `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories, and `LiveMediaLookup` — the one lookup of a stored identity against live media, direct URI then healing key, with the URI key injectable: raw for album memberships, canonical for the index join. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. Membership resolution, rule evaluation and index reconciliation all use the lookup — reconciliation with the canonical key (§11 has why). |
 | `MediaIndexDatabase.kt` | The media index Room database: two entities, schema version 4, `exportSchema = true`, with `MIGRATION_1_2`, `MIGRATION_2_3` and `MIGRATION_3_4` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker — see §6. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
 | `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, ADR-0018's captured and derived column split, and `derivedPlaceResolverVersion`, the marker that says which resolver wrote the derived columns — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name. |
-| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeIdentityDateTaken`, the identity-plus-date projection rule evaluation reads; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. |
-| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexIdentityDateTaken` and `ResolvedPlaceWrite` models. `observeIdentityDateTaken()` returns every row unfiltered, with stored rather than canonicalised URIs, so the evaluator can heal a moved item through the shared lookup. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. |
+| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeEvaluationProjection`, the narrow read rule evaluation and the picker use — identity, captured date, whether coordinates exist, the three derived place columns and the resolver marker, as a query result rather than an entity, so it needed no schema change; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. |
+| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexEvaluationProjection` and `ResolvedPlaceWrite` models. `observeEvaluationProjection()` returns every row unfiltered, with stored rather than canonicalised URIs, so the join can heal a moved item through the shared lookup; a pending row keeps its old derived values beside a null or stale marker. It replaced the date-only identity projection of step 2.5, which was deleted with its model and the evaluator's date-only overload. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. |
 | `MediaIndexWatermarkStore.kt` | `MediaIndexWatermarkStore` plus `RoomMediaIndexWatermarkStore` and `InMemoryMediaIndexWatermarkStore`, and the `MediaIndexVolumeWatermark` model — version, generation, and the API 28–29 date fallback, one entry per volume. |
 | `MediaIndexDeltaDetection.kt` | Pure, Android-free delta detection: the API-branch resolution, the volume plan (which volumes resync and what the next watermarks are), the per-row selection, the `DATE_MODIFIED` fallback predicate, and the `MediaIndexDeltaDetector` that composes a snapshot provider with the watermark store. |
 | `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared `LiveMediaLookup` keyed on `canonicalMediaStoreUriForJoin`, keeping the row's resolver marker, and returns without touching a volume that is not present. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
@@ -182,9 +195,12 @@ below every property it reads, or the class does not compile. Do not work around
 | `MediaStoreRowDeltaProvider.kt` | The `ContentResolver` query behind row selection: the per-volume image and video collections, the generation columns where they exist, and the legacy `external` collections on API 28. It canonicalises every observed URI at the source, so a row's spelling does not depend on which collection it was observed through, while the row keeps its own concrete volume name. |
 | `AndroidMediaStoreVolumeVersionProvider.kt` | Reads a single volume's version string — the no-argument call for the primary volume, the per-volume call on API 29+. |
 | `MediaIndexTierAIndexer.kt` | Tier A extraction and the batch that applies it: the `MediaIndexTierAExtractor` interface, its Android implementation (`ExifInterface` for images, `MediaMetadataRetriever` for video), the two pure date-taken parsers, and `MediaIndexTierABatchIndexer`, which composes detection, row selection, extraction, upsert, reconciliation and watermark persistence into one cancellable pass. The video parser treats a container's zero creation date as absent, and its `QUICKTIME_ZERO_EPOCH_MILLIS` constant is shared with `MediaIndexDatabase.MIGRATION_2_3`. A re-extracted row gets a null resolver marker and keeps its old derived values as labels until the resolve pass revisits it. `MediaIndexingWorker` is its only caller. |
-| `Gazetteer.kt` | The pure nearest-place lookup of **[ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md)** Amendment 1: parses the three gazetteer assets into primitive arrays, rejecting an empty, truncated, mis-versioned or malformed one with `GazetteerLoadException`; answers `nearest` on a 1° bucket grid with haversine and the global distance cap; and owns `PLACE_RESOLVER_VERSION`, which the asset headers must equal. |
-| `GazetteerAssets.kt` | The Android side of the gazetteer: opens the three packaged assets and hands them to `Gazetteer.load`. |
+| `Gazetteer.kt` | The pure nearest-place lookup of **[ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md)** Amendment 1: parses the three gazetteer assets into primitive arrays, rejecting an empty, truncated, mis-versioned or malformed one with `GazetteerLoadException`; answers `nearest` on a 1° bucket grid with haversine and the global distance cap; and owns `PLACE_RESOLVER_VERSION`, which the asset headers must equal. It also holds `GazetteerNames`, a names-only loader for the admin1 and country assets with the same rejection rules, which never reads the places asset: the picker needs names, not coordinates. `countryDisplayName` asks the platform for the name in a locale and falls back to the asset's English name; region and place names stay in GeoNames' `name` form. |
+| `GazetteerAssets.kt` | The Android side of the gazetteer: opens the packaged assets and hands them to `Gazetteer.load`, or, through `loadNames`, the two name assets to `GazetteerNames.load`. |
 | `MediaIndexPlaceResolution.kt` | `MediaIndexPlaceResolver` — the resolve pass. Pages pending located rows by URI cursor, loads the gazetteer once and only if a row is pending, and writes each chunk's answers through the store's conditional write; a load failure propagates before anything is written. It reads only stored coordinates and emits one log line per pass carrying ADR-0019's M2 and M4 figures. `MediaIndexingWorker` is its only caller. |
+| `MediaIndexLiveJoin.kt` | The evaluation projection joined to live media, one `JoinedMedia` per live item: its `DateTakenSortState` and a `LocationState` — resolved with a place, resolved beyond the cap, no coordinates, pending with old values, pending without values, or not indexed. Both sides join through `canonicalMediaStoreUriForJoin` and `LiveMediaLookup`, a direct match beating a heal. It also counts `MediaIndexCoverage` — live items indexed with no location or resolved beyond the cap, and live items indexed with no date — never counting a pending or unindexed item, because waiting may still change those ([albums.md](../design/albums.md) §8 decision 25). |
+| `AutomaticAlbumFacets.kt` | The picker's lists — countries, a country's regions and its places without a region, a region's places, years, a year's months — and the match count, each counted over a `MediaIndexLiveJoin` and filtered by the other dimension's choice. **A count is what `AlbumRuleEvaluator` would make members for the clause the entry writes**, with no additions or exclusions; a pending row counts under its old values, as the evaluator matches it. An entry that could not form a valid clause — a malformed country code, an empty code or name, a region the names asset cannot name — is dropped rather than listed. |
+| `MediaLocationAccess.kt` | `MediaLocationAccessChecker` and its Android implementation: whether `ACCESS_MEDIA_LOCATION` is held, always true below API 29. It reads the permission state and requests nothing; the location coverage notice uses it to say location access is off instead of counting. |
 | `MediaIndexingWork.kt` | The WorkManager boundary: `MediaIndexingWorker` (a `CoroutineWorker` that runs one Tier A batch, reports progress, and then runs the place resolve pass on every run, even one where Tier A selected nothing; a resolver failure fails the run; its `@JvmOverloads` constructor takes the run-state store and factories for the batch indexer and the place resolver, defaulting to `EasyGalleryApp`'s wiring, so tests can inject fakes while WorkManager still uses the two-argument form), and `MediaIndexingWorkScheduler` with its `WorkManager*` implementation — the periodic request and its constraints under the unique work name `media-index-periodic`, and the one-time "Index now" request under its own, `media-index-now`. The worker runs in the app's process and writes through the shared index singleton, which is what lets evaluation follow a batch (§2). It **refuses to index without media read permission** and fails rather than running, because a run that cannot read rows would otherwise advance the watermark past the whole library — step 2.4's record in [the Stage 2 plan](../design/albums-stage-2.md) holds the detail. |
 | `MediaIndexRunStateStore.kt` | The index run-state store (`SharedPreferences*` and `InMemory*`) — last outcome, timestamps and row counters for the Settings surface. Liveness is deliberately **not** among them; see *Persistence*. |
 | `MediaIndexingLivenessStore.kt` | `MediaIndexingLivenessStore`, whose `WorkManager*` implementation derives a three-state `MediaIndexingWorkStatus` from `WorkInfo` across both unique work names rather than from anything persisted, and an `InMemory*` implementation for tests. `RUNNING` means a pass is executing; `WAITING` means WorkManager has work enqueued that its constraints keep from starting; `IDLE` means neither. Only `RUNNING` disables the Index now action. |
@@ -197,8 +213,9 @@ below every property it reads, or the class does not compile. Do not work around
 There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 (`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
 `AlbumMembership`, `MediaIdentity`, `AlbumRule`, `AlbumRuleJson`, `AlbumRuleEvaluation`,
-`MediaIndexDeltaDetection`, `MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`,
-`AlbumNaming`, `Favourites`) and in `ui/components/` helper files (`MediaDuration`, `ShareIntents`,
+`MediaIndexLiveJoin`, `AutomaticAlbumFacets`, `MediaIndexDeltaDetection`,
+`MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`, `AlbumNaming`,
+`Favourites`) and in `ui/components/` helper files (`MediaDuration`, `ShareIntents`,
 `WallpaperIntents`) specifically so it can be unit tested on a plain JVM without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
 the `AlbumMembership` precedent `MediaIndexReconciliation` follows.
@@ -231,13 +248,25 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   and owns `selectedAlbumId`. It also owns the `MediaStore.getVersion()` watermark that decides
   when a re-resolve is worth doing. It takes a `MediaIndexStore` and evaluates each album's stored
   rule through `AlbumRuleEvaluator`, publishing an `AlbumEvaluationStatus` per album:
+  - **One join, shared.** It combines the index's `observeEvaluationProjection()` with the live
+    media list into one `MediaIndexLiveJoin` per emission of either, and every rule album and the
+    picker read that instance; a unit test counts the builds. The join is shared with
+    `WhileSubscribed(5_000)` and no replay after it stops, so it is collected only while a rule
+    album exists or the picker is open — a manual album never observes the index — and the album
+    list re-emitting on a rename does not restart the Room query.
   - Evaluation re-runs when the albums, an album's memberships, or the live media list change, and
-    on every emission of the index's identity flow — which is how it follows each index batch
-    (§2). That flow is shared, and collected only while an album with a non-null rule exists, so a
-    manual album never observes the index.
+    on every emission of the projection — which is how it follows each index batch (§2). Each album
+    resolves its memberships once and hands that resolution to the evaluator.
   - It runs on an injected `CoroutineDispatcher` — `Dispatchers.Default` in production, so off the
     main thread — and reads the zone through an injected provider at each evaluation rather than
     caching it, because the user can change the device zone while the app lives.
+  - `AlbumListItem` carries, beside the status, whether the rule has a `time` clause and a `region`
+    clause, the library-wide `MediaIndexCoverage` for an evaluatable rule (null otherwise), and
+    whether location access is held — read through `MediaLocationAccessChecker` only for an album
+    with a `region` clause, and only when that album recomputes (§11). Album Detail View draws its
+    coverage notices from them.
+  - `createAutomaticAlbum(name, rule)` encodes an `Evaluatable` rule and writes the album row with
+    it and no membership rows — the first shipped path that writes `albums.rule` (§6).
   - Removing an item from an album with **any stored rule** — evaluatable or not — **records an
     exclusion**, and deletes any addition row for the item as well. A rule match has no row to
     delete, an item removed while not yet indexed would otherwise reappear when its date is indexed,
@@ -254,6 +283,17 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
     would mark every membership orphaned and every rule album complete. **Live-media forwarding is
     gated on `GalleryViewModel.isMediaLoaded`:** `MainActivity` and `FolderListScreen` call
     `setAllMedia` only once it is true, so the empty placeholder never arrives as a list.
+- **`AutomaticAlbumPickerState`** — the New automatic album screen's draft and lists, a state
+  holder **owned by `AlbumsViewModel`** and fed its shared join, so a picker count and the album
+  created from it agree by construction. It holds the name, the chosen `region` and time clause,
+  and which country, region and year each picker is drilled into; it loads `GazetteerNames` once,
+  off the main thread, and reports loading, failed, waiting for media, or ready rather than an empty
+  list. Its UI state is shared `WhileSubscribed(5_000)`, so facets are computed only while the
+  screen is open. Zone, locale and location access are read at each computation; `refresh()`
+  recomputes them, which the screen calls on entry because a recreated Activity keeps the draft
+  but not the locale its names were resolved in. `hasDraftName` tells the screen whether a draft
+  was opened — false in a process restored onto the screen, which then opens one — because the
+  UI state's initial value has an empty name either way.
 - **`FavouritesViewModel`** — the favourite URI set and the write path, including the
   `IntentSender` round trip and the `MANAGE_MEDIA` rationale.
 - **`CreateFolderViewModel`** — the create-folder dialog's own state; emits a `folderCreated`
@@ -267,14 +307,16 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   list is **not** gated on `isMediaLoaded`; §11 says what that costs.
 
 `AlbumsViewModel`, `FavouritesViewModel` and `MediaIndexingViewModel` are feature-scoped on that
-precedent. `GalleryViewModel` gained no album state and no indexing state; it still owns selection,
+precedent, and `AutomaticAlbumPickerState` is a state holder inside the first rather than a fourth
+ViewModel, because its counts must read the albums' own join. `GalleryViewModel` gained no album
+state and no indexing state; it still owns selection,
 media operations, and the viewer delegate, which Album Detail View reuses. What it gained for the
 index is one delegate, `MediaIndexDateTakenState`, because date-taken sorting is a property of the
 flows it already owns.
 
 Screens: `FolderListScreen` (with `FolderList`, `FolderGrid`, `FolderDialogs`),
 `FolderDetailScreen`, `AlbumDetailScreen` (with `AlbumDialogs`), `NewAlbumScreen`,
-`FullImageScreen`, `CalendarGrid`, `ManageExcludedScreen`, `SettingsScreen`.
+`NewAutomaticAlbumScreen`, `FullImageScreen`, `CalendarGrid`, `ManageExcludedScreen`, `SettingsScreen`.
 
 Each main view is a pair: the `*Screen` composable reads the ViewModel and binds the scope; the
 `*Content` composable is stateless and takes plain values plus callbacks. **The `*Content`
@@ -324,6 +366,7 @@ selectedMedia != null        → FullImageScreen          (outside the state hol
     selectedAlbumId != null  → AlbumDetailScreen
     isFavouritesSelected     → AlbumDetailScreen        (isFavouritesAlbum = true)
     newAlbumInitialName != null → NewAlbumScreen
+    newAutomaticAlbumOpen    → NewAutomaticAlbumScreen
     hasPermission            → FolderListScreen
     else                     → PermissionDeniedScreen
 ```
@@ -340,21 +383,30 @@ Album creation added the branch above `hasPermission` —
 the New album screen is open, and the value is the suggested name it opened on. It is reachable
 only from Albums View, so its position relative to the detail branches is not load-bearing.
 
+Automatic creation added the branch below it, at Stage 2 step 2.7 —
+**[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)** Amendment 2.
+`newAutomaticAlbumOpen` is a `rememberSaveable` `Boolean` in `MainActivity`, set by the Album type
+dialog's Automatic option after `AlbumsViewModel.openAutomaticAlbumPicker()` has started a fresh
+draft. Unlike the manual branch it carries no value, because the draft lives in
+`AutomaticAlbumPickerState` rather than in the Activity. Reachable only from Albums View, so its
+position is not load-bearing either.
+
 Switching screens removes the previous one from composition, so a plain `remember` in a screen
 does **not** survive navigation. A `rememberSaveableStateHolder` in `MainActivity` retains each
 non-viewer screen's saveable state (lazy scroll position) under a `screenKey` that includes the
 folder path or album id — `folder_detail:$path`, `album_detail:$albumId`, the literal
-`album_detail:favourites`, and `new_album`.
+`album_detail:favourites`, `new_album`, and `new_automatic_album`.
 
 `FullImageScreen` is deliberately rendered **outside** that provider, and `MainActivity` carries
 no `android:configChanges`. Both are required by
 **[ADR-0002](decisions/0002-viewmodel-owned-transient-viewer-state.md)** — read it before touching
 either. Albums left both untouched.
 
-The `new_album` entry is the one key `MainActivity` **removes** from the holder, in a
-`LaunchedEffect` once the screen closes. Retention is right for a scroll position and wrong for a
-draft: without the removal the next New album screen would reopen on the previous name — by then a
-duplicate — and the previous selection.
+The `new_album` and `new_automatic_album` entries are the two keys `MainActivity` **removes** from
+the holder, each in a `LaunchedEffect` once its screen closes. Retention is right for a scroll
+position and wrong for a draft: without the removal the next New album screen would reopen on the
+previous name — by then a duplicate — and the previous selection, and the next New automatic album
+screen on the previous visit's tab and typed name.
 
 State that must survive navigation therefore belongs either in a ViewModel or inside the
 `SaveableStateProvider`.
@@ -495,9 +547,12 @@ An album's contents are `(rule ∪ additions) − exclusions`, which is why memb
 **[ADR-0012](decisions/0012-one-album-type-rule-additions-exclusions.md)**. The `rule` column holds
 the versioned JSON document of
 **[ADR-0017](decisions/0017-composable-album-rule-representation.md)**, whose Amendment 1 fixes the
-`time` clause, the zone it is read in, and how strict the reader is: `NULL` means manual, and a rule
-this build cannot read resolves to additions minus exclusions and is never rewritten. It is read by
-`AlbumsViewModel`; no shipped code path writes one yet (§11). A membership identifies
+`time` clause, the zone it is read in, and how strict the reader is, and whose **Amendment 2** adds
+the `region` clause, its dataset stamp and the settled/unsettled rule: `NULL` means manual, and a
+rule this build cannot read resolves to additions minus exclusions and is never rewritten. It is
+read by `AlbumsViewModel` and written by `AlbumsViewModel.createAutomaticAlbum`, from the New
+automatic album screen, once, at creation — no shipped path rewrites a stored rule (§11). The
+album schema did not change for it. A membership identifies
 its media by a content URI with the healing key as a fallback, and an unresolvable membership is
 marked orphaned and retained rather than deleted —
 **[ADR-0010](decisions/0010-album-membership-dual-key-identity.md)**. The cover is a foreign key
@@ -580,9 +635,10 @@ user's choice and an index row is not.
 
 It is filled by `MediaIndexingWorker` under WorkManager and read by `MediaIndexDateTakenState` for
 `SortType.DATE_TAKEN`, by `MediaIndexingViewModel` for the Settings figures, and by
-`AlbumsViewModel` for automatic-album evaluation — see §2. **`time` is still the only clause
-evaluation implements.** The derived place columns are filled now, but nothing reads them until a
-`region` clause exists, which is step 2.7 of [the Stage 2 plan](../design/albums-stage-2.md).
+`AlbumsViewModel` for automatic-album evaluation and the picker's counts — see §2. Evaluation
+implements two clauses, `time` and `region`; the `region` clause reads the derived place columns
+and the resolver marker through the evaluation projection, and a row whose marker is not the
+current `PLACE_RESOLVER_VERSION` is pending — ADR-0017 Amendment 2.
 
 ---
 
@@ -674,8 +730,8 @@ KSP.
 - **`GalleryViewModel` is by a wide margin the largest file in the app**, and still growing. The
   established escape hatches are a new state holder (`DisplayPreferencesState`,
   `FolderViewPreferencesState`, `MediaViewerState`) or a feature ViewModel
-  (`CreateFolderViewModel`, `BillingViewModel`, `AlbumsViewModel`, `FavouritesViewModel`). Albums
-  used the second and added no album state to its body.
+  (`CreateFolderViewModel`, `BillingViewModel`, `AlbumsViewModel`, `FavouritesViewModel`,
+  `MediaIndexingViewModel`). Albums used the second and added no album state to its body.
 - **Screen names lag the canonical ones** — see the caveat in §1. `FolderListScreen` and
   `CalendarGrid` still do; `DisplayMode` no longer does, having been renamed to
   `FOLDERS`/`TIMELINE`/`ALBUMS` when Albums View landed. `FolderListScreen` now hosts three views,
@@ -717,7 +773,7 @@ KSP.
 - **An album's cover cannot be chosen.** [ADR-0015](decisions/0015-album-cover-persisted-random-member.md)
   picks one member at random and persists it; the picker that would let the user change it is not
   built. A user who dislikes the cover has no way to change it short of deleting the album.
-- **The `rule` column is read, and written only by tests.** `albums.rule` exists for
+- ~~**The `rule` column is read, and written only by tests.** `albums.rule` exists for
   [ADR-0012](decisions/0012-one-album-type-rule-additions-exclusions.md)'s rule half, and since
   Stage 2 step 2.5 `AlbumsViewModel` parses and evaluates it. But every album the app creates still
   stores `null`, and the Album type dialog's Automatic option stays disabled until step 2.7, which
@@ -728,7 +784,34 @@ KSP.
   batch alone, and the notices' Compose tests pass on a device. **No notice has been seen in a real
   tile, row or Album Detail View of the installed app**, because nothing shipped can create a rule
   album to show one; [the Stage 2 plan](../design/albums-stage-2.md) carries that as a residual
-  check.
+  check.~~ **Resolved at Stage 2 step 2.7**: the Automatic option is enabled and the New automatic
+  album screen writes a rule through `AlbumsViewModel.createAutomaticAlbum`. On 2026-11-11, on the
+  SM-G990B, an installed-app walkthrough created a country album and a country + year album, saw
+  the Incomplete-album notice on the tile until Index now and then the members and the coverage
+  notices in Album Detail View; device tests checked every picker entry's count against the
+  evaluator's members over the real index. **Not seen in the installed app**: the picker's group
+  of places without a region and the location-access-off wording, which unit and Compose tests
+  cover, and an unevaluatable album, which only data can produce. Kept struck through because
+  those residual checks are recorded against it in the Stage 2 plan.
+- **An automatic album's rule cannot be edited.** It is set at creation; rename, add, remove and
+  delete work as on any album. A wrong rule is fixed by deleting the album and creating it again,
+  which loses its manual additions and exclusions. Deliberate — [albums.md](../design/albums.md)
+  §8 decision 26 — and any later editor inherits ADR-0017's never-rewrite rule.
+- **Images indexed without `ACCESS_MEDIA_LOCATION` are never re-extracted after a later grant.** On
+  API 29+ Tier A's `setRequireOriginal` read yields nothing without it — no location and no date —
+  and the row is stored as final, because delta detection never re-extracts unchanged media. After
+  a grant those images count as "no location" and "no date" in the coverage notices. Known and not
+  fixed: recovering them is a re-index, which is a decision — [albums.md](../design/albums.md) §10
+  question 9.
+- **Media in excluded folders counts in rule albums and in the picker's counts.** Both read the
+  same gated live set, which ignores Folders View's exclusions; changing it for one reader and not
+  the other would make a picker count disagree with the album it creates. Recorded as current
+  behaviour, which the maintainer may revisit — [albums.md](../design/albums.md) §10 question 10.
+- **Location access is re-read only when an album recomputes.** `AlbumListItem.locationAccessGranted`
+  is read inside the album computation, which runs on the album, membership, live-media and index
+  inputs — none of which a permission grant changes. So granting `ACCESS_MEDIA_LOCATION` while the
+  app runs shows in Album Detail View only after the next recompute. The picker does not share the
+  lag: it re-reads on every computation and on `refresh()`.
 - ~~**Index reconciliation still has its own copy of the live-media lookup.** `LiveMediaLookup` in
   `data/MediaIdentity.kt` was extracted at step 2.5 and is used by membership resolution and rule
   evaluation, but `MediaIndexReconciler` in `data/MediaIndexReconciliation.kt` still builds its own

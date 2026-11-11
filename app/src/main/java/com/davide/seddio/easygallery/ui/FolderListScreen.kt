@@ -78,6 +78,7 @@ fun FolderListScreen(
     onToggleFavourites: (Collection<android.net.Uri>) -> Unit,
     onAddToAlbum: (List<com.davide.seddio.easygallery.data.MediaItem>) -> Unit,
     onStartManualAlbum: () -> Unit = {},
+    onStartAutomaticAlbum: () -> Unit = {},
     onSelectFavourites: () -> Unit = {}
 ) {
     val uiState by viewModel.filteredFolders.collectAsState()
@@ -177,6 +178,7 @@ fun FolderListScreen(
         onSetSettingsMode = { viewModel.setSettingsMode(it) },
         onSetCreateFolderDialogOpen = { createFolderViewModel.setDialogOpen(it) },
         onStartManualAlbum = onStartManualAlbum,
+        onStartAutomaticAlbum = onStartAutomaticAlbum,
         onRenameAlbum = { albumId, name -> albumsViewModel.renameAlbum(albumId, name) },
         onDeleteAlbum = { albumsViewModel.deleteAlbum(it) },
         onSelectAlbum = { albumsViewModel.selectAlbum(it) },
@@ -257,6 +259,7 @@ fun FolderListContent(
     onSetSettingsMode: (Boolean) -> Unit,
     onSetCreateFolderDialogOpen: (Boolean) -> Unit,
     onStartManualAlbum: () -> Unit,
+    onStartAutomaticAlbum: () -> Unit,
     onRenameAlbum: (Long, String) -> Unit,
     onDeleteAlbum: (Long) -> Unit,
     onSelectAlbum: (Long) -> Unit,
@@ -537,6 +540,10 @@ fun FolderListContent(
                 onManualSelected = {
                     showAlbumTypeDialog = false
                     onStartManualAlbum()
+                },
+                onAutomaticSelected = {
+                    showAlbumTypeDialog = false
+                    onStartAutomaticAlbum()
                 },
                 onDismiss = { showAlbumTypeDialog = false }
             )

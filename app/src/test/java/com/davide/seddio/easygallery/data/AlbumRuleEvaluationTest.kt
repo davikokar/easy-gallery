@@ -205,10 +205,10 @@ class AlbumRuleEvaluationTest {
         )
         val live = listOf(added.live, excluded.live, healedTarget.live)
 
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = null,
-            indexEntries = listOf(added.row, excluded.row),
-            liveMedia = live,
+            rows = listOf(added.row, excluded.row),
+            live = live,
             memberships = memberships,
             zone = UTC
         )
@@ -227,10 +227,10 @@ class AlbumRuleEvaluationTest {
         val index = listOf(kept.row, deleted.row)
         val indexBefore = index.toList()
 
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = timeRule("2025-06-10", "2025-06-10"),
-            indexEntries = index,
-            liveMedia = listOf(kept.live),
+            rows = index,
+            live = listOf(kept.live),
             memberships = emptyList(),
             zone = UTC
         )
@@ -252,10 +252,10 @@ class AlbumRuleEvaluationTest {
             )
         )
 
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = timeRule("2025-06-10", "2025-06-10"),
-            indexEntries = listOf(staleRow),
-            liveMedia = listOf(moved.live),
+            rows = listOf(staleRow),
+            live = listOf(moved.live),
             memberships = emptyList(),
             zone = UTC
         )
@@ -277,10 +277,10 @@ class AlbumRuleEvaluationTest {
             )
         )
 
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = timeRule("2025-06-10", "2025-06-10"),
-            indexEntries = listOf(volumeRow),
-            liveMedia = listOf(item.live),
+            rows = listOf(volumeRow),
+            live = listOf(item.live),
             memberships = emptyList(),
             zone = UTC
         )
@@ -297,14 +297,14 @@ class AlbumRuleEvaluationTest {
         val rule = timeRule("2025-06-10", "2025-06-10")
 
         for (index in listOf(listOf(healedOutside, direct), listOf(direct, healedOutside))) {
-            val result = AlbumRuleEvaluator.evaluate(rule, index, listOf(live), emptyList(), UTC)
+            val result = evaluateOver(rule, index, listOf(live), emptyList(), UTC)
             assertEquals(listOf(live), result.members)
         }
 
         val directOutside = row(live.uri.toString(), live, dateTaken = 0L)
         val healedInside = row("content://media/external/images/media/8888", live, dateTaken = JUNE_10_NOON_UTC)
         for (index in listOf(listOf(healedInside, directOutside), listOf(directOutside, healedInside))) {
-            val result = AlbumRuleEvaluator.evaluate(rule, index, listOf(live), emptyList(), UTC)
+            val result = evaluateOver(rule, index, listOf(live), emptyList(), UTC)
             assertTrue(result.members.isEmpty())
         }
     }
@@ -326,10 +326,10 @@ class AlbumRuleEvaluationTest {
         val indexed = IndexedItem(1, JUNE_10_NOON_UTC)
         val notIndexed = IndexedItem(2, JUNE_10_NOON_UTC)
 
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = timeRule("2025-06-10", "2025-06-10"),
-            indexEntries = listOf(indexed.row),
-            liveMedia = listOf(indexed.live, notIndexed.live),
+            rows = listOf(indexed.row),
+            live = listOf(indexed.live, notIndexed.live),
             memberships = emptyList(),
             zone = UTC
         )
@@ -343,10 +343,10 @@ class AlbumRuleEvaluationTest {
         val added = IndexedItem(1, null)
         val excluded = IndexedItem(2, null)
 
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = timeRule("2025-06-10", "2025-06-10"),
-            indexEntries = emptyList(),
-            liveMedia = listOf(added.live, excluded.live),
+            rows = emptyList(),
+            live = listOf(added.live, excluded.live),
             memberships = listOf(addition(100, added), exclusion(101, excluded)),
             zone = UTC
         )
@@ -359,10 +359,10 @@ class AlbumRuleEvaluationTest {
     fun `live media not yet supplied is waiting on the index and not an empty complete`() {
         val item = IndexedItem(1, JUNE_10_NOON_UTC)
 
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = timeRule("2025-06-10", "2025-06-10"),
-            indexEntries = listOf(item.row),
-            liveMedia = null,
+            rows = listOf(item.row),
+            live = null,
             memberships = listOf(addition(100, item)),
             zone = UTC
         )
@@ -373,10 +373,10 @@ class AlbumRuleEvaluationTest {
 
     @Test
     fun `an empty live list is a complete empty album`() {
-        val result = AlbumRuleEvaluator.evaluate(
+        val result = evaluateOver(
             rule = timeRule("2025-06-10", "2025-06-10"),
-            indexEntries = emptyList(),
-            liveMedia = emptyList(),
+            rows = emptyList(),
+            live = emptyList(),
             memberships = emptyList(),
             zone = UTC
         )
@@ -385,11 +385,456 @@ class AlbumRuleEvaluationTest {
         assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
     }
 
+    // --- the join -----------------------------------------------------------------------------
+
+    @Test
+    fun `the join gives every live item one location state`() {
+        val resolved = located(1, country = "IT", region = "16", place = "Florence", marker = CURRENT)
+        val outOfCap = located(2, marker = CURRENT)
+        val noCoordinates = located(3, hasCoordinates = false, marker = CURRENT)
+        val noCoordinatesWithOldValues = located(4, hasCoordinates = false, country = "IT", marker = null)
+        val pendingWithValues = located(5, country = "IT", place = "Rome", marker = null)
+        val staleMarker = located(6, country = "FR", place = "Paris", marker = CURRENT + 1)
+        val pendingWithout = located(7, marker = null)
+        val unreached = notIndexed(8)
+
+        val join = joinOf(
+            resolved, outOfCap, noCoordinates, noCoordinatesWithOldValues,
+            pendingWithValues, staleMarker, pendingWithout, unreached
+        )
+
+        assertEquals(
+            listOf(
+                LocationState.Resolved(PlaceValues("IT", "16", "Florence")),
+                LocationState.ResolvedOutOfCap,
+                LocationState.NoCoordinates,
+                LocationState.NoCoordinates,
+                LocationState.PendingWithOldValues(PlaceValues("IT", null, "Rome")),
+                LocationState.PendingWithOldValues(PlaceValues("FR", null, "Paris")),
+                LocationState.PendingWithoutValues,
+                LocationState.NotIndexed
+            ),
+            join.items.map { it.location }
+        )
+    }
+
+    @Test
+    fun `the join gives every live item one date state`() {
+        val dated = located(1, dateTaken = JUNE_10_NOON_UTC)
+        val undated = located(2, dateTaken = null)
+        val unreached = notIndexed(3)
+
+        val join = joinOf(dated, undated, unreached)
+
+        assertEquals(
+            listOf(
+                DateTakenSortState.IndexedWithDate(JUNE_10_NOON_UTC),
+                DateTakenSortState.IndexedWithoutDate,
+                DateTakenSortState.NotIndexed
+            ),
+            join.items.map { it.date }
+        )
+        assertEquals(join.items.map { it.item }, join.liveMedia)
+    }
+
+    @Test
+    fun `an index row whose item is no longer live joins nothing`() {
+        val kept = located(1, country = "IT", marker = CURRENT)
+        val deleted = located(2, country = "IT", marker = CURRENT)
+
+        val join = MediaIndexLiveJoin.build(listOf(kept.row!!, deleted.row!!), listOf(kept.live))
+
+        assertEquals(listOf(kept.live), join.liveMedia)
+    }
+
+    @Test
+    fun `a row spelled with a volume uuid joins the external live item with its place`() {
+        val live = liveItem(7)
+        val volumeRow = projection(
+            live,
+            dateTaken = JUNE_10_NOON_UTC,
+            country = "IT",
+            marker = CURRENT,
+            uri = "content://media/1234-ABCD/images/media/7",
+            // A different healing triple, so only the canonical uri join can match it.
+            displayName = "other.jpg",
+            size = -1L,
+            dateModified = -1L
+        )
+
+        val join = MediaIndexLiveJoin.build(listOf(volumeRow), listOf(live))
+
+        assertEquals(LocationState.Resolved(PlaceValues("IT", null, null)), join.items.single().location)
+    }
+
+    @Test
+    fun `when a healed row and a direct row reach one live item the direct row supplies date and place`() {
+        val live = liveItem(1)
+        val direct = projection(live, dateTaken = JUNE_10_NOON_UTC, country = "IT", marker = CURRENT)
+        val healed = projection(
+            live,
+            dateTaken = 0L,
+            country = "FR",
+            marker = CURRENT,
+            uri = "content://media/external/images/media/8888"
+        )
+
+        for (rows in listOf(listOf(healed, direct), listOf(direct, healed))) {
+            val joined = MediaIndexLiveJoin.build(rows, listOf(live)).items.single()
+
+            assertEquals(DateTakenSortState.IndexedWithDate(JUNE_10_NOON_UTC), joined.date)
+            assertEquals(LocationState.Resolved(PlaceValues("IT", null, null)), joined.location)
+        }
+    }
+
+    @Test
+    fun `a moved item joins through the healing key`() {
+        val live = liveItem(1)
+        val stale = projection(
+            live,
+            dateTaken = JUNE_10_NOON_UTC,
+            country = "IT",
+            marker = CURRENT,
+            uri = "content://media/external/images/media/5001"
+        )
+
+        val joined = MediaIndexLiveJoin.build(listOf(stale), listOf(live)).items.single()
+
+        assertEquals(LocationState.Resolved(PlaceValues("IT", null, null)), joined.location)
+    }
+
+    // --- region clause ------------------------------------------------------------------------
+
+    @Test
+    fun `a resolved item in the clause country is a member and the album is complete`() {
+        val item = located(1, country = "IT", region = "16", place = "Florence", marker = CURRENT)
+
+        val result = evaluateRows(regionRule("IT"), item)
+
+        assertEquals(listOf(item.live), result.members)
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `a resolved item in another country is not a member and nothing waits`() {
+        val item = located(1, country = "FR", place = "Paris", marker = CURRENT)
+
+        val result = evaluateRows(regionRule("IT"), item)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `an item with no coordinates is a settled no-match`() {
+        val item = located(1, hasCoordinates = false, marker = null)
+
+        val result = evaluateRows(regionRule("IT"), item)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `an item resolved beyond the cap is a settled no-match`() {
+        val item = located(1, marker = CURRENT)
+
+        val result = evaluateRows(regionRule("IT"), item)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `a pending item whose old values match is a provisional member and the album waits`() {
+        val item = located(1, country = "IT", region = "16", place = "Florence", marker = null)
+
+        val result = evaluateRows(regionRule("IT"), item)
+
+        assertEquals(listOf(item.live), result.members)
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+    }
+
+    @Test
+    fun `a pending item whose old values differ is not a member and the album waits`() {
+        val item = located(1, country = "FR", place = "Paris", marker = null)
+
+        val result = evaluateRows(regionRule("IT"), item)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+    }
+
+    @Test
+    fun `a pending item with no values and a not-indexed item are not members and the album waits`() {
+        for (item in listOf(located(1, marker = null), notIndexed(2))) {
+            val result = evaluateRows(regionRule("IT"), item)
+
+            assertTrue(result.members.isEmpty())
+            assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+        }
+    }
+
+    @Test
+    fun `a marker that is not the current version is pending even with values`() {
+        for (marker in listOf(0, CURRENT + 1)) {
+            val item = located(1, country = "IT", place = "Rome", marker = marker)
+
+            val result = evaluateRows(regionRule("IT"), item)
+
+            assertEquals(listOf(item.live), result.members)
+            assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+        }
+    }
+
+    @Test
+    fun `a country clause matches every region and a region clause only its own`() {
+        val tuscany = located(1, country = "IT", region = "16", place = "Florence", marker = CURRENT)
+        val lazio = located(2, country = "IT", region = "07", place = "Rome", marker = CURRENT)
+        val noRegion = located(3, country = "IT", place = "Vatican", marker = CURRENT)
+
+        val country = evaluateRows(regionRule("IT"), tuscany, lazio, noRegion)
+        val region = evaluateRows(regionRule("IT", admin1 = "16", admin1Name = "Tuscany"), tuscany, lazio, noRegion)
+
+        assertEquals(listOf(tuscany.live, lazio.live, noRegion.live), country.members)
+        assertEquals(listOf(tuscany.live), region.members)
+    }
+
+    @Test
+    fun `a place with its region pair matches only that region`() {
+        val florence = located(1, country = "IT", region = "16", place = "Florence", marker = CURRENT)
+        val otherRegion = located(2, country = "IT", region = "07", place = "Florence", marker = CURRENT)
+        val rome = located(3, country = "IT", region = "16", place = "Rome", marker = CURRENT)
+
+        val result = evaluateRows(
+            regionRule("IT", admin1 = "16", admin1Name = "Tuscany", place = "Florence"),
+            florence, otherRegion, rome
+        )
+
+        assertEquals(listOf(florence.live), result.members)
+    }
+
+    @Test
+    fun `a place without a region pair matches only rows whose region is null`() {
+        val singapore = located(1, country = "SG", place = "Singapore", marker = CURRENT)
+        val sameNameWithRegion = located(2, country = "SG", region = "01", place = "Singapore", marker = CURRENT)
+        val otherPlace = located(3, country = "SG", place = "Jurong", marker = CURRENT)
+
+        val result = evaluateRows(regionRule("SG", place = "Singapore"), singapore, sameNameWithRegion, otherPlace)
+
+        assertEquals(listOf(singapore.live), result.members)
+    }
+
+    @Test
+    fun `two region clauses naming different countries match nothing`() {
+        val item = located(1, country = "IT", marker = CURRENT)
+        val rule = AlbumRule.Evaluatable(listOf(AlbumRuleClause.Region("IT"), AlbumRuleClause.Region("FR")))
+
+        val result = evaluateRows(rule, item)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    // --- combined time and region -------------------------------------------------------------
+
+    @Test
+    fun `a combined rule needs the date and the place to match`() {
+        val both = located(1, dateTaken = JUNE_10_NOON_UTC, country = "IT", marker = CURRENT)
+        val wrongPlace = located(2, dateTaken = JUNE_10_NOON_UTC, country = "FR", marker = CURRENT)
+        val wrongDate = located(3, dateTaken = epoch("2020-01-01T00:00:00Z"), country = "IT", marker = CURRENT)
+
+        val result = evaluateRows(combinedRule("IT"), both, wrongPlace, wrongDate)
+
+        assertEquals(listOf(both.live), result.members)
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `a date outside the range with a pending location is not a member and does not make the album wait`() {
+        val outOfRange = located(1, dateTaken = epoch("2020-01-01T00:00:00Z"), marker = null)
+
+        val result = evaluateRows(combinedRule("IT"), outOfRange)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `a settled date no-match also hides a pending location with matching old values`() {
+        val outOfRange = located(1, dateTaken = epoch("2020-01-01T00:00:00Z"), country = "IT", marker = null)
+
+        val result = evaluateRows(combinedRule("IT"), outOfRange)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `an item with no date and a pending location does not make the album wait`() {
+        val undated = located(1, dateTaken = null, marker = null)
+
+        val result = evaluateRows(combinedRule("IT"), undated)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `a date in range with a pending location waits`() {
+        val inRange = located(1, dateTaken = JUNE_10_NOON_UTC, marker = null)
+
+        val result = evaluateRows(combinedRule("IT"), inRange)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+    }
+
+    @Test
+    fun `a date in range with pending old values that match is a member and the album waits`() {
+        val inRange = located(1, dateTaken = JUNE_10_NOON_UTC, country = "IT", marker = null)
+
+        val result = evaluateRows(combinedRule("IT"), inRange)
+
+        assertEquals(listOf(inRange.live), result.members)
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+    }
+
+    @Test
+    fun `a not-indexed item waits under a combined rule`() {
+        val result = evaluateRows(combinedRule("IT"), notIndexed(1))
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+    }
+
+    // --- ADR-0012 with places -----------------------------------------------------------------
+
+    @Test
+    fun `an exclusion beats a region match and an excluded pending item does not make the album wait`() {
+        val resolved = located(1, country = "IT", marker = CURRENT)
+        val pending = located(2, marker = null)
+
+        val result = evaluateRows(
+            rule = regionRule("IT"),
+            items = arrayOf(resolved, pending),
+            memberships = listOf(exclusionOf(100, resolved.live), exclusionOf(101, pending.live))
+        )
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `an addition is a member and never makes the album wait`() {
+        val pending = located(1, marker = null)
+        val unreached = notIndexed(2)
+        val noCoordinates = located(3, hasCoordinates = false, marker = null)
+
+        val result = evaluateRows(
+            rule = regionRule("IT"),
+            items = arrayOf(pending, unreached, noCoordinates),
+            memberships = listOf(
+                additionOf(100, pending.live),
+                additionOf(101, unreached.live),
+                additionOf(102, noCoordinates.live)
+            )
+        )
+
+        assertEquals(setOf(pending.live, unreached.live, noCoordinates.live), result.members.toSet())
+        assertEquals(AlbumEvaluationStatus.COMPLETE, result.status)
+    }
+
+    @Test
+    fun `an item that is both added and excluded stays out`() {
+        val item = located(1, country = "IT", marker = CURRENT)
+
+        val result = evaluateRows(
+            rule = regionRule("IT"),
+            items = arrayOf(item),
+            memberships = listOf(additionOf(100, item.live), exclusionOf(101, item.live))
+        )
+
+        assertTrue(result.members.isEmpty())
+    }
+
+    // --- the evaluator and the join -----------------------------------------------------------
+
+    @Test
+    fun `live media not yet supplied is waiting for a region album and not an empty complete`() {
+        val result = AlbumRuleEvaluator.evaluate(regionRule("IT"), null, emptyList(), UTC)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+    }
+
     // --- fixtures -----------------------------------------------------------------------------
+
+    private class Located(val live: MediaItem, val row: MediaIndexEvaluationProjection?)
+
+    private fun located(
+        id: Int,
+        dateTaken: Long? = JUNE_10_NOON_UTC,
+        hasCoordinates: Boolean = true,
+        country: String? = null,
+        region: String? = null,
+        place: String? = null,
+        marker: Int? = null
+    ): Located {
+        val live = liveItem(id)
+        return Located(live, projection(live, dateTaken, hasCoordinates, country, region, place, marker))
+    }
+
+    private fun notIndexed(id: Int) = Located(liveItem(id), row = null)
+
+    private fun joinOf(vararg items: Located): MediaIndexLiveJoin {
+        return MediaIndexLiveJoin.build(items.mapNotNull { it.row }, items.map { it.live })
+    }
+
+    private fun evaluateRows(
+        rule: AlbumRule,
+        vararg items: Located
+    ): AlbumRuleEvaluation = evaluateRows(rule, arrayOf(*items), emptyList())
+
+    private fun evaluateRows(
+        rule: AlbumRule,
+        items: Array<out Located>,
+        memberships: List<StoredMembership>
+    ): AlbumRuleEvaluation {
+        return AlbumRuleEvaluator.evaluate(rule, joinOf(*items), memberships, UTC)
+    }
+
+    private fun regionRule(
+        country: String,
+        admin1: String? = null,
+        admin1Name: String? = null,
+        place: String? = null
+    ) = AlbumRule.Evaluatable(listOf(AlbumRuleClause.Region(country, admin1, admin1Name, place)))
+
+    private fun combinedRule(country: String) = AlbumRule.Evaluatable(
+        listOf(
+            AlbumRuleClause.Time(LocalDate.parse("2025-06-10"), LocalDate.parse("2025-06-10")),
+            AlbumRuleClause.Region(country)
+        )
+    )
+
+    private fun additionOf(id: Long, live: MediaItem) = membershipOf(id, live, StoredMembershipKind.ADDITION)
+
+    private fun exclusionOf(id: Long, live: MediaItem) = membershipOf(id, live, StoredMembershipKind.EXCLUSION)
+
+    private fun membershipOf(id: Long, live: MediaItem, kind: StoredMembershipKind) = StoredMembership(
+        id = id,
+        mediaUri = live.uri.toString(),
+        displayName = live.name,
+        size = live.size,
+        dateModified = live.dateModified,
+        kind = kind,
+        isOrphaned = false
+    )
 
     private class IndexedItem(val id: Int, val dateTaken: Long?) {
         val live: MediaItem = liveItem(id)
-        val row: MediaIndexIdentityDateTaken = row(live.uri.toString(), live, dateTaken)
+        val row: MediaIndexEvaluationProjection = row(live.uri.toString(), live, dateTaken)
     }
 
     private fun evaluate(
@@ -404,13 +849,25 @@ class AlbumRuleEvaluationTest {
         items: Array<out IndexedItem>,
         memberships: List<StoredMembership>
     ): AlbumRuleEvaluation {
-        return AlbumRuleEvaluator.evaluate(
+        return evaluateOver(
             rule = rule,
-            indexEntries = items.map { it.row },
-            liveMedia = items.map { it.live },
+            rows = items.map { it.row },
+            live = items.map { it.live },
             memberships = memberships,
             zone = zone
         )
+    }
+
+    // Live null is MediaStore not read yet, so the join is null too.
+    private fun evaluateOver(
+        rule: AlbumRule?,
+        rows: List<MediaIndexEvaluationProjection>,
+        live: List<MediaItem>?,
+        memberships: List<StoredMembership>,
+        zone: ZoneId
+    ): AlbumRuleEvaluation {
+        val join = live?.let { MediaIndexLiveJoin.build(rows, it) }
+        return AlbumRuleEvaluator.evaluate(rule, join, memberships, zone)
     }
 
     private fun timeRule(from: String?, to: String?): AlbumRule.Evaluatable {
@@ -448,6 +905,35 @@ class AlbumRuleEvaluationTest {
 
         fun epoch(iso: String): Long = Instant.parse(iso).toEpochMilli()
 
+        val CURRENT = PLACE_RESOLVER_VERSION
+
+        fun projection(
+            live: MediaItem,
+            dateTaken: Long?,
+            hasCoordinates: Boolean = true,
+            country: String? = null,
+            region: String? = null,
+            place: String? = null,
+            marker: Int? = null,
+            uri: String = live.uri.toString(),
+            displayName: String = live.name,
+            size: Long = live.size,
+            dateModified: Long = live.dateModified
+        ) = MediaIndexEvaluationProjection(
+            identity = mediaIdentityOf(
+                mediaUri = uri,
+                displayName = displayName,
+                size = size,
+                dateModified = dateModified
+            ),
+            capturedDateTakenEpochMillis = dateTaken,
+            hasCoordinates = hasCoordinates,
+            derivedCountryCode = country,
+            derivedRegionCode = region,
+            derivedPlaceName = place,
+            derivedPlaceResolverVersion = marker
+        )
+
         fun liveItem(id: Int): MediaItem {
             val uri = mockk<Uri>()
             every { uri.toString() } returns "content://media/external/images/media/$id"
@@ -463,14 +949,6 @@ class AlbumRuleEvaluationTest {
             )
         }
 
-        fun row(uri: String, live: MediaItem, dateTaken: Long?) = MediaIndexIdentityDateTaken(
-            identity = mediaIdentityOf(
-                mediaUri = uri,
-                displayName = live.name,
-                size = live.size,
-                dateModified = live.dateModified
-            ),
-            capturedDateTakenEpochMillis = dateTaken
-        )
+        fun row(uri: String, live: MediaItem, dateTaken: Long?) = projection(live, dateTaken, uri = uri)
     }
 }

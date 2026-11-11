@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.data
 
+import android.content.Context
 import android.os.Build
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -11,6 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
+import java.util.Locale
 import java.util.Random
 import kotlin.math.cos
 
@@ -41,6 +43,90 @@ class GazetteerAssetPackagingTest {
         assertEquals(fromFiles.placeCount, packaged.placeCount)
         assertEquals(fromFiles.datasetVersion, packaged.datasetVersion)
         assertEquals(fromFiles.nearest(43.7696, 11.2558), packaged.nearest(43.7696, 11.2558))
+    }
+
+    @Test
+    fun `the packaged names load through the AssetManager without places`() {
+        val names = GazetteerAssets.loadNames(ApplicationProvider.getApplicationContext<Context>())
+        val fromFiles = loadNamesFromFiles()
+
+        assertEquals("Tuscany", names.admin1Name("IT", "16"))
+        assertEquals(fromFiles.admin1Name("IT", "16"), names.admin1Name("IT", "16"))
+        assertEquals(fromFiles.englishCountryName("IT"), names.englishCountryName("IT"))
+        assertEquals("Italy", names.countryDisplayName("IT", Locale.ENGLISH))
+    }
+}
+
+// Reads only the two names assets, from the module directory.
+private fun loadNamesFromFiles(): GazetteerNames = GazetteerAssets.loadNames { File(ASSET_DIR, it).inputStream() }
+
+// Immutable once loaded, so one parse serves every test in the class.
+private val sharedNames: GazetteerNames by lazy { loadNamesFromFiles() }
+
+class GazetteerNamesAssetTest {
+
+    private val names: GazetteerNames get() = sharedNames
+
+    @Test
+    fun `Tuscany is the admin1 name for Italy 16`() {
+        assertEquals("Tuscany", names.admin1Name("IT", "16"))
+    }
+
+    @Test
+    fun `the names loader never opens places`() {
+        val opened = mutableListOf<String>()
+
+        GazetteerAssets.loadNames { asset ->
+            opened += asset
+            if (asset == GazetteerAssets.PLACES) throw AssertionError("places.tsv must not be opened")
+            File(ASSET_DIR, asset).inputStream()
+        }
+
+        assertEquals(setOf(GazetteerAssets.ADMIN1, GazetteerAssets.COUNTRIES), opened.toSet())
+    }
+
+    @Test
+    fun `the country name follows the locale`() {
+        assertEquals("Italy", names.countryDisplayName("IT", Locale.ENGLISH))
+        assertEquals("Italien", names.countryDisplayName("IT", Locale.GERMAN))
+        assertEquals("\u30A4\u30BF\u30EA\u30A2", names.countryDisplayName("IT", Locale.JAPANESE))
+        assertEquals("Italy", names.englishCountryName("IT"))
+    }
+
+    @Test
+    fun `every country in the asset gets a non-blank name and the english name when the platform has none`() {
+        val codes = File(ASSET_DIR, GazetteerAssets.COUNTRIES).readLines(Charsets.UTF_8)
+            .filter { !it.startsWith("#") }
+            .map { it.substringBefore('\t') }
+        var platformHasNone = 0
+
+        for (code in codes) {
+            val platform = Locale.Builder().setRegion(code).build().getDisplayCountry(Locale.GERMAN)
+            val shown = names.countryDisplayName(code, Locale.GERMAN)
+            assertTrue(code, shown.isNotBlank())
+            if (platform.isBlank() || platform.equals(code, ignoreCase = true)) {
+                platformHasNone++
+                assertEquals(code, names.englishCountryName(code), shown)
+            } else {
+                assertEquals(code, platform, shown)
+            }
+        }
+        println("GAZETTEER NAMES: ${codes.size} countries, $platformHasNone without a platform name in de")
+        assertTrue(codes.size > 200)
+    }
+
+    @Test
+    fun `admin1 names agree with the names the full loader resolved for every place`() {
+        val gazetteer = sharedGazetteer
+
+        for (row in 0 until gazetteer.placeCount) {
+            val region = gazetteer.regionCodeOf(row) ?: continue
+            assertEquals(
+                "${gazetteer.placeNameOf(row)} ${gazetteer.countryCodeOf(row)}.$region",
+                gazetteer.regionNameOf(row),
+                names.admin1Name(gazetteer.countryCodeOf(row), region)
+            )
+        }
     }
 }
 

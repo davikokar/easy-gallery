@@ -36,6 +36,9 @@ answer here either fits in that chain or reopens a decision that was taken five 
   dialog**, which offers *Manual album* and *Automatic album*, each with one line explaining what
   it does. **Automatic is rendered disabled and labelled "Not available yet"** until Stage 2
   delivers it.
+
+> **Amended 2026-11-11 — see Amendment 2 below.** Step 2.7 enables Automatic, removes the label
+> and its string, and has it open a screen of its own, **New automatic album**.
 - Choosing *Manual album* opens the **New album screen** — one new branch in the existing chain,
   not a navigation library. It shows every item the Timeline scope would show, selectable by tap,
   with the album's name in an editable field in the top bar.
@@ -126,6 +129,8 @@ chain.
   thing to keep consistent.
 - A disabled control ships in the UI. If Stage 2 slips, users meet a dead end repeatedly; the
   "Not available yet" label is what makes that acceptable rather than broken.
+
+  > **Discharged 2026-11-11 — see Amendment 2 below.** Step 2.7 enables the control.
 
 ## References
 
@@ -322,3 +327,98 @@ way; note that the node behind that tag is not always a button.
   resolves. They were not referenced by the original record because the flat grid did not touch
   them.
 - [ARCHITECTURE.md](../ARCHITECTURE.md) §5 — where the shared resolution is described.
+
+## Amendment 2 — 2026-11-11 — Automatic album creation fills the slot
+
+This amendment fills the slot the Decision reserved for automatic albums. Everything else continues
+to govern: the **Album type dialog** as the one entry point from Albums View, the Manual path and
+the New album screen as Amendment 1 and its Corrections leave them, `CreateAlbumDialog` for the
+*Add to album* path, and every alternative rejected above.
+
+It is an amendment for the reason Amendment 1 gives: the decision with lasting structural impact —
+a typed choice, then a dedicated draft-and-commit screen with the name pre-filled — has not
+stopped applying. This is the second kind arriving in the place the Decision built for it. **The
+maintainer approved it on 2026-11-11**, as part of step 2.7 of
+[albums-stage-2.md](../../design/albums-stage-2.md), before any of it was coded.
+
+### What changed
+
+1. **Automatic is enabled, and its label goes.** The `album_type_not_available` string is removed
+   from all ten locale files in the same change that removes its only use, in `ui/AlbumDialogs.kt`.
+2. **Choosing Automatic opens a new screen, New automatic album** — one more branch in
+   `MainActivity`'s chain, whose list [ARCHITECTURE.md](../ARCHITECTURE.md) §4 owns. Its `screenKey`
+   is `new_automatic_album`, and it gets the same draft-reset effect New album has: the saveable
+   state for that key is removed when the screen closes, so a second visit never reopens the first
+   visit's draft. It is **not a mode of the New album screen and not a dialog**; *Why a screen of its
+   own* below says why.
+3. **Draft-and-commit, as for Manual.** The name is pre-filled with `My album N` by
+   `AlbumNaming.suggestName` and validated as New album's is. Create needs a valid name and at least
+   one clause. It makes one call, `createAutomaticAlbum(name, rule)`, which writes the album row with
+   its rule and no membership rows — a single Room write, so unlike `createAlbum(name, members)` it
+   has no partly written state. Backing out writes nothing.
+4. **A rule-only album's cover falls back to its first member.** ADR-0015's cover is a reference to
+   a membership row, assigned when the first manual addition creates one, and a rule match has no
+   row. So the stored cover stays null and Albums View shows a member in its place, display-only,
+   under ADR-0015's own fallback rule.
+5. **The picker counts what the album will hold.** Its counts come from the same index ⨝ live-media
+   join the evaluator uses, over `AlbumsViewModel`'s gated live set. **Never `filteredAllMedia`**,
+   which carries a persisted media-type filter — the inheritance the Corrections to Amendment 1
+   removed from the manual picker, for the same reason. Media in excluded folders counts, as it does
+   in the evaluator; [albums.md](../../design/albums.md) §10 question 10 records that.
+6. **The place and date pickers filter each other.** Each one's counts are filtered by the other's
+   current choice, and a line states how many items match the combined choice. "All of {country}"
+   and "All of {year}" rows select the whole group. Places with no region can be browsed under their
+   country, but that group cannot be selected as a whole: a `region` clause
+   ([ADR-0017](0017-composable-album-rule-representation.md) Amendment 2) can name a country, or one
+   place with a null region, and has no form for "every place in this country with no region".
+7. **Creation only.** A rule cannot be edited in 2.7 — [albums.md](../../design/albums.md) §8
+   decision 26. Rename, add, remove and delete work on an automatic album as on any other.
+8. **The picker is one of the two homes of the coverage notices.** Where they appear and what they
+   count is [albums.md](../../design/albums.md) §8 decision 25's.
+
+### Why a screen of its own
+
+**Not a mode of the New album screen.** The inputs differ — a folder browser that picks items,
+against two lists that pick a description — and so does the commit: members against a rule. A mode
+would put two unrelated drafts under one saveable-state key, keep a level-dependent navigation
+scheme only one mode uses, and give Create a condition per mode, and every instrumented test of the
+manual picker would drive a screen that branches on its kind. The Decision's own argument for
+showing two kinds where storage has one — "pick the photos" and "describe what you want" are
+different questions — applies to the screens that ask them.
+
+**Not a dialog.** The Decision's reasons for refusing a full-screen dialog — the back button, the
+system bars, and saveable-state scoping — still hold, and a name field, two scrolling lists with
+counts and the coverage notices are a screen's worth of content.
+
+### Consequences of this amendment
+
+**Positive**
+
+- The Decision's Negative about shipping a disabled control is discharged, and annotated where it
+  stands.
+- Stage 2 changes the dialog's state rather than its shape, which is what the Decision accepted that
+  Negative to buy.
+- The picker and the album agree by construction, because they read one join over one live set.
+
+**Negative**
+
+- One more branch in a chain ADR-0013 kept, and the case for a real stack grows with it. Stage 3
+  still owns that decision.
+- A second screen whose saveable state must be dropped on close. A missing `removeState` reopens the
+  previous draft — the trap the Decision's Negatives record for New album.
+- Three creation paths now: Manual, Automatic, and the name dialog from *Add to album*.
+- **A rule-only album's cover is not persisted.** It is whichever member comes first, so it can
+  change as members arrive and leave, and changes once more when a first manual addition persists
+  one. Accepted because ADR-0015's cover picker is still deferred, and a persisted cover here would
+  need a membership row the user never created or a second kind of cover reference.
+- With no rule editing, a wrong rule is fixed by deleting the album and creating it again, which
+  loses its manual additions and exclusions.
+
+### References added by this amendment
+
+- [ADR-0017](0017-composable-album-rule-representation.md) Amendment 2 — the `region` clause the
+  screen writes, and how the evaluator answers for each item
+- [ADR-0015](0015-album-cover-persisted-random-member.md) — the cover, and its display-only fallback
+- [ADR-0020](0020-automatic-albums-resolve-against-live-media.md) — the live media both the picker
+  and the evaluator resolve against
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 25 and 26, §10 question 10

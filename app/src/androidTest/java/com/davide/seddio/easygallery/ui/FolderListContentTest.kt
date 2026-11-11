@@ -323,25 +323,66 @@ class FolderListContentTest {
     }
 
     @Test
-    fun albumTypeDialogOffersAutomaticAlbumsAsNotAvailableYet() {
+    fun albumTypeDialogOffersAutomaticAlbumsAsAnEnabledChoice() {
         composeTestRule.setContent {
             FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
         }
 
         composeTestRule.onNodeWithTag("add_album_button").performClick()
 
-        composeTestRule.onNodeWithTag("album_type_automatic").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Not available yet").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_type_automatic")
+            .assertIsDisplayed()
+            .assertIsEnabled()
+            .assertHasClickAction()
+        composeTestRule.onNodeWithTag("album_type_manual")
+            .assertIsEnabled()
+            .assertHasClickAction()
     }
 
     @Test
-    fun choosingManualAlbumLeavesTheDialogAndStartsTheNewAlbumFlow() {
+    fun albumTypeDialogDoesNotSayAutomaticIsNotAvailable() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
+        }
+
+        composeTestRule.onNodeWithTag("add_album_button").performClick()
+
+        composeTestRule.onAllNodesWithText("Not available yet").assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("available", substring = true, ignoreCase = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun choosingAutomaticAlbumLeavesTheDialogAndStartsTheNewAutomaticAlbumFlow() {
+        var automaticStarts = 0
         var manualStarts = 0
 
         composeTestRule.setContent {
             FolderListContentWrapper(
                 displayMode = DisplayMode.ALBUMS,
-                onStartManualAlbum = { manualStarts++ }
+                onStartManualAlbum = { manualStarts++ },
+                onStartAutomaticAlbum = { automaticStarts++ }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("add_album_button").performClick()
+        composeTestRule.onNodeWithTag("album_type_automatic").performClick()
+
+        composeTestRule.onNodeWithTag("album_type_automatic").assertDoesNotExist()
+        assertEquals(1, automaticStarts)
+        assertEquals(0, manualStarts)
+    }
+
+    @Test
+    fun choosingManualAlbumLeavesTheDialogAndStartsTheNewAlbumFlow() {
+        var manualStarts = 0
+        var automaticStarts = 0
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                onStartManualAlbum = { manualStarts++ },
+                onStartAutomaticAlbum = { automaticStarts++ }
             )
         }
 
@@ -350,6 +391,7 @@ class FolderListContentTest {
 
         composeTestRule.onNodeWithTag("album_type_manual").assertDoesNotExist()
         assertEquals(1, manualStarts)
+        assertEquals(0, automaticStarts)
     }
 
     @Test
@@ -667,6 +709,40 @@ class FolderListContentTest {
         )
     }
 
+    @Test
+    fun albumTilesAndRowsNeverShowCoverageNotices() {
+        var albumsViewType by mutableStateOf(ViewType.GRID)
+        val album = albumItem(AlbumEvaluationStatus.COMPLETE).copy(
+            hasTimeClause = true,
+            hasRegionClause = true,
+            coverage = MediaIndexCoverage(withoutLocation = 12, withoutDate = 34),
+            locationAccessGranted = false
+        )
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                albumsViewType = albumsViewType
+            )
+        }
+
+        composeTestRule.onNodeWithTag("album_tile_${album.id}").assertIsDisplayed()
+        assertNoCoverageNotices()
+
+        albumsViewType = ViewType.LIST
+        composeTestRule.onNodeWithTag("album_tile_${album.id}").assertIsDisplayed()
+        assertNoCoverageNotices()
+    }
+
+    private fun assertNoCoverageNotices() {
+        composeTestRule.onAllNodesWithTag("album_location_coverage_notice").assertCountEquals(0)
+        composeTestRule.onAllNodesWithTag("album_date_coverage_notice").assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("no usable location", substring = true).assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("no capture date", substring = true).assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("Location access is off", substring = true).assertCountEquals(0)
+    }
+
     private fun albumItem(
         status: AlbumEvaluationStatus,
         id: Long = 31L,
@@ -700,7 +776,8 @@ class FolderListContentTest {
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         groupedAllMedia: Map<String, List<MediaItem>> = emptyMap(),
-        onStartManualAlbum: () -> Unit = {}
+        onStartManualAlbum: () -> Unit = {},
+        onStartAutomaticAlbum: () -> Unit = {}
     ) {
         FolderListContent(
             uiState = uiState,
@@ -755,6 +832,7 @@ class FolderListContentTest {
             onSetSettingsMode = {},
             onSetCreateFolderDialogOpen = {},
             onStartManualAlbum = onStartManualAlbum,
+            onStartAutomaticAlbum = onStartAutomaticAlbum,
             onRenameAlbum = { _, _ -> },
             onDeleteAlbum = {},
             onSelectAlbum = {},

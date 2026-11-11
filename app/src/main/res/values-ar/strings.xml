@@ -170,7 +170,46 @@
     <string name="album_type_manual_description">تختار الصور ومقاطع الفيديو بنفسك.</string>
     <string name="album_type_automatic_title">ألبوم تلقائي</string>
     <string name="album_type_automatic_description">يمتلئ تلقائيًا وفق قاعدة، مثل مكان أو نطاق زمني.</string>
-    <string name="album_type_not_available">غير متاح بعد</string>
+    <string name="automatic_album_hint_choose">اختر مكانًا أو تاريخًا أو كليهما</string>
+    <plurals name="automatic_album_match_count">
+        <item quantity="zero">سيضم هذا الألبوم %1$d عنصر من الصور ومقاطع الفيديو</item>
+        <item quantity="one">سيضم هذا الألبوم عنصرًا واحدًا من الصور ومقاطع الفيديو</item>
+        <item quantity="two">سيضم هذا الألبوم عنصرين من الصور ومقاطع الفيديو</item>
+        <item quantity="few">سيضم هذا الألبوم %1$d عناصر من الصور ومقاطع الفيديو</item>
+        <item quantity="many">سيضم هذا الألبوم %1$d عنصرًا من الصور ومقاطع الفيديو</item>
+        <item quantity="other">سيضم هذا الألبوم %1$d عنصر من الصور ومقاطع الفيديو</item>
+    </plurals>
+    <string name="automatic_album_section_place">المكان</string>
+    <string name="automatic_album_section_date">التاريخ</string>
+    <string name="automatic_album_all_of">كل ما في %1$s</string>
+    <string name="automatic_album_places_without_region">أماكن بدون منطقة</string>
+    <string name="automatic_album_loading">جارٍ تحميل الأماكن</string>
+    <string name="automatic_album_names_failed">تعذّر تحميل أسماء الأماكن</string>
+    <string name="automatic_album_waiting_for_media">جارٍ تحميل الصور ومقاطع الفيديو. ستُعرض الأماكن والتواريخ بعد اكتمال التحميل.</string>
+    <string name="automatic_album_places_empty">لم يتم العثور على أماكن في الصور ومقاطع الفيديو</string>
+    <string name="automatic_album_places_empty_for_date">لم يتم العثور على أماكن للتاريخ المحدد</string>
+    <string name="automatic_album_dates_empty">لم يتم العثور على تواريخ في الصور ومقاطع الفيديو</string>
+    <string name="automatic_album_dates_empty_for_place">لم يتم العثور على صور أو مقاطع فيديو بتاريخ للمكان المحدد</string>
+    <plurals name="automatic_album_location_coverage">
+        <item quantity="zero">%1$d عنصر من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
+        <item quantity="one">صورة أو فيديو واحد بلا موقع صالح للاستخدام، وهو خارج ألبومات الأماكن.</item>
+        <item quantity="two">عنصران من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهما خارج ألبومات الأماكن.</item>
+        <item quantity="few">%1$d عناصر من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
+        <item quantity="many">%1$d عنصرًا من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
+        <item quantity="other">%1$d عنصر من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
+    </plurals>
+    <string name="automatic_album_location_access_off">الوصول إلى الموقع متوقف، لذا لا يمكن قراءة مواقع الصور ولا يمكن لألبومات الأماكن تضمينها.</string>
+    <plurals name="automatic_album_date_coverage">
+        <item quantity="zero">%1$d عنصر من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
+        <item quantity="one">صورة أو فيديو واحد بلا تاريخ التقاط، وهو خارج ألبومات التواريخ.</item>
+        <item quantity="two">عنصران من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهما خارج ألبومات التواريخ.</item>
+        <item quantity="few">%1$d عناصر من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
+        <item quantity="many">%1$d عنصرًا من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
+        <item quantity="other">%1$d عنصر من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
+    </plurals>
+    <string name="automatic_album_clear_place">مسح المكان %1$s</string>
+    <string name="automatic_album_clear_date">مسح التاريخ %1$s</string>
+    <string name="automatic_album_month_year">%1$s %2$d</string>
     <string name="new_album_select_media">اختر الصور ومقاطع الفيديو لهذا الألبوم</string>
     <string name="favourites_title">المفضلة</string>
     <string name="cd_favourite_indicator">مفضلة</string>

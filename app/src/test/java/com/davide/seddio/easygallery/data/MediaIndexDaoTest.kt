@@ -135,29 +135,57 @@ class MediaIndexDaoTest {
     }
 
     @Test
-    fun `identity date taken projection returns each column unshuffled`() = runTest {
+    fun `evaluation projection keeps a null date and still lists the row`() = runTest {
         dao.upsert(
             listOf(
                 sampleEntity(
-                    mediaUri = "content://media/external/images/media/41",
-                    displayName = "projected.jpg",
-                    size = 4_141L,
-                    dateModified = 5_252L,
-                    capturedDateTakenEpochMillis = 1_727_000_000_123L
+                    mediaUri = "content://media/external/images/media/61",
+                    capturedDateTakenEpochMillis = null
+                ),
+                sampleEntity(mediaUri = "content://media/external/images/media/62")
+            )
+        )
+
+        val byUri = dao.observeEvaluationProjection().first().associateBy { it.mediaUri }
+
+        assertEquals(setOf("content://media/external/images/media/61", "content://media/external/images/media/62"), byUri.keys)
+        assertNull(byUri.getValue("content://media/external/images/media/61").capturedDateTakenEpochMillis)
+        assertNotNull(byUri.getValue("content://media/external/images/media/62").capturedDateTakenEpochMillis)
+    }
+
+    @Test
+    fun `evaluation projection returns each column unshuffled`() = runTest {
+        dao.upsert(
+            listOf(
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/141",
+                    displayName = "evaluated.jpg",
+                    size = 1_414L,
+                    dateModified = 2_525L,
+                    capturedDateTakenEpochMillis = 1_729_000_000_321L,
+                    derivedCountryCode = "AA",
+                    derivedRegionCode = "BB-77",
+                    derivedPlaceName = "Distinct Place",
+                    derivedPlaceResolverVersion = 9
                 )
             )
         )
 
-        val rows = dao.observeIdentityDateTaken().first()
+        val rows = dao.observeEvaluationProjection().first()
 
         assertEquals(
             listOf(
-                MediaIndexIdentityDateTakenEntity(
-                    mediaUri = "content://media/external/images/media/41",
-                    displayName = "projected.jpg",
-                    size = 4_141L,
-                    dateModified = 5_252L,
-                    capturedDateTakenEpochMillis = 1_727_000_000_123L
+                MediaIndexEvaluationProjectionEntity(
+                    mediaUri = "content://media/external/images/media/141",
+                    displayName = "evaluated.jpg",
+                    size = 1_414L,
+                    dateModified = 2_525L,
+                    capturedDateTakenEpochMillis = 1_729_000_000_321L,
+                    hasCoordinates = true,
+                    derivedCountryCode = "AA",
+                    derivedRegionCode = "BB-77",
+                    derivedPlaceName = "Distinct Place",
+                    derivedPlaceResolverVersion = 9
                 )
             ),
             rows
@@ -165,53 +193,118 @@ class MediaIndexDaoTest {
     }
 
     @Test
-    fun `identity date taken projection re-emits on upsert and on delete`() = runTest {
-        dao.observeIdentityDateTaken().test {
-            assertTrue(awaitItem().isEmpty())
-
-            dao.upsert(listOf(sampleEntity(mediaUri = "content://media/external/images/media/51")))
-            assertEquals(
-                listOf("content://media/external/images/media/51"),
-                awaitItem().map { it.mediaUri }
+    fun `evaluation projection reports coordinates present only when both are stored`() = runTest {
+        dao.upsert(
+            listOf(
+                sampleEntity(mediaUri = "content://media/external/images/media/151"),
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/152",
+                    capturedLatitude = null,
+                    capturedLongitude = null
+                ),
+                sampleEntity(mediaUri = "content://media/external/images/media/153", capturedLongitude = null),
+                sampleEntity(mediaUri = "content://media/external/images/media/154", capturedLatitude = null)
             )
+        )
 
-            dao.upsert(
-                listOf(
-                    sampleEntity(
-                        mediaUri = "content://media/external/images/media/51",
-                        capturedDateTakenEpochMillis = 1_728_000_000_000L
-                    )
-                )
-            )
-            assertEquals(1_728_000_000_000L, awaitItem().single().capturedDateTakenEpochMillis)
+        val byUri = dao.observeEvaluationProjection().first().associate { it.mediaUri to it.hasCoordinates }
 
-            dao.deleteByMediaUri("content://media/external/images/media/51")
-            assertTrue(awaitItem().isEmpty())
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(
+            mapOf(
+                "content://media/external/images/media/151" to true,
+                "content://media/external/images/media/152" to false,
+                "content://media/external/images/media/153" to false,
+                "content://media/external/images/media/154" to false
+            ),
+            byUri
+        )
     }
 
     @Test
-    fun `identity date taken projection returns null date row and does not filter by volume`() = runTest {
+    fun `evaluation projection returns a pending row with its old derived values and a null marker`() = runTest {
         dao.upsert(
             listOf(
                 sampleEntity(
-                    mediaUri = "content://media/external/images/media/61",
-                    capturedDateTakenEpochMillis = null
-                ),
-                sampleEntity(
-                    mediaUri = "content://media/external/images/media/62",
-                    volumeName = "unmounted_volume"
+                    mediaUri = "content://media/external/images/media/161",
+                    derivedCountryCode = "IT",
+                    derivedRegionCode = "52",
+                    derivedPlaceName = "Firenze",
+                    derivedPlaceResolverVersion = null
                 )
             )
         )
 
-        val byUri = dao.observeIdentityDateTaken().first().associateBy { it.mediaUri }
+        val row = dao.observeEvaluationProjection().first().single()
 
-        assertEquals(setOf("content://media/external/images/media/61", "content://media/external/images/media/62"), byUri.keys)
-        assertNull(byUri.getValue("content://media/external/images/media/61").capturedDateTakenEpochMillis)
-        assertNotNull(byUri.getValue("content://media/external/images/media/62").capturedDateTakenEpochMillis)
-        assertNull(byUri["content://media/external/images/media/63"])
+        assertEquals("IT", row.derivedCountryCode)
+        assertEquals("52", row.derivedRegionCode)
+        assertEquals("Firenze", row.derivedPlaceName)
+        assertNull(row.derivedPlaceResolverVersion)
+    }
+
+    @Test
+    fun `evaluation projection tells an out-of-cap row from a row without coordinates`() = runTest {
+        dao.upsert(
+            listOf(
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/171",
+                    derivedPlaceResolverVersion = 2
+                ),
+                sampleEntity(
+                    mediaUri = "content://media/external/images/media/172",
+                    capturedLatitude = null,
+                    capturedLongitude = null,
+                    derivedPlaceResolverVersion = null
+                )
+            )
+        )
+
+        val byUri = dao.observeEvaluationProjection().first().associateBy { it.mediaUri }
+        val outOfCap = byUri.getValue("content://media/external/images/media/171")
+        val noCoordinates = byUri.getValue("content://media/external/images/media/172")
+
+        assertTrue(outOfCap.hasCoordinates)
+        assertEquals(2, outOfCap.derivedPlaceResolverVersion)
+        assertNull(outOfCap.derivedCountryCode)
+        assertTrue(!noCoordinates.hasCoordinates)
+        assertNull(noCoordinates.derivedPlaceResolverVersion)
+    }
+
+    @Test
+    fun `evaluation projection is ordered by uri and does not filter by volume`() = runTest {
+        dao.upsert(
+            listOf(
+                sampleEntity(mediaUri = "content://media/external/images/media/182", volumeName = "unmounted_volume"),
+                sampleEntity(mediaUri = "content://media/external/images/media/181")
+            )
+        )
+
+        val uris = dao.observeEvaluationProjection().first().map { it.mediaUri }
+
+        assertEquals(
+            listOf("content://media/external/images/media/181", "content://media/external/images/media/182"),
+            uris
+        )
+    }
+
+    @Test
+    fun `evaluation projection re-emits on upsert marker change and delete`() = runTest {
+        val uri = "content://media/external/images/media/191"
+        dao.observeEvaluationProjection().test {
+            assertTrue(awaitItem().isEmpty())
+
+            dao.upsert(listOf(sampleEntity(mediaUri = uri)))
+            assertNull(awaitItem().single().derivedPlaceResolverVersion)
+
+            dao.updateResolvedPlace(uri, 43.7696, 11.2558, "IT", "52", "Firenze", 2)
+            val resolved = awaitItem().single()
+            assertEquals(2, resolved.derivedPlaceResolverVersion)
+            assertEquals("Firenze", resolved.derivedPlaceName)
+
+            dao.deleteByMediaUri(uri)
+            assertTrue(awaitItem().isEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

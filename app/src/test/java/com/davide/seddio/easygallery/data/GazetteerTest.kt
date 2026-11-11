@@ -461,6 +461,96 @@ class GazetteerTest {
         }
     }
 
+    // ---- names only ----
+
+    private fun loadNames(admin1: String = admin1Tsv(), countries: String = countriesTsv()): GazetteerNames =
+        GazetteerNames.load(StringReader(admin1), StringReader(countries))
+
+    // QZ is in the ISO user-assigned range, so the platform has no name for it.
+    private fun countriesWithUnknownToPlatform() =
+        header(PLACE_RESOLVER_VERSION, 2) + "QZ\tQuuxland\nIT\tTestitaly\n"
+
+    @Test
+    fun `names expose the admin1 name for a country and code pair and nothing for an unknown pair`() {
+        val names = loadNames()
+
+        assertEquals("Region One", names.admin1Name("XX", "01"))
+        assertNull(names.admin1Name("XX", "02"))
+        assertNull(names.admin1Name("YY", "01"))
+        assertNull(names.admin1Name("XX", "00"))
+    }
+
+    @Test
+    fun `names expose the english country name`() {
+        val names = loadNames()
+
+        assertEquals("Testland", names.englishCountryName("XX"))
+        assertNull(names.englishCountryName("ZZ"))
+    }
+
+    @Test
+    fun `a country the platform names is shown with the platform name and not the asset one`() {
+        val names = loadNames(countries = countriesWithUnknownToPlatform())
+
+        assertEquals("Italy", names.countryDisplayName("IT", Locale.ENGLISH))
+    }
+
+    @Test
+    fun `a country the platform cannot name falls back to the english asset name`() {
+        val names = loadNames(countries = countriesWithUnknownToPlatform())
+
+        assertEquals("Quuxland", names.countryDisplayName("QZ", Locale.ENGLISH))
+        assertEquals("Quuxland", names.countryDisplayName("QZ", Locale.JAPANESE))
+    }
+
+    @Test
+    fun `a country neither the platform nor the asset knows falls back to the bare code`() {
+        val names = loadNames(countries = countriesWithUnknownToPlatform())
+
+        assertEquals("QY", names.countryDisplayName("QY", Locale.ENGLISH))
+    }
+
+    @Test
+    fun `a code that is not a valid region does not throw and falls back`() {
+        val names = loadNames(countries = countriesWithUnknownToPlatform())
+
+        assertEquals("not-a-region", names.countryDisplayName("not-a-region", Locale.ENGLISH))
+        assertEquals("", names.countryDisplayName("", Locale.ENGLISH))
+    }
+
+    @Test
+    fun `names loading is rejected for empty, mis-versioned, truncated and unterminated assets`() {
+        val wrong = PLACE_RESOLVER_VERSION + 1
+        val cases = listOf(
+            { loadNames(admin1 = "") },
+            { loadNames(countries = "") },
+            { loadNames(admin1 = admin1Tsv(version = wrong)) },
+            { loadNames(countries = countriesTsv(version = wrong)) },
+            { loadNames(admin1 = admin1Tsv(declared = 2)) },
+            { loadNames(countries = countriesTsv(declared = 2)) },
+            { loadNames(admin1 = admin1Tsv().removeSuffix("\n")) },
+            { loadNames(countries = countriesTsv().removeSuffix("\n")) },
+            { loadNames(admin1 = admin1Tsv(declared = 0)) },
+            { loadNames(admin1 = "# dataset-version: 1\nXX.01\tRegion One\n") },
+            { loadNames(countries = header(PLACE_RESOLVER_VERSION, 1) + "XXX\tName\n") },
+            { loadNames(admin1 = header(PLACE_RESOLVER_VERSION, 1) + "nokey\tName\n") }
+        )
+
+        for ((index, case) in cases.withIndex()) {
+            assertThrows("case $index", GazetteerLoadException::class.java) { case() }
+        }
+    }
+
+    @Test
+    fun `names loading fails on invalid UTF-8 bytes`() {
+        val bytes = countriesTsv().replace("Testland", "Test\u0001").toByteArray(Charsets.UTF_8)
+        bytes[bytes.indexOf(0x01.toByte())] = 0xC3.toByte()
+
+        assertThrows(IOException::class.java) {
+            GazetteerNames.load(ByteArrayInputStream(admin1Tsv().toByteArray()), ByteArrayInputStream(bytes))
+        }
+    }
+
     // ---- the grid against the definition ----
 
     @Test

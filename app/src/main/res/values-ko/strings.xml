@@ -160,7 +160,31 @@
     <string name="album_type_manual_description">사진과 동영상을 직접 선택합니다.</string>
     <string name="album_type_automatic_title">자동 앨범</string>
     <string name="album_type_automatic_description">장소나 기간 같은 규칙에 따라 자동으로 채워집니다.</string>
-    <string name="album_type_not_available">아직 사용할 수 없음</string>
+    <string name="automatic_album_hint_choose">장소, 날짜 또는 둘 다 선택하세요</string>
+    <plurals name="automatic_album_match_count">
+        <item quantity="other">이 앨범에 사진과 동영상 %1$d개가 포함됩니다</item>
+    </plurals>
+    <string name="automatic_album_section_place">장소</string>
+    <string name="automatic_album_section_date">날짜</string>
+    <string name="automatic_album_all_of">%1$s 전체</string>
+    <string name="automatic_album_places_without_region">지역 없는 장소</string>
+    <string name="automatic_album_loading">장소를 불러오는 중</string>
+    <string name="automatic_album_names_failed">장소 이름을 불러오지 못했습니다</string>
+    <string name="automatic_album_waiting_for_media">사진과 동영상을 불러오는 중입니다. 불러오기가 끝나면 장소와 날짜가 표시됩니다.</string>
+    <string name="automatic_album_places_empty">사진과 동영상에서 장소를 찾을 수 없습니다</string>
+    <string name="automatic_album_places_empty_for_date">선택한 날짜에 해당하는 장소를 찾을 수 없습니다</string>
+    <string name="automatic_album_dates_empty">사진과 동영상에서 날짜를 찾을 수 없습니다</string>
+    <string name="automatic_album_dates_empty_for_place">선택한 장소에 해당하는 날짜가 있는 사진이나 동영상을 찾을 수 없습니다</string>
+    <plurals name="automatic_album_location_coverage">
+        <item quantity="other">사용할 수 있는 위치 정보가 없는 사진과 동영상 %1$d개는 장소 앨범에 포함되지 않습니다.</item>
+    </plurals>
+    <string name="automatic_album_location_access_off">위치 정보 접근이 꺼져 있어 사진의 위치를 읽을 수 없으며 장소 앨범에 포함할 수 없습니다.</string>
+    <plurals name="automatic_album_date_coverage">
+        <item quantity="other">촬영 날짜가 없는 사진과 동영상 %1$d개는 날짜 앨범에 포함되지 않습니다.</item>
+    </plurals>
+    <string name="automatic_album_clear_place">장소 %1$s 지우기</string>
+    <string name="automatic_album_clear_date">날짜 %1$s 지우기</string>
+    <string name="automatic_album_month_year">%2$d년 %1$s</string>
     <string name="new_album_select_media">이 앨범에 넣을 사진과 동영상을 선택하세요</string>
     <string name="favourites_title">즐겨찾기</string>
     <string name="cd_favourite_indicator">즐겨찾기</string>

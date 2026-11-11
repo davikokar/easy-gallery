@@ -88,9 +88,12 @@ must be stored distinctly, or every re-evaluation resurrects the photo the user 
 The user names it and picks the items. No rule, no index, no ML.
 
 Creation is a typed choice, not a name prompt: the **Album type dialog** offers Manual and
-Automatic — Automatic disabled and labelled until Stage 2 ships it — and Manual opens a screen
-that picks the members with the name pre-filled and editable above them. Nothing is written until
-Create, so cancelling leaves no empty album. [ADR-0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md).
+Automatic, and Manual opens a screen that picks the members with the name pre-filled and editable
+above them. Nothing is written until Create, so cancelling leaves no empty album.
+[ADR-0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md).
+Automatic was shown disabled and labelled through Stage 1; Stage 2 step 2.7 enables it, and it
+opens a screen of its own, **New automatic album**, which picks a place and a date range rather than
+items — the same ADR's Amendment 2.
 
 That screen picks by **browsing, not by searching**. It opens on the same folders the user
 already knows from Folders View, in the order and layout that view uses — but with neither its
@@ -570,7 +573,9 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     nowhere. The accepted costs are a disabled control shipping in the UI, an eighth branch in a
     navigation chain ADR-0013 deliberately kept, and two creation paths — the type dialog from
     Albums View, and the existing name dialog from **Add to album**, where the media is already
-    chosen and a picker would be a step backwards.
+    chosen and a picker would be a step backwards. **Step 2.7 fills the slot**: Automatic is
+    enabled and opens its own screen, which discharges the disabled-control cost — ADR-0016
+    Amendment 2, approved by the maintainer on 2026-11-11.
 
 13. **The stage order stands: region and time first, then people, then content.** Region and time
     is the only automatic family that forces the index and the background pipeline into existence
@@ -747,6 +752,52 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     removed, so the merged manifest is rechecked when the version changes. **Not decided by this:**
     the `INTERNET` permission a library adds to the merged manifest, which question 6 records as an
     observation for the Play declaration of §9.
+
+25. **The coverage notices appear in the place picker and in Album Detail View only, and count
+    what waiting will not change.** Decided by the maintainer on 2026-11-11, answering open
+    question 4 of [albums-stage-2.md](albums-stage-2.md), which asked where the location coverage
+    notice of ADR-0019 and the date-coverage notice of decision 21 live.
+    - **Where.** In the **New automatic album** screen's picker and in Album Detail View; never on
+      an Album tile or Album row, and never in Settings. The location notice is for an album with a
+      `region` clause, the date notice for one with a `time` clause, and an album with both shows
+      both.
+    - **What.** Library-wide counts of live items: for location, those indexed with no coordinates
+      or resolved beyond the cap; for date, those indexed with no date. Counts, not percentages.
+      **Never pending work** — an unindexed or pending item is in neither count, because that is
+      the Incomplete-album notice's business. The wording never says "yet", "still" or "scanning".
+    - **When location access is off.** On API 29+ without `ACCESS_MEDIA_LOCATION`, the location
+      notice says that location access is off instead of giving a count. It reads the permission
+      state and adds no permission.
+    - **Stacking, in Album Detail View:** the status notice — Newer-app or Incomplete-album — then
+      location, then date, then Hidden-members. **An unevaluatable album shows no coverage notice**:
+      its rule contributes nothing, so a statement about what the rule can reach would be about a
+      rule that is not being applied.
+
+    **Why.** The picker is where the user decides, so it is where a short album should be explained
+    before it is created — ADR-0019's "working feature reads as broken" failure is cheapest to
+    prevent there. Album Detail View is where the album is looked at afterwards. A tile or row is a
+    poor home: the tile is a fixed square whose notice already ellipsizes at large font scales, and
+    a library-wide figure repeated on every tile says one thing many times; the status notices stay
+    there because they are per album. Settings is the one progress surface (§6), and a coverage
+    figure beside the indexing figures would read as progress. **The counts are library-wide**
+    because a per-album version cannot be computed: a photo with no coordinates has no region it
+    could be missing from. **Never pending, never "yet"**, because §6's closing paragraph rules that
+    such an item is neither outstanding nor covered, and wording that promises a change which will
+    not come is the dishonesty §6 exists to prevent. **The permission case gets its own wording**
+    because without `ACCESS_MEDIA_LOCATION` extraction stores no location at all, so a count would
+    blame the photos for the app's missing access; what happens to those rows after a later grant is
+    §10 question 9.
+
+26. **An automatic album's rule cannot be edited in Stage 2 step 2.7.** Decided by the maintainer
+    on 2026-11-11. The rule is set at creation; rename, add, remove and delete work on an automatic
+    album as on any other. **Why:** an editor must round-trip every rule this build can parse,
+    including combinations the creation screen never writes, and must refuse an unevaluatable rule
+    without rewriting it —
+    [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)'s
+    never-rewrite rule — which makes it a feature of its own rather than a variant of creation.
+    Creation alone delivers the stage's goal. **The cost:** a wrong rule is fixed by deleting the
+    album and creating it again, losing its manual additions and exclusions. Adding editing later is
+    a decision of its own, and any editor inherits the never-rewrite rule.
 
 ---
 
@@ -1009,6 +1060,30 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    verdict records the decision beside the evidence. **Reopening it is a new decision**, and costs
    what the paragraph above says — a `PLACE_RESOLVER_VERSION` bump and regenerated assets, not a
    constant.
+9. **Should an image indexed while `ACCESS_MEDIA_LOCATION` was denied be re-extracted after a later
+   grant?** — **Raised 2026-11-11, with the maintainer, and recorded as a known gap that step 2.7
+   does not fix.** On API 29+ Tier A reads an image's EXIF through ADR-0001's `setRequireOriginal`
+   path, and without the permission that read yields nothing — no location, and no date either. The
+   row is stored as final: delta detection never re-extracts unchanged media, so granting the
+   permission later recovers neither value. The user sees those images as "no location" and "no
+   date" in the coverage notices of §8 decision 25 — after the grant, not before it, because while
+   the permission is off the location notice says so instead of counting.
+
+   **Why it is not fixed in 2.7.** Recovering the values needs the file, which makes it a re-index,
+   and a re-index is a decision of its own — [albums-stage-2.md](albums-stage-2.md)'s rule for any
+   fix to extraction that cannot be computed from the stored row. Knowing which rows to re-extract would need the index to
+   record that a row was extracted without the permission, which is a schema change; re-extracting
+   every image row on a grant would not need one, but costs a file open per image. **Neither is
+   taken here.** Nothing in Stage 2 is blocked on it.
+10. **Should media in excluded folders count in rule albums?** — **Current behaviour recorded
+    2026-11-11: it does.** Since step 2.5 the evaluator matches rules against the gated live set,
+    which includes media in folders excluded from Folders View, and step 2.7's picker counts over
+    the same set, so a region or time album can contain items the user has excluded from browsing.
+    **Why it is kept for now.** Exclusion is a browsing preference over folders, and §2 keeps folder
+    behaviour separate from albums; and the picker and the evaluator must read one live set, or the
+    count a picker entry shows stops being the number of members the album gets. **The maintainer
+    may revisit it.** A change would alter that one live set for both readers in the same change,
+    and would be a decision recorded here.
 
 Questions scoped to a single stage live in that stage's plan — Stage 2's are in
 [albums-stage-2.md](albums-stage-2.md) — and only arrive here if they outlive it.

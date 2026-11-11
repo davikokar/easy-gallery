@@ -5,7 +5,7 @@ import java.time.format.DateTimeParseException
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Reads and writes the `albums.rule` document of ADR-0017 and its Amendment 1.
+ * Reads and writes the `albums.rule` document of ADR-0017 and its Amendments 1 and 2.
  *
  * Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is
  * approved. Anything this reader does not fully understand becomes [AlbumRule.Unevaluatable];
@@ -21,6 +21,10 @@ object AlbumRuleJson {
 
     private val DATE_SHAPE = Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")
     private val TIME_CLAUSE_KEYS = setOf("type", "from", "to")
+    private val REGION_CLAUSE_KEYS = setOf("type", "dataset", "country", "admin1", "admin1Name", "place")
+    private val COUNTRY_SHAPE = Regex("[A-Z]{2}")
+    private val INTEGER_SHAPE = Regex("-?[0-9]+")
+    private const val HEX_DIGITS = "0123456789abcdef"
 
     /** Returns null only for a null column, which means manual. Never throws. */
     fun parse(raw: String?): AlbumRule? {
@@ -49,12 +53,46 @@ object AlbumRuleJson {
                         clause.to?.let { append(",\"to\":\"").append(it).append('"') }
                         append('}')
                     }
+                    is AlbumRuleClause.Region -> {
+                        append("{\"type\":\"region\",\"dataset\":").append(clause.dataset)
+                        appendStringField("country", clause.country)
+                        clause.admin1?.let { appendStringField("admin1", it) }
+                        clause.admin1Name?.let { appendStringField("admin1Name", it) }
+                        clause.place?.let { appendStringField("place", it) }
+                        append('}')
+                    }
                 }
             }
             append("]}")
         }
         require(text.length <= MAX_DOCUMENT_LENGTH) { "Encoded rule exceeds $MAX_DOCUMENT_LENGTH chars" }
         return text
+    }
+
+    private fun StringBuilder.appendStringField(name: String, value: String) {
+        append(",\"").append(name).append("\":\"")
+        appendEscaped(value)
+        append('"')
+    }
+
+    // Everything outside printable ASCII becomes \uXXXX, so the stored text is pure ASCII and
+    // survives any text encoding; the reader decodes each escape to one UTF-16 unit, pairs included.
+    private fun StringBuilder.appendEscaped(value: String) {
+        for (c in value) {
+            when {
+                c == '"' -> append("\\\"")
+                c == '\\' -> append("\\\\")
+                c in ' '..'~' -> append(c)
+                else -> {
+                    val code = c.code
+                    append("\\u")
+                    append(HEX_DIGITS[(code shr 12) and 0xF])
+                    append(HEX_DIGITS[(code shr 8) and 0xF])
+                    append(HEX_DIGITS[(code shr 4) and 0xF])
+                    append(HEX_DIGITS[code and 0xF])
+                }
+            }
+        }
     }
 
     private fun interpretDocument(raw: String): AlbumRule {
@@ -86,11 +124,40 @@ object AlbumRuleJson {
         val clause = value as? RuleJsonObject ?: fail(UnevaluatableReason.INVALID_CLAUSE)
         val type = clause.fields["type"] as? String ?: fail(UnevaluatableReason.INVALID_CLAUSE)
 
-        // "region" lands here until step 2.7 implements it.
         return when (type) {
             "time" -> interpretTimeClause(clause)
+            "region" -> interpretRegionClause(clause)
             else -> fail(UnevaluatableReason.UNKNOWN_CLAUSE_TYPE)
         }
+    }
+
+    private fun interpretRegionClause(clause: RuleJsonObject): AlbumRuleClause {
+        val fields = clause.fields
+        if (fields.keys.any { it !in REGION_CLAUSE_KEYS }) fail(UnevaluatableReason.UNKNOWN_CLAUSE_FIELD)
+
+        // No normalising: "it" is not "IT".
+        val country = fields["country"] as? String ?: fail(UnevaluatableReason.INVALID_COUNTRY)
+        if (!COUNTRY_SHAPE.matches(country)) fail(UnevaluatableReason.INVALID_COUNTRY)
+
+        // Only an integer token counts: not 1.0, 1e0 or "1".
+        val dataset = fields["dataset"] as? RuleJsonNumber
+        if (dataset == null || !INTEGER_SHAPE.matches(dataset.text)) fail(UnevaluatableReason.INVALID_DATASET)
+
+        if (("admin1" in fields) != ("admin1Name" in fields)) fail(UnevaluatableReason.INCOMPLETE_ADMIN1_PAIR)
+        val admin1 = fields["admin1"]?.let(::readRegionName)
+        val admin1Name = fields["admin1Name"]?.let(::readRegionName)
+        val place = fields["place"]?.let(::readRegionName)
+
+        // Last, so that UNKNOWN_DATASET means the document is otherwise well formed.
+        if (dataset.text != PLACE_RESOLVER_VERSION.toString()) fail(UnevaluatableReason.UNKNOWN_DATASET)
+
+        return AlbumRuleClause.Region(country = country, admin1 = admin1, admin1Name = admin1Name, place = place)
+    }
+
+    private fun readRegionName(value: Any): String {
+        val text = value as? String ?: fail(UnevaluatableReason.INVALID_REGION_NAME)
+        if (text.isEmpty()) fail(UnevaluatableReason.INVALID_REGION_NAME)
+        return text
     }
 
     private fun interpretTimeClause(clause: RuleJsonObject): AlbumRuleClause {

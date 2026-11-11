@@ -76,6 +76,10 @@ on `Unevaluatable`; none of them throws.
 
 > **Amended 2026-10-26.** Amendment 1 below fixes the `time` clause's fields and the zone it is read
 > in, and lists the further cases the parser sends to `Unevaluatable`. The text above is unchanged.
+>
+> **Amended 2026-11-11.** Amendment 2 below fixes the `region` clause's fields, the dataset stamp
+> that keeps its codes meaningful, the obligation a later dataset change carries, and how a clause
+> that cannot yet be settled is evaluated. The text above is unchanged.
 
 ## Alternatives Considered
 
@@ -311,3 +315,209 @@ who stays in one zone, and approximate for one who travels.
   `time` clause deliberately does not share
 - [ADR-0018](0018-media-index-in-a-second-database.md) — the index a capture-local date column would
   have to be added to
+
+## Amendment 2 — 2026-11-11 — The `region` clause, its dataset stamp, and unsettled items
+
+This amendment **adds** to the Decision and to Amendment 1; it corrects nothing. The envelope, the
+conjunction-only scope, the `NULL`-means-manual rule, the unknown-clause rule, and every strictness
+rule of Amendment 1 continue to govern a `region` clause exactly as they govern a `time` clause.
+
+It is an amendment rather than a new ADR for Amendment 1's reason: the Decision named a `region`
+clause and left its fields to the step that builds it. Step 2.7 of
+[albums-stage-2.md](../../design/albums-stage-2.md) is that step. **The maintainer approved what
+follows on 2026-11-11, before any of it was coded.** Each choice decides which photos a user's album
+holds, and two of them bind builds that do not exist yet, which is why they are written down rather
+than left in a parser.
+
+### The `region` clause
+
+One clause type, three granularities:
+
+```json
+{"type": "region", "dataset": 1, "country": "IT"}
+{"type": "region", "dataset": 1, "country": "IT", "admin1": "16", "admin1Name": "Tuscany"}
+{"type": "region", "dataset": 1, "country": "IT", "admin1": "16", "admin1Name": "Tuscany", "place": "Florence"}
+{"type": "region", "dataset": 1, "country": "SG", "place": "Singapore"}
+```
+
+- **`country`** is the ISO 3166-1 alpha-2 code, in upper case, as the index's `derivedCountryCode`
+  holds it.
+- **`admin1` and `admin1Name` are the region, and come as a pair or not at all.** `admin1` is the
+  GeoNames admin1 code exactly as `derivedRegionCode` holds it — bare, without the country prefix
+  `admin1.tsv` keys it by. `admin1Name` is that region's name in GeoNames' `name` form, as
+  `admin1.tsv` carries it ([ADR-0019](0019-offline-reverse-geocoding-for-region-albums.md)
+  Amendment 1 §4).
+- **`place` is optional**, with or without the region pair, and is the `derivedPlaceName` the
+  resolver wrote.
+- **A place without the region pair matches only rows whose region is null.** A place in a country
+  with no admin1 division, or whose admin1 code is `00`, resolves to a null region (ADR-0019
+  Amendment 1 §7) — Singapore is the example — and a clause naming it omits the pair. Omitting the
+  pair never means "in any region": that would merge same-named places in different regions, which
+  is what the pair is there to keep apart.
+- **`dataset` is the `PLACE_RESOLVER_VERSION` in force when the clause was written**
+  ([ADR-0018](0018-media-index-in-a-second-database.md) Amendment 4).
+
+### Matching
+
+- **While `dataset` equals the current `PLACE_RESOLVER_VERSION`, matching is by code**, exactly:
+  `country` against `derivedCountryCode`, `admin1` against `derivedRegionCode`, `place` against
+  `derivedPlaceName`. Every field present must match, and a place clause without the pair also
+  requires a null region.
+- **Names are guards and remap keys; step 2.7 does not match on them.** `admin1Name` is compared
+  with nothing at evaluation. It is stored because a code means nothing without the dataset that
+  defined it, and a name is what a later remap — below — finds a region by. `place` is the one name
+  that is also matched, because the index holds no code for a place.
+- **Same-named places within one country and region merge.** Two places called the same within one
+  region are one clause target. Accepted because the picker builds its list from the same derived
+  columns and so already shows them as one entry: the album and the picker agree about what was
+  chosen.
+- **A `dataset` other than the current version makes the rule `Unevaluatable`, with the new reason
+  `UNKNOWN_DATASET`.** A higher number is a rule from a newer build, arriving by restore or
+  downgrade; a lower one is a rule from before a bump. Either way its codes were defined by a dataset
+  this build does not hold, and matching them against an index resolved by another is a silent wrong
+  answer — the outcome the Decision's unknown-clause rule exists to prevent. The album resolves to
+  its additions minus its exclusions, shows the Newer-app notice, and is never rewritten.
+
+### The stability plan, and the obligation it puts on a later build
+
+GeoNames admin1 codes can change between dataset versions — most are FIPS codes, "subject to change
+to iso code" in GeoNames' own readme ([ADR-0019](0019-offline-reverse-geocoding-for-region-albums.md),
+*Consequences*). The index survives that by re-resolving every row after a bump; a code stored in a
+user's rule has no such repair. The `dataset` stamp makes the mismatch detectable from the rule
+alone. What makes it survivable is this:
+
+**Binding: the first build that bumps `PLACE_RESOLVER_VERSION` must ship a remap for clauses
+carrying an older `dataset`.**
+
+- The remap finds the region by `admin1Name` within the clause's `country` in the new dataset, then
+  the place by name within that region — or among the country's null-region places, for a clause
+  without the pair.
+- **Where no unique answer exists, the clause degrades to a state that build's ADR defines**, chosen
+  there with the new dataset's actual differences in view rather than guessed here.
+- **The stored rule is never rewritten.** The remap applies when the rule is read, as the Decision
+  requires of any document the build did not fully write; the stored text stays as it was, so a
+  downgrade still reads the original.
+- **That build also meets pending rows still carrying old-dataset values** — Tier A and a heal keep
+  derived values until the next resolve (ADR-0018 Amendment 4) — and decides what a provisional
+  match against them means. 2.7 holds one dataset, so it cannot meet this case and does not decide
+  it.
+
+Without the remap, one bump would turn every region album a user owns into a permanent Newer-app
+notice whose wording is false — the app is not older; the rule is. **The obligation is what keeps
+`UNKNOWN_DATASET` a restore-or-downgrade case only**, and the Newer-app wording true.
+
+**A suggested test:** a unit test that pins `PLACE_RESOLVER_VERSION == 1` and whose failure message
+names this amendment, so a bump cannot land without its author meeting the obligation. The change
+that ships the remap deletes it.
+
+### GeoNames IDs were not adopted
+
+Storing a place's or region's stable `geonameid` instead of a code would survive a dataset change
+with no remap, and would keep same-named places apart. Rejected for its cost: the shipped assets
+carry no IDs (ADR-0019 Amendment 1 §2), so adopting them means regenerating the assets, bumping the
+resolver version and re-resolving every located row, a new derived column and therefore index
+version 5, and more APK size — all paid now, for a dataset change that may never come. The stamp
+and the remap defer the cost to the build that causes it. **What is given up** is the separation of
+same-named places, accepted above.
+
+### How strict the parser is about a `region` clause
+
+Each of the following yields `Unevaluatable` — never an exception and never a guess — in addition to
+Amendment 1's list, which applies to this clause unchanged:
+
+- **an unknown field** — anything but `type`, `dataset`, `country`, `admin1`, `admin1Name` and
+  `place`. Amendment 1's reason holds: a field a newer build added may narrow the clause.
+- **`admin1` without `admin1Name`, or `admin1Name` without `admin1`.**
+- **a missing `country`, or one that is not exactly two upper-case ASCII letters.** `"it"` is not
+  `"IT"`; normalising it would be the parser guessing.
+- **an `admin1`, `admin1Name` or `place` that is not a string, or is empty.**
+- **a missing `dataset`, or one that is not a JSON integer.** `"1"` is not `1`, as Amendment 1 says
+  of the envelope `version`, and `1.0` is not `1` either. A well-formed integer that is not the
+  current version is `UNKNOWN_DATASET`, not malformed.
+
+The reason values are `UnevaluatableReason`'s, in `data/AlbumRule.kt`, which owns their names;
+`UNKNOWN_DATASET` is the one this amendment adds by name, because it is the one case where the
+document is well formed and merely from another dataset.
+
+**The encoder escapes JSON strings.** `admin1Name` and `place` are free text from GeoNames, with
+apostrophes, diacritics, and whatever else the dataset holds. A name that broke the encoder would
+write a document the parser sends to `Unevaluatable` — an album broken from the moment it is
+created, and never rewritten. So every name in the shipped assets must round-trip through encode
+and parse unchanged, which is an exit criterion of step 2.7.
+
+### Combined rules
+
+**A `time` clause and a `region` clause combine by AND in one rule, and step 2.7 ships it.** That is
+the Decision's conjunction applied, not a new rule. 2.7 writes at most one clause of each type. The
+parser and the evaluator accept any number and AND them all: two `region` clauses naming different
+countries is a valid rule that matches nothing, not a malformed one.
+
+### Settled and unsettled
+
+Amendment 1's rule that an item the index has not reached never matches is unchanged. With places,
+an item can also be indexed and still waiting for the resolver, so for a live item each clause gives
+one of three answers:
+
+| | `time` | `region` |
+|---|---|---|
+| **Match** | indexed with a date in range | resolved — marker current — and its codes match |
+| **Settled no-match** | indexed with a date outside the range, or with no date | no coordinates; resolved beyond the cap; resolved and its codes differ |
+| **Unsettled** | not indexed | not indexed; pending — marker null or not current |
+
+- **A pending row that still carries old derived values matches on them provisionally, and is
+  unsettled.** ADR-0018 Amendment 4 keeps those values so labels do not flicker, and evaluation uses
+  them for the same reason: an item should not leave the album at every re-extraction and return at
+  the next pass. It stays unsettled because its values may be wrong — the row is pending for a
+  reason. A pending row with no derived values does not match, and is unsettled.
+- **Out-of-cap and no-coordinate rows are settled no-matches.** Waiting changes neither; counting
+  them as waiting is the permanent-waiting failure ADR-0018 Amendment 4 names.
+
+For an item that is **neither added nor excluded**:
+
+- it is **a member** when every clause matches, provisionally or settled;
+- it **makes the album show the Incomplete-album notice** when some clause is unsettled and none is
+  a settled no-match.
+
+A settled no-match on any clause takes the item out of the question. **An item dated outside the
+range whose location is pending does not show the notice**, because no resolution of its place could
+make it match — and that is what keeps a combined album from waiting on every pending row in the
+library. For a time-only album these rules reduce exactly to step 2.5's. Additions and exclusions
+are untouched: ADR-0012's formula applies after the clauses have answered.
+
+### When this becomes binding
+
+As Amendment 1 says of the `time` clause: the `region` format becomes stored user data when a
+shipped build first writes one, which is step 2.7. Until then it can change by amending this record.
+After it, the Decision's unknown-clause rule, the `dataset` stamp and the remap obligation govern
+every change.
+
+### Consequences of this amendment
+
+**Positive**
+
+- A dataset change is detectable from the rule alone, and survivable without rewriting stored data.
+- 2.7 needs no asset regeneration, no resolver bump, and no index migration.
+- An album reports itself incomplete only while waiting could change its answer, so combined albums
+  stay honest without waiting forever.
+
+**Negative**
+
+- **A `PLACE_RESOLVER_VERSION` bump is no longer one constant**, as ADR-0018 Amendment 4's
+  *Re-resolution is one constant* put it: it now costs a remap and an ADR choosing the degraded state. Deliberate — the cost lands
+  on the change that causes it — but that build will be larger than it looks.
+- The remap matches by name, so a region renamed between datasets defeats it and lands on the
+  degraded state.
+- Same-named places within one country and region merge.
+- A provisional match can show an item whose new place differs, until the next resolve pass; the
+  Incomplete-album notice is shown meanwhile.
+
+### References
+
+- [docs/design/albums-stage-2.md](../../design/albums-stage-2.md) step 2.7
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 25 and 26
+- [ADR-0018](0018-media-index-in-a-second-database.md) Amendment 4 — the marker, pending rows, and
+  why their old values are kept
+- [ADR-0019](0019-offline-reverse-geocoding-for-region-albums.md) Amendment 1 — the assets, the
+  `name` form, the `00` admin1 code, and the cap
+- `data/AlbumRule.kt`, `data/AlbumRuleJson.kt` — the clause types, the reasons, the parser and the
+  encoder; `PLACE_RESOLVER_VERSION` in `data/Gazetteer.kt`

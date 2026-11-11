@@ -177,7 +177,9 @@ the audit is for the rest.
   `AlbumsViewModel`, `FavouritesViewModel`, and `MediaIndexingViewModel` are the precedent. Albums
   added **no album state** to `GalleryViewModel`; it only reuses the viewer delegate and the
   selection machinery. The media index added one delegate, `MediaIndexDateTakenState`, and nothing
-  else.
+  else. A state holder can also belong to a feature ViewModel: `AutomaticAlbumPickerState` is owned
+  by `AlbumsViewModel` rather than being a sixth ViewModel, because the picker's counts must read
+  the same join as the albums they create.
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.

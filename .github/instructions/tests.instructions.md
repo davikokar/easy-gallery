@@ -84,6 +84,9 @@ otherwise run plain.
   defaults, which is safe but means persisted defaults will not match production.
 - Reserve MockK for Android types a fake cannot stand in for — `Context`, `ContentResolver`,
   `Cursor`, `Uri` — as `MediaStoreDataSourceTest` does.
+- MockK records every call on a mock, so a plain-JVM test that builds many mocks and evaluates them
+  thousands of times can exhaust the test heap. Call `clearAllMocks(answers = false)` between
+  evaluations, or avoid the mocks.
 - Assert on observable behavior (emitted state, recorded operations), not on which methods were
   called.
 ## Instrumented tests (`app/src/androidTest/`)
