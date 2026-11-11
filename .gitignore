@@ -16,3 +16,8 @@ local.properties
 
 # Gazetteer raw GeoNames downloads (tools/gazetteer/build_gazetteer.py)
 tools/gazetteer/raw/
+
+# Build outputs, tool crash logs and device logs
+/app/release/
+.kotlin/
+.artifacts/tmp/
