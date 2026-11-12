@@ -168,10 +168,14 @@ class AlbumsViewModel @JvmOverloads constructor(
     private val _allMedia = MutableStateFlow<List<MediaItem>?>(null)
     private val _mediaVersionEpoch = MutableStateFlow(0L)
     private val _selectedAlbumId = MutableStateFlow<Long?>(null)
+    private val _albumSelectionId = MutableStateFlow<Long?>(null)
     private val _errorMessage = MutableStateFlow<String?>(null)
     private val mediaStoreVersionCheckMutex = Mutex()
 
     val selectedAlbumId: StateFlow<Long?> = _selectedAlbumId.asStateFlow()
+
+    /** The Album selected by long-press in Albums View (Album selection mode); not the open Album Detail. */
+    val albumSelectionId: StateFlow<Long?> = _albumSelectionId.asStateFlow()
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
     // The one index-and-live-media join, built once per emission of either input and shared by every rule
@@ -238,6 +242,9 @@ class AlbumsViewModel @JvmOverloads constructor(
                 if (_selectedAlbumId.value != null && computed.none { it.album.id == _selectedAlbumId.value }) {
                     _selectedAlbumId.value = null
                 }
+                if (_albumSelectionId.value != null && computed.none { it.album.id == _albumSelectionId.value }) {
+                    _albumSelectionId.value = null
+                }
 
                 computed.forEach { item ->
                     applyHealingIfNeeded(item)
@@ -260,7 +267,23 @@ class AlbumsViewModel @JvmOverloads constructor(
     }
 
     fun selectAlbum(albumId: Long?) {
+        // Opening an album leaves Album selection mode, so Back lands on Albums View as it was (ADR-0013 Am. 2 point 7).
+        if (albumId != null) _albumSelectionId.value = null
         _selectedAlbumId.value = albumId
+    }
+
+    fun enterAlbumSelection(albumId: Long) {
+        _albumSelectionId.value = albumId
+    }
+
+    fun exitAlbumSelection() {
+        _albumSelectionId.value = null
+    }
+
+    /** A main-view tab tap: leaves Album Detail View and Album selection mode. Favourites is not held here. */
+    fun cancelAlbumSelectionAndDetail() {
+        _albumSelectionId.value = null
+        _selectedAlbumId.value = null
     }
 
     fun clearError() {
@@ -342,6 +365,9 @@ class AlbumsViewModel @JvmOverloads constructor(
             albumStore.deleteAlbum(albumId)
             if (_selectedAlbumId.value == albumId) {
                 _selectedAlbumId.value = null
+            }
+            if (_albumSelectionId.value == albumId) {
+                _albumSelectionId.value = null
             }
         }
     }

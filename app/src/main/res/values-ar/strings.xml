@@ -137,7 +137,6 @@
     <string name="about_version">الإصدار %1$s</string>
     <string name="folders_title">المجلدات</string>
     <string name="albums_title">الألبومات</string>
-    <string name="cd_switch_view">تبديل العرض</string>
     <string name="albums_empty">لا توجد ألبومات بعد</string>
     <string name="menu_new_album">ألبوم جديد</string>
     <plurals name="album_item_count">

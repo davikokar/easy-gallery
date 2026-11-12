@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -105,6 +106,7 @@ fun FolderListScreen(
     val browsingPath by viewModel.browsingPath.collectAsState()
     val browsingFolders by viewModel.browsingFolders.collectAsState()
     val albums by albumsViewModel.albums.collectAsState()
+    val albumSelectionId by albumsViewModel.albumSelectionId.collectAsState()
 
     val isCreateFolderDialogOpen by createFolderViewModel.isDialogOpen.collectAsState()
     val createFolderError by createFolderViewModel.error.collectAsState()
@@ -135,6 +137,7 @@ fun FolderListScreen(
         selectedFolders = selectedFolders,
         displayMode = displayMode,
         albums = albums,
+        albumSelectionId = albumSelectionId,
         favouritesAvailable = favouritesAvailable && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
         favouriteMedia = favouriteMedia,
         favouriteUris = favouriteUris,
@@ -161,7 +164,6 @@ fun FolderListScreen(
         onStartOperation = { viewModel.startOperation(it) },
         onSetSearchQuery = { viewModel.setSearchQuery(it, activeScope) },
         onSetSearchActive = { viewModel.setSearchActive(it, activeScope) },
-        onSetDisplayMode = { viewModel.setDisplayMode(it) },
         onBackToFolders = { viewModel.setDisplayMode(DisplayMode.FOLDERS) },
         onSetSort = { sortType, sortOrder ->
             viewModel.setSortType(sortType, activeScope)
@@ -182,6 +184,8 @@ fun FolderListScreen(
         onRenameAlbum = { albumId, name -> albumsViewModel.renameAlbum(albumId, name) },
         onDeleteAlbum = { albumsViewModel.deleteAlbum(it) },
         onSelectAlbum = { albumsViewModel.selectAlbum(it) },
+        onEnterAlbumSelection = { albumsViewModel.enterAlbumSelection(it) },
+        onExitAlbumSelection = { albumsViewModel.exitAlbumSelection() },
         onSelectFavourites = onSelectFavourites,
         onCreateFolder = { createFolderViewModel.createFolder(it) },
         onUpdateCreateFolderBrowsingPath = { createFolderViewModel.updateBrowsingPath(it) },
@@ -222,6 +226,7 @@ fun FolderListContent(
     selectedFolders: Set<String>,
     displayMode: DisplayMode,
     albums: List<AlbumListItem>,
+    albumSelectionId: Long?,
     favouritesAvailable: Boolean,
     favouriteMedia: List<com.davide.seddio.easygallery.data.MediaItem>,
     favouriteUris: Set<android.net.Uri>,
@@ -248,7 +253,6 @@ fun FolderListContent(
     onStartOperation: (OperationType) -> Unit,
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
-    onSetDisplayMode: (DisplayMode) -> Unit,
     onBackToFolders: () -> Unit,
     onSetSort: (SortType, SortOrder) -> Unit,
     onSetGroupByAndOrder: (GroupByType, SortOrder) -> Unit,
@@ -263,6 +267,8 @@ fun FolderListContent(
     onRenameAlbum: (Long, String) -> Unit,
     onDeleteAlbum: (Long) -> Unit,
     onSelectAlbum: (Long) -> Unit,
+    onEnterAlbumSelection: (Long) -> Unit,
+    onExitAlbumSelection: () -> Unit,
     onSelectFavourites: () -> Unit,
     onCreateFolder: (String) -> Unit,
     onUpdateCreateFolderBrowsingPath: (String) -> Unit,
@@ -285,8 +291,8 @@ fun FolderListContent(
         DisplayMode.ALBUMS -> albumsPreferences
     }
     val context = LocalContext.current
-    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // One saveable entry per main view, nested in the host's folder_list entry, so each keeps its own scroll.
+    val mainViewStateHolder = rememberSaveableStateHolder()
     val selectedMediaForActions = remember(selectedMediaItems) { getSelectedMediaData() }
     val selectedMediaForWallpaper = selectedMediaForActions.singleOrNull()
     val canUseAsBackground = selectedMediaForWallpaper?.let { supportsWallpaper(it.type) } == true
@@ -310,7 +316,7 @@ fun FolderListContent(
     var showExcludeDialog by remember { mutableStateOf(false) }
     var showFilterDialog by remember { mutableStateOf(false) }
     var showAlbumTypeDialog by remember { mutableStateOf(false) }
-    var albumForActions by remember { mutableStateOf<AlbumListItem?>(null) }
+    val albumForActions = albumSelectionId?.let { id -> albums.firstOrNull { it.id == id } }
     var albumToRename by remember { mutableStateOf<AlbumListItem?>(null) }
     var albumToDelete by remember { mutableStateOf<AlbumListItem?>(null) }
     var albumNameDraft by remember { mutableStateOf("") }
@@ -322,7 +328,7 @@ fun FolderListContent(
     val addAlbumDescription = stringResource(R.string.menu_new_album)
 
     BackHandler(enabled = albumForActions != null) {
-        albumForActions = null
+        onExitAlbumSelection()
     }
     
     val totalFolders = if (uiState is GalleryUiState.Success) uiState.folders.size else 0
@@ -331,16 +337,16 @@ fun FolderListContent(
         topBar = {
             if (albumForActions != null && displayMode == DisplayMode.ALBUMS) {
                 AlbumSelectionTopBar(
-                    albumName = albumForActions!!.name,
-                    onClose = { albumForActions = null },
+                    albumName = albumForActions.name,
+                    onClose = { onExitAlbumSelection() },
                     onRename = {
                         albumToRename = albumForActions
-                        albumNameDraft = albumForActions!!.name
-                        albumForActions = null
+                        albumNameDraft = albumForActions.name
+                        onExitAlbumSelection()
                     },
                     onDelete = {
                         albumToDelete = albumForActions
-                        albumForActions = null
+                        onExitAlbumSelection()
                     }
                 )
             } else if (isMediaSelectionMode) {
@@ -381,17 +387,12 @@ fun FolderListContent(
                 )
             } else {
                 SearchTopBar(
-                    title = when (displayMode) {
-                        DisplayMode.FOLDERS -> stringResource(R.string.folders_title)
-                        DisplayMode.TIMELINE -> stringResource(R.string.timeline_title)
-                        DisplayMode.ALBUMS -> stringResource(R.string.albums_title)
-                    },
+                    title = stringResource(R.string.app_name),
                     searchQuery = searchQuery,
                     isSearchActive = isSearchActive,
-                    displayMode = displayMode,
+                    showAppIcon = true,
                     onSearchQueryChange = { onSetSearchQuery(it) },
                     onSearchActiveChange = { onSetSearchActive(it) },
-                    onDisplayModeChange = { onSetDisplayMode(it) },
                     onSortClick = { showSortDialog = true },
                     onColumnCountClick = { showColumnCountDialog = true },
                     onGroupByClick = if (displayMode == DisplayMode.TIMELINE) { { showGroupByDialog = true } } else null,
@@ -608,63 +609,67 @@ fun FolderListContent(
                 .fillMaxSize()
                 .background(AppBackground)
         ) {
-            when (displayMode) {
-                DisplayMode.TIMELINE -> calendarContent()
-                DisplayMode.ALBUMS -> AlbumsViewBody(
-                    albums = albums,
-                    favouritesAvailable = favouritesAvailable,
-                    favouriteMedia = favouriteMedia,
-                    preferences = albumsPreferences,
-                    searchQuery = searchQuery,
-                    selectedAlbumId = albumForActions?.id,
-                    gridState = gridState,
-                    listState = listState,
-                    contentPadding = if (showAddAlbumButton) {
-                        PaddingValues(bottom = 88.dp)
-                    } else {
-                        PaddingValues(0.dp)
-                    },
-                    onSelectAlbum = onSelectAlbum,
-                    onSelectFavourites = onSelectFavourites,
-                    onAlbumLongClick = { albumForActions = it },
-                    onZoomIn = onDecreaseColumns,
-                    onZoomOut = onIncreaseColumns
-                )
-                DisplayMode.FOLDERS -> {
-                when (val state = uiState) {
-                    is GalleryUiState.Loading -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    is GalleryUiState.Success -> {
-                        if (activePreferences.viewType == ViewType.GRID) {
-                            FolderGrid(
-                                folders = state.folders,
-                                columns = activePreferences.columns,
-                                state = gridState,
-                                selectedFolders = selectedFolders,
-                                onFolderClick = { onSelectFolder(it) },
-                                onFolderLongClick = { onEnterSelectionMode(it.path) },
-                                onZoomIn = { onDecreaseColumns() },
-                                onZoomOut = { onIncreaseColumns() }
-                            )
+            mainViewStateHolder.SaveableStateProvider(displayMode.name) {
+                when (displayMode) {
+                    DisplayMode.TIMELINE -> calendarContent()
+                    DisplayMode.ALBUMS -> AlbumsViewBody(
+                        albums = albums,
+                        favouritesAvailable = favouritesAvailable,
+                        favouriteMedia = favouriteMedia,
+                        preferences = albumsPreferences,
+                        searchQuery = searchQuery,
+                        selectedAlbumId = albumForActions?.id,
+                        gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
+                        listState = androidx.compose.foundation.lazy.rememberLazyListState(),
+                        contentPadding = if (showAddAlbumButton) {
+                            PaddingValues(bottom = 88.dp)
                         } else {
-                            FolderList(
-                                folders = state.folders,
-                                state = listState,
-                                selectedFolders = selectedFolders,
-                                onFolderClick = { onSelectFolder(it) },
-                                onFolderLongClick = { onEnterSelectionMode(it.path) }
-                            )
+                            PaddingValues(0.dp)
+                        },
+                        onSelectAlbum = onSelectAlbum,
+                        onSelectFavourites = onSelectFavourites,
+                        onAlbumLongClick = { onEnterAlbumSelection(it.id) },
+                        onZoomIn = onDecreaseColumns,
+                        onZoomOut = onIncreaseColumns
+                    )
+                    DisplayMode.FOLDERS -> {
+                        val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                        when (val state = uiState) {
+                            is GalleryUiState.Loading -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                            is GalleryUiState.Success -> {
+                                if (activePreferences.viewType == ViewType.GRID) {
+                                    FolderGrid(
+                                        folders = state.folders,
+                                        columns = activePreferences.columns,
+                                        state = gridState,
+                                        selectedFolders = selectedFolders,
+                                        onFolderClick = { onSelectFolder(it) },
+                                        onFolderLongClick = { onEnterSelectionMode(it.path) },
+                                        onZoomIn = { onDecreaseColumns() },
+                                        onZoomOut = { onIncreaseColumns() }
+                                    )
+                                } else {
+                                    FolderList(
+                                        folders = state.folders,
+                                        state = listState,
+                                        selectedFolders = selectedFolders,
+                                        onFolderClick = { onSelectFolder(it) },
+                                        onFolderLongClick = { onEnterSelectionMode(it.path) }
+                                    )
+                                }
+                            }
+                            is GalleryUiState.Error -> {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(text = stringResource(R.string.error_prefix, state.message), color = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         }
                     }
-                    is GalleryUiState.Error -> {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = stringResource(R.string.error_prefix, state.message), color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
                 }
             }
 

@@ -22,9 +22,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.Folder
+import com.davide.seddio.easygallery.ui.components.listRowDivider
+import com.davide.seddio.easygallery.ui.components.listRowDividerColor
+import com.davide.seddio.easygallery.ui.components.selectedRowColor
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 
 @Composable
@@ -60,100 +64,98 @@ fun FolderListItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    Surface(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
             .testTag("folder_tile_${folder.path}")
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
-            ),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.White.copy(alpha = 0.05f)
+            )
+            .then(if (isSelected) Modifier.background(selectedRowColor()) else Modifier)
+            .listRowDivider(listRowDividerColor())
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(8.dp)
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-            ) {
-                AsyncImage(
-                    model = folder.thumbnailUri,
-                    contentDescription = folder.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+            AsyncImage(
+                model = folder.thumbnailUri,
+                contentDescription = folder.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.3f))
                 )
-                if (isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f))
-                    )
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = stringResource(R.string.cd_selected),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(24.dp)
-                            .testTag("selected_checkmark")
-                            .background(Color.White, CircleShape)
-                    )
-                }
-                if (folder.isPinned) {
-                    Icon(
-                        imageVector = Icons.Default.PushPin,
-                        contentDescription = stringResource(R.string.cd_pinned),
-                        tint = Color.White,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(4.dp)
-                            .size(16.dp)
-                            .testTag("pin_icon")
-                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
-                            .padding(1.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = stringResource(R.string.cd_selected),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(24.dp)
+                        .testTag("selected_checkmark")
+                        .background(Color.White, CircleShape)
+                )
             }
-
-            Column(
-                modifier = Modifier
-                    .padding(start = 12.dp)
-                    .weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = folder.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                        color = Color.White
-                    )
-                    Text(
-                        text = "${folder.imageCount}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-                Text(
-                    text = folder.path,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.5f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            if (folder.isPinned) {
+                Icon(
+                    imageVector = Icons.Default.PushPin,
+                    contentDescription = stringResource(R.string.cd_pinned),
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(4.dp)
+                        .size(16.dp)
+                        .testTag("pin_icon")
+                        .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                        .padding(1.dp)
                 )
             }
         }
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .padding(start = 16.dp)
+                .weight(1f)
+        ) {
+            Text(
+                text = folder.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = Color.White
+            )
+            Text(
+                text = folder.path,
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                color = MaterialTheme.colorScheme.outline,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // The count trails the row so the name and path keep one left edge.
+        Text(
+            text = "${folder.imageCount}",
+            style = MaterialTheme.typography.bodySmall,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            modifier = Modifier.padding(start = 12.dp)
+        )
     }
 }

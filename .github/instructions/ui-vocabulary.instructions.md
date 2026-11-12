@@ -39,7 +39,7 @@ The app has **five main views**, carried by three screens.
   the system-backed media in Favourites. Aliases: **album contents**, **favourites contents**
 
 Folders View, Timeline View, and Albums View are three modes of the same screen, chosen from the
-**View switcher** in the top bar rather than by navigation. Folder Detail View is reached by
+**Main view bar** rather than by navigation. Folder Detail View is reached by
 opening a folder; Album Detail View is reached by opening an Album or Favourites.
 
 > **Naming caveat:** `DisplayMode.FOLDERS`/`TIMELINE`/`ALBUMS` now matches the canonical names.
@@ -154,8 +154,12 @@ Each detail screen and the shared three-view screen are built as a pair:
 A view shows exactly one top bar at a time. The order it resolves in is given per view.
 
 - **Browse top bar** (`SearchTopBar`): The default top bar. Shows the title, the Search button,
-  the View switcher where applicable, and the Overflow menu; in search mode the title is replaced
-  by the **Search field**. Used by all five main views.
+  and the Overflow menu; in search mode the title is replaced by the **Search field**. Used by all
+  five main views. On Folders View, Timeline View, and Albums View the title is the app name,
+  Easy Gallery, preceded by the **App logo** (tagged `main_view_app_icon`); the view is named by
+  the selected tab of the **Main view bar**, not by the title, and there is no view-switching
+  dropdown. Folder Detail View and Album Detail View keep their own titles (the folder's or the
+  Album's name) and show no logo.
 - **Folder selection top bar** (`SelectionTopBar`): Shown while folders are multi-selected in
   Folders View. Carries the selection count and the folder actions.
 - **Media selection top bar** (`MediaSelectionTopBar`): Shown while media items are
@@ -173,10 +177,29 @@ Shared parts:
 - **Overflow menu**: The three-dot menu in a top bar. Qualify it by bar when needed, such as
   **media selection overflow menu**. Every item carries a leading icon and no tint.
 - **Back button**: The top-bar control that returns to the previous destination.
-- **View switcher**: The interactive browse-top-bar title and trailing chevron that open a menu of
-  Folders View, Timeline View, and Albums View. The current view is marked with a check.
 - **Search button** / **Search field**: Open live name filtering, and the field it filters from.
   Search is per view and deliberately not persisted.
+
+## Main view bar
+
+- **Main view bar** (`MainViewBar`, tagged `main_view_bar`): The persistent three-tab bar at the
+  bottom of the screen that switches between Folders View, Albums View, and Timeline View. It
+  replaced the title dropdown (ADR-0013 Amendment 2), which no longer exists; the top bar's title
+  is now the app name. Stateless: the caller passes
+  `selectedTab` and `onTabSelected`. Never call it the "bottom bar" (that is the **Viewer bottom
+  bar**) or the "navigation bar" (that is the system bar directly beneath it); it pads itself for
+  the system navigation bar and the side insets.
+- **Main view tab** (`MainViewTab`; tagged `main_view_tab_folders`, `main_view_tab_albums`,
+  `main_view_tab_timeline`): One tab of the bar — an icon over a one-line label, reusing the
+  titles Folders, Albums and Timeline. Always in that order, which is not `DisplayMode` order. The
+  selected tab has a tinted pill behind its icon and is exposed to accessibility as a selected
+  tab. Tapping the selected tab still calls back.
+- The bar is **shown** on Folders View, Albums View, Timeline View, Folder Detail View, and
+  Album Detail View (including Favourites), and stays visible during selection and search; a tab
+  tap cancels both and switches. It is **hidden** on the Full-screen viewer, the Folder thumbnail
+  picker, the New album screen, the New automatic album screen, the Settings screen, the Manage
+  excluded screen, and the Permission denied screen. On a detail screen the selected tab is the
+  main view that owns it: Folders for Folder Detail View, Albums for Album Detail View.
 
 ## Folders View
 

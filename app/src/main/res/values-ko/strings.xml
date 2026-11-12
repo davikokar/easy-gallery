@@ -132,7 +132,6 @@
     <string name="about_version">버전 %1$s</string>
     <string name="folders_title">폴더</string>
     <string name="albums_title">앨범</string>
-    <string name="cd_switch_view">보기 전환</string>
     <string name="albums_empty">아직 앨범이 없습니다</string>
     <string name="menu_new_album">새 앨범</string>
     <plurals name="album_item_count">

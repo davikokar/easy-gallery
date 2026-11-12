@@ -1,19 +1,28 @@
 package com.davide.seddio.easygallery.ui
 
 import android.net.Uri
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
@@ -227,27 +236,267 @@ class FolderListContentTest {
     }
 
     @Test
-    fun titleSwitcherListsAllThreeViews() {
+    fun mainViewTitleShowsAppIconAndAppNameOnEveryMainView() {
+        var displayMode by mutableStateOf(DisplayMode.FOLDERS)
+
         composeTestRule.setContent {
-            FolderListContentWrapper()
+            FolderListContentWrapper(displayMode = displayMode)
         }
 
-        composeTestRule.onNodeWithContentDescription("Switch view").performClick()
+        DisplayMode.entries.forEach { mode ->
+            displayMode = mode
+            composeTestRule.waitForIdle()
 
-        composeTestRule.onAllNodesWithText("Folders").assertCountEquals(2)
-        composeTestRule.onNodeWithText("Timeline").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Albums").assertIsDisplayed()
+            composeTestRule
+                .onNodeWithTag("main_view_app_icon", useUnmergedTree = true)
+                .assertIsDisplayed()
+            composeTestRule
+                .onNodeWithText(appContext.getString(R.string.app_name))
+                .assertIsDisplayed()
+        }
     }
 
     @Test
-    fun mainViewSwitcherShowsAppIcon() {
+    fun mainViewTitleIsEasyGalleryAndNotTheViewName() {
+        var displayMode by mutableStateOf(DisplayMode.TIMELINE)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = displayMode)
+        }
+
+        composeTestRule.onNodeWithText("Easy Gallery").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(appContext.getString(R.string.timeline_title)).assertCountEquals(0)
+        displayMode = DisplayMode.ALBUMS
+        composeTestRule.onAllNodesWithText(appContext.getString(R.string.albums_title)).assertCountEquals(0)
+    }
+
+    @Test
+    fun noSwitchViewControlExistsInTheTopBar() {
         composeTestRule.setContent {
             FolderListContentWrapper()
         }
 
-        composeTestRule
-            .onNodeWithTag("main_view_app_icon", useUnmergedTree = true)
+        composeTestRule.onAllNodesWithContentDescription("Switch view").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Easy Gallery").performClick()
+        composeTestRule.onAllNodesWithText(appContext.getString(R.string.albums_title)).assertCountEquals(0)
+        composeTestRule.onAllNodesWithText(appContext.getString(R.string.timeline_title)).assertCountEquals(0)
+    }
+
+    @Test
+    fun foldersAndAlbumsViewsKeepTheirOwnScrollPositions() {
+        val manyFolders = (1..100).map { fakeFolder.copy(name = "Folder $it", path = "/path/$it") }
+        // Zero-padded so the default Name sort keeps list index == id - 1.
+        val manyAlbums = (1L..60L).map { albumItem(AlbumEvaluationStatus.MANUAL, id = it, name = "Album ${it.toString().padStart(2, '0')}") }
+        var displayMode by mutableStateOf(DisplayMode.FOLDERS)
+        val folderIndex = 60
+        val albumIndex = 40
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                uiState = GalleryUiState.Success(manyFolders),
+                displayMode = displayMode,
+                albums = manyAlbums
+            )
+        }
+
+        composeTestRule.onNodeWithTag("folder_grid").performScrollToIndex(folderIndex)
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[folderIndex].path}", useUnmergedTree = true)
             .assertIsDisplayed()
+
+        displayMode = DisplayMode.ALBUMS
+        composeTestRule.waitForIdle()
+        // Albums starts at its own top, not at Folders' position.
+        composeTestRule.onNodeWithTag("album_tile_${manyAlbums.first().id}").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_grid").performScrollToIndex(albumIndex)
+        composeTestRule.onNodeWithTag("album_tile_${manyAlbums[albumIndex].id}").assertIsDisplayed()
+
+        displayMode = DisplayMode.FOLDERS
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[folderIndex].path}", useUnmergedTree = true)
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders.first().path}", useUnmergedTree = true)
+            .assertDoesNotExist()
+
+        displayMode = DisplayMode.ALBUMS
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("album_tile_${manyAlbums[albumIndex].id}").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_tile_${manyAlbums.first().id}").assertDoesNotExist()
+    }
+
+    @Test
+    fun foldersViewKeepsItsListScrollPositionAcrossAViewSwitch() {
+        val manyFolders = (1..80).map { fakeFolder.copy(name = "Folder $it", path = "/path/$it") }
+        var displayMode by mutableStateOf(DisplayMode.FOLDERS)
+        val targetIndex = 60
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                uiState = GalleryUiState.Success(manyFolders),
+                displayMode = displayMode,
+                folderViewType = ViewType.LIST
+            )
+        }
+
+        composeTestRule.onNodeWithTag("folder_list").performScrollToIndex(targetIndex)
+        displayMode = DisplayMode.TIMELINE
+        composeTestRule.waitForIdle()
+        displayMode = DisplayMode.FOLDERS
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("folder_tile_${manyFolders[targetIndex].path}", useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun timelineViewKeepsItsScrollPositionAfterLeavingAndReturning() {
+        var displayMode by mutableStateOf(DisplayMode.TIMELINE)
+        val targetIndex = 70
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = displayMode,
+                calendarContent = { TimelineStandIn() }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("timeline_stand_in").performScrollToIndex(targetIndex)
+        composeTestRule.onNodeWithText("Timeline item $targetIndex").assertIsDisplayed()
+
+        displayMode = DisplayMode.FOLDERS
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithTag("timeline_stand_in").assertCountEquals(0)
+        displayMode = DisplayMode.TIMELINE
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Timeline item $targetIndex").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Timeline item 0").assertDoesNotExist()
+    }
+
+    @Test
+    fun albumSelectionTopBarIsAbsentWhileNoAlbumIsSelected() {
+        val album = albumItem(AlbumEvaluationStatus.MANUAL, id = 41L, name = "Trips")
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS, albums = listOf(album))
+        }
+
+        composeTestRule.onNodeWithTag("album_tile_41").assertIsDisplayed()
+        composeTestRule.onAllNodesWithContentDescription(appContext.getString(R.string.album_rename_title))
+            .assertCountEquals(0)
+        composeTestRule.onAllNodesWithContentDescription(appContext.getString(R.string.album_delete_title))
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun albumSelectionTopBarAppearsWhileAnAlbumIsSelectedAndClosesOnExit() {
+        val album = albumItem(AlbumEvaluationStatus.MANUAL, id = 41L, name = "Trips")
+        val renameDescription = appContext.getString(R.string.album_rename_title)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS, albums = listOf(album))
+        }
+
+        composeTestRule.onNodeWithTag("album_tile_41").performTouchInput { longClick() }
+        composeTestRule.onNodeWithContentDescription(renameDescription).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(appContext.getString(R.string.album_delete_title))
+            .assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .performClick()
+
+        composeTestRule.onAllNodesWithContentDescription(renameDescription).assertCountEquals(0)
+    }
+
+    @Test
+    fun albumSelectionTopBarIsShownFromTheAlbumSelectionIdParameter() {
+        val album = albumItem(AlbumEvaluationStatus.MANUAL, id = 41L, name = "Trips")
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                initialAlbumSelectionId = 41L
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription(appContext.getString(R.string.album_rename_title))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun albumSelectionIdWithoutAMatchingAlbumShowsNoSelectionTopBar() {
+        val album = albumItem(AlbumEvaluationStatus.MANUAL, id = 41L, name = "Trips")
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                initialAlbumSelectionId = 99L
+            )
+        }
+
+        composeTestRule.onAllNodesWithContentDescription(appContext.getString(R.string.album_rename_title))
+            .assertCountEquals(0)
+        composeTestRule.onNodeWithTag("add_album_button").assertIsDisplayed()
+    }
+
+    @Test
+    fun addAlbumButtonIsHiddenWhileAnAlbumIsSelected() {
+        val album = albumItem(AlbumEvaluationStatus.MANUAL, id = 41L, name = "Trips")
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS, albums = listOf(album))
+        }
+        composeTestRule.onNodeWithTag("add_album_button").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("album_tile_41").performTouchInput { longClick() }
+        composeTestRule.onNodeWithTag("add_album_button").assertDoesNotExist()
+
+        composeTestRule.onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .performClick()
+        composeTestRule.onNodeWithTag("add_album_button").assertIsDisplayed()
+    }
+
+    @Test
+    fun renameActionLeavesAlbumSelectionMode() {
+        val album = albumItem(AlbumEvaluationStatus.MANUAL, id = 41L, name = "Trips")
+        val exitDescription = appContext.getString(R.string.cd_exit_selection)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                initialAlbumSelectionId = 41L
+            )
+        }
+        composeTestRule.onNodeWithContentDescription(exitDescription).assertIsDisplayed()
+
+        composeTestRule.onNodeWithContentDescription(appContext.getString(R.string.album_rename_title))
+            .performClick()
+
+        composeTestRule.onAllNodesWithContentDescription(exitDescription).assertCountEquals(0)
+        composeTestRule.onAllNodesWithContentDescription(appContext.getString(R.string.album_delete_title))
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun deleteAlbumActionOpensConfirmationAndLeavesAlbumSelectionMode() {
+        val album = albumItem(AlbumEvaluationStatus.MANUAL, id = 41L, name = "Trips")
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                initialAlbumSelectionId = 41L
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription(appContext.getString(R.string.album_delete_title))
+            .performClick()
+
+        composeTestRule.onNodeWithText(appContext.getString(R.string.album_delete_message)).assertIsDisplayed()
+        composeTestRule.onAllNodesWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .assertCountEquals(0)
     }
 
     @Test
@@ -764,21 +1013,39 @@ class FolderListContentTest {
     )
 
     @Composable
+    private fun TimelineStandIn() {
+        LazyColumn(
+            state = rememberLazyListState(),
+            modifier = Modifier.testTag("timeline_stand_in")
+        ) {
+            items((0 until 100).toList()) { index ->
+                Text("Timeline item $index", modifier = Modifier.height(48.dp))
+            }
+        }
+    }
+
+    @Composable
     private fun FolderListContentWrapper(
         uiState: GalleryUiState = GalleryUiState.Success(emptyList()),
         isSelectionMode: Boolean = false,
+        isSearchActive: Boolean = false,
         selectedFolders: Set<String> = emptySet(),
         folderViewType: ViewType = ViewType.GRID,
         albumsViewType: ViewType = ViewType.GRID,
         displayMode: DisplayMode = DisplayMode.FOLDERS,
         albums: List<AlbumListItem> = emptyList(),
+        initialAlbumSelectionId: Long? = null,
         favouritesAvailable: Boolean = false,
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         groupedAllMedia: Map<String, List<MediaItem>> = emptyMap(),
         onStartManualAlbum: () -> Unit = {},
-        onStartAutomaticAlbum: () -> Unit = {}
+        onStartAutomaticAlbum: () -> Unit = {},
+        calendarContent: @Composable () -> Unit = {}
     ) {
+        // Held here, as the ViewModel holds it in the app.
+        var albumSelectionId by remember { mutableStateOf(initialAlbumSelectionId) }
+
         FolderListContent(
             uiState = uiState,
             folderPreferences = ViewPreferences.defaultFor(PreferenceScope.FOLDERS)
@@ -788,13 +1055,14 @@ class FolderListContentTest {
             albumsPreferences = ViewPreferences.defaultFor(PreferenceScope.ALBUMS)
                 .copy(viewType = albumsViewType),
             searchQuery = "",
-            isSearchActive = false,
+            isSearchActive = isSearchActive,
             isSelectionMode = isSelectionMode,
             isMediaSelectionMode = isMediaSelectionMode,
             selectedMediaItems = selectedMediaItems,
             selectedFolders = selectedFolders,
             displayMode = displayMode,
             albums = albums,
+            albumSelectionId = albumSelectionId,
             favouritesAvailable = favouritesAvailable,
             favouriteMedia = emptyList(),
             favouriteUris = emptySet(),
@@ -821,7 +1089,6 @@ class FolderListContentTest {
             onStartOperation = {},
             onSetSearchQuery = {},
             onSetSearchActive = {},
-            onSetDisplayMode = {},
             onBackToFolders = {},
             onSetSort = { _, _ -> },
             onSetGroupByAndOrder = { _, _ -> },
@@ -836,6 +1103,8 @@ class FolderListContentTest {
             onRenameAlbum = { _, _ -> },
             onDeleteAlbum = {},
             onSelectAlbum = {},
+            onEnterAlbumSelection = { albumSelectionId = it },
+            onExitAlbumSelection = { albumSelectionId = null },
             onSelectFavourites = {},
             onCreateFolder = {},
             onUpdateCreateFolderBrowsingPath = {},
@@ -852,7 +1121,7 @@ class FolderListContentTest {
             getSelectedFoldersData = { emptyList() },
             onSelectMedia = {},
             onEnterMediaSelectionMode = {},
-            calendarContent = {}
+            calendarContent = calendarContent
         )
     }
 

@@ -889,6 +889,125 @@ class AlbumsViewModelTest {
         assertEquals(0, album.storedMembershipCount)
     }
 
+    @Test
+    fun `album selection starts empty and does not open Album Detail`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Trips")
+        advanceUntilIdle()
+        val albumId = viewModel.albums.value.single().id
+
+        assertNull(viewModel.albumSelectionId.value)
+
+        viewModel.enterAlbumSelection(albumId)
+
+        assertEquals(albumId, viewModel.albumSelectionId.value)
+        assertNull(viewModel.selectedAlbumId.value)
+    }
+
+    @Test
+    fun `exitAlbumSelection clears the selected album`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Trips")
+        advanceUntilIdle()
+        viewModel.enterAlbumSelection(viewModel.albums.value.single().id)
+
+        viewModel.exitAlbumSelection()
+
+        assertNull(viewModel.albumSelectionId.value)
+    }
+
+    @Test
+    fun `deleting the selected album clears album selection`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Trips")
+        advanceUntilIdle()
+        val albumId = viewModel.albums.value.single().id
+        viewModel.enterAlbumSelection(albumId)
+
+        viewModel.deleteAlbum(albumId)
+        advanceUntilIdle()
+
+        assertNull(viewModel.albumSelectionId.value)
+    }
+
+    @Test
+    fun `deleting another album keeps album selection`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Trips")
+        viewModel.createAlbum("Pets")
+        advanceUntilIdle()
+        val trips = viewModel.albums.value.first { it.name == "Trips" }.id
+        val pets = viewModel.albums.value.first { it.name == "Pets" }.id
+        viewModel.enterAlbumSelection(trips)
+
+        viewModel.deleteAlbum(pets)
+        advanceUntilIdle()
+
+        assertEquals(trips, viewModel.albumSelectionId.value)
+    }
+
+    @Test
+    fun `album selection clears when the album disappears from the store`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        viewModel.createAlbum("Trips")
+        advanceUntilIdle()
+        val albumId = viewModel.albums.value.single().id
+        viewModel.enterAlbumSelection(albumId)
+
+        store.deleteAlbum(albumId)
+        advanceUntilIdle()
+
+        assertNull(viewModel.albumSelectionId.value)
+    }
+
+    @Test
+    fun `opening an album clears album selection`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Trips")
+        viewModel.createAlbum("Pets")
+        advanceUntilIdle()
+        val trips = viewModel.albums.value.first { it.name == "Trips" }.id
+        val pets = viewModel.albums.value.first { it.name == "Pets" }.id
+        viewModel.enterAlbumSelection(trips)
+
+        viewModel.selectAlbum(pets)
+
+        assertNull(viewModel.albumSelectionId.value)
+        assertEquals(pets, viewModel.selectedAlbumId.value)
+    }
+
+    @Test
+    fun `leaving an album with null keeps album selection untouched`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Trips")
+        advanceUntilIdle()
+        val trips = viewModel.albums.value.single().id
+        viewModel.enterAlbumSelection(trips)
+
+        viewModel.selectAlbum(null)
+
+        assertEquals(trips, viewModel.albumSelectionId.value)
+        assertNull(viewModel.selectedAlbumId.value)
+    }
+
+    @Test
+    fun `cancelAlbumSelectionAndDetail clears album selection and the open album`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Trips")
+        viewModel.createAlbum("Pets")
+        advanceUntilIdle()
+        val trips = viewModel.albums.value.first { it.name == "Trips" }.id
+        val pets = viewModel.albums.value.first { it.name == "Pets" }.id
+        viewModel.selectAlbum(trips)
+        viewModel.enterAlbumSelection(pets)
+
+        viewModel.cancelAlbumSelectionAndDetail()
+
+        assertNull(viewModel.albumSelectionId.value)
+        assertNull(viewModel.selectedAlbumId.value)
+    }
+
     private fun AlbumsViewModel.album(albumId: Long): AlbumListItem =
         albums.value.first { it.id == albumId }
 

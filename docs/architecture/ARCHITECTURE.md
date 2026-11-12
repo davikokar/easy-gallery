@@ -52,10 +52,15 @@ grouping and selection machinery. Albums View joined them rather than becoming a
 **[ADR-0013](decisions/0013-albums-as-third-display-mode.md)**. Folder Detail View and Album
 Detail View are separate screens.
 
-The **view switcher** is a dropdown anchored on the top-bar title in `SearchTopBar`, listing
-`DisplayMode.entries` with a check mark on the current one. It replaced a single toggle icon,
-which could not express three states. Pressing back from Timeline or Albums View returns to
-Folders View rather than leaving the app.
+The **Main view bar** (`MainViewBar`) switches between those three modes: three tabs at the bottom of the
+screen, in the order Folders, Albums, Timeline — deliberately not `DisplayMode.entries` order. It
+is shown on all five main views, including during selection and search, and hidden on every other
+screen and on the Folder thumbnail picker; a tab tap cancels every selection and search and leaves
+any detail screen before switching. It replaced the title dropdown, which no longer exists, and the
+three main views' title is now the app's name beside its logo —
+**[ADR-0013](decisions/0013-albums-as-third-display-mode.md)** Amendment 2. Where it sits is in
+§4. Pressing back from Timeline or Albums View returns to Folders View rather than leaving the app,
+and tab taps add no history.
 
 > **Naming debt:** `FolderListScreen` and `CalendarGrid` predate the canonical names, and
 > `FolderListScreen` now hosts three views rather than two, which makes its name worse than it
@@ -216,7 +221,8 @@ There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 `MediaIndexLiveJoin`, `AutomaticAlbumFacets`, `MediaIndexDeltaDetection`,
 `MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`, `AlbumNaming`,
 `Favourites`) and in `ui/components/` helper files (`MediaDuration`, `ShareIntents`,
-`WallpaperIntents`) specifically so it can be unit tested on a plain JVM without Robolectric.
+`WallpaperIntents`, `MainViewBarRules`) specifically so it can be unit tested on a plain JVM
+without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
 the `AlbumMembership` precedent `MediaIndexReconciliation` follows.
 
@@ -230,6 +236,10 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
 - **`GalleryViewModel`** (`AndroidViewModel`) — the central state hub. It loads data,
   owns selection and file operations, and exposes the derived flows. It is the largest file in the
   app; prefer a new state holder or a feature ViewModel over adding to its body.
+  - `selectMainView(mode)` is its half of a Main view bar tab tap: it exits folder and media
+    selection, leaves Folder Detail View by `backToFolders()`, closes search in all five scopes
+    through `DisplayPreferencesState.closeAllSearches()`, clears Show excluded, and sets the
+    `DisplayMode`. The other halves are in `AlbumsViewModel` and `MainActivity` (§4).
   - `allMedia` starts as an `emptyList()` placeholder, so `isMediaLoaded` says whether it is real:
     false until `loadFolders()` has assigned the first result of `getAllMedia()`, never reset by a
     later reload, and still false if that first load throws. **Anything that must not read the
@@ -245,7 +255,11 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   Its one job is to keep the Room `Flow` out of the ViewModel body.
 - **`AlbumsViewModel`** — albums and their members. It observes `AlbumStore`, resolves stored
   memberships against the live media list it is handed, writes healed URIs and orphan flags back,
-  and owns `selectedAlbumId`. It also owns the `MediaStore.getVersion()` watermark that decides
+  and owns `selectedAlbumId` — the open Album Detail View — and `albumSelectionId`, the Album
+  long-pressed in Albums View's Album selection mode. The second was a `remember` inside
+  `FolderListContent` until the Main view bar, which must cancel it from `MainActivity`; a tab tap
+  clears both through `cancelAlbumSelectionAndDetail()`. It also owns the
+  `MediaStore.getVersion()` watermark that decides
   when a re-resolve is worth doing. It takes a `MediaIndexStore` and evaluates each album's stored
   rule through `AlbumRuleEvaluator`, publishing an `AlbumEvaluationStatus` per album:
   - **One join, shared.** It combines the index's `observeEvaluationProjection()` with the live
@@ -329,11 +343,19 @@ Top bars (`SearchTopBar`, `SelectionTopBar`, `MediaSelectionTopBar`, `ThumbnailP
 dialogs (`ColumnCountDialog`, `SortOptions`, `GroupByDialog`, `FilterMediaDialog`,
 `CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`), the `PreferenceScopeSelector`
 state holder those dialogs share for their draft-and-commit "apply only to this folder" target,
-media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `ZoomableImage`), and the Android-free
-helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, plus `MediaLocationUi` and
-`VideoPlaybackState`, which are Compose-bound).
+media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `ZoomableImage`), the **Main view
+bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
+helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, plus
+`MediaLocationUi` and `VideoPlaybackState`, which are Compose-bound).
 
-`SearchTopBar` also carries the view switcher described in §1.
+`MainViewBar` is stateless — it takes the selected tab and a tap callback — and draws its own fixed
+colours rather than theme roles. `MainViewBarRules` holds the pure decisions `MainActivity` makes
+about it: which screen the chain is showing, whether the bar shows there, which tab is selected,
+and each tab's `DisplayMode` (§4).
+
+`SearchTopBar` no longer carries a view switcher and takes no `DisplayMode`. Its `showAppIcon`
+flag draws the app's logo before the title, which `FolderListContent` sets on the three main views;
+the detail screens leave it off.
 
 ### App entry points
 
@@ -346,7 +368,8 @@ helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, plus `MediaLocatio
   worker's collaborators over the index singleton — `createMediaIndexTierABatchIndexer()` and
   `createMediaIndexPlaceResolver()`, the latter loading the gazetteer through `GazetteerAssets`.
 - **`MainActivity`** — hosts the Compose tree, checks media permissions, and registers the
-  `IntentSender` launchers for scoped-storage delete/write requests and for favourite writes.
+  `IntentSender` launchers for scoped-storage delete/write requests and for favourite writes. It
+  also composes the Main view bar beneath the navigation chain (§4).
 - **`LocaleHelper`** — persists the BCP-47 language tag and wraps a `Context` with it via
   `createConfigurationContext`.
 
@@ -358,17 +381,19 @@ Navigation is a plain `if / else if` chain in `MainActivity` — **no Navigation
 stack.** The order is:
 
 ```
-selectedMedia != null        → FullImageScreen          (outside the state holder)
-  else, inside SaveableStateProvider(screenKey):
-    isManageExcludedMode     → ManageExcludedScreen
-    isSettingsMode           → SettingsScreen
-    selectedFolder != null   → FolderDetailScreen
-    selectedAlbumId != null  → AlbumDetailScreen
-    isFavouritesSelected     → AlbumDetailScreen        (isFavouritesAlbum = true)
-    newAlbumInitialName != null → NewAlbumScreen
-    newAutomaticAlbumOpen    → NewAutomaticAlbumScreen
-    hasPermission            → FolderListScreen
-    else                     → PermissionDeniedScreen
+selectedMedia != null        → FullImageScreen          (outside the state holder; no Main view bar)
+  else, a Column of:
+    Box(weight 1f), inside SaveableStateProvider(screenKey):
+      isManageExcludedMode     → ManageExcludedScreen
+      isSettingsMode           → SettingsScreen
+      selectedFolder != null   → FolderDetailScreen
+      selectedAlbumId != null  → AlbumDetailScreen
+      isFavouritesSelected     → AlbumDetailScreen        (isFavouritesAlbum = true)
+      newAlbumInitialName != null → NewAlbumScreen
+      newAutomaticAlbumOpen    → NewAutomaticAlbumScreen
+      hasPermission            → FolderListScreen
+      else                     → PermissionDeniedScreen
+    MainViewBar                (only when shouldShowMainViewBar is true)
 ```
 
 Albums added two branches rather than a navigation library; the chain stays —
@@ -391,16 +416,45 @@ draft. Unlike the manual branch it carries no value, because the draft lives in
 `AutomaticAlbumPickerState` rather than in the Activity. Reachable only from Albums View, so its
 position is not load-bearing either.
 
+### The Main view bar
+
+The Main view bar is **not a branch** — it has no `screenKey` and adds none to the chain. It sits
+below and outside the `SaveableStateProvider`, so it stays composed while the screen above it
+changes, and the viewer branch renders neither the provider nor the bar —
+**[ADR-0013](decisions/0013-albums-as-third-display-mode.md)** Amendment 2, point 4.
+
+- **The chain's order is written three times.** The chain branches on the flags directly,
+  `screenKey`'s `when` maps them to a key, and `resolveShownScreen` in
+  `ui/components/MainViewBarRules.kt` maps the same flags, in the same order, to a `ShownScreen`.
+  Reordering one without the others still compiles, so keep all three in step. `shouldShowMainViewBar` and
+  `selectedMainViewTab` are derived from the `ShownScreen`. The selected tab follows the screen
+  rather than `displayMode` because the two can disagree after process death: `displayMode`
+  resets to Folders while `isFavouritesSelected` is restored.
+- **The bar owns the bottom inset.** It pads itself for the system bars' and display cutout's
+  bottom and horizontal insets, and while it shows, the `Box` above it consumes the bottom one so
+  the screen's `Scaffold` does not pay it twice. Screens shown without the bar still apply it
+  themselves.
+- **A tab tap has three halves**, run together whatever tab is tapped, the selected one included:
+  `GalleryViewModel.selectMainView` (§3), `AlbumsViewModel.cancelAlbumSelectionAndDetail()`, and
+  clearing `isFavouritesSelected` here. It writes no history; back behaves as it did before the
+  bar.
+
 Switching screens removes the previous one from composition, so a plain `remember` in a screen
 does **not** survive navigation. A `rememberSaveableStateHolder` in `MainActivity` retains each
 non-viewer screen's saveable state (lazy scroll position) under a `screenKey` that includes the
 folder path or album id — `folder_detail:$path`, `album_detail:$albumId`, the literal
 `album_detail:favourites`, `new_album`, and `new_automatic_album`.
 
+The three main views share one entry, `folder_list`. Inside it, `FolderListContent` nests a second
+`rememberSaveableStateHolder` keyed by `DisplayMode.name`, so each main view keeps its own grid
+and list scroll position across a tab switch, a detail screen, the viewer, and rotation. Before it,
+Folders View and Albums View shared one grid and one list state, and Timeline View lost its
+position whenever it left composition — ADR-0013 Amendment 2, point 8.
+
 `FullImageScreen` is deliberately rendered **outside** that provider, and `MainActivity` carries
 no `android:configChanges`. Both are required by
 **[ADR-0002](decisions/0002-viewmodel-owned-transient-viewer-state.md)** — read it before touching
-either. Albums left both untouched.
+either. Albums left both untouched, and so did the Main view bar.
 
 The `new_album` and `new_automatic_album` entries are the two keys `MainActivity` **removes** from
 the holder, each in a `LaunchedEffect` once its screen closes. Retention is right for a scroll
@@ -738,7 +792,8 @@ KSP.
   so its name is less accurate than when this entry was written, not more.
 - ~~**Back from Timeline View exited the app**, because the view switcher was a toggle with no
   notion of a home view.~~ Resolved when the switcher became a dropdown: back from Timeline or
-  Albums View now returns to Folders View.
+  Albums View now returns to Folders View. Still true since the dropdown was replaced by the Main
+  view bar on 2026-11-11, whose tab taps add no history.
 - **`SortType.DATE_TAKEN` reads the index for media, and not for folders or grouping.** The
   item-level sort was resolved at Stage 2 step 2.4: all four sites that sort media — Timeline View,
   Folder Detail View, Album Detail View and the New album screen — pass the index's projection into
@@ -917,6 +972,11 @@ KSP.
   Index now request's constraints and a real end-to-end worker run; `buildPeriodicRequest()` is
   verified by reading it. A later change could drop `setRequiresCharging` or `setRequiresDeviceIdle`
   and nothing would fail.
+- **The Main view bar's colours are fixed, not theme roles.** `MainViewBarContainer`,
+  `MainViewBarBorder`, `MainViewBarUnselected` and `MainViewBarIndicator` in `ui/theme/Color.kt`,
+  with `BrandBlue` and `BrandBlueLight` for the selected tab, will not follow a light theme or
+  dynamic colour. Accepted while the theme is dark-only —
+  [ADR-0013](decisions/0013-albums-as-third-display-mode.md) Amendment 2, point 9.
 - **Two user-facing strings are English-only.** `support_email_subject` and `error_no_email_app`
   exist in `values/` and in none of the other nine locales. They predate albums — added with the
   support-email feature — so they are not Stage 1 drift, but they break the rule in §9 and nothing

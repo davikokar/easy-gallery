@@ -351,6 +351,10 @@ below.
 - The checks in `AGENTS.md`'s definition of done pass.
 - Favourites and manual albums work end to end: create, rename, delete, add, remove.
 - Albums View and Album Detail View are reachable from the title dropdown (ADR-0013).
+  > **Note 2026-11-11.** True when this stage was marked Complete, and left as written because it
+  > records what was met. The title dropdown no longer exists: ADR-0013 Amendment 2 replaced it
+  > with the **Main view bar**, and Albums View is now reached from its Albums tab, Album Detail
+  > View from Albums View as before. Not a reopening of Stage 1.
 - Membership survives the ADR-0010 healing cases, with tests covering `_ID` change and the
   orphaned-not-deleted path.
 - **An album whose members are all orphaned reads as empty and waiting, never as a bug and never as

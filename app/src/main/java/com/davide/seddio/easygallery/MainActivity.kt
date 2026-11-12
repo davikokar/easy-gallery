@@ -18,8 +18,16 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +66,11 @@ import com.davide.seddio.easygallery.ui.FavouritesViewModel
 import com.davide.seddio.easygallery.ui.CreateFolderViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
 import com.davide.seddio.easygallery.ui.MediaIndexingViewModel
+import com.davide.seddio.easygallery.ui.components.MainViewBar
+import com.davide.seddio.easygallery.ui.components.resolveShownScreen
+import com.davide.seddio.easygallery.ui.components.selectedMainViewTab
+import com.davide.seddio.easygallery.ui.components.shouldShowMainViewBar
+import com.davide.seddio.easygallery.ui.components.toDisplayMode
 import com.davide.seddio.easygallery.ui.theme.EasyGalleryTheme
 
 class MainActivity : ComponentActivity() {
@@ -171,6 +184,8 @@ class MainActivity : ComponentActivity() {
                     val shouldOfferManageMediaRationale by favouritesViewModel.shouldOfferManageMediaRationale.collectAsState()
                     val isManageExcludedMode by viewModel.isManageExcludedMode.collectAsState()
                     val isSettingsMode by viewModel.isSettingsMode.collectAsState()
+                    val displayMode by viewModel.displayMode.collectAsState()
+                    val isThumbnailPickerMode by viewModel.isThumbnailPickerMode.collectAsState()
                     val selectedFolderPath = selectedFolder?.path
                     var isFavouritesSelected by rememberSaveable { mutableStateOf(false) }
                     var mediaPendingAddToAlbum by remember { mutableStateOf(emptyList<com.davide.seddio.easygallery.data.MediaItem>()) }
@@ -216,6 +231,20 @@ class MainActivity : ComponentActivity() {
                         hasPermission -> "folder_list"
                         else -> "permission_denied"
                     }
+                    val shownScreen = resolveShownScreen(
+                        isMediaOpen = selectedMedia != null,
+                        isManageExcludedMode = isManageExcludedMode,
+                        isSettingsMode = isSettingsMode,
+                        hasSelectedFolder = selectedFolder != null,
+                        hasSelectedAlbum = selectedAlbumId != null,
+                        isFavouritesSelected = isFavouritesSelected,
+                        isNewAlbumOpen = newAlbumInitialName != null,
+                        isNewAutomaticAlbumOpen = newAutomaticAlbumOpen,
+                        hasPermission = hasPermission
+                    )
+                    val showMainViewBar = shouldShowMainViewBar(shownScreen, isThumbnailPickerMode)
+                    val mainViewBarInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
+                        .only(WindowInsetsSides.Bottom)
 
                     // The holder retains a key's state after its screen leaves composition, which is
                     // what every other screen wants and the New album screen must not have: a second
@@ -248,100 +277,129 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     } else {
-                        saveableStateHolder.SaveableStateProvider(screenKey) {
-                            if (isManageExcludedMode) {
-                                BackHandler {
-                                    viewModel.setManageExcludedMode(false)
+                        // The bar sits below and outside the holder: it keeps no saveable state and stays
+                        // composed while the screen above it changes (ADR-0013 Amendment 2, point 4).
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .then(
+                                        // The bar owns the bottom inset; the screen's Scaffold must not pad for it too.
+                                        if (showMainViewBar) Modifier.consumeWindowInsets(mainViewBarInsets) else Modifier
+                                    ),
+                                propagateMinConstraints = true
+                            ) {
+                                saveableStateHolder.SaveableStateProvider(screenKey) {
+                                    if (isManageExcludedMode) {
+                                        BackHandler {
+                                            viewModel.setManageExcludedMode(false)
+                                        }
+                                        ManageExcludedScreen(viewModel)
+                                    } else if (isSettingsMode) {
+                                        BackHandler {
+                                            viewModel.setSettingsMode(false)
+                                        }
+                                        SettingsScreen(
+                                            viewModel = viewModel,
+                                            billingViewModel = billingViewModel,
+                                            mediaIndexingViewModel = mediaIndexingViewModel
+                                        )
+                                    } else if (selectedFolder != null) {
+                                        FolderDetailScreen(
+                                            viewModel = viewModel,
+                                            favouritesAvailable = favouritesAvailable,
+                                            favouriteUris = favouriteUris,
+                                            isFavouritePending = pendingFavouriteWriteRequest != null,
+                                            onToggleFavourites = favouritesViewModel::toggleFavourites,
+                                            onAddToAlbum = { media ->
+                                                mediaPendingAddToAlbum = media
+                                                showAddToAlbumDialog = true
+                                            }
+                                        )
+                                    } else if (selectedAlbumId != null) {
+                                        AlbumDetailScreen(
+                                            galleryViewModel = viewModel,
+                                            albumsViewModel = albumsViewModel,
+                                            favouritesAvailable = favouritesAvailable,
+                                            favouriteUris = favouriteUris,
+                                            isFavouritePending = pendingFavouriteWriteRequest != null,
+                                            onToggleFavourites = favouritesViewModel::toggleFavourites,
+                                            onAddToAlbum = { media ->
+                                                mediaPendingAddToAlbum = media
+                                                showAddToAlbumDialog = true
+                                            }
+                                        )
+                                    } else if (isFavouritesSelected) {
+                                        AlbumDetailScreen(
+                                            galleryViewModel = viewModel,
+                                            albumsViewModel = albumsViewModel,
+                                            favouritesAvailable = favouritesAvailable,
+                                            favouriteUris = favouriteUris,
+                                            isFavouritePending = pendingFavouriteWriteRequest != null,
+                                            isFavouritesAlbum = true,
+                                            favouriteMedia = allMedia.filter { it.uri in favouriteUris },
+                                            onBackFromFavourites = { isFavouritesSelected = false },
+                                            onToggleFavourites = favouritesViewModel::toggleFavourites,
+                                            onAddToAlbum = { media ->
+                                                mediaPendingAddToAlbum = media
+                                                showAddToAlbumDialog = true
+                                            }
+                                        )
+                                    } else if (newAlbumInitialName != null) {
+                                        NewAlbumScreen(
+                                            galleryViewModel = viewModel,
+                                            albumsViewModel = albumsViewModel,
+                                            initialName = newAlbumInitialName.orEmpty(),
+                                            onFinished = { newAlbumInitialName = null }
+                                        )
+                                    } else if (newAutomaticAlbumOpen) {
+                                        NewAutomaticAlbumScreen(
+                                            albumsViewModel = albumsViewModel,
+                                            onFinished = { newAutomaticAlbumOpen = false }
+                                        )
+                                    } else if (hasPermission) {
+                                        FolderListScreen(
+                                            viewModel = viewModel,
+                                            albumsViewModel = albumsViewModel,
+                                            createFolderViewModel = createFolderViewModel,
+                                            favouritesAvailable = favouritesAvailable,
+                                            favouriteUris = favouriteUris,
+                                            isFavouritePending = pendingFavouriteWriteRequest != null,
+                                            onToggleFavourites = favouritesViewModel::toggleFavourites,
+                                            onAddToAlbum = { media ->
+                                                mediaPendingAddToAlbum = media
+                                                showAddToAlbumDialog = true
+                                            },
+                                            onStartManualAlbum = {
+                                                newAlbumInitialName = albumsViewModel.suggestAlbumName()
+                                            },
+                                            onStartAutomaticAlbum = {
+                                                albumsViewModel.openAutomaticAlbumPicker()
+                                                newAutomaticAlbumOpen = true
+                                            },
+                                            onSelectFavourites = {
+                                                albumsViewModel.exitAlbumSelection()
+                                                isFavouritesSelected = true
+                                            }
+                                        )
+                                    } else {
+                                        PermissionDeniedScreen {
+                                            checkPermissions()
+                                        }
+                                    }
                                 }
-                                ManageExcludedScreen(viewModel)
-                            } else if (isSettingsMode) {
-                                BackHandler {
-                                    viewModel.setSettingsMode(false)
-                                }
-                                SettingsScreen(
-                                    viewModel = viewModel,
-                                    billingViewModel = billingViewModel,
-                                    mediaIndexingViewModel = mediaIndexingViewModel
-                                )
-                            } else if (selectedFolder != null) {
-                                FolderDetailScreen(
-                                    viewModel = viewModel,
-                                    favouritesAvailable = favouritesAvailable,
-                                    favouriteUris = favouriteUris,
-                                    isFavouritePending = pendingFavouriteWriteRequest != null,
-                                    onToggleFavourites = favouritesViewModel::toggleFavourites,
-                                    onAddToAlbum = { media ->
-                                        mediaPendingAddToAlbum = media
-                                        showAddToAlbumDialog = true
+                            }
+                            if (showMainViewBar) {
+                                MainViewBar(
+                                    selectedTab = selectedMainViewTab(shownScreen, displayMode),
+                                    onTabSelected = { tab ->
+                                        // Re-tapping the selected tab cancels too, and does not scroll (P4).
+                                        viewModel.selectMainView(tab.toDisplayMode())
+                                        albumsViewModel.cancelAlbumSelectionAndDetail()
+                                        isFavouritesSelected = false
                                     }
                                 )
-                            } else if (selectedAlbumId != null) {
-                                AlbumDetailScreen(
-                                    galleryViewModel = viewModel,
-                                    albumsViewModel = albumsViewModel,
-                                    favouritesAvailable = favouritesAvailable,
-                                    favouriteUris = favouriteUris,
-                                    isFavouritePending = pendingFavouriteWriteRequest != null,
-                                    onToggleFavourites = favouritesViewModel::toggleFavourites,
-                                    onAddToAlbum = { media ->
-                                        mediaPendingAddToAlbum = media
-                                        showAddToAlbumDialog = true
-                                    }
-                                )
-                            } else if (isFavouritesSelected) {
-                                AlbumDetailScreen(
-                                    galleryViewModel = viewModel,
-                                    albumsViewModel = albumsViewModel,
-                                    favouritesAvailable = favouritesAvailable,
-                                    favouriteUris = favouriteUris,
-                                    isFavouritePending = pendingFavouriteWriteRequest != null,
-                                    isFavouritesAlbum = true,
-                                    favouriteMedia = allMedia.filter { it.uri in favouriteUris },
-                                    onBackFromFavourites = { isFavouritesSelected = false },
-                                    onToggleFavourites = favouritesViewModel::toggleFavourites,
-                                    onAddToAlbum = { media ->
-                                        mediaPendingAddToAlbum = media
-                                        showAddToAlbumDialog = true
-                                    }
-                                )
-                            } else if (newAlbumInitialName != null) {
-                                NewAlbumScreen(
-                                    galleryViewModel = viewModel,
-                                    albumsViewModel = albumsViewModel,
-                                    initialName = newAlbumInitialName.orEmpty(),
-                                    onFinished = { newAlbumInitialName = null }
-                                )
-                            } else if (newAutomaticAlbumOpen) {
-                                NewAutomaticAlbumScreen(
-                                    albumsViewModel = albumsViewModel,
-                                    onFinished = { newAutomaticAlbumOpen = false }
-                                )
-                            } else if (hasPermission) {
-                                FolderListScreen(
-                                    viewModel = viewModel,
-                                    albumsViewModel = albumsViewModel,
-                                    createFolderViewModel = createFolderViewModel,
-                                    favouritesAvailable = favouritesAvailable,
-                                    favouriteUris = favouriteUris,
-                                    isFavouritePending = pendingFavouriteWriteRequest != null,
-                                    onToggleFavourites = favouritesViewModel::toggleFavourites,
-                                    onAddToAlbum = { media ->
-                                        mediaPendingAddToAlbum = media
-                                        showAddToAlbumDialog = true
-                                    },
-                                    onStartManualAlbum = {
-                                        newAlbumInitialName = albumsViewModel.suggestAlbumName()
-                                    },
-                                    onStartAutomaticAlbum = {
-                                        albumsViewModel.openAutomaticAlbumPicker()
-                                        newAutomaticAlbumOpen = true
-                                    },
-                                    onSelectFavourites = { isFavouritesSelected = true }
-                                )
-                            } else {
-                                PermissionDeniedScreen {
-                                    checkPermissions()
-                                }
                             }
                         }
                     }

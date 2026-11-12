@@ -530,6 +530,15 @@ class GalleryViewModel @JvmOverloads constructor(
         prefs.setDisplayMode(mode)
     }
 
+    // A tab tap cancels every selection and search before switching, so no view opens onto a stale one (ADR-0013 Amendment 2).
+    fun selectMainView(mode: DisplayMode) {
+        exitSelectionMode()
+        exitMediaSelectionMode()
+        backToFolders()
+        prefs.closeAllSearches()
+        setDisplayMode(mode)
+    }
+
     fun setShowExcludedTemporarily(show: Boolean) {
         _showExcludedTemporarily.value = show
     }

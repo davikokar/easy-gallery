@@ -11,3 +11,8 @@ val AppBackground = Color(0xFF05011F)
 val AppSurface = Color(0xFF0B1024)
 val AppSurfaceHigh = Color(0xFF171B33)
 val AppOutline = Color(0xFF8B93A8)
+
+val MainViewBarContainer = Color(0xFF111111)
+val MainViewBarBorder = Color(0xFF222222)
+val MainViewBarUnselected = Color(0xFF9CA3AF)
+val MainViewBarIndicator = BrandBlue.copy(alpha = 0.15f)

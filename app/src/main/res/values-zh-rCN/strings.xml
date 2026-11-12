@@ -132,7 +132,6 @@
     <string name="about_version">版本 %1$s</string>
     <string name="folders_title">文件夹</string>
     <string name="albums_title">相册</string>
-    <string name="cd_switch_view">切换视图</string>
     <string name="albums_empty">暂无相册</string>
     <string name="menu_new_album">新建相册</string>
     <plurals name="album_item_count">

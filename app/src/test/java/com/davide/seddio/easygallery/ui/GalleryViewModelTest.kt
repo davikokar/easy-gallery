@@ -1679,4 +1679,95 @@ class GalleryViewModelTest {
 
         filteredMediaJob.cancel()
     }
+
+    @Test
+    fun `selectMainView cancels folder selection`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.enterSelectionMode("/storage/emulated/0/Pictures")
+
+        viewModel.selectMainView(DisplayMode.TIMELINE)
+
+        assertFalse(viewModel.isSelectionMode.value)
+        assertTrue(viewModel.selectedFolders.value.isEmpty())
+    }
+
+    @Test
+    fun `selectMainView cancels media selection`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.enterMediaSelectionMode(createMediaItem(mockUri1, "/storage/emulated/0/Pictures"))
+
+        viewModel.selectMainView(DisplayMode.FOLDERS)
+
+        assertFalse(viewModel.isMediaSelectionMode.value)
+        assertTrue(viewModel.selectedMediaItems.value.isEmpty())
+    }
+
+    @Test
+    fun `selectMainView closes search in every scope and clears the queries`() = runTest {
+        val viewModel = createViewModel()
+        assertEquals(5, PreferenceScope.entries.size)
+        PreferenceScope.entries.forEach { scope ->
+            viewModel.setSearchActive(true, scope)
+            viewModel.setSearchQuery("beach", scope)
+        }
+
+        viewModel.selectMainView(DisplayMode.ALBUMS)
+
+        PreferenceScope.entries.forEach { scope ->
+            assertFalse("search active in $scope", viewModel.isSearchActive(scope).value)
+            assertEquals("query in $scope", "", viewModel.searchQuery(scope).value)
+        }
+    }
+
+    @Test
+    fun `selectMainView clears show excluded`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.setShowExcludedTemporarily(true)
+
+        viewModel.selectMainView(DisplayMode.FOLDERS)
+
+        assertFalse(viewModel.showExcludedTemporarily.value)
+    }
+
+    @Test
+    fun `selectMainView leaves Folder Detail and its thumbnail picker`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val folder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, folderPath))
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+        viewModel.selectFolder(folder)
+        viewModel.enterThumbnailPickerMode()
+
+        viewModel.selectMainView(DisplayMode.FOLDERS)
+
+        assertNull(viewModel.selectedFolder.value)
+        assertFalse(viewModel.isThumbnailPickerMode.value)
+    }
+
+    @Test
+    fun `selectMainView sets the display mode`() = runTest {
+        val viewModel = createViewModel()
+
+        DisplayMode.entries.forEach { mode ->
+            viewModel.selectMainView(mode)
+
+            assertEquals(mode, viewModel.displayMode.value)
+        }
+    }
+
+    @Test
+    fun `selectMainView on the current view still cancels selection and search`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.selectMainView(DisplayMode.TIMELINE)
+        viewModel.enterMediaSelectionMode(createMediaItem(mockUri1, "/storage/emulated/0/Pictures"))
+        viewModel.setSearchActive(true, PreferenceScope.TIMELINE)
+        viewModel.setSearchQuery("beach", PreferenceScope.TIMELINE)
+
+        viewModel.selectMainView(DisplayMode.TIMELINE)
+
+        assertEquals(DisplayMode.TIMELINE, viewModel.displayMode.value)
+        assertFalse(viewModel.isMediaSelectionMode.value)
+        assertFalse(viewModel.isSearchActive(PreferenceScope.TIMELINE).value)
+        assertEquals("", viewModel.searchQuery(PreferenceScope.TIMELINE).value)
+    }
 }

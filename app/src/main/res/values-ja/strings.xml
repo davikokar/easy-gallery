@@ -132,7 +132,6 @@
     <string name="about_version">バージョン %1$s</string>
     <string name="folders_title">フォルダ</string>
     <string name="albums_title">アルバム</string>
-    <string name="cd_switch_view">表示を切り替え</string>
     <string name="albums_empty">アルバムはまだありません</string>
     <string name="menu_new_album">新しいアルバム</string>
     <plurals name="album_item_count">

@@ -133,7 +133,6 @@
     <string name="about_version">Versão %1$s</string>
     <string name="folders_title">Pastas</string>
     <string name="albums_title">Álbuns</string>
-    <string name="cd_switch_view">Mudar visualização</string>
     <string name="albums_empty">Nenhum álbum ainda</string>
     <string name="menu_new_album">Novo álbum</string>
     <plurals name="album_item_count">

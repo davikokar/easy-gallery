@@ -133,7 +133,6 @@
     <string name="about_version">Versione %1$s</string>
     <string name="folders_title">Cartelle</string>
     <string name="albums_title">Album</string>
-    <string name="cd_switch_view">Cambia vista</string>
     <string name="albums_empty">Nessun album</string>
     <string name="menu_new_album">Nuovo album</string>
     <plurals name="album_item_count">

@@ -5,17 +5,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
@@ -27,17 +23,15 @@ import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
-import com.davide.seddio.easygallery.data.DisplayMode
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,10 +40,9 @@ fun SearchTopBar(
     title: String,
     searchQuery: String,
     isSearchActive: Boolean,
-    displayMode: DisplayMode? = null,
+    showAppIcon: Boolean = false,
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
-    onDisplayModeChange: ((DisplayMode) -> Unit)? = null,
     onSortClick: (() -> Unit)? = null,
     onColumnCountClick: (() -> Unit)? = null,
     onGroupByClick: (() -> Unit)? = null,
@@ -64,7 +57,6 @@ fun SearchTopBar(
     actions: @Composable (RowScope.() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    var showViewMenu by remember { mutableStateOf(false) }
 
     if (isSearchActive) {
         TopAppBar(
@@ -105,69 +97,24 @@ fun SearchTopBar(
     } else {
         TopAppBar(
             title = {
-                if (displayMode != null && onDisplayModeChange != null) {
-                    val switchViewDescription = stringResource(R.string.cd_switch_view)
-                    Box {
-                        Row(
-                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                if (showAppIcon) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_title_logo),
+                            contentDescription = null,
+                            // Asset carries alpha only; the cream is the app icon's own colour.
+                            tint = Color(0xFFF7EFDD),
                             modifier = Modifier
-                                .heightIn(min = 48.dp)
-                                .semantics { contentDescription = switchViewDescription }
-                                .clickable { showViewMenu = true }
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_title_logo),
-                                contentDescription = null,
-                                // Asset carries alpha only; the cream is the app icon's own colour.
-                                tint = Color(0xFFF7EFDD),
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .testTag("main_view_app_icon")
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = title,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                            )
-                            Icon(
-                                imageVector = Icons.Default.ExpandMore,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showViewMenu,
-                            onDismissRequest = { showViewMenu = false }
-                        ) {
-                            DisplayMode.entries.forEach { mode ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            when (mode) {
-                                                DisplayMode.FOLDERS -> stringResource(R.string.folders_title)
-                                                DisplayMode.TIMELINE -> stringResource(R.string.timeline_title)
-                                                DisplayMode.ALBUMS -> stringResource(R.string.albums_title)
-                                            }
-                                        )
-                                    },
-                                    trailingIcon = if (mode == displayMode) {
-                                        {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null
-                                            )
-                                        }
-                                    } else null,
-                                    onClick = {
-                                        showViewMenu = false
-                                        onDisplayModeChange(mode)
-                                    }
-                                )
-                            }
-                        }
+                                .size(24.dp)
+                                .testTag("main_view_app_icon")
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 } else {
                     Text(

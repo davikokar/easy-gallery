@@ -19,7 +19,7 @@ databases — albums (ADR-0009) and the media index (ADR-0018), which has no use
 yet. Read these before designing anything:
 
 1. `AGENTS.md` — tech stack, package layout, and the localisation rules you must design within.
-2. `.github/instructions/ui-vocabulary.instructions.md` — the canonical names for the three main
+2. `.github/instructions/ui-vocabulary.instructions.md` — the canonical names for the five main
    views and every screen, area, and control. Use them in your output; do not invent parallel
    vocabulary.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview, including why Folders View and

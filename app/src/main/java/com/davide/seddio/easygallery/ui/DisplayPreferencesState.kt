@@ -110,6 +110,10 @@ class DisplayPreferencesState(
         }
     }
 
+    fun closeAllSearches() {
+        PreferenceScope.entries.forEach { setSearchActive(false, it) }
+    }
+
     fun markSortUserDefined(scope: PreferenceScope) {
         val flow = sortUserDefined.getValue(scope)
         if (flow.value) return
