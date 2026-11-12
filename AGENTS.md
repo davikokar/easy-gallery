@@ -264,11 +264,30 @@ database is backed up (ADR-0014) while the index must not be.
 
 ### Strings and localisation
 
-- The app ships **10 locales**: `values/` (en) plus `ar`, `de`, `es`, `fr`, `it`, `ja`, `ko`,
-  `pt-rBR`, `zh-rCN`. Every new user-facing string goes into all ten in the same change, and a
-  string and its `R.string` reference must be added or deleted in the same change.
-- `<plurals>` forms are per-locale CLDR: `ar` has zero/one/two/few/many/other; `ja`/`ko`/`zh-rCN`
-  have only `other`; the rest have one/other.
+- **The shipped locales are `LocaleHelper.supportedLanguageTags`** — read the list there, not
+  from a document. `en` is `values/`; every other tag has one `values-*` folder, with a region
+  written `-r` (`values-pt-rBR`, `values-zh-rCN`). Every new user-facing string goes into every
+  shipped locale in the same change, and a string and its `R.string` reference must be added or
+  deleted in the same change.
+- **Indonesian is the tag `id` and the folder `values-in`.** Android rewrites `id` to the legacy
+  `in` before resource lookup, so a `values-id` folder builds cleanly and is never selected — the
+  UI silently falls back to English. `LocaleHelper` stores and shows `id`; only the folder says
+  `in`. `he`→`iw` and `yi`→`ji` work the same way if either is ever added. Lint does not run here
+  (*Running Gradle*), so the parity test below is the only thing that catches it.
+- `<plurals>` forms are per-locale CLDR integer categories, and the categories each locale's file
+  must carry are owned by `PLURAL_CATEGORIES` in `LocaleResourceParityTest` — read them there.
+  That map is deliberately not a verbatim copy of CLDR: it omits the `many` that current CLDR
+  gives some locales for exact millions, because the existing files never had one and Android
+  falls back to `other`. A new locale needs its entry in that map.
+- **`LocaleResourceParityTest` (unit) enforces all of the above**: a folder for every tag and a tag
+  for every folder, no legacy-code folder, the base's translatable string and plural keys with
+  none extra, each locale's exact plural categories, the base's placeholders, a count in every
+  plural item, and escaped apostrophes. It carries the suite's one allowlist:
+  `MISSING_IN_PRE_EXISTING` (`support_email_subject` and `error_no_email_app`) may be absent from
+  the folders in `PRE_EXISTING_FOLDERS`, the locales that predate those strings. That is known
+  debt, [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §11; delete both sets when the
+  strings are translated. `LocaleResolutionTest` (instrumented) checks on a device that every tag
+  resolves its own resources, and has no allowlist.
 - Never cache a localised string in anything that outlives `Activity.recreate()`. ViewModels
   resolve strings through `LocaleHelper.wrap(application).getString(...)` at point of use.
 - Format coordinates, durations, and anything parsed back by machine with `Locale.US`.

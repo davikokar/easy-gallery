@@ -101,8 +101,8 @@ its progress table — for the albums epic that is `docs/design/albums.md`. The 
 
 The file list per step is what the Orchestrator uses to decide what can run in parallel, so it
 must be accurate and complete. Call out files that several steps genuinely need to share — the
-10 `res/values*/strings.xml` files, `GalleryViewModel.kt`, and `MainActivity.kt` are the usual
-ones — so those steps are sequenced rather than run together.
+`res/values*/strings.xml` files (one per shipped locale; see `AGENTS.md`), `GalleryViewModel.kt`,
+and `MainActivity.kt` are the usual ones — so those steps are sequenced rather than run together.
 
 Do not plan a build/test step into the middle of parallel work. Verification runs once, over the
 integrated change, in its own final phase. Say in the plan **who owns the definition-of-done

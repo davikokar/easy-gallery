@@ -107,8 +107,8 @@ These coding principles are mandatory:
   lives on `EasyGalleryApp` — never construct a second. A schema change needs a version bump, a
   committed JSON under `app/schemas/`, and a migration; getting one wrong corrupts a user's data
   instead of failing the build.
-- Every new user-facing string lands in all 10 locales in the same change as its `R.string`
-  reference.
+- Every new user-facing string lands in every shipped locale (see `AGENTS.md`) in the same change
+  as its `R.string` reference.
 
 8. Modifications
 - When extending/refactoring, follow existing patterns.

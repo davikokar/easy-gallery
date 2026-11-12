@@ -16,9 +16,14 @@ object LocaleHelper {
     private const val PREFS_NAME = "app_settings"
     private const val KEY_LANGUAGE = "app_language"
 
-    /** BCP-47 language tags the app ships translations for. Empty tag = follow the system. */
+    /**
+     * BCP-47 language tags the app ships translations for, in picker order. Empty tag = follow the
+     * system. Indonesian is "id" here, but Android rewrites id to in before resource lookup, so its
+     * resource folder is values-in; a values-id folder would never be selected.
+     */
     val supportedLanguageTags: List<String> = listOf(
-        "en", "de", "es", "fr", "it", "pt-BR", "ar", "ko", "ja", "zh-CN"
+        "en", "de", "es", "fr", "id", "it", "pl", "pt-BR", "ro", "tr", "vi",
+        "uk", "ar", "th", "ko", "ja", "zh-CN"
     )
 
     fun getPersistedLanguageTag(context: Context): String {

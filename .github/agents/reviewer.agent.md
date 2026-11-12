@@ -73,9 +73,9 @@ Does the code conform to this repo's documented standards?
   than failing a build.
 - Testability: is pure logic in an Android-free file? An `android.*` call on a unit-tested path
   throws "not mocked" because the module does not set `isReturnDefaultValues`.
-- Localisation: is every new user-facing string in all 10 locales, with the right CLDR plural
-  forms per locale, and no unused keys left behind? Is anything machine-parsed formatted with
-  `Locale.US`?
+- Localisation: is every new user-facing string in every shipped locale (see `AGENTS.md`), with
+  the right CLDR plural forms per locale, and no unused keys left behind? Is anything
+  machine-parsed formatted with `Locale.US`?
 - Tests: does new logic have at least one test, and does it pin observable behaviour rather than
   implementation detail? Do instrumented tests pass every `*Content` parameter by name?
 - Gate and act on the same value: a menu item's enablement condition and its click handler must

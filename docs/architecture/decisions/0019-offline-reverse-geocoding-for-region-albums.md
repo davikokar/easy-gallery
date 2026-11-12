@@ -520,3 +520,24 @@ with nothing pending does not load the assets.
   statement and the "as is" disclaimer (re-read 2026-11-10)
 - <https://www.geonames.org/export/codes.html> — the feature codes the filter drops
 - <https://creativecommons.org/licenses/by/4.0/> — the licence the attribution cites
+
+## Amendment 2 — 2026-11-12 — The accepted limit covers the locales added since
+
+The app added seven locales on 2026-11-12 — `tr`, `pl`, `ro`, `uk`, `vi`, `th` and Indonesian
+(`id`) — and the shipped list is now `LocaleHelper.supportedLanguageTags`, not a number. This
+amendment restates what that does to Amendment 1. **The decision stands unchanged**: place and
+region names are still GeoNames' `name` form, country names are still localised by the platform,
+and no dataset step is added.
+
+- **The accepted limit (Amendment 1 §4) now also covers `uk` and `th`.** Ukrainian is written in
+  Cyrillic and Thai in its own script, so those users, like `ar`, `ja`, `ko` and `zh-rCN` users,
+  read Latin-script place and region names inside localised UI. Accepted for the same reason as
+  before: the alternative is a dataset step of unmeasured size against a budget already spoken
+  for. `tr`, `pl`, `ro`, `vi` and `id` are written in Latin script and add nothing new to the limit.
+- **"All ten locales" in the Decision and in Amendment 1 §4 and §8 reads as every shipped locale.**
+  The Place data row's strings are in every one, and `LocaleResourceParityTest` fails if any locale
+  lacks them.
+- **The upgrade path got more expensive, not cheaper.** Amendment 1 §4 recorded localised names
+  from `alternateNamesV2`, filtered to the shipped languages, as the path not adopted. Each added
+  language enlarges that filtered extract. Its size is still unmeasured, and adopting it is still a
+  new decision on the size budget.

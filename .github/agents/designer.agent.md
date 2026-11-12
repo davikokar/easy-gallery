@@ -52,7 +52,7 @@ You are a subagent and start with no memory of earlier phases. Spend the time to
 - Every control you specify needs a `contentDescription` on the same modifier chain as its
   `clickable`/`IconButton`, not on the drawn child. This is both accessibility and the only way
   the control can be verified in an instrumented test.
-- The app ships in 10 locales. Any new string must fit in all of them; keep labels short and say
+- Any new string must fit in every shipped locale (see `AGENTS.md`); keep labels short and say
   so when one has a tight width budget. A leading icon in a dropdown costs roughly 36dp of label
   width.
 - Navigation is a plain branch chain with no back stack, and switching views drops the previous

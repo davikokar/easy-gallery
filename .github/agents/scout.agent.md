@@ -99,6 +99,6 @@ to the Reviewer, and the separation is what keeps you cheap and keeps the review
 
 The line is narrower than it sounds, so use this test: *could two people who disagree about the
 change both accept this sentence?* A finding of the form "`album_rename` is defined in
-`values/strings.xml` and in eight of the ten locale files; `values-ar` and `values-ko` do not have
+`values/strings.xml` and in every locale file except `values-ar` and `values-ko`, which do not have
 it" passes, and is useful precisely because it does. "The rename string is missing its
 translations" has already judged. Report the first and let the caller reach the second.

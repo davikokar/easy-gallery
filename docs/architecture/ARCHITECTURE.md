@@ -401,7 +401,7 @@ the detail screens leave it off.
   `IntentSender` launchers for scoped-storage delete/write requests and for favourite writes. It
   also composes the Main view bar beneath the navigation chain (§4).
 - **`LocaleHelper`** — persists the BCP-47 language tag and wraps a `Context` with it via
-  `createConfigurationContext`.
+  `createConfigurationContext`. Its `supportedLanguageTags` is the list of shipped locales (§9).
 
 ---
 
@@ -769,9 +769,20 @@ routine bump.
 
 ## 9. Localisation
 
-The app ships **10 locales**: `values/` (en) plus `ar`, `de`, `es`, `fr`, `it`, `ja`, `ko`,
-`pt-rBR`, `zh-rCN`. A new user-facing string lands in all ten in the same change as its
-`R.string` reference.
+The shipped locales are `LocaleHelper.supportedLanguageTags`: `en` in `values/`, and one
+`values-*` folder for each other tag. A new user-facing string lands in every shipped locale in the
+same change as its `R.string` reference. `AGENTS.md` *Strings and localisation* owns the rules —
+folder naming, plural categories per locale — and is not restated here.
+
+**Indonesian's folder is `values-in`, not `values-id`.** The tag stays `id`, which is what
+`LocaleHelper` persists and the language picker shows, but Android rewrites `id` to the legacy `in`
+before resource lookup. A `values-id` folder compiles and is never selected.
+
+Two tests hold the folders and the tag list together. `LocaleResourceParityTest`, a plain-JVM unit
+test, parses every `values*/strings.xml` against the base and against `supportedLanguageTags`.
+`LocaleResolutionTest`, instrumented, resolves a string through `LocaleHelper.wrap` for every tag
+on a device and fails on any that falls back to English — the one check that observes the `id`→`in`
+rewrite rather than reasoning about it.
 
 The language override is per-app and independent of the device language, applied through
 `LocaleHelper.wrap` / `createConfigurationContext`. Two consequences follow:
@@ -1033,7 +1044,11 @@ KSP.
   with `BrandBlue` and `BrandBlueLight` for the selected tab, will not follow a light theme or
   dynamic colour. Accepted while the theme is dark-only —
   [ADR-0013](decisions/0013-albums-as-third-display-mode.md) Amendment 2, point 9.
-- **Two user-facing strings are English-only.** `support_email_subject` and `error_no_email_app`
-  exist in `values/` and in none of the other nine locales. They predate albums — added with the
-  support-email feature — so they are not Stage 1 drift, but they break the rule in §9 and nothing
-  will catch them. (`support_email_address` is `translatable="false"` and is correct as it is.)
+- **Two user-facing strings are English-only in nine locales.** `support_email_subject` and
+  `error_no_email_app` exist in `values/` and in every locale added since, but not in the nine that
+  predate them: `ar`, `de`, `es`, `fr`, `it`, `ja`, `ko`, `pt-rBR` and `zh-rCN`. They predate albums
+  — added with the support-email feature — so they are not Stage 1 drift, but they break the rule in
+  §9. `LocaleResourceParityTest` allowlists exactly those two keys in exactly those nine folders, so
+  nothing fails today and any other missing key would. Translate them and delete the allowlist
+  together.
+  (`support_email_address` is `translatable="false"` and is correct as it is.)

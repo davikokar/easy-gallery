@@ -235,8 +235,8 @@ project lock, and the resulting failure is indistinguishable from a real build f
 
 Parallelism in this repo pays off less than the rules above suggest. It is a single Gradle
 module, and a typical feature touches `GalleryViewModel`, a screen, a `*Content` composable, a
-component, a test, and ten `strings.xml` files at once. If splitting a phase produces tasks that
-share files, the honest answer is one sequential task, not two coordinated ones.
+component, a test, and every shipped locale's `strings.xml` at once. If splitting a phase produces
+tasks that share files, the honest answer is one sequential task, not two coordinated ones.
 
 ## File Conflict Prevention
 
@@ -247,7 +247,7 @@ When delegating parallel tasks, you MUST explicitly scope each agent to specific
 These are touched by many otherwise-unrelated changes. Two tasks that both need one of them must
 be sequential:
 
-- `app/src/main/res/values*/strings.xml` — all 10 locales; any new user-facing string
+- `app/src/main/res/values*/strings.xml` — every shipped locale (see `AGENTS.md`); any new user-facing string
 - `app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt` — almost any state change
 - `app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt` — any new destination, since
   navigation is a branch chain there

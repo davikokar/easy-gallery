@@ -43,6 +43,10 @@ The module does **not** set `isReturnDefaultValues`, so in a plain JUnit test **
 - Anything locale-sensitive (coordinate formatting, durations) is pinned to `Locale.US`. Test it
   by setting the default locale to a comma-decimal locale such as Italy or Germany, and restore
   the previous default in `@After`.
+- Resource files are checked here too, as files: `LocaleResourceParityTest` parses
+  `src/main/res/values*/strings.xml` relative to the module directory, Gradle's working directory
+  for unit tests, with no `Context` or Robolectric. Extend it, rather than adding a second
+  per-locale check, when a localisation rule changes.
 
 ### Robolectric tests (the Android boundary)
 
