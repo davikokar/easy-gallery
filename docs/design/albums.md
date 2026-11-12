@@ -1,9 +1,9 @@
 # Albums — epic design
 
-> **Status: Stage 1 complete; Stage 2 in progress.** Current state of every stage is in
+> **Status: Stages 1 and 2 complete; Stage 3 not started.** Current state of every stage is in
 > [§7](#7-staging-and-progress), which is the single source of truth for where this epic stands.
-> Stage 2's step-by-step plan, and the block telling the next session where to start, are in
-> [albums-stage-2.md](albums-stage-2.md).
+> Stage 2's step-by-step plan is archived at [albums-stage-2.md](albums-stage-2.md); its exit
+> criteria and their record are in §7.
 > This document is the product narrative for the albums epic. It holds the shape of the feature,
 > the decisions already taken, and the questions still open, so that none of it has to be
 > rediscovered. Binding technical decisions are recorded separately as ADRs in
@@ -24,10 +24,11 @@ Albums are the first data the app owns. That single change is larger than the al
 what makes this an epic rather than a feature. Stage 1 delivered it: a Room database, a membership
 model that heals, and a backup posture — ADRs 0009, 0010, and 0014.
 
-The second change is almost as large, and is still ahead: automatic albums require a **media
-index** — per-image facts computed in the background — and the app has no background infrastructure
-whatsoever. No WorkManager, no Service, no `ContentObserver`. It re-queries `MediaStore` only when
-the user does something.
+The second change was almost as large, and Stage 2 delivered it: automatic albums require a **media
+index** — per-image facts computed in the background — and the app had no background infrastructure
+whatsoever. No WorkManager, no Service, no `ContentObserver`. It re-queried `MediaStore` only when
+the user did something. The app now has a constrained WorkManager job, a Tier A index (§6) and
+region and time albums built on it; Tiers B and C are still ahead.
 
 ---
 
@@ -158,7 +159,9 @@ person. ML Kit detects but does not recognise.
 
 ### Region and time album
 The user picks an area and/or a date range. Needs no ML — only indexed EXIF location and date — but
-is still impossible without the index, for the reason in §6.
+is still impossible without the index, for the reason in §6. **Shipped in Stage 2.** Both are picked
+from what the index actually found, never typed (§8 decision 16), and a rule may combine them. The
+rule is set at creation and cannot be edited (§8 decision 26).
 
 ---
 
@@ -328,7 +331,7 @@ when every exit criterion holds — not when work starts feeling nearly done.
 |---|---|---|---|---|
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
-| **2** | The index (Tier A), background pipeline, region/time albums — planned in [albums-stage-2.md](albums-stage-2.md) | 🔶 **In progress** — since 2026-10-08 | yes | no |
+| **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
 | **3** | People albums | ⬜ Not started | Tier C | yes |
 | **4** | Content albums | ⬜ Not started | Tier B | yes |
 
@@ -385,15 +388,57 @@ below.
 > re-executed by the change that marked this stage Complete. Stage 2 can assume instrumented
 > tests are runnable; it should still check `adb devices` rather than assume a device is there.
 
-**Stage 2** — 🔶 in progress since 2026-10-08. Its exit criteria exist and are owned by
-[albums-stage-2.md](albums-stage-2.md), together with the step breakdown they are derived from;
-duplicating them here would create a second copy to keep true. They move into this section when the
-stage closes and that document is archived, so the record outlives the plan — what archiving a
-stage plan means is defined in the
-[architecture documentation instructions](../../.github/instructions/architecture-docs.instructions.md).
+**Stage 2** — ✅ declared complete by the maintainer 2026-11-12. The criteria moved here from
+[albums-stage-2.md](albums-stage-2.md) when that plan was archived; the step-by-step record of
+how each was met stays in that document. Steps 2.0–2.7 are all ✅.
+- The checks in `AGENTS.md`'s definition of done pass. *Last run on 2026-11-11 over the integrated
+  2.7 tree, on the Samsung SM-G990B (API 36), including the connected suite. **Not re-run by the
+  change that closed this stage**: commit `56126a6` (UI changes to folder, album and timeline
+  controls) landed after it, and `adb` was not available in the shell that closed the stage.*
+- Every step is ✅ with its own exit criteria met. *See the plan's step table.*
+- The index survives the non-happy-path cases. *No GPS: the coverage notices and the resolver's
+  "no coordinates" settled no-match (2.6, 2.7). Permission denied:
+  `MediaIndexingWorkerTest` — a missing media permission fails the run before any indexing starts,
+  so no watermark advances. Mid-scan cancellation: the same test class — a cancelled worker marks
+  the run cancelled, not failed. Never indexed: the waiting notice (2.5) and the Settings Media
+  index figures.*
+- An automatic album with an unevaluatable rule reads as explained-and-waiting, never as empty and
+  never as a bug, in Albums View and Album Detail View. *Compose-tested in both
+  (`AlbumDetailContentTest`, `FolderListContentTest`). **Not seen in the installed app**: only a
+  rule this build cannot read produces one, so it takes written data. Accepted as sufficient
+  because the state is reachable only by data.*
+- Region-album and date coverage is visible to the user. *Seen in the installed app at 2.7 —
+  §8 decision 25.*
+- The index database is excluded from backup and the album database is still included. *Checked
+  2026-11-12 against `backup_rules.xml` and both sections of `data_extraction_rules.xml`: the
+  index database with its `-wal` and `-shm` files and `media_index_run_state.xml` are excluded in
+  all three places, and no `<include>` exists.*
+- Both Room schemas are exported and committed. *`git ls-files app/schemas` lists the album
+  database's `1.json` and the index database's `1.json` to `4.json`, matching the directory.*
+- Every new user-facing string is in all ten locales. *Checked at 2.7; not recounted here.*
+- Stage 2's vocabulary has moved into the UI vocabulary instructions. *Done at 2.7.*
+- `ARCHITECTURE.md` describes everything that triggered it. *Discharged at 2.7's phase 6.*
+- **The Play Console restricted-permission declaration is confirmed done.** *Not verifiable from
+  the repository and not recorded as done by this change. It is the maintainer's own action in the
+  console, and must describe the **merged** manifest's final permission list — §10 question 6
+  and §9. Carried, not met.*
+- A documentation audit has passed. *`/docs-audit` was **not** run by the change that closed this
+  stage. Carried, not met.*
+
+> **What "complete" means for Stage 2, honestly stated.** The maintainer declared the stage
+> finished on 2026-11-12. Three of the criteria above are carried rather than evidenced — the
+> definition-of-done re-run after `56126a6`, the Play declaration, and the documentation audit —
+> which is a departure from this section's rule that a stage is Complete only when every line
+> holds. It is recorded as a departure so that it cannot pass as a clean close. The two that can be
+> run are owed before Stage 3's first deliverable lands, and the Play declaration before any release
+> that ships Stage 2.
 
 Exit criteria for Stages 3–4 are written when that stage is planned, not now; they depend on
 decisions the preceding stage will inform. Every stage carries the documentation-audit line.
+**The order of Stages 3 and 4 is open.** §8 decision 13 fixed region and time first and named
+people before content, but its reasoning was only about why region and time comes first. Which of
+the two ML stages follows is to be decided when the next stage is planned; if content goes first,
+the two rows are swapped and renumbered in the same change.
 
 ### Documentation audit
 
@@ -470,6 +515,7 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-10-08 | **Picker remediation, closing out the reshape above.** Review found that the reshape had left the picker's *folder* level inheriting Folders View's media-type filter, which is persisted — so a user who once filtered Folders View to images would never see a video-only folder in the picker again. `GalleryViewModel` gained `newAlbumFolders`, which runs the same `filterAndSortFolders` with an empty query and every media type while keeping that view's sort, pinning, exclusion and thumbnail overrides; a unit test now holds it against `filteredFolders`. The inherited *search* query stays, on the narrower argument that it is not persisted. Five smaller findings closed with it: the Create button renders a real disabled state and no longer advertises a click action while announcing itself disabled; instrumented tests now prove a blank or duplicate name creates nothing and check the Create button against the last row at both levels in both layouts; `AlbumsViewModel` takes an injected name formatter so `suggestAlbumName()` is unit-testable; and the album-name field uses a real `label` rather than a `contentDescription`. **236 unit tests and 76 instrumented tests** pass, the latter on the SM-G990B. ADR-0016 Amendment 1 carries the corrections, including that the reason it had recorded for accepting the folder filter did not hold. Stage 1 stays Complete: no exit criterion was broken. |
 | 2026-10-08 | **The New album screen's Create button made to float.** It had not been floating: the screen reserved an empty strip along the bottom of its body so the **Create album action** could never overlap anything, leaving a dead band of background above the button at every scroll position — including the top, where nothing needed clearing. The clearance moved into the lazy containers' `contentPadding`, which is the mechanism Albums View's **Add album button** already used; `FolderGrid`, `FolderList`, `MediaGrid`, `MediaList` and `GroupedMediaContent` each gained an optional `contentPadding` whose default reproduces their previous behaviour exactly, so no other call site changed. ADR-0016 and its Amendment 1 needed nothing: neither ever described the strip, and the decision they record is untouched. The bounds-comparing instrumented tests added by the remediation above had passed throughout, because they prove the last row can be scrolled clear of the button, not that the button floats — so the convention behind both controls was written into `ui-vocabulary.instructions.md`, where both are defined, rather than left to be rediscovered a third time. 236 unit tests and 76 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
 | 2026-10-08 | **Stage 2 started.** Step 2.0 landed: ADR-0017 (an automatic album's rule is a composable predicate), ADR-0018 (the media index is a second database, excluded from backup), and ADR-0019 (offline reverse geocoding for region albums) adopted, and the stage plan written at [albums-stage-2.md](albums-stage-2.md). No code; nothing user-visible. The stage's seven implementation steps and its exit criteria live in that document, and the rule for when a stage becomes In progress was clarified above to say that a binding decision counts as a deliverable. |
+| 2026-11-12 | **Stage 2 complete, with three criteria carried.** Steps 2.0–2.7 are done: the Tier A index in its own database (four schema versions, three migrations), the constrained WorkManager pipeline and Index now, delta detection, the offline gazetteer and place resolver, the evaluation engine, and region and time albums created from the **New automatic album** screen. The stage's exit criteria moved into §7 and [albums-stage-2.md](albums-stage-2.md) was archived; its open question about volume resync became §10 question 11. Declared complete by the maintainer; the definition-of-done re-run after `56126a6`, the Play Console declaration and the documentation audit are carried — see §7, *Stage 2*. |
 
 ### Who updates this
 
@@ -823,8 +869,8 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 - **Play policy.** `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` are now policy-restricted to declared
   use cases, and `MANAGE_MEDIA` is special access, which Stage 1 shipped. Stage 1 was meant to
   confirm the Play Console declaration before shipping and **no record exists that it was done** —
-  carry it into Stage 2 rather than assuming it. It is now a Stage 2 exit criterion in
-  [albums-stage-2.md](albums-stage-2.md), widened to cover `ACCESS_MEDIA_LOCATION`, which Stage 2
+  carry it into Stage 2 rather than assuming it. It was a Stage 2 exit criterion, carried
+  at that stage's close (§7), widened to cover `ACCESS_MEDIA_LOCATION`, which Stage 2
   makes load-bearing for a user-facing feature for the first time. **Whoever makes that declaration
   must read §10 question 6 first**: Stage 2 also put permissions into the merged manifest that the
   source manifest does not declare — WorkManager's, one of them since removed by §8 decision 24 —
@@ -1088,9 +1134,19 @@ Things this epic breaks or strains, which should surprise nobody when they come 
     count a picker entry shows stops being the number of members the album gets. **The maintainer
     may revisit it.** A change would alter that one live set for both readers in the same change,
     and would be a decision recorded here.
+11. **How often does a volume resync happen, and does attaching a secondary volume perturb the
+    primary volume's version?** — **Carried here 2026-11-12 from Stage 2's plan, still open.** A
+    resync is scoped to the volume whose version changed (§6, ADR-0020 clause 4), but scoping does
+    not make it cheap: on a device with no removable storage every row is on the primary volume, so
+    a primary version change re-opens every indexed file. What moves that version, and how often, is
+    unmeasured, and the pipeline now runs unattended. Whether a mount or unmount changes an
+    already-present volume's version is unknown because the only device available has no removable
+    storage; the code assumes neither answer and reconciliation refuses to treat an absent volume as
+    a deletion. **Do not close it by inference** — it needs a device with a card. Full text in
+    [albums-stage-2.md](albums-stage-2.md), *Open questions*, item 3.
 
-Questions scoped to a single stage live in that stage's plan — Stage 2's are in
-[albums-stage-2.md](albums-stage-2.md) — and only arrive here if they outlive it.
+Questions scoped to a single stage live in that stage's plan and only arrive here if they outlive
+it. Stage 2's plan is archived; its one live question is 11 above.
 
 ---
 

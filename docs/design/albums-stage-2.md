@@ -1,5 +1,10 @@
 # Albums Stage 2 — the index, the pipeline, and region/time albums
 
+> **Archived — Stage 2 closed 2026-11-12.** No longer maintained. The exit criteria and the record
+> of how they were met are in [albums.md](albums.md) §7; the live open question is §10 question 11.
+> *Next session starts here* below is the handoff as it stood at 2.7's close and is **not** a
+> to-do list: the close it describes happened with three criteria carried, as albums.md §7 records.
+
 > **Owner: Planner. Mode: routed.** This is a *stage plan*, not a description of the app. It exists
 > for the length of Stage 2 and is archived when the stage closes — what archiving means, and the
 > rest of the rules for this kind of document, are in
