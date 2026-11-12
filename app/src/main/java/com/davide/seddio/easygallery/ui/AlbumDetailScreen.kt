@@ -596,6 +596,8 @@ internal fun LocationCoverageNotice(
     testTag: String,
     announce: Boolean
 ) {
+    if (!locationCoverageNoticeVisible(coverage, locationAccessGranted)) return
+
     if (!locationAccessGranted) {
         AlbumNoticeBand(
             icon = Icons.Default.LocationOff,
@@ -603,14 +605,11 @@ internal fun LocationCoverageNotice(
             testTag = testTag,
             announce = announce
         )
-    } else if (coverage != null && coverage.withoutLocation > 0) {
+    } else {
+        val withoutLocation = coverage?.withoutLocation ?: 0
         AlbumNoticeBand(
             icon = Icons.Default.LocationOff,
-            text = pluralStringResource(
-                R.plurals.automatic_album_location_coverage,
-                coverage.withoutLocation,
-                coverage.withoutLocation
-            ),
+            text = pluralStringResource(R.plurals.automatic_album_location_coverage, withoutLocation, withoutLocation),
             testTag = testTag,
             announce = announce
         )
@@ -623,18 +622,15 @@ internal fun DateCoverageNotice(
     testTag: String,
     announce: Boolean
 ) {
-    if (coverage != null && coverage.withoutDate > 0) {
-        AlbumNoticeBand(
-            icon = Icons.Default.EventBusy,
-            text = pluralStringResource(
-                R.plurals.automatic_album_date_coverage,
-                coverage.withoutDate,
-                coverage.withoutDate
-            ),
-            testTag = testTag,
-            announce = announce
-        )
-    }
+    if (!dateCoverageNoticeVisible(coverage)) return
+
+    val withoutDate = coverage?.withoutDate ?: 0
+    AlbumNoticeBand(
+        icon = Icons.Default.EventBusy,
+        text = pluralStringResource(R.plurals.automatic_album_date_coverage, withoutDate, withoutDate),
+        testTag = testTag,
+        announce = announce
+    )
 }
 
 @Composable

@@ -356,6 +356,7 @@ class MainActivity : ComponentActivity() {
                                     } else if (newAutomaticAlbumOpen) {
                                         NewAutomaticAlbumScreen(
                                             albumsViewModel = albumsViewModel,
+                                            mediaIndexingViewModel = mediaIndexingViewModel,
                                             onFinished = { newAutomaticAlbumOpen = false }
                                         )
                                     } else if (hasPermission) {

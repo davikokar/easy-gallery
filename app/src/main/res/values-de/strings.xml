@@ -177,6 +177,17 @@
     <string name="automatic_album_places_empty_for_date">Für das gewählte Datum wurden keine Orte gefunden</string>
     <string name="automatic_album_dates_empty">In deinen Fotos und Videos wurden keine Daten gefunden</string>
     <string name="automatic_album_dates_empty_for_place">Für den gewählten Ort wurden keine Fotos oder Videos mit Datum gefunden</string>
+    <plurals name="automatic_album_not_indexed_count">
+        <item quantity="one">%1$d Mediendatei ist noch nicht indexiert. Zum Indexieren tippen</item>
+        <item quantity="other">%1$d Mediendateien sind noch nicht indexiert. Zum Indexieren tippen</item>
+    </plurals>
+    <string name="automatic_album_status_area_title">Indexstatus</string>
+    <string name="action_expand">Ausklappen</string>
+    <string name="action_collapse">Einklappen</string>
+    <string name="state_expanded">Ausgeklappt</string>
+    <string name="state_collapsed">Eingeklappt</string>
+    <string name="automatic_album_index_running">Orte und Daten werden aus deinen Fotos und Videos gelesen.</string>
+    <string name="automatic_album_not_indexed_empty">Diese Liste füllt sich, sobald die Indexierung abgeschlossen ist.</string>
     <plurals name="automatic_album_location_coverage">
         <item quantity="one">%1$d Foto oder Video hat keinen nutzbaren Standort und wird in Ortsalben nicht berücksichtigt.</item>
         <item quantity="other">%1$d Fotos und Videos haben keinen nutzbaren Standort und werden in Ortsalben nicht berücksichtigt.</item>

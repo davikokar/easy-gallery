@@ -90,7 +90,12 @@ counts filtered by the other's choice — then writes one row whose `rule` holds
 membership rows. Nothing is written until Create.
 **[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)** Amendment 2 owns the
 screen and why it is a screen of its own; its draft and lists live in `AutomaticAlbumPickerState` (§3). A rule
-cannot be edited once written ([albums.md](../design/albums.md) §8 decision 26; §11).
+cannot be edited once written ([albums.md](../design/albums.md) §8 decision 26; §11). Each picker
+list opens with a collapsible **Status area** — a header over the **Index band** and that picker's
+coverage notice. The Index band is read from `MediaIndexingViewModel` rather than from the picker's
+state (§3) and is drawn only while a pass runs or some live media is not yet indexed; outside a pass
+it carries the not-yet-indexed figure Settings shows and offers Index now. It never starts indexing
+by itself ([albums.md](../design/albums.md) §8 decision 27).
 
 ---
 
@@ -133,7 +138,9 @@ run: Tier A extraction, then the **place resolve pass**, which fills the derived
 the coordinates Tier A stored, against the bundled gazetteer, and opens no media file. It is *read* by
 `MediaIndexDateTakenState`, a `GalleryViewModel` delegate that projects captured date-taken by media
 URI so `SortType.DATE_TAKEN` can sort by it; by `MediaIndexingViewModel`, which also schedules the
-work and reports progress and last-indexed state to the Settings screen; and by `AlbumsViewModel`,
+work and reports progress and last-indexed state to the Settings screen and, to the New automatic
+album screen's Index band, whether a pass is running and how many live items are not yet indexed;
+and by `AlbumsViewModel`,
 which evaluates automatic-album rules against it and counts the New automatic album screen's
 entries over the same data (§3).
 
@@ -149,7 +156,8 @@ silently stop updating after a batch until the next app open. This paragraph use
 All three read paths obey the same rule albums do — index keys resolved against live media in the
 ViewModel layer, never rendered straight from the database —
 **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)**. Date-taken sorting
-joins the projection onto the live media list it is already sorting, the Settings figures are
+joins the projection onto the live media list it is already sorting, `MediaIndexingViewModel`'s
+counts — the Settings figures, one of which is the Index band's not-yet-indexed count — are
 intersected with live media before they are counted, and rule evaluation joins index rows to live
 media through the shared `LiveMediaLookup` — so a deleted photo stops being counted, and leaves an
 automatic album, without waiting for a scan. That last join is built **once per emission** of the
@@ -313,16 +321,38 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
 - **`CreateFolderViewModel`** — the create-folder dialog's own state; emits a `folderCreated`
   event the host screen listens for. Precedent for a feature-scoped ViewModel.
 - **`BillingViewModel`** — the Google Play Billing client and the tip-jar purchase flow.
-- **`MediaIndexingViewModel`** — the Settings screen's Media index area: it schedules the periodic
+- **`MediaIndexingViewModel`** — the media index's state for two screens: the Settings screen's
+  Media index area and the New automatic album screen's Index band. It is Activity-scoped —
+  `MainActivity` holds the one instance and passes it to both — and it schedules the periodic
   job, starts "Index now", and combines run state, WorkManager's three-state liveness and the index
   projection into one UI state. The counts it publishes are **intersected with the live media
   list** it is handed, and it reports three separate figures — indexed with a date, indexed with no
-  date, not yet indexed — rather than one percentage, because they are incommensurable. Its live
-  list is **not** gated on `isMediaLoaded`; §11 says what that costs.
+  date, not yet indexed — rather than one percentage, because they are incommensurable. Settings
+  shows all three and is the only screen that measures progress. The picker reduces the same state
+  through the pure `automaticAlbumIndexBand()` in `AutomaticAlbumPickerState.kt` to `Running` while
+  liveness is `RUNNING`; otherwise to `NotIndexed`, carrying the not-yet-indexed figure, when that
+  figure is above zero; otherwise to `Hidden`, which draws nothing. `NotIndexed` also carries
+  whether nothing at all is indexed, which only `emptyListMayStillFill()` reads, to choose an empty
+  list's wording. Liveness `WAITING` counts as idle there and falls to whichever of the last two the
+  count gives. Settings does not fold it: the Media index area shows `WAITING` as a state of its
+  own, with a detail line saying what the work waits for. Both keep Index now available while
+  waiting, because only `RUNNING` disables it — the picker only while something is not yet
+  indexed, since otherwise it has no band to carry it.
+  Its live list is **not** gated on `isMediaLoaded`; §11 says what that costs.
 
 `AlbumsViewModel`, `FavouritesViewModel` and `MediaIndexingViewModel` are feature-scoped on that
 precedent, and `AutomaticAlbumPickerState` is a state holder inside the first rather than a fourth
-ViewModel, because its counts must read the albums' own join. `GalleryViewModel` gained no album
+ViewModel, because its counts must read the albums' own join. The Index band is the converse case:
+it is about the indexing job rather than the albums' join, so the screen reads
+`MediaIndexingViewModel` directly and the picker state holds nothing of it. The Status area around
+it keeps its state in the screen as well: whether it is expanded is one `rememberSaveable` flag in
+`NewAutomaticAlbumContent`, shared by both pickers and dropped with the screen's saved state when
+the screen closes, and whether it has a header at all comes from the pure
+`placeStatusAreaHasContent()` and `dateStatusAreaHasContent()` beside the reduction. Those build on
+`locationCoverageNoticeVisible()` and `dateCoverageNoticeVisible()`, which Album Detail View's
+coverage notices call too, so a header cannot stand over a notice that declined to draw. The flag
+does not follow the area's content, so an area collapsed, emptied and refilled comes back collapsed
+([albums.md](../design/albums.md) §8 decision 27). `GalleryViewModel` gained no album
 state and no indexing state; it still owns selection,
 media operations, and the viewer delegate, which Album Detail View reuses. What it gained for the
 index is one delegate, `MediaIndexDateTakenState`, because date-taken sorting is a property of the
@@ -688,7 +718,8 @@ apparent inconsistency with ADR-0010 in either direction; the two differ because
 user's choice and an index row is not.
 
 It is filled by `MediaIndexingWorker` under WorkManager and read by `MediaIndexDateTakenState` for
-`SortType.DATE_TAKEN`, by `MediaIndexingViewModel` for the Settings figures, and by
+`SortType.DATE_TAKEN`, by `MediaIndexingViewModel` for the Settings figures and the New automatic
+album screen's Index band, and by
 `AlbumsViewModel` for automatic-album evaluation and the picker's counts — see §2. Evaluation
 implements two clauses, `time` and `region`; the `region` clause reads the derived place columns
 and the resolver marker through the evaluation projection, and a row whose marker is not the
@@ -914,7 +945,7 @@ KSP.
   worked" — in a fourth place, and an `emptyList()` placeholder elsewhere will invite it again.
   Unit-tested only: the gate lives in the two composables, and nothing run on hardware exercises
   that forwarding.
-- **The Settings Media index figures read zero until media has loaded.** `MainActivity` forwards
+- **`MediaIndexingViewModel`'s figures read zero until media has loaded.** `MainActivity` forwards
   `allMedia` to `MediaIndexingViewModel.setLiveMedia` ungated. On a cold start the placeholder is a
   no-op — the ViewModel's live canonical-URI set already starts empty — but that empty set is the
   defect: it is read by one consumer only, the `uiState` combine that intersects index rows with
@@ -925,6 +956,31 @@ KSP.
   to the scheduler — and nothing derived from it is persisted, so it self-corrects when media
   arrives. Found by reading at step 2.5; not device-observed and not fixed. Gating the figures on
   `isMediaLoaded` is the obvious shape.
+  **The New automatic album screen's Index band reads the same state**, where zeros no longer
+  misstate anything: zero not yet indexed and no pass running is the band's absent form, so they
+  hide it. What they still cost there is the empty-list wording — with no pass running and nothing
+  flagged as unindexed, an empty picker list says nothing was found rather than that it fills in as
+  indexing finishes — and, on a picker whose coverage notice has nothing to show either, the whole
+  Status area. It is mitigated there rather than fixed: the band is drawn only once the picker is
+  ready, which needs `AlbumsViewModel`'s join, which is built only after `isMediaLoaded` (§3) — so
+  it never sees the placeholder, and if the first load throws the picker waits instead of showing a
+  band. The mitigation is the screen's, not the ViewModel's, and it does not cover what `uiState`
+  holds before its combine emits, in two cases. **First collection in a process:** the initial
+  value is all zeros and `IDLE`, which hides the band — no count, no Index now — and gives an
+  empty list the wording above. The
+  ready gate beats it **by timing, not by guarantee** — a first open reaches ready only after the
+  place-name file is read on a background thread, which in practice outlasts the combine's first
+  emission, but nothing orders the two. **Any later open:** `uiState` is shared
+  `WhileSubscribed(5_000)` with the default replay, so five seconds after its last collector leaves
+  the upstream stops and the last value is kept. The next collector — the band or Settings — is
+  handed that value until the combine re-emits, which needs all five of its sources to emit again;
+  the band can be hidden, or show an old not-yet-indexed count with Index now offered, and Settings
+  can show its old figures, while a periodic pass has since started. An Index now tapped then runs
+  beside that pass, which the index tolerates (§6).
+  The ready gate offers less here, because the names are already loaded and ready waits only for
+  the lists to be recomputed. Found by reading; not device-observed and not fixed. **Follow-up:** an
+  explicit "unknown" initial state, which neither screen reads as idle or as nothing to index,
+  closes both cases; `replayExpirationMillis = 0` alone would only turn the second into the first.
 - **The New album screen can open on an empty folder picker before media has loaded.** Its folder
   level reads `GalleryViewModel.newAlbumFolders`, which shows a spinner only while `allMedia` is
   empty **and** `uiState` is `Loading` — a test of emptiness, not of `isMediaLoaded`.

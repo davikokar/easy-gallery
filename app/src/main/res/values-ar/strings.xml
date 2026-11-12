@@ -189,6 +189,21 @@
     <string name="automatic_album_places_empty_for_date">لم يتم العثور على أماكن للتاريخ المحدد</string>
     <string name="automatic_album_dates_empty">لم يتم العثور على تواريخ في الصور ومقاطع الفيديو</string>
     <string name="automatic_album_dates_empty_for_place">لم يتم العثور على صور أو مقاطع فيديو بتاريخ للمكان المحدد</string>
+    <plurals name="automatic_album_not_indexed_count">
+        <item quantity="zero">لا توجد ملفات وسائط غير مفهرسة بعد. اضغط للفهرسة</item>
+        <item quantity="one">ملف وسائط واحد لم يُفهرس بعد. اضغط للفهرسة</item>
+        <item quantity="two">ملفا وسائط لم يُفهرسا بعد. اضغط للفهرسة</item>
+        <item quantity="few">%1$d ملفات وسائط لم تُفهرس بعد. اضغط للفهرسة</item>
+        <item quantity="many">%1$d ملف وسائط لم يُفهرس بعد. اضغط للفهرسة</item>
+        <item quantity="other">%1$d ملف وسائط لم يُفهرس بعد. اضغط للفهرسة</item>
+    </plurals>
+    <string name="automatic_album_status_area_title">حالة الفهرسة</string>
+    <string name="action_expand">توسيع</string>
+    <string name="action_collapse">طي</string>
+    <string name="state_expanded">موسّع</string>
+    <string name="state_collapsed">مطوي</string>
+    <string name="automatic_album_index_running">جارٍ قراءة الأماكن والتواريخ من صورك ومقاطع الفيديو.</string>
+    <string name="automatic_album_not_indexed_empty">ستمتلئ هذه القائمة عند اكتمال الفهرسة.</string>
     <plurals name="automatic_album_location_coverage">
         <item quantity="zero">%1$d عنصر من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
         <item quantity="one">صورة أو فيديو واحد بلا موقع صالح للاستخدام، وهو خارج ألبومات الأماكن.</item>

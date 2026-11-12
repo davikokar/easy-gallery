@@ -8,6 +8,7 @@ import com.davide.seddio.easygallery.data.CountryBreakdown
 import com.davide.seddio.easygallery.data.GazetteerNames
 import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
+import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import com.davide.seddio.easygallery.data.MediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.MonthFacet
 import com.davide.seddio.easygallery.data.PlaceFacet
@@ -145,6 +146,53 @@ data class AutomaticAlbumPickerUi(
     val rule: AlbumRule.Evaluatable?,
     val canCreate: Boolean
 )
+
+/** What the picker's Index band shows; Settings is the one surface that measures progress. */
+sealed interface AutomaticAlbumIndexBand {
+    /** Nothing to say: no media waits to be indexed and no pass is running. */
+    data object Hidden : AutomaticAlbumIndexBand
+
+    /** A pass is running, so Index now must offer no action: it would replace the pass. */
+    data object Running : AutomaticAlbumIndexBand
+
+    /** [count] live media are not indexed yet; [nothingIndexed] is true when no media at all is indexed. */
+    data class NotIndexed(val count: Int, val nothingIndexed: Boolean) : AutomaticAlbumIndexBand
+}
+
+/** WAITING is the normal idle state between periodic runs, so only RUNNING is "busy". */
+fun automaticAlbumIndexBand(state: MediaIndexingUiState): AutomaticAlbumIndexBand = when {
+    state.workStatus == MediaIndexingWorkStatus.RUNNING -> AutomaticAlbumIndexBand.Running
+    state.notYetIndexedCount > 0 -> AutomaticAlbumIndexBand.NotIndexed(
+        count = state.notYetIndexedCount,
+        nothingIndexed = state.indexedItemsCount == 0
+    )
+    else -> AutomaticAlbumIndexBand.Hidden
+}
+
+/** While true an empty list may still fill in, so it must not claim that no places or dates were found. */
+fun AutomaticAlbumIndexBand.emptyListMayStillFill(): Boolean = when (this) {
+    AutomaticAlbumIndexBand.Running -> true
+    is AutomaticAlbumIndexBand.NotIndexed -> nothingIndexed
+    AutomaticAlbumIndexBand.Hidden -> false
+}
+
+/** Shared by the coverage notices and the Status area header, so the header never shows over nothing. */
+fun locationCoverageNoticeVisible(coverage: MediaIndexCoverage?, locationAccessGranted: Boolean): Boolean =
+    !locationAccessGranted || (coverage != null && coverage.withoutLocation > 0)
+
+fun dateCoverageNoticeVisible(coverage: MediaIndexCoverage?): Boolean =
+    coverage != null && coverage.withoutDate > 0
+
+/** Whether the Place picker's Status area has anything to show, and so whether it has a header. */
+fun placeStatusAreaHasContent(
+    band: AutomaticAlbumIndexBand,
+    coverage: MediaIndexCoverage?,
+    locationAccessGranted: Boolean
+): Boolean = band != AutomaticAlbumIndexBand.Hidden || locationCoverageNoticeVisible(coverage, locationAccessGranted)
+
+/** Whether the Date picker's Status area has anything to show, and so whether it has a header. */
+fun dateStatusAreaHasContent(band: AutomaticAlbumIndexBand, coverage: MediaIndexCoverage?): Boolean =
+    band != AutomaticAlbumIndexBand.Hidden || dateCoverageNoticeVisible(coverage)
 
 /**
  * The New automatic album screen's draft and what it lists. Owned by `AlbumsViewModel`, which hands

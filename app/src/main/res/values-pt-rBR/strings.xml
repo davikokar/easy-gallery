@@ -177,6 +177,17 @@
     <string name="automatic_album_places_empty_for_date">Nenhum lugar encontrado para a data escolhida</string>
     <string name="automatic_album_dates_empty">Nenhuma data encontrada nas suas fotos e vídeos</string>
     <string name="automatic_album_dates_empty_for_place">Nenhuma foto ou vídeo com data encontrado para o lugar escolhido</string>
+    <plurals name="automatic_album_not_indexed_count">
+        <item quantity="one">%1$d arquivo de mídia ainda não está indexado. Toque para indexar</item>
+        <item quantity="other">%1$d arquivos de mídia ainda não estão indexados. Toque para indexar</item>
+    </plurals>
+    <string name="automatic_album_status_area_title">Status do índice</string>
+    <string name="action_expand">Expandir</string>
+    <string name="action_collapse">Recolher</string>
+    <string name="state_expanded">Expandido</string>
+    <string name="state_collapsed">Recolhido</string>
+    <string name="automatic_album_index_running">Lendo os lugares e as datas das suas fotos e vídeos.</string>
+    <string name="automatic_album_not_indexed_empty">Esta lista será preenchida quando a indexação terminar.</string>
     <plurals name="automatic_album_location_coverage">
         <item quantity="one">%1$d foto ou vídeo não tem uma localização utilizável e fica fora dos álbuns de lugares.</item>
         <item quantity="other">%1$d fotos e vídeos não têm uma localização utilizável e ficam fora dos álbuns de lugares.</item>

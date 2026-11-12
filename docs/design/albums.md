@@ -252,7 +252,8 @@ This is the distinction that keeps the feature from becoming a battery problem:
 | Where | WorkManager, constrained | `viewModelScope`, on demand |
 
 **Indexing** runs under WorkManager, constrained to charging, device idle, and battery not low. No
-network constraint — nothing leaves the device. A manual **"Index now"** in Settings runs the same
+network constraint — nothing leaves the device. A manual **"Index now"** — in Settings, and in the
+New automatic album screen's pickers while some media is not yet indexed (§8 decision 27) — runs the same
 batch on demand, and runs it *expedited* **only on the API levels where the platform grants that
 without a foreground service and a notification**; below them it runs as ordinary one-time work, and
 the worker never runs as a foreground service. That was a holding position while §10 question 2 was
@@ -773,8 +774,11 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     no app-open index pass; the coverage notices and the Incomplete-album notice carry the honesty.
 
 23. **Indexing shows no notification; its progress is in-app only.** Decided by the maintainer on
-    2026-11-10, answering §10 question 2. Progress and last-indexed state stay in the Settings
-    screen's Media index area, and the app does not request `POST_NOTIFICATIONS`. Two properties of
+    2026-11-10, answering §10 question 2. Progress and last-indexed state stay ~~in the Settings
+    screen's Media index area~~ **in-app** — Settings' Media index area holds the figures that
+    measure progress and the last-indexed state, and the New automatic album screen shows, outside a
+    pass, the not-yet-indexed figure Settings also shows, and during one only that it is running
+    (decision 27) — and the app does not request `POST_NOTIFICATIONS`. Two properties of
     step 2.4 that were provisional while the question was open are now decided: "Index now" runs as
     expedited work only where the platform grants that without a foreground service and a
     notification — API 31+ — and as ordinary one-time work below it; and the worker has no
@@ -784,6 +788,14 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     below API 31. It also keeps the app-open index pass of decision 22 off the table. **Not decided
     by this:** whether the `FOREGROUND_SERVICE` permission WorkManager merges in can be removed; that
     was §10 question 6, since answered by decision 24, which keeps it.
+
+    **Amended 2026-11-12, a detail only.** The struck phrase put all in-app progress in Settings;
+    decision 27 added a second in-app place that says where indexing stands. What this decision
+    settled is unchanged — no notification, no `POST_NOTIFICATIONS`, no foreground service — and so
+    is the narrower rule that progress is *measured* only in Settings. The picker shows one of
+    Settings' figures, the count of live media not yet indexed, and only outside a pass, so it never
+    shows a pass advancing. This amendment first said the picker showed no figure at all; the
+    maintainer's change to decision 27 the same day made that untrue, and these sentences replaced it.
 
 24. **Of the four permissions WorkManager merges in, `ACCESS_NETWORK_STATE` is removed and
     `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and `FOREGROUND_SERVICE` are kept.** Decided by the
@@ -828,7 +840,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     prevent there. Album Detail View is where the album is looked at afterwards. A tile or row is a
     poor home: the tile is a fixed square whose notice already ellipsizes at large font scales, and
     a library-wide figure repeated on every tile says one thing many times; the status notices stay
-    there because they are per album. Settings is the one progress surface (§6), and a coverage
+    there because they are per album. ~~Settings is the one progress surface (§6)~~ **Settings is
+    the one surface that measures indexing progress**, and a coverage
     figure beside the indexing figures would read as progress. **The counts are library-wide**
     because a per-album version cannot be computed: a photo with no coordinates has no region it
     could be missing from. **Never pending, never "yet"**, because §6's closing paragraph rules that
@@ -837,6 +850,17 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     because without `ACCESS_MEDIA_LOCATION` extraction stores no location at all, so a count would
     blame the photos for the app's missing access; what happens to those rows after a later grant is
     §10 question 9.
+
+    **Amended 2026-11-12, a detail only.** "The one progress surface" stopped being literally true
+    when decision 27 put an Index band in the picker, beside these notices. The intent survives in a
+    narrower form: progress is still measured only in Settings, and the one indexing figure the
+    picker shows — the count not yet indexed, outside a pass — is Settings' own, so there is still
+    one set of indexing figures. A coverage count does now sit beside it; decision 27 records that
+    as an accepted cost and how the two are kept apart. In the picker the notices now sit inside a
+    collapsible Status area, which lets the user put them away but does not change where they
+    appear. The struck citation of §6 also overstated it: §6 asks that a surface say what it counts,
+    not that there be only one. This amendment first said the band carried no count; the
+    maintainer's change to decision 27 the same day made that untrue, and these sentences replaced it.
 
 26. **An automatic album's rule cannot be edited in Stage 2 step 2.7.** Decided by the maintainer
     on 2026-11-11. The rule is set at creation; rename, add, remove and delete work on an automatic
@@ -848,6 +872,58 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     Creation alone delivers the stage's goal. **The cost:** a wrong rule is fixed by deleting the
     album and creating it again, losing its manual additions and exclusions. Adding editing later is
     a decision of its own, and any editor inherits the never-rewrite rule.
+
+27. **The New automatic album screen offers Index now while media is not yet indexed, says how
+    many items that is, and never starts indexing by itself.** Requested by the maintainer, and in
+    this form decided by the maintainer on 2026-11-12, replacing details first settled in planning —
+    see *Why the maintainer changed it* below. Landed 2026-11-12, after Stage 2 closed; Stage 2's
+    status is unchanged. Decisions 23 and 25 were amended in place for it.
+    - **What.** Each picker list, at every drill level, opens with a collapsible **Status area**: a
+      header, then the **Index band**, then that picker's coverage notice — location on the Place
+      picker, date on the Date picker. The Index band has three forms. **Not indexed:** outside a
+      pass, when X — the live media not yet indexed, the same figure Settings' Media index area
+      shows — is above zero, an icon-only Index now beside a text giving X as not indexed yet, the
+      whole row one button. **Running:** while a pass runs, a progress indicator and a
+      running text, with no count and no action. **Absent:** X is zero and no pass runs. The header
+      appears only when the area has something to show, judged by the same rules that decide
+      whether each coverage notice draws, so it never heads an empty area. One expanded flag serves
+      both pickers: it starts expanded, survives a tab switch, a drill and rotation, and resets
+      when the screen closes. While indexing may still fill an empty list — nothing is indexed yet,
+      or a pass is running — the list says so rather than that nothing was found.
+    - **What not.** No percentage and no progress: X is a plain count, measured against nothing.
+      Opening the screen starts nothing.
+
+    **Why.** The picker is where an index that has not reached the library is felt — as an empty
+    or short list — and before this the only Index now was in Settings, away from that moment.
+    **Never on open**, for decision 22's reasons: an index pass that a screen starts is the app-open
+    pass that decision rejected, moved one tap later. **No action while running**, because Index now
+    replaces a running Index now rather than leaving it alone, and Settings disables it in the same
+    state for the same reason. **An empty list that indexing may still fill does not say nothing
+    was found**, because that message over an unindexed library is ADR-0019's
+    working-feature-reads-as-broken failure. It may say the work has not happened, unlike decision
+    25's coverage wording, because here waiting — or tapping Index now — does change the answer.
+
+    **Why the maintainer changed it, 2026-11-12.** The first version, settled in planning and
+    awaiting confirmation, stated where indexing stood without any figure and offered Index now in
+    every state but running, "up to date" included. The maintainer replaced it the same day with
+    the form above. **A button that does nothing is noise**, so with nothing to index there is no
+    band and no button. **A count says how much is missing**, which a state word cannot. **The
+    accepted cost:** a "not yet indexed" count now sits beside the coverage notice's "no usable
+    location" count — the pairing the first version avoided because the two are incommensurable
+    and invite being added up. They are kept apart by wording, the band's count being work that
+    waits and saying "yet" while a coverage count is never pending and never says it (decision 25),
+    and by the band's count being the same figure Settings shows, so there is still one set of
+    indexing figures and progress is still measured only there. **The collapse** exists so that a
+    user who has read the area can put it away. This supersedes the planning-settled details —
+    state only, no count, Index now offered outside a pass even with nothing to index — and the
+    first version's state texts were removed with them.
+
+    **A consequence, recorded rather than changed.** The expanded flag does not follow the area's
+    content: an area collapsed by the user, emptied — the index catches up and no coverage notice
+    has anything to say — and refilled by new unindexed media comes back collapsed, with the new
+    count behind its header. **Not decided by this:** decision 22's gap between a new photo and its
+    album; the band makes the gap one tap shorter for a user who notices it, and closes it for
+    nobody else.
 
 ---
 

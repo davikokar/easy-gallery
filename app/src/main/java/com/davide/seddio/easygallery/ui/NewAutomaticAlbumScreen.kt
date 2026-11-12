@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,9 +29,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -72,6 +76,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -95,11 +100,13 @@ private const val TAB_DATE = 1
 @Composable
 fun NewAutomaticAlbumScreen(
     albumsViewModel: AlbumsViewModel,
+    mediaIndexingViewModel: MediaIndexingViewModel,
     onFinished: () -> Unit
 ) {
     val picker = albumsViewModel.automaticAlbumPicker
     val ui by picker.uiState.collectAsState()
     val albums by albumsViewModel.albums.collectAsState()
+    val indexingState by mediaIndexingViewModel.uiState.collectAsState()
 
     // Typed text is held here as well: a field fed only by a flow that hops threads drops keystrokes.
     var typedName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -120,6 +127,7 @@ fun NewAutomaticAlbumScreen(
 
     NewAutomaticAlbumContent(
         ui = ui.copy(name = name),
+        indexBand = automaticAlbumIndexBand(indexingState),
         isNameDuplicate = isNameDuplicate,
         onNameChange = {
             typedName = it
@@ -131,6 +139,7 @@ fun NewAutomaticAlbumScreen(
         onBrowseRegion = picker::browseRegion,
         onBrowseYear = picker::browseYear,
         onRetryLoadingNames = picker::retryLoadingNames,
+        onIndexNow = mediaIndexingViewModel::indexNow,
         onCreate = {
             ui.rule?.let { rule ->
                 if (albumsViewModel.createAutomaticAlbum(name, rule)) {
@@ -150,6 +159,7 @@ fun NewAutomaticAlbumScreen(
 @Composable
 fun NewAutomaticAlbumContent(
     ui: AutomaticAlbumPickerUi,
+    indexBand: AutomaticAlbumIndexBand,
     isNameDuplicate: Boolean,
     onNameChange: (String) -> Unit,
     onSelectRegion: (AlbumRuleClause.Region?) -> Unit,
@@ -158,11 +168,14 @@ fun NewAutomaticAlbumContent(
     onBrowseRegion: (String?) -> Unit,
     onBrowseYear: (Int?) -> Unit,
     onRetryLoadingNames: () -> Unit,
+    onIndexNow: () -> Unit,
     onCreate: () -> Unit,
     onCancel: () -> Unit
 ) {
     val locale = LocalConfiguration.current.locales[0]
     var selectedTab by rememberSaveable { mutableStateOf(TAB_PLACE) }
+    // One flag for both pickers, above every drill level's list state, so it survives tab and level changes.
+    var statusAreaExpanded by rememberSaveable { mutableStateOf(true) }
 
     val selection = ui.selection
     val isReady = ui.status == AutomaticAlbumPickerStatus.READY
@@ -337,6 +350,10 @@ fun NewAutomaticAlbumContent(
                         if (selectedTab == TAB_PLACE) {
                             PlaceTab(
                                 ui = ui,
+                                indexBand = indexBand,
+                                statusAreaExpanded = statusAreaExpanded,
+                                onToggleStatusArea = { statusAreaExpanded = !statusAreaExpanded },
+                                onIndexNow = onIndexNow,
                                 locale = locale,
                                 onSelectRegion = onSelectRegion,
                                 onBrowseCountry = onBrowseCountry,
@@ -345,6 +362,10 @@ fun NewAutomaticAlbumContent(
                         } else {
                             DateTab(
                                 ui = ui,
+                                indexBand = indexBand,
+                                statusAreaExpanded = statusAreaExpanded,
+                                onToggleStatusArea = { statusAreaExpanded = !statusAreaExpanded },
+                                onIndexNow = onIndexNow,
                                 locale = locale,
                                 onSelectTime = onSelectTime,
                                 onBrowseYear = onBrowseYear
@@ -551,6 +572,10 @@ private fun PickerTab(
 @Composable
 private fun PlaceTab(
     ui: AutomaticAlbumPickerUi,
+    indexBand: AutomaticAlbumIndexBand,
+    statusAreaExpanded: Boolean,
+    onToggleStatusArea: () -> Unit,
+    onIndexNow: () -> Unit,
     locale: Locale,
     onSelectRegion: (AlbumRuleClause.Region?) -> Unit,
     onBrowseCountry: (String?) -> Unit,
@@ -559,7 +584,11 @@ private fun PlaceTab(
     val browsedCountry = ui.selection.browsedCountry
     val browsedAdmin1 = ui.selection.browsedAdmin1
     val emptyText = stringResource(
-        if (ui.selection.time != null) R.string.automatic_album_places_empty_for_date else R.string.automatic_album_places_empty
+        when {
+            indexBand.emptyListMayStillFill() -> R.string.automatic_album_not_indexed_empty
+            ui.selection.time != null -> R.string.automatic_album_places_empty_for_date
+            else -> R.string.automatic_album_places_empty
+        }
     )
 
     // A new list state per level, so a drill-down opens at its top rather than at the parent's offset.
@@ -571,13 +600,22 @@ private fun PlaceTab(
             state = rememberLazyListState(),
             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
         ) {
-            item(key = "coverage") {
-                LocationCoverageNotice(
-                    coverage = ui.coverage,
-                    locationAccessGranted = ui.locationAccessGranted,
-                    testTag = "new_automatic_album_location_coverage",
-                    announce = false
-                )
+            if (placeStatusAreaHasContent(indexBand, ui.coverage, ui.locationAccessGranted)) {
+                item(key = "status-area") {
+                    StatusArea(
+                        band = indexBand,
+                        expanded = statusAreaExpanded,
+                        onToggleExpanded = onToggleStatusArea,
+                        onIndexNow = onIndexNow
+                    ) {
+                        LocationCoverageNotice(
+                            coverage = ui.coverage,
+                            locationAccessGranted = ui.locationAccessGranted,
+                            testTag = "new_automatic_album_location_coverage",
+                            announce = false
+                        )
+                    }
+                }
             }
 
             if (browsedCountry == null) {
@@ -705,13 +743,21 @@ private fun PlaceTab(
 @Composable
 private fun DateTab(
     ui: AutomaticAlbumPickerUi,
+    indexBand: AutomaticAlbumIndexBand,
+    statusAreaExpanded: Boolean,
+    onToggleStatusArea: () -> Unit,
+    onIndexNow: () -> Unit,
     locale: Locale,
     onSelectTime: (TimeSelection?) -> Unit,
     onBrowseYear: (Int?) -> Unit
 ) {
     val browsedYear = ui.selection.browsedYear
     val emptyText = stringResource(
-        if (ui.selection.region != null) R.string.automatic_album_dates_empty_for_place else R.string.automatic_album_dates_empty
+        when {
+            indexBand.emptyListMayStillFill() -> R.string.automatic_album_not_indexed_empty
+            ui.selection.region != null -> R.string.automatic_album_dates_empty_for_place
+            else -> R.string.automatic_album_dates_empty
+        }
     )
 
     key(browsedYear) {
@@ -722,12 +768,21 @@ private fun DateTab(
             state = rememberLazyListState(),
             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
         ) {
-            item(key = "coverage") {
-                DateCoverageNotice(
-                    coverage = ui.coverage,
-                    testTag = "new_automatic_album_date_coverage",
-                    announce = false
-                )
+            if (dateStatusAreaHasContent(indexBand, ui.coverage)) {
+                item(key = "status-area") {
+                    StatusArea(
+                        band = indexBand,
+                        expanded = statusAreaExpanded,
+                        onToggleExpanded = onToggleStatusArea,
+                        onIndexNow = onIndexNow
+                    ) {
+                        DateCoverageNotice(
+                            coverage = ui.coverage,
+                            testTag = "new_automatic_album_date_coverage",
+                            announce = false
+                        )
+                    }
+                }
             }
 
             if (browsedYear == null) {
@@ -789,6 +844,132 @@ private fun DateTab(
             }
         }
     }
+}
+
+// The header is always there; collapsed, the band and the coverage notice are not composed at all.
+@Composable
+private fun StatusArea(
+    band: AutomaticAlbumIndexBand,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    onIndexNow: () -> Unit,
+    coverageNotice: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("new_automatic_album_status_area")
+    ) {
+        StatusAreaHeader(expanded = expanded, onToggle = onToggleExpanded)
+        if (expanded) {
+            IndexBand(band = band, onIndexNow = onIndexNow)
+            coverageNotice()
+        }
+    }
+}
+
+@Composable
+private fun StatusAreaHeader(expanded: Boolean, onToggle: () -> Unit) {
+    val actionLabel = stringResource(if (expanded) R.string.action_collapse else R.string.action_expand)
+    val stateLabel = stringResource(if (expanded) R.string.state_expanded else R.string.state_collapsed)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .testTag("new_automatic_album_status_toggle")
+            .semantics { stateDescription = stateLabel }
+            .clickable(onClickLabel = actionLabel, role = Role.Button, onClick = onToggle)
+            .padding(start = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.automatic_album_status_area_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// Shows the plain count of media not yet indexed; progress is measured only in Settings.
+@Composable
+private fun IndexBand(band: AutomaticAlbumIndexBand, onIndexNow: () -> Unit) {
+    val rowModifier = Modifier
+        .fillMaxWidth()
+        .heightIn(min = 48.dp)
+        .testTag("new_automatic_album_index_now")
+
+    when (band) {
+        AutomaticAlbumIndexBand.Hidden -> Unit
+
+        // No click action: Index now would replace the running pass.
+        AutomaticAlbumIndexBand.Running -> IndexBandFrame {
+            Row(
+                modifier = rowModifier.semantics(mergeDescendants = true) {},
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp)
+                }
+                IndexBandText(text = stringResource(R.string.automatic_album_index_running))
+            }
+        }
+
+        is AutomaticAlbumIndexBand.NotIndexed -> IndexBandFrame {
+            Row(
+                modifier = rowModifier.clickable(
+                    onClickLabel = stringResource(R.string.settings_index_now),
+                    role = Role.Button,
+                    onClick = onIndexNow
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ManageSearch,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IndexBandText(
+                    text = pluralStringResource(R.plurals.automatic_album_not_indexed_count, band.count, band.count)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun IndexBandFrame(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 16.dp)
+            .testTag("new_automatic_album_index_band")
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun RowScope.IndexBandText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier
+            .weight(1f)
+            .padding(vertical = 8.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite }
+    )
 }
 
 // A row that opens a list: country, region or year.
