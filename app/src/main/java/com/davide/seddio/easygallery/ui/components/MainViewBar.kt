@@ -2,6 +2,7 @@ package com.davide.seddio.easygallery.ui.components
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -61,11 +63,15 @@ fun DisplayMode.toMainViewTab(): MainViewTab = when (this) {
     DisplayMode.TIMELINE -> MainViewTab.TIMELINE
 }
 
-/** Stateless: the caller derives [selectedTab] and decides what a tap does, including a re-tap. */
+/**
+ * Stateless: the caller derives [selectedTab] and decides what a tap does, including a re-tap.
+ * Settings is a button after the tabs, not a tab: it never shows as selected.
+ */
 @Composable
 fun MainViewBar(
     selectedTab: MainViewTab,
     onTabSelected: (MainViewTab) -> Unit,
+    onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -114,6 +120,13 @@ fun MainViewBar(
                 selected = selectedTab == MainViewTab.TIMELINE,
                 onTabSelected = onTabSelected
             )
+            MainViewBarItem(
+                icon = Icons.Filled.Settings,
+                label = R.string.settings_title,
+                tag = "main_view_settings_button",
+                selected = false,
+                actionModifier = Modifier.clickable(role = Role.Button, onClick = onSettingsClick)
+            )
         }
     }
 }
@@ -127,17 +140,34 @@ private fun RowScope.MainViewTabItem(
     selected: Boolean,
     onTabSelected: (MainViewTab) -> Unit
 ) {
+    MainViewBarItem(
+        icon = icon,
+        label = label,
+        tag = tag,
+        selected = selected,
+        actionModifier = Modifier.selectable(
+            selected = selected,
+            role = Role.Tab,
+            onClick = { onTabSelected(tab) }
+        )
+    )
+}
+
+@Composable
+private fun RowScope.MainViewBarItem(
+    icon: ImageVector,
+    @StringRes label: Int,
+    tag: String,
+    selected: Boolean,
+    actionModifier: Modifier
+) {
     Column(
         modifier = Modifier
             .weight(1f)
             .fillMaxHeight()
             .heightIn(min = 56.dp)
             .testTag(tag)
-            .selectable(
-                selected = selected,
-                role = Role.Tab,
-                onClick = { onTabSelected(tab) }
-            )
+            .then(actionModifier)
             .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

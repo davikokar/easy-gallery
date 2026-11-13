@@ -124,7 +124,6 @@ fun FolderDetailScreen(
             viewModel.commitFolderViewTypePreference(viewType, applyTarget)
         },
         onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
-        onSetSettingsMode = { viewModel.setSettingsMode(it) },
         onBackToFolders = { viewModel.backToFolders() },
         onToggleInfo = { viewModel.toggleInfo(scope) },
         onUpdateBrowsingPath = { viewModel.updateBrowsingPath(it) },
@@ -176,7 +175,6 @@ fun FolderDetailContent(
     onCommitGroupByPreference: (GroupByType, SortOrder, PreferenceApplyTarget) -> Unit,
     onCommitViewTypePreference: (ViewType, PreferenceApplyTarget) -> Unit,
     onSetShowExcludedTemporarily: (Boolean) -> Unit,
-    onSetSettingsMode: (Boolean) -> Unit,
     onBackToFolders: () -> Unit,
     onToggleInfo: () -> Unit,
     onUpdateBrowsingPath: (String) -> Unit,
@@ -275,7 +273,6 @@ fun FolderDetailContent(
                     onViewTypeClick = { showViewTypeDialog = true },
                     onChangeThumbnailClick = { onEnterThumbnailPickerMode() },
                     onShowExcludedClick = { onSetShowExcludedTemporarily(true) },
-                    onSettingsClick = { onSetSettingsMode(true) },
                     navigationIcon = {
                         IconButton(onClick = { onBackToFolders() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = Color.White)

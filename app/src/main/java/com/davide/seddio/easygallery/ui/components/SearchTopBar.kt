@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
@@ -52,7 +51,6 @@ fun SearchTopBar(
     onShowExcludedClick: (() -> Unit)? = null,
     onCreateFolderClick: (() -> Unit)? = null,
     onCreateAlbumClick: (() -> Unit)? = null,
-    onSettingsClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null
 ) {
@@ -274,19 +272,6 @@ fun SearchTopBar(
                                 }
                             )
                         }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.settings_title)) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = null
-                                )
-                            },
-                            onClick = {
-                                showMenu = false
-                                onSettingsClick?.invoke()
-                            }
-                        )
                     }
                 }
             },

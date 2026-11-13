@@ -177,7 +177,6 @@ fun FolderListScreen(
         onSetViewType = { viewModel.setViewType(it, activeScope) },
         onSetSelectedMediaTypes = { viewModel.setSelectedMediaTypes(it, activeScope) },
         onSetShowExcludedTemporarily = { viewModel.setShowExcludedTemporarily(it) },
-        onSetSettingsMode = { viewModel.setSettingsMode(it) },
         onSetCreateFolderDialogOpen = { createFolderViewModel.setDialogOpen(it) },
         onStartManualAlbum = onStartManualAlbum,
         onStartAutomaticAlbum = onStartAutomaticAlbum,
@@ -260,7 +259,6 @@ fun FolderListContent(
     onSetViewType: (ViewType) -> Unit,
     onSetSelectedMediaTypes: (Set<MediaType>) -> Unit,
     onSetShowExcludedTemporarily: (Boolean) -> Unit,
-    onSetSettingsMode: (Boolean) -> Unit,
     onSetCreateFolderDialogOpen: (Boolean) -> Unit,
     onStartManualAlbum: () -> Unit,
     onStartAutomaticAlbum: () -> Unit,
@@ -400,8 +398,7 @@ fun FolderListContent(
                     onFilterMediaClick = if (displayMode == DisplayMode.ALBUMS) null else { { showFilterDialog = true } },
                     onShowExcludedClick = if (displayMode == DisplayMode.ALBUMS) null else { { onSetShowExcludedTemporarily(true) } },
                     onCreateFolderClick = if (displayMode == DisplayMode.ALBUMS) null else { { onSetCreateFolderDialogOpen(true) } },
-                    onCreateAlbumClick = if (displayMode == DisplayMode.ALBUMS) { { showAlbumTypeDialog = true } } else null,
-                    onSettingsClick = { onSetSettingsMode(true) }
+                    onCreateAlbumClick = if (displayMode == DisplayMode.ALBUMS) { { showAlbumTypeDialog = true } } else null
                 )
             }
         },

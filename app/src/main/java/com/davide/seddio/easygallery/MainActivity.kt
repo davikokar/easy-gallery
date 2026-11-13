@@ -399,7 +399,8 @@ class MainActivity : ComponentActivity() {
                                         viewModel.selectMainView(tab.toDisplayMode())
                                         albumsViewModel.cancelAlbumSelectionAndDetail()
                                         isFavouritesSelected = false
-                                    }
+                                    },
+                                    onSettingsClick = { viewModel.setSettingsMode(true) }
                                 )
                             }
                         }

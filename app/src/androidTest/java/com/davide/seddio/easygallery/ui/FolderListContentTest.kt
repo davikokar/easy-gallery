@@ -1096,7 +1096,6 @@ class FolderListContentTest {
             onSetViewType = {},
             onSetSelectedMediaTypes = {},
             onSetShowExcludedTemporarily = {},
-            onSetSettingsMode = {},
             onSetCreateFolderDialogOpen = {},
             onStartManualAlbum = onStartManualAlbum,
             onStartAutomaticAlbum = onStartAutomaticAlbum,

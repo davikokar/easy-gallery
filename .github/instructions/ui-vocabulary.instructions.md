@@ -234,6 +234,10 @@ Shared parts:
   titles Folders, Albums and Timeline. Always in that order, which is not `DisplayMode` order. The
   selected tab has a tinted pill behind its icon and is exposed to accessibility as a selected
   tab. Tapping the selected tab still calls back.
+- **Main view bar Settings button** (tagged `main_view_settings_button`): The fourth, rightmost
+  item of the bar — a Settings icon over the Settings title. It is a button, not a tab: it never
+  shows as selected and opens the Settings screen. It replaced the Settings item in the **Browse
+  top bar**'s Overflow menu, which no longer has one.
 - The bar is **shown** on Folders View, Albums View, Timeline View, Folder Detail View, and
   Album Detail View (including Favourites), and stays visible during selection and search; a tab
   tap cancels both and switches. It is **hidden** on the Full-screen viewer, the Folder thumbnail

@@ -525,7 +525,6 @@ class FolderDetailContentTest {
             onCommitGroupByPreference = { _, _, _ -> },
             onCommitViewTypePreference = { _, _ -> },
             onSetShowExcludedTemporarily = {},
-            onSetSettingsMode = {},
             onBackToFolders = {},
             onToggleInfo = {},
             onUpdateBrowsingPath = {},

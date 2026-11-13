@@ -41,6 +41,7 @@ class MainViewBarTest {
     private val folders = "main_view_tab_folders"
     private val albums = "main_view_tab_albums"
     private val timeline = "main_view_tab_timeline"
+    private val settings = "main_view_settings_button"
 
     private fun string(id: Int): String =
         InstrumentationRegistry.getInstrumentation().targetContext.getString(id)
@@ -51,7 +52,7 @@ class MainViewBarTest {
     @Test
     fun tabsAreOrderedFoldersAlbumsTimeline() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {})
+            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
         }
 
         composeTestRule.onNodeWithTag("main_view_bar").assertIsDisplayed()
@@ -63,7 +64,7 @@ class MainViewBarTest {
     fun tabsAreMirroredInRightToLeft() {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {})
+                MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
             }
         }
 
@@ -74,7 +75,7 @@ class MainViewBarTest {
     @Test
     fun tabsShowTheirExistingTitles() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {})
+            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
         }
 
         composeTestRule.onNodeWithTag(folders).assertTextEquals(string(R.string.folders_title))
@@ -86,7 +87,7 @@ class MainViewBarTest {
     fun onlyTheSelectedTabIsMarkedSelected() {
         var selected by mutableStateOf(MainViewTab.FOLDERS)
         composeTestRule.setContent {
-            MainViewBar(selectedTab = selected, onTabSelected = {})
+            MainViewBar(selectedTab = selected, onTabSelected = {}, onSettingsClick = {})
         }
 
         composeTestRule.onNodeWithTag(folders).assertIsSelected()
@@ -110,7 +111,7 @@ class MainViewBarTest {
     @Test
     fun tabsExposeTheTabRole() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {})
+            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
         }
 
         val isTab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
@@ -123,7 +124,7 @@ class MainViewBarTest {
     fun tappingEachTabReportsThatTab() {
         val taps = mutableListOf<MainViewTab>()
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = { taps += it })
+            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = { taps += it }, onSettingsClick = {})
         }
 
         composeTestRule.onNodeWithTag(timeline).performClick()
@@ -137,7 +138,7 @@ class MainViewBarTest {
     fun retappingTheSelectedTabStillCallsBack() {
         val taps = mutableListOf<MainViewTab>()
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.ALBUMS, onTabSelected = { taps += it })
+            MainViewBar(selectedTab = MainViewTab.ALBUMS, onTabSelected = { taps += it }, onSettingsClick = {})
         }
 
         composeTestRule.onNodeWithTag(albums).performClick()
@@ -149,7 +150,7 @@ class MainViewBarTest {
     @Test
     fun everyTabIsAtLeast48dpTall() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {})
+            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
         }
 
         listOf(folders, albums, timeline).forEach { tag ->
@@ -164,7 +165,7 @@ class MainViewBarTest {
             CompositionLocalProvider(
                 LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)
             ) {
-                MainViewBar(selectedTab = MainViewTab.TIMELINE, onTabSelected = { taps += it })
+                MainViewBar(selectedTab = MainViewTab.TIMELINE, onTabSelected = { taps += it }, onSettingsClick = {})
             }
         }
 
@@ -174,6 +175,33 @@ class MainViewBarTest {
         composeTestRule.onNodeWithTag(timeline).performClick()
 
         assertEquals(listOf(MainViewTab.TIMELINE), taps)
+    }
+
+    @Test
+    fun settingsButtonIsLastShowsSettingsTitleAndIsNotATab() {
+        var clicks = 0
+        composeTestRule.setContent {
+            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = { clicks++ })
+        }
+
+        composeTestRule.onNodeWithTag(settings).assertTextEquals(string(R.string.settings_title))
+        composeTestRule.onNodeWithTag(settings).assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        assertTrue(leftOf(timeline) < leftOf(settings))
+
+        composeTestRule.onNodeWithTag(settings).performClick()
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun settingsButtonDoesNotReportATab() {
+        val taps = mutableListOf<MainViewTab>()
+        composeTestRule.setContent {
+            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = { taps += it }, onSettingsClick = {})
+        }
+
+        composeTestRule.onNodeWithTag(settings).performClick()
+
+        assertTrue(taps.isEmpty())
     }
 
     @Test
