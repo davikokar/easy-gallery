@@ -1,9 +1,10 @@
 # Albums — epic design
 
-> **Status: Stages 1 and 2 complete; Stage 3 not started.** Current state of every stage is in
-> [§7](#7-staging-and-progress), which is the single source of truth for where this epic stands.
-> Stage 2's step-by-step plan is archived at [albums-stage-2.md](albums-stage-2.md); its exit
-> criteria and their record are in §7.
+> **Status: Stages 1 and 2 complete; Stage 4 (content) is planned and runs before Stage 3
+> (people).** Current state of every stage is in [§7](#7-staging-and-progress), which is the single
+> source of truth for where this epic stands. Stage 4's plan is [albums-stage-4.md](albums-stage-4.md);
+> Stage 2's is archived at [albums-stage-2.md](albums-stage-2.md), and its exit criteria and their
+> record are in §7.
 > This document is the product narrative for the albums epic. It holds the shape of the feature,
 > the decisions already taken, and the questions still open, so that none of it has to be
 > rediscovered. Binding technical decisions are recorded separately as ADRs in
@@ -85,6 +86,15 @@ must be stored distinctly, or every re-evaluation resurrects the photo the user 
 
 ## 4. The four kinds
 
+> **How the user sees them — §8 decision 27, 2026-11-13.** The user sees two kinds of album,
+> Manual and Automatic, and Favourites. Content, people, region and time are **not** separate album
+> kinds to the user: they are **criteria** of one automatic album, mixed freely on the **New
+> automatic album** screen. "Castles in Italy, 2024" is content + place + date; "Silvia and Davide
+> in France, 2025" is people + place + date. Every chosen criterion must hold — ADR-0017's
+> conjunction. The subsections below keep their historical names because other documents cite
+> them; read *Content album*, *People album* and *Region and time album* as the three families of
+> criterion an automatic album can carry.
+
 ### Manual album
 The user names it and picks the items. No rule, no index, no ML.
 
@@ -152,16 +162,26 @@ The user types a description — "castles" — and the album collects matching p
 open-vocabulary image–text matching (embedding the query and the images into a shared space), not
 a fixed-label classifier. ML Kit's image labelling cannot answer arbitrary words.
 
+**Free text only** (§8 decision 28): the user types the description, and no keywords are suggested.
+It is the one criterion that is typed rather than picked. It combines with place and date, and
+later with people. Planned as Stage 4 in [albums-stage-4.md](albums-stage-4.md), which carries the
+model, runtime and matching questions.
+
 ### People album
 The user picks one or more people and the album collects photos of them. Requires face detection
 *and* recognition: detection finds faces, embeddings and clustering decide which faces are the same
 person. ML Kit detects but does not recognise.
 
+**Picking several people means all of them are in the photo** (§8 decision 29). "Silvia or Davide"
+is not expressible. How a person gets a name, and where that name lives when face data is excluded
+from backup and the albums are not, is open — §10 question 12.
+
 ### Region and time album
 The user picks an area and/or a date range. Needs no ML — only indexed EXIF location and date — but
 is still impossible without the index, for the reason in §6. **Shipped in Stage 2.** Both are picked
-from what the index actually found, never typed (§8 decision 16), and a rule may combine them. The
-rule is set at creation and cannot be edited (§8 decision 26).
+from what the index actually found, never typed (§8 decision 16), and a rule may combine them. In
+Stage 2 the rule is set at creation and cannot be edited (§8 decision 26); Stage 4 adds editing
+(§8 decision 30).
 
 ---
 
@@ -333,11 +353,14 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **3** | People albums | ⬜ Not started | Tier C | yes |
-| **4** | Content albums | ⬜ Not started | Tier B | yes |
+| **4** | Content albums (Tier B) and rule editing — **runs before Stage 3**; planned in [albums-stage-4.md](albums-stage-4.md) | ⬜ Not started — plan drafted 2026-11-13 | Tier B | yes |
+| **3** | People albums — after Stage 4 | ⬜ Not started | Tier C | yes |
 
 Status is one of ⬜ Not started · 🔶 In progress · ✅ Complete. Stages 3 and 4 are each roughly the
-size of 0–2 combined.
+size of 0–2 combined. **The rows are in execution order, and the numbers were deliberately not
+swapped**: ADRs 0009, 0013, 0014, 0016, 0017, 0018 and 0020 say "Stage 3" for people and "Stage 4"
+for content, and an ADR is never edited to follow a renumbering. §8 decision 13's amendment says
+why content goes first.
 
 ### Exit criteria
 
@@ -392,10 +415,11 @@ below.
 **Stage 2** — ✅ declared complete by the maintainer 2026-11-12. The criteria moved here from
 [albums-stage-2.md](albums-stage-2.md) when that plan was archived; the step-by-step record of
 how each was met stays in that document. Steps 2.0–2.7 are all ✅.
-- The checks in `AGENTS.md`'s definition of done pass. *Last run on 2026-11-11 over the integrated
-  2.7 tree, on the Samsung SM-G990B (API 36), including the connected suite. **Not re-run by the
-  change that closed this stage**: commit `56126a6` (UI changes to folder, album and timeline
-  controls) landed after it, and `adb` was not available in the shell that closed the stage.*
+- The checks in `AGENTS.md`'s definition of done pass. *Re-run 2026-11-13 over `2b23e16`, the tree
+  after every post-2.7 commit, with documentation-only edits on top. `adb devices` listed the
+  SM-G990B (API 36). Results: `compileDebugKotlin` passed; 797 unit tests passed with no failures
+  or skips; `compileDebugAndroidTestKotlin` passed; and `connectedDebugAndroidTest` passed 224 of
+  224.*
 - Every step is ✅ with its own exit criteria met. *See the plan's step table.*
 - The index survives the non-happy-path cases. *No GPS: the coverage notices and the resolver's
   "no coordinates" settled no-match (2.6, 2.7). Permission denied:
@@ -423,23 +447,32 @@ how each was met stays in that document. Steps 2.0–2.7 are all ✅.
   the repository and not recorded as done by this change. It is the maintainer's own action in the
   console, and must describe the **merged** manifest's final permission list — §10 question 6
   and §9. Carried, not met.*
-- A documentation audit has passed. *`/docs-audit` was **not** run by the change that closed this
-  stage. Carried, not met.*
+- A documentation audit has passed. *Run 2026-11-13 against
+  [docs-audit.prompt.md](../../.github/prompts/docs-audit.prompt.md). It found two hard
+  findings, both fixed in the same change:
+  - `AGENTS.md` said WorkManager adds four permissions to the merged manifest, but the source
+    manifest removes one of them. The count was deleted.
+  - `coder.agent.md` said "three main views", where `ARCHITECTURE.md` says five. The count was
+    deleted.
+
+  It also found two nits in `ARCHITECTURE.md` §3, both fixed: `SortOptions` was listed as a
+  dialog, and `FavouriteIndicator` was missing. Not covered by this pass: `tests.instructions.md`
+  against the test code, and Stage 1's criteria one by one.*
 
 > **What "complete" means for Stage 2, honestly stated.** The maintainer declared the stage
-> finished on 2026-11-12. Three of the criteria above are carried rather than evidenced — the
-> definition-of-done re-run after `56126a6`, the Play declaration, and the documentation audit —
-> which is a departure from this section's rule that a stage is Complete only when every line
-> holds. It is recorded as a departure so that it cannot pass as a clean close. The two that can be
-> run are owed before Stage 3's first deliverable lands, and the Play declaration before any release
-> that ships Stage 2.
+> finished on 2026-11-12 with three criteria carried. Two were discharged on 2026-11-13: the
+> definition of done and the documentation audit, both recorded above. **One is still carried:
+> the Play Console declaration.** No agent can make or verify it. It is owed before any release
+> that ships Stage 2, and it is met when the maintainer records the outcome here. Until then, this
+> stage departs from the rule that a stage is Complete only when every line holds, and the
+> departure is stated rather than hidden.
 
-Exit criteria for Stages 3–4 are written when that stage is planned, not now; they depend on
-decisions the preceding stage will inform. Every stage carries the documentation-audit line.
-**The order of Stages 3 and 4 is open.** §8 decision 13 fixed region and time first and named
-people before content, but its reasoning was only about why region and time comes first. Which of
-the two ML stages follows is to be decided when the next stage is planned; if content goes first,
-the two rows are swapped and renumbered in the same change.
+**Stage 4** — ⬜ not started. Its exit criteria are **drafted** in
+[albums-stage-4.md](albums-stage-4.md) and become binding when its step 4.1 confirms them; they move
+here when that plan is archived.
+
+**Stage 3** — ⬜ not started. Exit criteria are written when it is planned, after Stage 4; they
+depend on decisions Stage 4 will inform. Every stage carries the documentation-audit line.
 
 ### Documentation audit
 
@@ -517,6 +550,7 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-10-08 | **The New album screen's Create button made to float.** It had not been floating: the screen reserved an empty strip along the bottom of its body so the **Create album action** could never overlap anything, leaving a dead band of background above the button at every scroll position — including the top, where nothing needed clearing. The clearance moved into the lazy containers' `contentPadding`, which is the mechanism Albums View's **Add album button** already used; `FolderGrid`, `FolderList`, `MediaGrid`, `MediaList` and `GroupedMediaContent` each gained an optional `contentPadding` whose default reproduces their previous behaviour exactly, so no other call site changed. ADR-0016 and its Amendment 1 needed nothing: neither ever described the strip, and the decision they record is untouched. The bounds-comparing instrumented tests added by the remediation above had passed throughout, because they prove the last row can be scrolled clear of the button, not that the button floats — so the convention behind both controls was written into `ui-vocabulary.instructions.md`, where both are defined, rather than left to be rediscovered a third time. 236 unit tests and 76 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
 | 2026-10-08 | **Stage 2 started.** Step 2.0 landed: ADR-0017 (an automatic album's rule is a composable predicate), ADR-0018 (the media index is a second database, excluded from backup), and ADR-0019 (offline reverse geocoding for region albums) adopted, and the stage plan written at [albums-stage-2.md](albums-stage-2.md). No code; nothing user-visible. The stage's seven implementation steps and its exit criteria live in that document, and the rule for when a stage becomes In progress was clarified above to say that a binding decision counts as a deliverable. |
 | 2026-11-12 | **Stage 2 complete, with three criteria carried.** Steps 2.0–2.7 are done: the Tier A index in its own database (four schema versions, three migrations), the constrained WorkManager pipeline and Index now, delta detection, the offline gazetteer and place resolver, the evaluation engine, and region and time albums created from the **New automatic album** screen. The stage's exit criteria moved into §7 and [albums-stage-2.md](albums-stage-2.md) was archived; its open question about volume resync became §10 question 11. Declared complete by the maintainer; the definition-of-done re-run after `56126a6`, the Play Console declaration and the documentation audit are carried — see §7, *Stage 2*. |
+| 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 27–30). |
 
 ### Who updates this
 
@@ -635,6 +669,21 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     all get built and shipped against a problem whose correctness can be checked by looking at a
     photo. Reordering to put people first would mean debugging the pipeline and the model at the
     same time, with no working example of either.
+
+    **Amended 2026-11-13 by the maintainer: content (Stage 4) now goes before people (Stage 3).**
+    The first sentence of this decision still holds. Only the order of the two ML stages changed,
+    and the original text gave no reason for that order. The same rehearsal argument now applies
+    one level up:
+    - Content builds what people also needs: an on-device model and runtime, model packaging,
+      inference inside the indexing worker, a Tier B table reached by a real migration, and
+      evaluation by vector comparison. It builds them on data whose mistakes are cheap.
+    - It carries none of decision 9's face-data obligations: the disclosure, the deletion switch
+      and the Data Safety check.
+    - Its UI is one more criterion on an existing screen, not a cluster naming, merging and
+      splitting surface.
+    - How people are named is still open (§10 question 12).
+
+    The stage numbers were kept, for the reason given under the §7 table.
 
 14. **An automatic album's rule is a composable predicate, not a bespoke set of columns**
     ([ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)). A rule is
@@ -871,7 +920,49 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     never-rewrite rule — which makes it a feature of its own rather than a variant of creation.
     Creation alone delivers the stage's goal. **The cost:** a wrong rule is fixed by deleting the
     album and creating it again, losing its manual additions and exclusions. Adding editing later is
-    a decision of its own, and any editor inherits the never-rewrite rule.
+    a decision of its own, and any editor inherits the never-rewrite rule. **That later decision
+    is 30**, taken 2026-11-13: editing ships in Stage 4. This decision stays true of Stage 2 as
+    shipped.
+
+27. **To the user, content, people, place and date are criteria of one automatic album, not four
+    album kinds.** Decided by the maintainer on 2026-11-13. The **New automatic album** screen that
+    Stage 2 built with Place and Date gains Content in Stage 4 and People in Stage 3, and any mix
+    can be chosen: "castles in Italy, 2024", "Silvia and Davide in France, 2025". **Why it fits
+    what is already built:** ADR-0017 stores a rule as a conjunction of typed clauses, chosen so
+    that "these two people, in Italy, in 2025" would fall out without a format change. ADR-0016's
+    split is between "pick the photos" and "describe what you want", and every criterion is part
+    of describing. **Consequence:** each ML stage adds a criterion to an existing screen. It does
+    not add an album type to the Album type dialog or a creation screen of its own. How the screen
+    holds three and then four criteria is a design question for Stage 4's plan.
+
+28. **The content criterion is free text only.** Decided by the maintainer on 2026-11-13. The
+    user types a description and no keywords are suggested. **It is the one exception to decision
+    16** (places and dates are picked, never typed). That decision's argument was specific to
+    places: picking from what the index found removes the need for a name→location lookup. A
+    content description has no finite list to pick from. Open-vocabulary matching is what §4 says
+    a content album is for, and suggestions would need a vocabulary nobody has chosen. **What it
+    obliges:**
+    - The user types in any shipped locale, so query quality must hold beyond English.
+    - The screen's live match count must equal the members the album will get, the consistency
+      Stage 2 step 2.7 required of the place and date counts.
+
+    How a typed description becomes a yes/no membership is Stage 4's open question, not settled
+    here.
+
+29. **Picking several people means all of them are in the photo.** Decided by the maintainer on
+    2026-11-13. It is the reading ADR-0017's conjunction already gives. "Silvia or Davide" is not
+    expressible, and adding it would be the `any` extension ADR-0017 leaves room for: a new ADR.
+    How the clause stores its people is Stage 3's to decide.
+
+30. **An automatic album's rule becomes editable in Stage 4.** Decided by the maintainer on
+    2026-11-13. This is the later decision that decision 26 said would be needed. **Why now:** with
+    three criteria, and a content match whose strictness can only be judged by looking at the
+    result, delete-and-recreate becomes a bad cost, because it loses the album's manual additions
+    and exclusions. **What it inherits:** the editor must round-trip every rule this build can
+    parse, including combinations the creation screen never writes, and must not rewrite an
+    unevaluatable rule (ADR-0017). **Open:** the edit surface, what happens to additions and
+    exclusions on edit, and the case of a rule with an unknown clause. All three are
+    [albums-stage-4.md](albums-stage-4.md)'s questions.
 
 27. **The New automatic album screen offers Index now while media is not yet indexed, says how
     many items that is, and never starts indexing by itself.** Requested by the maintainer, and in
@@ -1221,8 +1312,22 @@ Things this epic breaks or strains, which should surprise nobody when they come 
     a deletion. **Do not close it by inference** — it needs a device with a card. Full text in
     [albums-stage-2.md](albums-stage-2.md), *Open questions*, item 3.
 
+12. **How does a person get a name, and where does it live?** — **Raised 2026-11-13; deferred by
+    the maintainer to Stage 3's planning.** "Silvia and Davide in France" needs named people, but
+    face clusters are anonymous until the user names them. Where the name lives collides with
+    backup:
+    - Face data lives in the index, which is excluded from backup (decision 9, ADR-0018).
+    - Albums are backed up (ADR-0014).
+    - So a rule that refers to a person by a cluster in the index would refer to nothing after a
+      restore or a full re-index.
+
+    Content criteria do not have this problem, because they store the user's own text. This is
+    the hardest open design question in Stage 3, and it needs an ADR before people albums are
+    built. Nothing in Stage 4 depends on it.
+
 Questions scoped to a single stage live in that stage's plan and only arrive here if they outlive
-it. Stage 2's plan is archived; its one live question is 11 above.
+it. Stage 2's plan is archived; its one live question is 11 above. Stage 4's are in
+[albums-stage-4.md](albums-stage-4.md).
 
 ---
 

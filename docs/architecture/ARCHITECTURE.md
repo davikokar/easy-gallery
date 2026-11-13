@@ -370,10 +370,12 @@ signature change breaks them loudly, by design.
 ### `ui/components/`
 
 Top bars (`SearchTopBar`, `SelectionTopBar`, `MediaSelectionTopBar`, `ThumbnailPickerTopBar`),
-dialogs (`ColumnCountDialog`, `SortOptions`, `GroupByDialog`, `FilterMediaDialog`,
-`CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`), the `PreferenceScopeSelector`
+dialogs (`ColumnCountDialog`, `GroupByDialog`, `FilterMediaDialog`,
+`CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`), the `SortOption` and
+`OrderOption` rows that `SortDialog` is built from, the `PreferenceScopeSelector`
 state holder those dialogs share for their draft-and-commit "apply only to this folder" target,
-media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `ZoomableImage`), the **Main view
+media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `FavouriteIndicator`,
+`ZoomableImage`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
 helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, plus
 `MediaLocationUi` and `VideoPlaybackState`, which are Compose-bound).

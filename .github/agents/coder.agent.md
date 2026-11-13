@@ -24,7 +24,7 @@ files. Read these before you write anything:
    end, locale decimal separators, preference-layering order, and more. Append a short note when
    you learn something that would have saved you time.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview. Mandatory if you touch the data
-   flow, `GalleryViewModel`'s responsibilities, or the structure of the three main views. The
+   flow, `GalleryViewModel`'s responsibilities, or the structure of the main views. The
    **Planner owns this file** — do not rewrite it yourself. If your change leaves it inaccurate,
    name the stale section in your report and let the Orchestrator route the edit.
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical names for views, screens,
@@ -34,8 +34,8 @@ files. Read these before you write anything:
    so do not read it as a description of the current app. The **Planner owns it** — do not edit it.
    If your work contradicts it or reveals it to be wrong, name the section in your report.
 6. The plan for the stage in progress, if your task is one of its steps. The epic is specified in
-   two documents: §7 of `albums.md` says which stage is current and links to its plan — Stage 2's
-   is `docs/design/albums-stage-2.md` — and that plan holds the step you are building, its exit
+   two documents: §7 of `albums.md` says which stage is current and links to its plan — Stage 4's
+   is `docs/design/albums-stage-4.md`, and Stage 4 runs before Stage 3 — and that plan holds the step you are building, its exit
    criteria, and what the last session learned. The **Planner owns it too**; report drift in it
    rather than editing it, including the handoff block it expects to be rewritten each session.
 

@@ -28,7 +28,7 @@ index (ADR-0018) — alongside six `SharedPreferences` files. The standards you 
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names.
 5. `docs/design/albums.md` — the albums epic, where the change belongs to it. Its §7 progress
    table and exit criteria are what "this stage is done" means. §7 also links to the plan for the
-   stage in progress — Stage 2's is `docs/design/albums-stage-2.md` — which owns that stage's step
+   stage in progress — Stage 4's is `docs/design/albums-stage-4.md`, and Stage 4 runs before Stage 3 — which owns that stage's step
    breakdown and exit criteria; review a stage change against both.
 6. `.github/instructions/tests.instructions.md` — test conventions.
 7. Repository memory at `/memories/repo/easy-gallery-exploration.md` — records traps this
