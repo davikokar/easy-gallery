@@ -81,6 +81,9 @@
     <string name="apply_only_to_this_folder">Застосувати лише до цієї папки</string>
     <string name="apply_to_all_folders_title">Застосувати до всіх папок?</string>
     <string name="apply_to_all_folders_message">Параметр «%1$s» буде застосовано до всіх папок. Налаштування, збережені для окремих папок, буде втрачено.</string>
+    <string name="apply_only_to_this_album">Застосувати лише до цього альбому</string>
+    <string name="apply_to_all_albums_title">Застосувати до всіх альбомів?</string>
+    <string name="apply_to_all_albums_message">Параметр «%1$s» буде застосовано до всіх альбомів. Налаштування, збережені для окремих альбомів, буде втрачено.</string>
     <string name="group_by_none">Не групувати</string>
     <string name="group_by_file_type">Тип файлу</string>
     <string name="cd_video">Відео</string>

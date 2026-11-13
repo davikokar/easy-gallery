@@ -82,6 +82,9 @@
     <string name="apply_only_to_this_folder">تطبيق على هذا المجلد فقط</string>
     <string name="apply_to_all_folders_title">هل تريد التطبيق على جميع المجلدات؟</string>
     <string name="apply_to_all_folders_message">سيتم تطبيق «%1$s» على جميع المجلدات. ستُفقد الإعدادات التي حفظتها لكل مجلد على حدة.</string>
+    <string name="apply_only_to_this_album">تطبيق على هذا الألبوم فقط</string>
+    <string name="apply_to_all_albums_title">هل تريد التطبيق على جميع الألبومات؟</string>
+    <string name="apply_to_all_albums_message">سيتم تطبيق «%1$s» على جميع الألبومات. ستُفقد الإعدادات التي حفظتها لكل ألبوم على حدة.</string>
     <string name="group_by_none">عدم التجميع</string>
     <string name="group_by_file_type">نوع الملف</string>
     <string name="cd_video">فيديو</string>

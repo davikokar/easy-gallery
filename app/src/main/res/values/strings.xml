@@ -81,6 +81,9 @@
     <string name="apply_only_to_this_folder">Apply only to this folder</string>
     <string name="apply_to_all_folders_title">Apply to all folders?</string>
     <string name="apply_to_all_folders_message">“%1$s” will be applied to all folders. The preferences you saved for individual folders will be lost.</string>
+    <string name="apply_only_to_this_album">Apply only to this album</string>
+    <string name="apply_to_all_albums_title">Apply to all albums?</string>
+    <string name="apply_to_all_albums_message">“%1$s” will be applied to all albums. The preferences you saved for individual albums will be lost.</string>
     <string name="group_by_none">Do not group</string>
     <string name="group_by_file_type">File type</string>
     <string name="cd_video">Video</string>

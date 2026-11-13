@@ -50,8 +50,9 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
 > **Album is not Folder.** An **Album** is a virtual, app-owned collection of references; an item
 > can belong to any number of Albums, and deleting an Album never deletes its media. A **folder**
 > is a filesystem / `MediaStore` container; each item belongs to one folder, and deleting the
-> folder deletes files. Folder pinning, exclusion, display overrides, and thumbnail picking do not
-> apply to Albums.
+> folder deletes files. Folder pinning, exclusion, and thumbnail picking do not apply to Albums.
+> Display overrides do apply to Albums, as a separate **Per-album override** (ADR-0021), and never
+> share a store or a wording with the folder one.
 
 ## Other screens
 
@@ -449,6 +450,12 @@ OK is pressed (ADR-0006).
 - **Apply only to this folder**: The checkbox on those dialogs, shown **only** in Folder Detail
   View, checked by default. Unchecking it and confirming writes the global default and clears
   that setting's override on every folder.
+- **Apply only to this album**: The same checkbox with Album wording, shown **only** in Album
+  Detail View, including in Favourites, checked by default on every opening. Unchecking it and
+  confirming asks "Apply to all albums?", then writes the global Album Detail default and clears
+  that setting's override on every Album and on Favourites (ADR-0021). The two variants share
+  `PreferenceScopeSelector`, chosen by `PreferenceContainer`; never show one wording in the other
+  view.
 
 ## Settings screen
 
@@ -483,6 +490,9 @@ OK is pressed (ADR-0006).
   columns, group by, group order, media types, show info.
 - **Per-folder override** (`FolderViewOverrides`): A sparse set of Folder Detail preferences
   bound to one folder path, merged over the global ones on read.
+- **Per-album override** (`FolderViewOverrides`, in the `album_display_preferences` store): The
+  same sparse set bound to one Album's id, or to Favourites, merged over the global Album Detail
+  preferences on read. There is no camera-default equivalent (ADR-0021).
 - **Camera default**: The implicit date-taken-descending sort applied to the camera folder. It
   sits between the global preference and the per-folder override, and is never persisted
   (ADR-0008).

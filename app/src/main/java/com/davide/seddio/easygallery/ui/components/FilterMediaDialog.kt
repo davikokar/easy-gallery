@@ -18,11 +18,12 @@ import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 fun FilterMediaDialog(
     initialSelectedTypes: Set<MediaType>,
     @StringRes settingLabel: Int? = null,
+    container: PreferenceContainer = PreferenceContainer.FOLDER,
     onConfirm: (Set<MediaType>, PreferenceApplyTarget) -> Unit,
     onDismiss: () -> Unit
 ) {
     var tempSelectedTypes by remember { mutableStateOf(initialSelectedTypes) }
-    val scopeSelector = rememberPreferenceScopeSelector(settingLabel)
+    val scopeSelector = rememberPreferenceScopeSelector(settingLabel, container)
 
     AlertDialog(
         onDismissRequest = onDismiss,

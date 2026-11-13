@@ -29,11 +29,12 @@ import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 fun ColumnCountDialog(
     currentCount: Int,
     @StringRes settingLabel: Int? = null,
+    container: PreferenceContainer = PreferenceContainer.FOLDER,
     onConfirm: (Int, PreferenceApplyTarget) -> Unit,
     onDismiss: () -> Unit
 ) {
     var draftCount by remember(currentCount) { mutableIntStateOf(currentCount) }
-    val scopeSelector = rememberPreferenceScopeSelector(settingLabel)
+    val scopeSelector = rememberPreferenceScopeSelector(settingLabel, container)
 
     AlertDialog(
         onDismissRequest = onDismiss,

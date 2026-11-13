@@ -12,8 +12,13 @@ import com.davide.seddio.easygallery.data.AlbumRule
 import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
+import com.davide.seddio.easygallery.data.FAVOURITES_OVERRIDE_KEY
+import com.davide.seddio.easygallery.data.FolderViewOverrides
+import com.davide.seddio.easygallery.data.FolderViewPreferencesStore
 import com.davide.seddio.easygallery.data.GazetteerNames
+import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.InMemoryAlbumStore
+import com.davide.seddio.easygallery.data.InMemoryFolderViewPreferencesStore
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
 import com.davide.seddio.easygallery.data.InMemoryMediaStoreVersionStore
 import com.davide.seddio.easygallery.data.MediaIndexCoverage
@@ -27,10 +32,16 @@ import com.davide.seddio.easygallery.data.MediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.MembershipOrphanStateChange
 import com.davide.seddio.easygallery.data.MembershipUriRewrite
+import com.davide.seddio.easygallery.data.OverridablePreference
 import com.davide.seddio.easygallery.data.PLACE_RESOLVER_VERSION
+import com.davide.seddio.easygallery.data.PreferenceApplyTarget
+import com.davide.seddio.easygallery.data.SortOrder
+import com.davide.seddio.easygallery.data.SortType
 import com.davide.seddio.easygallery.data.StoredAlbum
 import com.davide.seddio.easygallery.data.StoredMembership
 import com.davide.seddio.easygallery.data.StoredMembershipKind
+import com.davide.seddio.easygallery.data.ViewType
+import com.davide.seddio.easygallery.data.albumOverrideKey
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -1073,6 +1084,175 @@ class AlbumsViewModelTest {
         )
     }
 
+    @Test
+    fun `album display overrides are seeded from the override store`() {
+        val store = InMemoryFolderViewPreferencesStore().apply {
+            save("12", FolderViewOverrides(columns = 5))
+        }
+
+        val viewModel = createViewModel(albumOverrideStore = store)
+
+        assertEquals(mapOf("12" to FolderViewOverrides(columns = 5)), viewModel.albumDisplayOverrides.value)
+    }
+
+    @Test
+    fun `this album commit changes only that key and does not write global`() {
+        val store = InMemoryFolderViewPreferencesStore().apply {
+            save("2", FolderViewOverrides(columns = 9))
+            save(FAVOURITES_OVERRIDE_KEY, FolderViewOverrides(viewType = ViewType.LIST))
+        }
+        val viewModel = createViewModel(albumOverrideStore = store)
+        var globalWrites = 0
+
+        viewModel.commitAlbumSortPreference(
+            albumKey = "1",
+            sortType = SortType.SIZE,
+            sortOrder = SortOrder.DESCENDING,
+            applyTarget = PreferenceApplyTarget.CURRENT_FOLDER,
+            writeGlobal = { globalWrites += 1 }
+        )
+
+        val expected = mapOf(
+            "1" to FolderViewOverrides(sortType = SortType.SIZE, sortOrder = SortOrder.DESCENDING),
+            "2" to FolderViewOverrides(columns = 9),
+            FAVOURITES_OVERRIDE_KEY to FolderViewOverrides(viewType = ViewType.LIST)
+        )
+        assertEquals(expected, viewModel.albumDisplayOverrides.value)
+        assertEquals(expected, store.loadAll())
+        assertEquals(0, globalWrites)
+    }
+
+    @Test
+    fun `this album commit of every group writes that groups override`() {
+        val viewModel = createViewModel()
+        val none = { }
+
+        viewModel.commitAlbumSortPreference("1", SortType.NAME, SortOrder.DESCENDING, PreferenceApplyTarget.CURRENT_FOLDER, none)
+        viewModel.commitAlbumColumnsPreference("1", 6, PreferenceApplyTarget.CURRENT_FOLDER, none)
+        viewModel.commitAlbumGroupByPreference("1", GroupByType.FILE_TYPE, SortOrder.ASCENDING, PreferenceApplyTarget.CURRENT_FOLDER, none)
+        viewModel.commitAlbumMediaTypesPreference("1", setOf(MediaType.VIDEO), PreferenceApplyTarget.CURRENT_FOLDER, none)
+        viewModel.commitAlbumViewTypePreference("1", ViewType.LIST, PreferenceApplyTarget.CURRENT_FOLDER, none)
+
+        val expected = FolderViewOverrides(
+            sortType = SortType.NAME,
+            sortOrder = SortOrder.DESCENDING,
+            viewType = ViewType.LIST,
+            columns = 6,
+            groupBy = GroupByType.FILE_TYPE,
+            groupOrder = SortOrder.ASCENDING,
+            mediaTypes = setOf(MediaType.VIDEO)
+        )
+        assertEquals(mapOf("1" to expected), viewModel.albumDisplayOverrides.value)
+    }
+
+    @Test
+    fun `all albums commit writes global first then clears only that group from every key`() {
+        val store = InMemoryFolderViewPreferencesStore().apply {
+            save("1", FolderViewOverrides(sortType = SortType.SIZE, sortOrder = SortOrder.DESCENDING, columns = 4))
+            save("2", FolderViewOverrides(sortType = SortType.NAME, sortOrder = SortOrder.ASCENDING))
+            save(FAVOURITES_OVERRIDE_KEY, FolderViewOverrides(sortType = SortType.RANDOM, viewType = ViewType.LIST))
+        }
+        val viewModel = createViewModel(albumOverrideStore = store)
+        var overridesAtGlobalWrite: Map<String, FolderViewOverrides>? = null
+
+        viewModel.commitAlbumSortPreference(
+            albumKey = "1",
+            sortType = SortType.DATE_TAKEN,
+            sortOrder = SortOrder.ASCENDING,
+            applyTarget = PreferenceApplyTarget.ALL_FOLDERS,
+            writeGlobal = { overridesAtGlobalWrite = viewModel.albumDisplayOverrides.value }
+        )
+
+        // Still intact when the global write ran, so the global write happened first.
+        assertEquals(3, overridesAtGlobalWrite?.size)
+        assertEquals(SortType.SIZE, overridesAtGlobalWrite?.get("1")?.sortType)
+        val expected = mapOf(
+            "1" to FolderViewOverrides(columns = 4),
+            FAVOURITES_OVERRIDE_KEY to FolderViewOverrides(viewType = ViewType.LIST)
+        )
+        assertEquals(expected, viewModel.albumDisplayOverrides.value)
+        assertEquals(expected, store.loadAll())
+    }
+
+    @Test
+    fun `all albums commit of each group clears exactly that group`() {
+        val full = FolderViewOverrides(
+            sortType = SortType.SIZE,
+            sortOrder = SortOrder.DESCENDING,
+            viewType = ViewType.LIST,
+            columns = 6,
+            groupBy = GroupByType.FILE_TYPE,
+            groupOrder = SortOrder.ASCENDING,
+            mediaTypes = setOf(MediaType.VIDEO)
+        )
+        val none = { }
+
+        val commits: Map<OverridablePreference, (AlbumsViewModel) -> Unit> = mapOf(
+            OverridablePreference.SORT to { vm ->
+                vm.commitAlbumSortPreference("1", SortType.NAME, SortOrder.ASCENDING, PreferenceApplyTarget.ALL_FOLDERS, none)
+            },
+            OverridablePreference.COLUMNS to { vm ->
+                vm.commitAlbumColumnsPreference("1", 3, PreferenceApplyTarget.ALL_FOLDERS, none)
+            },
+            OverridablePreference.GROUP_BY to { vm ->
+                vm.commitAlbumGroupByPreference("1", GroupByType.NONE, SortOrder.ASCENDING, PreferenceApplyTarget.ALL_FOLDERS, none)
+            },
+            OverridablePreference.MEDIA_TYPES to { vm ->
+                vm.commitAlbumMediaTypesPreference("1", setOf(MediaType.IMAGE), PreferenceApplyTarget.ALL_FOLDERS, none)
+            },
+            OverridablePreference.VIEW_TYPE to { vm ->
+                vm.commitAlbumViewTypePreference("1", ViewType.GRID, PreferenceApplyTarget.ALL_FOLDERS, none)
+            }
+        )
+
+        for ((group, commit) in commits) {
+            val store = InMemoryFolderViewPreferencesStore().apply { save("1", full) }
+            val viewModel = createViewModel(albumOverrideStore = store)
+
+            commit(viewModel)
+
+            assertEquals("group $group", mapOf("1" to full.cleared(group)), viewModel.albumDisplayOverrides.value)
+        }
+    }
+
+    @Test
+    fun `deleting an album removes only its override key`() = runTest {
+        val store = InMemoryFolderViewPreferencesStore()
+        val viewModel = createViewModel(albumOverrideStore = store)
+        viewModel.createAlbum("Trips")
+        viewModel.createAlbum("Docs")
+        advanceUntilIdle()
+        val trips = viewModel.albums.value.first { it.name == "Trips" }.id
+        val docs = viewModel.albums.value.first { it.name == "Docs" }.id
+        viewModel.setAlbumColumns(albumOverrideKey(trips), 5)
+        viewModel.setAlbumColumns(albumOverrideKey(docs), 7)
+        viewModel.setAlbumColumns(FAVOURITES_OVERRIDE_KEY, 8)
+
+        viewModel.deleteAlbum(trips)
+        advanceUntilIdle()
+
+        val expected = mapOf(
+            albumOverrideKey(docs) to FolderViewOverrides(columns = 7),
+            FAVOURITES_OVERRIDE_KEY to FolderViewOverrides(columns = 8)
+        )
+        assertEquals(expected, viewModel.albumDisplayOverrides.value)
+        assertEquals(expected, store.loadAll())
+    }
+
+    @Test
+    fun `a pinch writes a per album columns override clamped to the valid range`() {
+        val viewModel = createViewModel()
+
+        viewModel.setAlbumColumns("1", 99)
+        assertEquals(20, viewModel.albumDisplayOverrides.value["1"]?.columns)
+
+        viewModel.setAlbumColumns("1", -3)
+        assertEquals(1, viewModel.albumDisplayOverrides.value["1"]?.columns)
+
+        viewModel.setAlbumColumns("1", 6)
+        assertEquals(mapOf("1" to FolderViewOverrides(columns = 6)), viewModel.albumDisplayOverrides.value)
+    }
+
     private fun createViewModel(
         albumStore: AlbumStore = InMemoryAlbumStore(),
         albumNameFormatter: (Locale, String, Int) -> String = { locale, format, ordinal ->
@@ -1083,7 +1263,8 @@ class AlbumsViewModelTest {
         joinFactory: (List<MediaIndexEvaluationProjection>, List<MediaItem>) -> MediaIndexLiveJoin =
             { projection, live -> MediaIndexLiveJoin.build(projection, live) },
         locationAccess: MediaLocationAccessChecker = MediaLocationAccessChecker { true },
-        gazetteerNamesLoader: () -> GazetteerNames = { error("this test does not open the picker") }
+        gazetteerNamesLoader: () -> GazetteerNames = { error("this test does not open the picker") },
+        albumOverrideStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore()
     ): AlbumsViewModel {
         return AlbumsViewModel(
             application = application,
@@ -1098,7 +1279,8 @@ class AlbumsViewModelTest {
             joinFactory = joinFactory,
             locationAccessChecker = locationAccess,
             gazetteerNamesLoader = gazetteerNamesLoader,
-            localeProvider = { Locale.US }
+            localeProvider = { Locale.US },
+            albumOverrideStore = albumOverrideStore
         )
     }
 

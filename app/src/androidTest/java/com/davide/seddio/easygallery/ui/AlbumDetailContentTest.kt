@@ -11,6 +11,11 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -25,16 +30,13 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.Folder
-import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.OperationType
+import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 import com.davide.seddio.easygallery.data.PreferenceScope
-import com.davide.seddio.easygallery.data.SortOrder
-import com.davide.seddio.easygallery.data.SortType
 import com.davide.seddio.easygallery.data.ViewPreferences
-import com.davide.seddio.easygallery.data.ViewType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -547,6 +549,183 @@ class AlbumDetailContentTest {
         }
     }
 
+    @Test
+    fun everyPreferenceDialogShowsApplyOnlyToThisAlbumCheckedByDefault() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = listOf(mediaItem))
+        }
+
+        assertEveryDialogOffersApplyOnlyToThisAlbumChecked()
+    }
+
+    @Test
+    fun favouritesPreferenceDialogsShowApplyOnlyToThisAlbumCheckedByDefault() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = listOf(mediaItem), isFavouritesAlbum = true)
+        }
+
+        assertEveryDialogOffersApplyOnlyToThisAlbumChecked()
+    }
+
+    @Test
+    fun confirmingWithApplyOnlyToThisAlbumCheckedReportsThisAlbumForEveryDialog() {
+        val committed = mutableListOf<Pair<String, PreferenceApplyTarget>>()
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                onCommitPreference = { name, target -> committed += name to target }
+            )
+        }
+
+        assertEveryDialogCommitsThisAlbum(committed)
+    }
+
+    @Test
+    fun favouritesConfirmingWithApplyOnlyToThisAlbumCheckedReportsThisAlbumForEveryDialog() {
+        val committed = mutableListOf<Pair<String, PreferenceApplyTarget>>()
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isFavouritesAlbum = true,
+                onCommitPreference = { name, target -> committed += name to target }
+            )
+        }
+
+        assertEveryDialogCommitsThisAlbum(committed)
+    }
+
+    @Test
+    fun uncheckingApplyOnlyToThisAlbumAsksForConfirmationThenReportsAllAlbumsForEveryDialog() {
+        val committed = mutableListOf<Pair<String, PreferenceApplyTarget>>()
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                onCommitPreference = { name, target -> committed += name to target }
+            )
+        }
+
+        assertEveryDialogCommitsAllAlbumsAfterConfirmation(committed)
+    }
+
+    @Test
+    fun favouritesUncheckingApplyOnlyToThisAlbumAsksForConfirmationThenReportsAllAlbumsForEveryDialog() {
+        val committed = mutableListOf<Pair<String, PreferenceApplyTarget>>()
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isFavouritesAlbum = true,
+                onCommitPreference = { name, target -> committed += name to target }
+            )
+        }
+
+        assertEveryDialogCommitsAllAlbumsAfterConfirmation(committed)
+    }
+
+    @Test
+    fun cancellingTheAlbumConfirmationReportsNothing() {
+        val committed = mutableListOf<Pair<String, PreferenceApplyTarget>>()
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                onCommitPreference = { name, target -> committed += name to target }
+            )
+        }
+        val confirmationTitle = appContext.getString(R.string.apply_to_all_albums_title)
+
+        openPreferenceDialog(R.string.sort_by_title)
+        composeTestRule.onNode(applyOnlyToThisAlbumToggle()).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.action_ok)).performClick()
+        composeTestRule.onNodeWithText(confirmationTitle).assertIsDisplayed()
+        composeTestRule
+            .onNode(
+                hasText(appContext.getString(R.string.action_cancel)) and
+                    hasAnyAncestor(hasAnyDescendant(hasText(confirmationTitle)))
+            )
+            .performClick()
+
+        composeTestRule.runOnIdle {
+            assertTrue(committed.isEmpty())
+        }
+    }
+
+    // Menu label of each dialog, paired with the name the wrapper reports its commit under.
+    private val preferenceDialogs = listOf(
+        R.string.column_count_title to "columns",
+        R.string.filter_media_title to "mediaTypes",
+        R.string.sort_by_title to "sort",
+        R.string.group_by_title to "groupBy",
+        R.string.change_view_type_title to "viewType"
+    )
+
+    private fun openPreferenceDialog(menuLabel: Int) {
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule.onNodeWithText(appContext.getString(menuLabel)).performClick()
+    }
+
+    private fun applyOnlyToThisAlbumToggle() = isToggleable() and
+        hasText(appContext.getString(R.string.apply_only_to_this_album))
+
+    private fun assertEveryDialogOffersApplyOnlyToThisAlbumChecked() {
+        preferenceDialogs.forEach { (menuLabel, _) ->
+            openPreferenceDialog(menuLabel)
+
+            composeTestRule.onNode(applyOnlyToThisAlbumToggle()).assertIsOn()
+            composeTestRule
+                .onAllNodesWithText(appContext.getString(R.string.apply_only_to_this_folder))
+                .assertCountEquals(0)
+
+            composeTestRule.onNodeWithText(appContext.getString(R.string.action_cancel)).performClick()
+        }
+    }
+
+    private fun assertEveryDialogCommitsThisAlbum(
+        committed: List<Pair<String, PreferenceApplyTarget>>
+    ) {
+        preferenceDialogs.forEach { (menuLabel, _) ->
+            openPreferenceDialog(menuLabel)
+            composeTestRule.onNodeWithText(appContext.getString(R.string.action_ok)).performClick()
+        }
+
+        composeTestRule.runOnIdle {
+            assertEquals(
+                preferenceDialogs.map { (_, name) -> name to PreferenceApplyTarget.CURRENT_FOLDER },
+                committed.toList()
+            )
+        }
+    }
+
+    private fun assertEveryDialogCommitsAllAlbumsAfterConfirmation(
+        committed: List<Pair<String, PreferenceApplyTarget>>
+    ) {
+        val confirmationTitle = appContext.getString(R.string.apply_to_all_albums_title)
+        preferenceDialogs.forEachIndexed { index, (menuLabel, _) ->
+            openPreferenceDialog(menuLabel)
+            composeTestRule.onNode(applyOnlyToThisAlbumToggle()).performClick()
+            composeTestRule.onNodeWithText(appContext.getString(R.string.action_ok)).performClick()
+
+            composeTestRule.onNodeWithText(confirmationTitle).assertIsDisplayed()
+            composeTestRule.runOnIdle {
+                assertEquals(index, committed.size)
+            }
+
+            composeTestRule
+                .onNode(
+                    hasText(appContext.getString(R.string.action_ok)) and
+                        hasAnyAncestor(hasAnyDescendant(hasText(confirmationTitle)))
+                )
+                .performClick()
+        }
+
+        composeTestRule.runOnIdle {
+            assertEquals(
+                preferenceDialogs.map { (_, name) -> name to PreferenceApplyTarget.ALL_FOLDERS },
+                committed.toList()
+            )
+        }
+    }
+
     private fun locationCoverageText(count: Int): String = appContext.resources.getQuantityString(
         R.plurals.automatic_album_location_coverage,
         count,
@@ -601,10 +780,12 @@ class AlbumDetailContentTest {
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         selectedMedia: List<MediaItem> = emptyList(),
+        isFavouritesAlbum: Boolean = false,
         onBackToAlbums: () -> Unit = {},
         onRemoveSelectedFromAlbum: () -> Unit = {},
         onDeleteSelectedMedia: () -> Unit = {},
-        onSelectMedia: (MediaItem) -> Unit = {}
+        onSelectMedia: (MediaItem) -> Unit = {},
+        onCommitPreference: (String, PreferenceApplyTarget) -> Unit = { _, _ -> }
     ) {
         AlbumDetailContent(
             albumName = "A deliberately long user supplied album name that must remain usable",
@@ -634,11 +815,11 @@ class AlbumDetailContentTest {
             onSelectAllMedia = {},
             onSetSearchQuery = {},
             onSetSearchActive = {},
-            onSetColumnsCount = {},
-            onSetMediaTypes = {},
-            onSetSort = { _: SortType, _: SortOrder -> },
-            onSetGroupBy = { _: GroupByType, _: SortOrder -> },
-            onSetViewType = { _: ViewType -> },
+            onCommitColumnsPreference = { _, target -> onCommitPreference("columns", target) },
+            onCommitMediaTypesPreference = { _, target -> onCommitPreference("mediaTypes", target) },
+            onCommitSortPreference = { _, _, target -> onCommitPreference("sort", target) },
+            onCommitGroupByPreference = { _, _, target -> onCommitPreference("groupBy", target) },
+            onCommitViewTypePreference = { _, target -> onCommitPreference("viewType", target) },
             onToggleInfo = {},
             onUpdateBrowsingPath = {},
             onPerformOperationWithPath = {},
@@ -646,7 +827,8 @@ class AlbumDetailContentTest {
             onSelectMedia = onSelectMedia,
             onEnterMediaSelectionMode = {},
             onDecreaseColumns = {},
-            onIncreaseColumns = {}
+            onIncreaseColumns = {},
+            isFavouritesAlbum = isFavouritesAlbum
         )
     }
 }

@@ -11,8 +11,8 @@ model: Claude Sonnet 5.5
 This is **Easy Gallery**, an Android image and video gallery app written in Kotlin with Jetpack
 Compose, Material 3, MVVM, Coroutines/Flow, Coil 3, and Media3 ExoPlayer. It has no DI framework.
 Media comes live from `MediaStore` and is never copied; the data the app owns is two small Room
-databases — albums (ADR-0009) and the media index (ADR-0018) — alongside six `SharedPreferences`
-files. Read these before you write anything:
+databases — albums (ADR-0009) and the media index (ADR-0018) — alongside the `SharedPreferences`
+files that `AGENTS.md` lists under *Preference stores*. Read these before you write anything:
 
 1. `AGENTS.md` — tech stack, package layout, state-ownership rules, the preference stores, the
    localisation rules, the definition of done, and the list of things to ask about before doing

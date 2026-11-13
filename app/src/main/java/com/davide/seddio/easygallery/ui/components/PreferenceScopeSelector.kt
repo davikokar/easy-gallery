@@ -24,16 +24,21 @@ import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 
+// Chooses the wording only; the stored value and PreferenceApplyTarget are the same for both.
+enum class PreferenceContainer { FOLDER, ALBUM }
+
 @Composable
 fun rememberPreferenceScopeSelector(
-    @StringRes settingLabel: Int?
-): PreferenceScopeSelector = remember(settingLabel) {
-    PreferenceScopeSelector(settingLabel)
+    @StringRes settingLabel: Int?,
+    container: PreferenceContainer = PreferenceContainer.FOLDER
+): PreferenceScopeSelector = remember(settingLabel, container) {
+    PreferenceScopeSelector(settingLabel, container)
 }
 
 @Stable
 class PreferenceScopeSelector internal constructor(
-    @StringRes private val settingLabel: Int?
+    @StringRes private val settingLabel: Int?,
+    private val container: PreferenceContainer = PreferenceContainer.FOLDER
 ) {
     private var applyOnlyToCurrentFolder by mutableStateOf(true)
     private var pendingCommit by mutableStateOf<(() -> Unit)?>(null)
@@ -58,7 +63,12 @@ class PreferenceScopeSelector internal constructor(
                 onCheckedChange = null
             )
             Text(
-                text = stringResource(R.string.apply_only_to_this_folder),
+                text = stringResource(
+                    when (container) {
+                        PreferenceContainer.FOLDER -> R.string.apply_only_to_this_folder
+                        PreferenceContainer.ALBUM -> R.string.apply_only_to_this_album
+                    }
+                ),
                 modifier = Modifier.padding(start = 8.dp),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
@@ -73,11 +83,23 @@ class PreferenceScopeSelector internal constructor(
 
         AlertDialog(
             onDismissRequest = ::cancelPendingCommit,
-            title = { Text(stringResource(R.string.apply_to_all_folders_title)) },
+            title = {
+                Text(
+                    stringResource(
+                        when (container) {
+                            PreferenceContainer.FOLDER -> R.string.apply_to_all_folders_title
+                            PreferenceContainer.ALBUM -> R.string.apply_to_all_albums_title
+                        }
+                    )
+                )
+            },
             text = {
                 Text(
                     stringResource(
-                        R.string.apply_to_all_folders_message,
+                        when (container) {
+                            PreferenceContainer.FOLDER -> R.string.apply_to_all_folders_message
+                            PreferenceContainer.ALBUM -> R.string.apply_to_all_albums_message
+                        },
                         stringResource(label)
                     )
                 )

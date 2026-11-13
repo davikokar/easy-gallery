@@ -62,6 +62,10 @@ the Folders View shows all folders and the Timeline shows all media across folde
 folder" is undefined there. Those two scopes keep today's behaviour exactly, and the "Apply only
 to this folder" checkbox is **not rendered** for them.
 
+> **Extended 2026-11-13 by [ADR-0021](0021-per-album-display-preference-overrides.md).** Album
+> Detail View, which did not exist when this was written, gains the same model keyed by album. This
+> decision still governs Folder Detail View unchanged.
+
 **3. Only five preference groups are overridable**, matching the five dialogs:
 
 | Group | Fields | Dialog |

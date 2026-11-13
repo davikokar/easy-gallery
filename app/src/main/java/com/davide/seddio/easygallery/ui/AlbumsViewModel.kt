@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.EasyGalleryApp
 import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
+import com.davide.seddio.easygallery.data.ALBUM_DISPLAY_PREFERENCES_FILE
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumMembership
 import com.davide.seddio.easygallery.data.AlbumNaming
@@ -16,8 +17,11 @@ import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
 import com.davide.seddio.easygallery.data.AndroidMediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVersionProvider
+import com.davide.seddio.easygallery.data.FolderViewOverrides
+import com.davide.seddio.easygallery.data.FolderViewPreferencesStore
 import com.davide.seddio.easygallery.data.GazetteerAssets
 import com.davide.seddio.easygallery.data.GazetteerNames
+import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
 import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaIndexEvaluationProjection
@@ -27,13 +31,22 @@ import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.MediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.MediaStoreVersionStore
+import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.MembershipOrphanStateChange
 import com.davide.seddio.easygallery.data.MembershipUriRewrite
+import com.davide.seddio.easygallery.data.OverridablePreference
+import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 import com.davide.seddio.easygallery.data.RoomAlbumStore
+import com.davide.seddio.easygallery.data.SharedPreferencesFolderViewPreferencesStore
 import com.davide.seddio.easygallery.data.SharedPreferencesMediaStoreVersionStore
+import com.davide.seddio.easygallery.data.SortOrder
+import com.davide.seddio.easygallery.data.SortType
 import com.davide.seddio.easygallery.data.StoredAlbum
 import com.davide.seddio.easygallery.data.StoredMembership
 import com.davide.seddio.easygallery.data.StoredMembershipKind
+import com.davide.seddio.easygallery.data.ViewPreferences
+import com.davide.seddio.easygallery.data.ViewType
+import com.davide.seddio.easygallery.data.albumOverrideKey
 import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
@@ -110,7 +123,10 @@ class AlbumsViewModel @JvmOverloads constructor(
     // Read when the picker computes, never cached: a language change recreates the Activity.
     private val localeProvider: () -> Locale = {
         LocaleHelper.wrap(application).resources.configuration.locales[0]
-    }
+    },
+    // Its own file: clear(group) is file-wide, so albums must not share the folder overrides' file (ADR-0021).
+    albumOverrideStore: FolderViewPreferencesStore =
+        SharedPreferencesFolderViewPreferencesStore(application, ALBUM_DISPLAY_PREFERENCES_FILE)
 ) : AndroidViewModel(application) {
 
     private data class ComputedAlbum(
@@ -177,6 +193,11 @@ class AlbumsViewModel @JvmOverloads constructor(
     /** The Album selected by long-press in Albums View (Album selection mode); not the open Album Detail. */
     val albumSelectionId: StateFlow<Long?> = _albumSelectionId.asStateFlow()
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val albumDisplayPrefs = FolderViewPreferencesState(albumOverrideStore)
+
+    /** Sparse per-album display overrides, keyed by [albumOverrideKey] or `FAVOURITES_OVERRIDE_KEY`. */
+    val albumDisplayOverrides: StateFlow<Map<String, FolderViewOverrides>> = albumDisplayPrefs.overrides
 
     // The one index-and-live-media join, built once per emission of either input and shared by every rule
     // album and the picker (ADR-0020). Only collected while a rule album or the open picker needs it, so a
@@ -363,6 +384,7 @@ class AlbumsViewModel @JvmOverloads constructor(
     fun deleteAlbum(albumId: Long) {
         viewModelScope.launch {
             albumStore.deleteAlbum(albumId)
+            albumDisplayPrefs.remove(albumOverrideKey(albumId))
             if (_selectedAlbumId.value == albumId) {
                 _selectedAlbumId.value = null
             }
@@ -370,6 +392,93 @@ class AlbumsViewModel @JvmOverloads constructor(
                 _albumSelectionId.value = null
             }
         }
+    }
+
+    // CURRENT_FOLDER means "this album" and ALL_FOLDERS "every album" here (ADR-0021 point 9).
+    // For ALL_FOLDERS, writeGlobal runs first, then the group is cleared from every key incl. Favourites.
+    fun commitAlbumSortPreference(
+        albumKey: String?,
+        sortType: SortType,
+        sortOrder: SortOrder,
+        applyTarget: PreferenceApplyTarget,
+        writeGlobal: () -> Unit
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> albumDisplayPrefs.setSort(albumKey, sortType, sortOrder)
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                writeGlobal()
+                albumDisplayPrefs.clear(OverridablePreference.SORT)
+            }
+        }
+    }
+
+    fun commitAlbumColumnsPreference(
+        albumKey: String?,
+        columns: Int,
+        applyTarget: PreferenceApplyTarget,
+        writeGlobal: () -> Unit
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> setAlbumColumns(albumKey, columns)
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                writeGlobal()
+                albumDisplayPrefs.clear(OverridablePreference.COLUMNS)
+            }
+        }
+    }
+
+    fun commitAlbumGroupByPreference(
+        albumKey: String?,
+        groupBy: GroupByType,
+        groupOrder: SortOrder,
+        applyTarget: PreferenceApplyTarget,
+        writeGlobal: () -> Unit
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> albumDisplayPrefs.setGroupBy(albumKey, groupBy, groupOrder)
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                writeGlobal()
+                albumDisplayPrefs.clear(OverridablePreference.GROUP_BY)
+            }
+        }
+    }
+
+    fun commitAlbumMediaTypesPreference(
+        albumKey: String?,
+        mediaTypes: Set<MediaType>,
+        applyTarget: PreferenceApplyTarget,
+        writeGlobal: () -> Unit
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> albumDisplayPrefs.setMediaTypes(albumKey, mediaTypes)
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                writeGlobal()
+                albumDisplayPrefs.clear(OverridablePreference.MEDIA_TYPES)
+            }
+        }
+    }
+
+    fun commitAlbumViewTypePreference(
+        albumKey: String?,
+        viewType: ViewType,
+        applyTarget: PreferenceApplyTarget,
+        writeGlobal: () -> Unit
+    ) {
+        when (applyTarget) {
+            PreferenceApplyTarget.CURRENT_FOLDER -> albumDisplayPrefs.setViewType(albumKey, viewType)
+            PreferenceApplyTarget.ALL_FOLDERS -> {
+                writeGlobal()
+                albumDisplayPrefs.clear(OverridablePreference.VIEW_TYPE)
+            }
+        }
+    }
+
+    /** Pinch-to-zoom: always a per-album override, clamped to the valid column range. */
+    fun setAlbumColumns(albumKey: String?, columns: Int) {
+        albumDisplayPrefs.setColumns(
+            albumKey,
+            columns.coerceIn(ViewPreferences.MIN_COLUMNS, ViewPreferences.MAX_COLUMNS)
+        )
     }
 
     fun addMembers(albumId: Long, mediaItems: Collection<MediaItem>) {

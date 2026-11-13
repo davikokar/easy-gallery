@@ -149,4 +149,50 @@ class FolderViewOverridesTest {
         assertTrue(withMediaTypes.isEmpty())
         assertEquals(base.mediaTypes, withMediaTypes.applyTo(base).mediaTypes)
     }
+
+    @Test
+    fun `album key is the decimal id and never equals the favourites key`() {
+        assertEquals("12", albumOverrideKey(12L))
+        assertEquals("favourites", FAVOURITES_OVERRIDE_KEY)
+        assertFalse(albumOverrideKey(Long.MAX_VALUE) == FAVOURITES_OVERRIDE_KEY)
+    }
+
+    @Test
+    fun `album resolver falls back to global when the override is null or empty`() {
+        val global = ViewPreferences.defaultFor(PreferenceScope.ALBUM_DETAIL).copy(showInfo = true)
+
+        assertEquals(global, resolveAlbumDetailPreferences(global, null))
+        assertEquals(global, resolveAlbumDetailPreferences(global, FolderViewOverrides()))
+    }
+
+    @Test
+    fun `album resolver lets the override win per group and leaves other groups global`() {
+        val global = ViewPreferences.defaultFor(PreferenceScope.ALBUM_DETAIL)
+        val overrides = FolderViewOverrides(
+            sortType = SortType.SIZE,
+            sortOrder = SortOrder.DESCENDING,
+            columns = 7
+        )
+
+        val resolved = resolveAlbumDetailPreferences(global, overrides)
+
+        assertEquals(SortType.SIZE, resolved.sortType)
+        assertEquals(SortOrder.DESCENDING, resolved.sortOrder)
+        assertEquals(7, resolved.columns)
+        assertEquals(global.viewType, resolved.viewType)
+        assertEquals(global.groupBy, resolved.groupBy)
+        assertEquals(global.groupOrder, resolved.groupOrder)
+        assertEquals(global.mediaTypes, resolved.mediaTypes)
+    }
+
+    @Test
+    fun `album resolver keeps showInfo from global`() {
+        val global = ViewPreferences.defaultFor(PreferenceScope.ALBUM_DETAIL).copy(showInfo = true)
+        val overrides = FolderViewOverrides(viewType = ViewType.LIST)
+
+        val resolved = resolveAlbumDetailPreferences(global, overrides)
+
+        assertTrue(resolved.showInfo)
+        assertEquals(ViewType.LIST, resolved.viewType)
+    }
 }

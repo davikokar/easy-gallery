@@ -54,8 +54,17 @@ A gallery app now has two kinds of container, and they must never blur:
 own `MediaStore.IS_FAVORITE` column (§4), so it survives uninstall outright — with no backup
 involved, and visible to other gallery apps while this one is not installed at all.
 
-Existing folder behaviour — pinning, excluding, per-folder display overrides, custom thumbnails —
+Existing folder behaviour — pinning, excluding, ~~per-folder display overrides,~~ custom thumbnails —
 is untouched by this epic and does not extend to albums.
+
+**Amended 2026-11-13: display overrides now extend to albums.** At the maintainer's request, Album
+Detail View — Favourites included — gained a per-album override of the five display preferences,
+chosen the way a folder's is, with "apply only to this album". It reuses the folder model rather
+than copying it, in a preferences file of its own, and per-folder overrides themselves are
+unchanged — §8 decision 28 and
+[ADR-0021](../architecture/decisions/0021-per-album-display-preference-overrides.md). Pinning,
+excluding and custom thumbnails still stop at folders; an album's cover is ADR-0015's, not a
+folder thumbnail.
 
 ### Favourite is not Pinned
 
@@ -716,8 +725,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
 
 20. **The delta watermark is a table in the index database, not a preference.** It was written to
     `app_settings` first and moved. The watermark is a map keyed by volume name; `AGENTS.md` and
-    `ARCHITECTURE.md` §6 both allow that file another *scalar* and nothing structured, and a sixth
-    preferences file was not worth buying the difference. The reasoning is
+    `ARCHITECTURE.md` §6 both allow that file another *scalar* and nothing structured, and a
+    preferences file of its own was not worth buying the difference. The reasoning is
     [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 1: a
     watermark is index metadata — recomputable, worthless without the index, and actively harmful
     if restored onto a new device, because it would suppress the very resync that rebuilds the
@@ -924,6 +933,24 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     count behind its header. **Not decided by this:** decision 22's gap between a new photo and its
     album; the band makes the gap one tap shorter for a user who notices it, and closes it for
     nobody else.
+
+28. **Each album, and Favourites, can override the display preferences, on the per-folder
+    model.** Requested by the maintainer and decided on 2026-11-13 in
+    [ADR-0021](../architecture/decisions/0021-per-album-display-preference-overrides.md), which
+    extends ADR-0006 rather than superseding it; landed the same day, after Stage 2 closed, and no
+    stage's status changes. Album Detail View's sort, columns, grouping, media filter and view type
+    can be set for one album through the same "apply only to this album" checkbox and all-albums
+    confirmation that folders use, over one global default for every album, and pinch-to-zoom sets
+    the album's own column count. §2's statement that folder behaviour does not extend to albums
+    was amended in place for it. **Why:** albums are no more interchangeable than folders — a trip
+    album wants date order and daily groups, a screenshots album a dense grid. **Why this shape:**
+    one override model, store and state holder serve folders and albums, so the semantics cannot
+    drift apart; album overrides get a file of their own because "apply to all" clears a group from
+    every key in its file and would otherwise reach the other kind; and an album's overrides are
+    deleted with the album, which a folder's cannot be, because a folder disappears outside the app
+    with no event to hook. **Not decided by this:** renaming the shared types away from "folder",
+    which ADR-0021 defers, and any marker of an overridden album or a reset-this-album action,
+    which folders lack too.
 
 ---
 

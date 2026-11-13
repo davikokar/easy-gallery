@@ -78,6 +78,9 @@
     <string name="apply_only_to_this_folder">Terapkan hanya ke folder ini</string>
     <string name="apply_to_all_folders_title">Terapkan ke semua folder?</string>
     <string name="apply_to_all_folders_message">“%1$s” akan diterapkan ke semua folder. Preferensi yang Anda simpan untuk masing-masing folder akan hilang.</string>
+    <string name="apply_only_to_this_album">Terapkan hanya ke album ini</string>
+    <string name="apply_to_all_albums_title">Terapkan ke semua album?</string>
+    <string name="apply_to_all_albums_message">“%1$s” akan diterapkan ke semua album. Preferensi yang Anda simpan untuk masing-masing album akan hilang.</string>
     <string name="group_by_none">Jangan kelompokkan</string>
     <string name="group_by_file_type">Jenis file</string>
     <string name="cd_video">Video</string>

@@ -114,8 +114,9 @@ FavouritesDataSource                                │                         
 GalleryViewModel  ──delegates state to──▶  DisplayPreferencesState    MediaIndexDateTakenState
    (central hub)                            FolderViewPreferencesState
         │                                   MediaViewerState
-        │   (+ AlbumsViewModel, which owns AutomaticAlbumPickerState, and FavouritesViewModel,
-        │      CreateFolderViewModel, BillingViewModel, MediaIndexingViewModel as feature ViewModels)
+        │   (+ AlbumsViewModel, which owns AutomaticAlbumPickerState and a second
+        │      FolderViewPreferencesState, and FavouritesViewModel, CreateFolderViewModel,
+        │      BillingViewModel, MediaIndexingViewModel as feature ViewModels)
         │
 *Screen composables   ← read the ViewModel, bind a PreferenceScope
         │
@@ -183,7 +184,7 @@ below every property it reads, or the class does not compile. Do not work around
 | `GalleryModels.kt` | `SortType`, `SortOrder`, `GroupByType`, `DisplayMode`, `ViewType`, `OperationType`, `GalleryUiState`, `MediaPermissionHandler`. |
 | `MediaItem.kt`, `Folder.kt` | The two domain models. |
 | `ViewPreferences.kt` | The per-view preference bundle and `PreferenceScope`. |
-| `FolderViewOverrides.kt` | The sparse per-folder override bundle and its apply/merge logic, plus the pure three-layer Folder Detail resolution shared by Folder Detail View and the New album screen. See §5. |
+| `FolderViewOverrides.kt` | The sparse per-folder override bundle and its apply/merge logic, plus the pure three-layer Folder Detail resolution shared by Folder Detail View and the New album screen, and the pure two-layer Album Detail resolution with its keys — `albumOverrideKey(id)` and the reserved `FAVOURITES_OVERRIDE_KEY`. The bundle and `PreferenceApplyTarget` serve albums too, under their folder names ([ADR-0021](decisions/0021-per-album-display-preference-overrides.md) point 9). See §5. |
 | `CameraFolder.kt` | The camera-folder path heuristic and the implicit sort default it produces. |
 | `MediaLocation.kt` | GPS parsing, formatting, URI building, and the per-item `MediaLocationReader`. Its `originalMediaUriForExifRead` — ADR-0001's `setRequireOriginal` path — plus `mediaCoordinatesFromExifLatLong` and the `isAtLeastQ` guard are shared with the Tier A indexer rather than reimplemented there. |
 | `DefaultMediaPermissionHandler.kt` | Wraps the Android 11+ `createDeleteRequest`/`createWriteRequest` `IntentSender` APIs so the ViewModel stays free of `Activity` details. |
@@ -255,7 +256,9 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
     still delivers an empty list once loading finishes.
 - **`DisplayPreferencesState`** — one `ViewPreferences` bundle per `PreferenceScope`, plus
   per-scope search state and the global `DisplayMode`.
-- **`FolderViewPreferencesState`** — the sparse per-folder overrides, keyed by folder path.
+- **`FolderViewPreferencesState`** — a sparse override map keyed by an opaque string, over one
+  `FolderViewPreferencesStore`. `GalleryViewModel`'s instance holds the per-folder overrides, keyed
+  by folder path; `AlbumsViewModel` holds a second, for Album Detail View (below).
 - **`MediaViewerState`** — transient full-screen viewer state: current item, paging list,
   immersive mode, rotation, and the saved video position.
 - **`MediaIndexDateTakenState`** — the index's date-taken projection, keyed by canonical
@@ -289,6 +292,16 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
     coverage notices from them.
   - `createAutomaticAlbum(name, rule)` encodes an `Evaluatable` rule and writes the album row with
     it and no membership rows — the first shipped path that writes `albums.rule` (§6).
+  - **Per-album display overrides**
+    ([ADR-0021](decisions/0021-per-album-display-preference-overrides.md)). It holds a second
+    `FolderViewPreferencesState`, over `album_display_preferences` (§6), and publishes its map as
+    `albumDisplayOverrides`. The five `commitAlbum*Preference` entry points take the album's key,
+    the value, a `PreferenceApplyTarget` — `CURRENT_FOLDER` meaning this album, `ALL_FOLDERS` every
+    album and Favourites — and a `writeGlobal` callback that the screen fills with the
+    `GalleryViewModel` write to `ALBUM_DETAIL`. For the all-albums branch it runs that callback
+    first and then clears the group from every key, so the order lives here, under a unit test,
+    rather than in the screen. `setAlbumColumns` is the pinch-to-zoom path. `deleteAlbum` removes
+    the album's key after its row; Favourites' key is never removed.
   - Removing an item from an album with **any stored rule** — evaluatable or not — **records an
     exclusion**, and deletes any addition row for the item as well. A rule match has no row to
     delete, an item removed while not yet indexed would otherwise reappear when its date is indexed,
@@ -372,7 +385,9 @@ signature change breaks them loudly, by design.
 Top bars (`SearchTopBar`, `SelectionTopBar`, `MediaSelectionTopBar`, `ThumbnailPickerTopBar`),
 dialogs (`ColumnCountDialog`, `SortOptions`, `GroupByDialog`, `FilterMediaDialog`,
 `CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`), the `PreferenceScopeSelector`
-state holder those dialogs share for their draft-and-commit "apply only to this folder" target,
+state holder those dialogs share for their draft-and-commit "apply only to this folder" or "this
+album" target — its `PreferenceContainer` chooses the wording only, and both commit the same
+`PreferenceApplyTarget` —
 media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `ZoomableImage`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
 helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, plus
@@ -561,6 +576,31 @@ Amendment 1. Resolve the layers anywhere else by hand and the three surfaces dri
 ADR-0006 also made the five display-preference dialogs **draft-and-commit**, with an "apply only
 to this folder" target chosen at OK rather than on selection.
 
+### Album Detail resolves two layers
+
+Album Detail View — an Album or Favourites — composes its preferences the same way, with no middle
+layer:
+
+```
+explicit per-album override  ⟶ over ⟶  global ALBUM_DETAIL
+```
+
+The override is the same sparse `FolderViewOverrides`, keyed by the album's id as a decimal string
+or by the reserved `favourites`, in a preferences file of its own (§6) —
+**[ADR-0021](decisions/0021-per-album-display-preference-overrides.md)**, which reuses ADR-0006's
+model rather than copying it. There is no camera default, because that is a property of a folder
+path. The same five dialogs say "apply only to this album", and pinch-to-zoom writes the album's
+override.
+
+Unlike Folder Detail View, the two layers come from two ViewModels: the global bundle from
+`GalleryViewModel.preferences(ALBUM_DETAIL)`, the override map from `AlbumsViewModel` (§3).
+`AlbumDetailScreen` composes them under `remember` through the pure
+`resolveAlbumDetailPreferences(global, overrides)` in `data/FolderViewOverrides.kt`, in keeping
+with the album scopes having no ViewModel-level derived flow. Until an open Album is known its key
+is null — Favourites' never is: the global bundle is shown, a "this album" commit does nothing
+while an "all albums" one still works, and pinch-to-zoom changes the global column count
+(ADR-0021 Amendment 1).
+
 ---
 
 ## 6. Persistence
@@ -572,8 +612,11 @@ them would be churn with no user-visible benefit —
 
 ### Preference stores
 
-Each store owns its own `SharedPreferences` file. Do not merge them — the per-folder override file
-parses structured keys and would collide with flat ones.
+Each file has exactly one store, and no two files are merged — the per-folder override file parses
+structured keys and would collide with flat ones. One store interface, `FolderViewPreferencesStore`,
+backs two files, and they must stay two: its `clear(group)` removes a field from every key in its
+file, which is how "apply to all" works, so folder and album overrides sharing a file would reset
+each other — **[ADR-0021](decisions/0021-per-album-display-preference-overrides.md)**.
 
 | File | Holds | Interface |
 |---|---|---|
@@ -581,6 +624,7 @@ parses structured keys and would collide with flat ones.
 | `display_preferences` | per-view `ViewPreferences` | `DisplayPreferencesStore` |
 | `folder_preferences` | pinned and excluded folder paths | `FolderPreferencesStore` |
 | `folder_display_preferences` | per-folder preference overrides | `FolderViewPreferencesStore` |
+| `album_display_preferences` | per-album and Favourites preference overrides | `FolderViewPreferencesStore`, owned by `AlbumsViewModel` |
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
 | `media_index_run_state` | the last indexing run's outcome, timestamps and row counters | `MediaIndexRunStateStore` |
 
@@ -590,7 +634,7 @@ Every store is an interface with a `SharedPreferences*` production implementatio
 `app_settings` is the one file with two owners. The album watermark is a single scalar under
 `albums_mediastore_version`, written by `SharedPreferencesMediaStoreVersionStore` in
 `data/MediaStoreVersionStore.kt` and injected into `AlbumsViewModel`; it was put there
-deliberately rather than opening a sixth preferences file for one key. A second scalar may join
+deliberately rather than opening a preferences file for one key. A second scalar may join
 it. Anything structured must not — the media index's per-volume watermark was briefly written
 here, is **not** a scalar, and lives in the index database instead (§6, *The media index
 database*).
@@ -600,7 +644,7 @@ deleted or moved item falls back automatically —
 **[ADR-0007](decisions/0007-persisted-folder-thumbnail-override.md)**, including its two
 amendments covering the draft-and-commit picker and pre-selection.
 
-`media_index_run_state` is the sixth file and the only one that is **excluded from backup**. It was
+`media_index_run_state` is the only preferences file **excluded from backup**. It was
 challenged on ADR-0018 Amendment 1's test — the test that moved the per-volume watermark *into* the
 index database — and kept here; **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)**
 Amendment 2 records why that test does not reach it. Two consequences live here rather than in the
@@ -857,7 +901,17 @@ KSP.
 - **Folders are aggregated by `BUCKET_DISPLAY_NAME`**, keeping the first path, so two folders with
   the same name collapse. Per-folder overrides and thumbnails inherit that limitation.
 - **No pagination.** Timeline View holds every item on the device in memory.
-- **Orphaned preference entries are not collected** after a folder is renamed or deleted.
+- **Orphaned preference entries are not collected** after a folder is renamed or deleted. An
+  album's display overrides are, when the album is deleted in the app — ADR-0021 point 7.
+- **The override types say "folder" where they also mean album.** `FolderViewOverrides`,
+  `FolderViewPreferencesStore`, `FolderViewPreferencesState` and
+  `PreferenceApplyTarget.CURRENT_FOLDER` / `ALL_FOLDERS` serve Album Detail View too, where
+  `CURRENT_FOLDER` means this album and `ALL_FOLDERS` every album and Favourites. The rename to
+  container-neutral names was deferred, not rejected, by
+  [ADR-0021](decisions/0021-per-album-display-preference-overrides.md) point 9: it widens the diff
+  into `GalleryViewModel`, `FolderDetailScreen` and the instrumented tests for no behaviour.
+  ADR-0006's accepted gaps now apply to albums as well: nothing marks an overridden folder or
+  album, and neither has a reset-this-one action.
 - **Favourites are absent on API 28–29.** The `MediaStore` favourite column arrived in API 30, so
   on older devices `FavouritesViewModel.isAvailable` is false and the Favourites tile and the
   favourite action are hidden rather than degraded. Accepted by

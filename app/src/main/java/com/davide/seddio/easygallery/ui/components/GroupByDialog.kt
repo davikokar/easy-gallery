@@ -25,12 +25,13 @@ fun GroupByDialog(
     currentGroupBy: GroupByType,
     currentOrder: SortOrder,
     @StringRes settingLabel: Int? = null,
+    container: PreferenceContainer = PreferenceContainer.FOLDER,
     onConfirm: (GroupByType, SortOrder, PreferenceApplyTarget) -> Unit,
     onDismiss: () -> Unit
 ) {
     var draftGroupBy by remember(currentGroupBy) { mutableStateOf(currentGroupBy) }
     var draftOrder by remember(currentOrder) { mutableStateOf(currentOrder) }
-    val scopeSelector = rememberPreferenceScopeSelector(settingLabel)
+    val scopeSelector = rememberPreferenceScopeSelector(settingLabel, container)
 
     AlertDialog(
         onDismissRequest = onDismiss,

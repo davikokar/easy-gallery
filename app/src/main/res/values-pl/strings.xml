@@ -81,6 +81,9 @@
     <string name="apply_only_to_this_folder">Zastosuj tylko do tego folderu</string>
     <string name="apply_to_all_folders_title">Zastosować do wszystkich folderów?</string>
     <string name="apply_to_all_folders_message">Ustawienie „%1$s” zostanie zastosowane do wszystkich folderów. Preferencje zapisane dla poszczególnych folderów zostaną utracone.</string>
+    <string name="apply_only_to_this_album">Zastosuj tylko do tego albumu</string>
+    <string name="apply_to_all_albums_title">Zastosować do wszystkich albumów?</string>
+    <string name="apply_to_all_albums_message">Ustawienie „%1$s” zostanie zastosowane do wszystkich albumów. Preferencje zapisane dla poszczególnych albumów zostaną utracone.</string>
     <string name="group_by_none">Nie grupuj</string>
     <string name="group_by_file_type">Typ pliku</string>
     <string name="cd_video">Film</string>

@@ -188,6 +188,35 @@ class FolderViewPreferencesStateTest {
         }
     }
 
+    @Test
+    fun `remove drops one key by saving an empty override and leaves other keys alone`() = runTest {
+        val initial = mapOf(
+            "12" to FolderViewOverrides(columns = 4),
+            "favourites" to FolderViewOverrides(viewType = ViewType.LIST)
+        )
+        val store = RecordingFolderViewPreferencesStore(initial)
+        val state = FolderViewPreferencesState(store)
+
+        state.remove("12")
+
+        assertEquals(mapOf("favourites" to FolderViewOverrides(viewType = ViewType.LIST)), state.overrides.value)
+        assertEquals(listOf("12" to FolderViewOverrides()), store.saved)
+        assertEquals(mapOf("favourites" to FolderViewOverrides(viewType = ViewType.LIST)), store.loadAll())
+    }
+
+    @Test
+    fun `remove of an absent or blank key writes nothing`() {
+        val store = RecordingFolderViewPreferencesStore(mapOf("12" to FolderViewOverrides(columns = 4)))
+        val state = FolderViewPreferencesState(store)
+
+        state.remove("99")
+        state.remove(null)
+        state.remove("  ")
+
+        assertEquals(mapOf("12" to FolderViewOverrides(columns = 4)), state.overrides.value)
+        assertTrue(store.saved.isEmpty())
+    }
+
     private class RecordingFolderViewPreferencesStore(
         initial: Map<String, FolderViewOverrides> = emptyMap()
     ) : FolderViewPreferencesStore {

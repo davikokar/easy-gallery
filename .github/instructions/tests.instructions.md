@@ -63,6 +63,11 @@ the thing under test *is* the Android boundary — which is what every current u
   `Room*` store.
 - `MediaIndexingWorkerTest` — Robolectric runner plus `work-testing`'s `TestListenableWorkerBuilder`,
   driving the real `doWork` through the worker's injectable constructor; the pattern for a worker.
+- `SharedPreferencesFolderViewPreferencesStoreTest` — Robolectric runner against real
+  `SharedPreferences`, because what it proves is which file a store writes, that clearing a group
+  in one file leaves the other alone, and that keys survive a new instance. The pattern for a
+  `SharedPreferences*` store; it does not license touching `SharedPreferences` from a ViewModel
+  test (*Doubles*).
 
 The `InMemory*` half of a store is the counter-example: `MediaIndexInMemoryStoreTest` runs plain,
 because an in-memory implementation touches no Android API. Do not put a Robolectric runner on one

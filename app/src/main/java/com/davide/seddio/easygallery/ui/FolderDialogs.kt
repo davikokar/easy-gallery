@@ -57,11 +57,12 @@ fun PropertiesDialog(folders: List<Folder>, onDismiss: () -> Unit) {
 fun ViewTypeDialog(
     currentViewType: ViewType,
     @StringRes settingLabel: Int? = null,
+    container: PreferenceContainer = PreferenceContainer.FOLDER,
     onConfirm: (ViewType, PreferenceApplyTarget) -> Unit,
     onDismiss: () -> Unit
 ) {
     var draftViewType by remember(currentViewType) { mutableStateOf(currentViewType) }
-    val scopeSelector = rememberPreferenceScopeSelector(settingLabel)
+    val scopeSelector = rememberPreferenceScopeSelector(settingLabel, container)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -125,12 +126,13 @@ fun SortDialog(
     currentSort: SortType,
     currentOrder: SortOrder,
     @StringRes settingLabel: Int? = null,
+    container: PreferenceContainer = PreferenceContainer.FOLDER,
     onConfirm: (SortType, SortOrder, PreferenceApplyTarget) -> Unit,
     onDismiss: () -> Unit
 ) {
     var draftSort by remember(currentSort) { mutableStateOf(currentSort) }
     var draftOrder by remember(currentOrder) { mutableStateOf(currentOrder) }
-    val scopeSelector = rememberPreferenceScopeSelector(settingLabel)
+    val scopeSelector = rememberPreferenceScopeSelector(settingLabel, container)
 
     AlertDialog(
         onDismissRequest = onDismiss,

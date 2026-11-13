@@ -3,6 +3,9 @@ package com.davide.seddio.easygallery.data
 import android.content.Context
 import android.content.SharedPreferences
 
+const val FOLDER_DISPLAY_PREFERENCES_FILE = "folder_display_preferences"
+const val ALBUM_DISPLAY_PREFERENCES_FILE = "album_display_preferences"
+
 interface FolderViewPreferencesStore {
     fun loadAll(): Map<String, FolderViewOverrides>
     fun save(folderPath: String, overrides: FolderViewOverrides)
@@ -30,10 +33,13 @@ class InMemoryFolderViewPreferencesStore : FolderViewPreferencesStore {
     }
 }
 
-class SharedPreferencesFolderViewPreferencesStore(context: Context) : FolderViewPreferencesStore {
+class SharedPreferencesFolderViewPreferencesStore(
+    context: Context,
+    prefsName: String = FOLDER_DISPLAY_PREFERENCES_FILE
+) : FolderViewPreferencesStore {
 
     private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
 
     override fun loadAll(): Map<String, FolderViewOverrides> {
         val folderPaths = prefs.all.keys.mapNotNull { parseStoredKey(it)?.first }.toSet()
@@ -155,7 +161,6 @@ class SharedPreferencesFolderViewPreferencesStore(context: Context) : FolderView
         }
 
     private companion object {
-        const val PREFS_NAME = "folder_display_preferences"
         // '/' cannot appear inside a single path segment because it is the path separator.
         const val KEY_SEPARATOR = "/"
         const val KEY_SORT_TYPE = "sort_type"

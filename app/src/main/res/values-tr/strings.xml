@@ -79,6 +79,9 @@
     <string name="apply_only_to_this_folder">Yalnızca bu klasöre uygula</string>
     <string name="apply_to_all_folders_title">Tüm klasörlere uygulansın mı?</string>
     <string name="apply_to_all_folders_message">Tüm klasörlere uygulanacak ayar: “%1$s”. Tek tek klasörler için kaydettiğiniz tercihler kaybolacak.</string>
+    <string name="apply_only_to_this_album">Yalnızca bu albüme uygula</string>
+    <string name="apply_to_all_albums_title">Tüm albümlere uygulansın mı?</string>
+    <string name="apply_to_all_albums_message">Tüm albümlere uygulanacak ayar: “%1$s”. Tek tek albümler için kaydettiğiniz tercihler kaybolacak.</string>
     <string name="group_by_none">Gruplandırma yapma</string>
     <string name="group_by_file_type">Dosya türü</string>
     <string name="cd_video">Video</string>

@@ -80,6 +80,9 @@
     <string name="apply_only_to_this_folder">Aplicați doar acestui folder</string>
     <string name="apply_to_all_folders_title">Aplicați tuturor folderelor?</string>
     <string name="apply_to_all_folders_message">Se aplică tuturor folderelor: „%1$s”. Preferințele salvate pentru foldere individuale se vor pierde.</string>
+    <string name="apply_only_to_this_album">Aplicați doar acestui album</string>
+    <string name="apply_to_all_albums_title">Aplicați tuturor albumelor?</string>
+    <string name="apply_to_all_albums_message">Se aplică tuturor albumelor: „%1$s”. Preferințele salvate pentru albume individuale se vor pierde.</string>
     <string name="group_by_none">Fără grupare</string>
     <string name="group_by_file_type">Tip de fișier</string>
     <string name="cd_video">Videoclip</string>

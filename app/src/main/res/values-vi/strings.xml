@@ -78,6 +78,9 @@
     <string name="apply_only_to_this_folder">Chỉ áp dụng cho thư mục này</string>
     <string name="apply_to_all_folders_title">Áp dụng cho tất cả thư mục?</string>
     <string name="apply_to_all_folders_message">“%1$s” sẽ được áp dụng cho tất cả thư mục. Các tùy chọn bạn đã lưu cho từng thư mục sẽ bị mất.</string>
+    <string name="apply_only_to_this_album">Chỉ áp dụng cho album này</string>
+    <string name="apply_to_all_albums_title">Áp dụng cho tất cả album?</string>
+    <string name="apply_to_all_albums_message">“%1$s” sẽ được áp dụng cho tất cả album. Các tùy chọn bạn đã lưu cho từng album sẽ bị mất.</string>
     <string name="group_by_none">Không nhóm</string>
     <string name="group_by_file_type">Loại tệp</string>
     <string name="cd_video">Video</string>

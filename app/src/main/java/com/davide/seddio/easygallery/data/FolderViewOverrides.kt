@@ -87,3 +87,14 @@ fun resolveFolderDetailPreferences(
 
     return explicitOverrides.applyTo(implicitDefaults.applyTo(layers.globalPreferences))
 }
+
+// Reserved: a decimal album id can never equal it (ADR-0021).
+const val FAVOURITES_OVERRIDE_KEY = "favourites"
+
+fun albumOverrideKey(albumId: Long): String = albumId.toString()
+
+// Two layers only; showInfo and search stay global. There is no camera-folder layer for albums.
+fun resolveAlbumDetailPreferences(
+    global: ViewPreferences,
+    overrides: FolderViewOverrides?
+): ViewPreferences = overrides?.applyTo(global) ?: global

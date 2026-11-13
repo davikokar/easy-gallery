@@ -45,6 +45,11 @@ class FolderViewPreferencesState(
         update(folderPath) { current -> current.withViewType(viewType) }
     }
 
+    /** Drops every override held for [folderPath]; saving an empty override removes the key in the store. */
+    fun remove(folderPath: String?) {
+        update(folderPath) { FolderViewOverrides() }
+    }
+
     fun clear(group: OverridablePreference) {
         store.clear(group)
         val updated = _overrides.value

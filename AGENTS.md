@@ -22,9 +22,9 @@ short commit messages.
 - **Architecture:** MVVM with a unidirectional data flow (UI state exposed as `StateFlow` from a
   `ViewModel`, derived state built with `combine`)
 - **Persistence:** media comes live from `MediaStore` and is never copied. The app owns two Room
-  databases — albums (ADR-0009) and the media index (ADR-0018) — plus six `SharedPreferences`
-  files for the language override, user preferences, and index run state (see *Preference stores*
-  below). All three kinds of store sit alongside each other; the preference stores were
+  databases — albums (ADR-0009) and the media index (ADR-0018) — plus the `SharedPreferences`
+  files listed under *Preference stores* below, for the language override, user preferences, and
+  index run state. All three kinds of store sit alongside each other; the preference stores were
   deliberately not migrated.
 - **Dependency injection:** none. Components are instantiated directly so tests can pass fakes.
 - **Image loading:** Coil 3 (`coil-compose`, `-gif`, `-video`, `-network-okhttp`)
@@ -180,7 +180,9 @@ the audit is for the rest.
   selection machinery. The media index added one delegate, `MediaIndexDateTakenState`, and nothing
   else. A state holder can also belong to a feature ViewModel: `AutomaticAlbumPickerState` is owned
   by `AlbumsViewModel` rather than being a sixth ViewModel, because the picker's counts must read
-  the same join as the albums they create.
+  the same join as the albums they create. Per-album display overrides are the same case:
+  `AlbumsViewModel` holds a second `FolderViewPreferencesState` of its own, so `GalleryViewModel`
+  gained nothing for them (ADR-0021).
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -196,7 +198,9 @@ the audit is for the rest.
 
 ### Preference stores
 
-Each store owns its own `SharedPreferences` file; do not merge them.
+Each file has exactly one store, and files are never merged. `FolderViewPreferencesStore` is the
+one interface instantiated over two files, and they must stay two: its `clear(group)` is
+file-wide, so folder and album overrides sharing a file would reset each other (ADR-0021).
 
 | File | Holds | Store |
 |---|---|---|
@@ -204,19 +208,20 @@ Each store owns its own `SharedPreferences` file; do not merge them.
 | `display_preferences` | per-view `ViewPreferences` | `DisplayPreferencesStore` |
 | `folder_preferences` | pinned and excluded folder paths | `FolderPreferencesStore` |
 | `folder_display_preferences` | per-folder preference overrides | `FolderViewPreferencesStore` |
+| `album_display_preferences` | per-album and Favourites preference overrides | `FolderViewPreferencesStore`, owned by `AlbumsViewModel` |
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
 | `media_index_run_state` | last indexing run's outcome, timestamps, counters | `MediaIndexRunStateStore` |
 
 Every store is an interface with a `SharedPreferences*` production implementation and an
 `InMemory*` implementation for tests. Add both when you add a store.
 
-The album watermark shares `app_settings` deliberately, to avoid a sixth preferences file for one
+The album watermark shares `app_settings` deliberately, to avoid opening a preferences file for one
 scalar. Another scalar may join it; **anything structured must not** — that rule is about
 `app_settings`, not about preference files in general. The media index's per-volume watermark is
 the worked example: it was written here first, is a map rather than a scalar, and moved into the
 index database (ADR-0018 Amendment 1).
 
-`media_index_run_state` is the sixth file, and the one that shows where the line actually falls. It
+`media_index_run_state` is the file that shows where the line actually falls. It
 was challenged on the same test that moved the watermark and **kept in `SharedPreferences`**: it is
 a fixed set of flat scalars, and unlike the watermark it is not bookkeeping the index's correctness
 depends on — losing it costs a blank label, not a wrong index. ADR-0018 Amendment 2 records the
@@ -370,8 +375,9 @@ radius is wider than the diff looks:
 
 - Changing a `*Content` composable's signature. It breaks every instrumented test that drives it,
   which is deliberate — fix the tests, do not add a default to silence them.
-- Adding a new `SharedPreferences` file, which needs both a `SharedPreferences*` and an
-  `InMemory*` implementation and an entry in the table above.
+- Adding a new `SharedPreferences` file, which needs an entry in the table above and, unless it
+  reuses an existing store as `album_display_preferences` does, both a `SharedPreferences*` and an
+  `InMemory*` implementation.
 
 ## Memory
 

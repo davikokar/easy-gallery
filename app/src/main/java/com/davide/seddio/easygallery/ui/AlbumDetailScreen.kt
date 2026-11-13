@@ -51,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,23 +68,28 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
+import com.davide.seddio.easygallery.data.FAVOURITES_OVERRIDE_KEY
 import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.OperationType
+import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 import com.davide.seddio.easygallery.data.PreferenceScope
 import com.davide.seddio.easygallery.data.SortOrder
 import com.davide.seddio.easygallery.data.SortType
 import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
+import com.davide.seddio.easygallery.data.albumOverrideKey
 import com.davide.seddio.easygallery.data.canonicalMediaStoreUriForJoin
+import com.davide.seddio.easygallery.data.resolveAlbumDetailPreferences
 import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
 import com.davide.seddio.easygallery.ui.components.DestinationFolderPickerDialog
 import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
 import com.davide.seddio.easygallery.ui.components.GroupByDialog
 import com.davide.seddio.easygallery.ui.components.MediaPropertiesDialog
+import com.davide.seddio.easygallery.ui.components.PreferenceContainer
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 import com.davide.seddio.easygallery.ui.components.setImageAsWallpaper
 import com.davide.seddio.easygallery.ui.components.shareMedia
@@ -107,7 +113,8 @@ fun AlbumDetailScreen(
     val scope = PreferenceScope.ALBUM_DETAIL
     val album by albumsViewModel.selectedAlbum.collectAsState()
     val members by albumsViewModel.selectedAlbumMembers.collectAsState()
-    val preferences by galleryViewModel.preferences(scope).collectAsState()
+    val globalPreferences by galleryViewModel.preferences(scope).collectAsState()
+    val albumDisplayOverrides by albumsViewModel.albumDisplayOverrides.collectAsState()
     val searchQuery by galleryViewModel.searchQuery(scope).collectAsState()
     val isSearchActive by galleryViewModel.isSearchActive(scope).collectAsState()
     val isMediaSelectionMode by galleryViewModel.isMediaSelectionMode.collectAsState()
@@ -117,6 +124,20 @@ fun AlbumDetailScreen(
     val pendingOperation by galleryViewModel.pendingOperation.collectAsState()
     val browsingPath by galleryViewModel.browsingPath.collectAsState()
     val browsingFolders by galleryViewModel.browsingFolders.collectAsState()
+
+    // Null while the open album is not known yet; commits then no-op and pinch falls back to global.
+    val albumKey = if (isFavouritesAlbum) {
+        FAVOURITES_OVERRIDE_KEY
+    } else {
+        album?.let { albumOverrideKey(it.id) }
+    }
+    val albumOverrides = albumKey?.let { albumDisplayOverrides[it] }
+    val preferences = remember(globalPreferences, albumOverrides) {
+        resolveAlbumDetailPreferences(globalPreferences, albumOverrides)
+    }
+    // The pinch gesture captures its callbacks once, so it must read these through State.
+    val latestPreferences by rememberUpdatedState(preferences)
+    val latestAlbumKey by rememberUpdatedState(albumKey)
 
     val resolvedMedia = if (isFavouritesAlbum) favouriteMedia else members.map { it.mediaItem }
     val media = remember(resolvedMedia, preferences, searchQuery, indexedDateTakenByMediaUri) {
@@ -209,17 +230,33 @@ fun AlbumDetailScreen(
         },
         onSetSearchQuery = { galleryViewModel.setSearchQuery(it, scope) },
         onSetSearchActive = { galleryViewModel.setSearchActive(it, scope) },
-        onSetColumnsCount = { galleryViewModel.setColumnsCount(it, scope) },
-        onSetMediaTypes = { galleryViewModel.setSelectedMediaTypes(it, scope) },
-        onSetSort = { sortType, sortOrder ->
-            galleryViewModel.setSortType(sortType, scope)
-            galleryViewModel.setSortOrder(sortOrder, scope)
+        onCommitColumnsPreference = { columns, applyTarget ->
+            albumsViewModel.commitAlbumColumnsPreference(albumKey, columns, applyTarget) {
+                galleryViewModel.setColumnsCount(columns, scope)
+            }
         },
-        onSetGroupBy = { groupBy, groupOrder ->
-            galleryViewModel.setGroupBy(groupBy, scope)
-            galleryViewModel.setGroupOrder(groupOrder, scope)
+        onCommitMediaTypesPreference = { mediaTypes, applyTarget ->
+            albumsViewModel.commitAlbumMediaTypesPreference(albumKey, mediaTypes, applyTarget) {
+                galleryViewModel.setSelectedMediaTypes(mediaTypes, scope)
+            }
         },
-        onSetViewType = { galleryViewModel.setViewType(it, scope) },
+        onCommitSortPreference = { sortType, sortOrder, applyTarget ->
+            albumsViewModel.commitAlbumSortPreference(albumKey, sortType, sortOrder, applyTarget) {
+                galleryViewModel.setSortType(sortType, scope)
+                galleryViewModel.setSortOrder(sortOrder, scope)
+            }
+        },
+        onCommitGroupByPreference = { groupBy, groupOrder, applyTarget ->
+            albumsViewModel.commitAlbumGroupByPreference(albumKey, groupBy, groupOrder, applyTarget) {
+                galleryViewModel.setGroupBy(groupBy, scope)
+                galleryViewModel.setGroupOrder(groupOrder, scope)
+            }
+        },
+        onCommitViewTypePreference = { viewType, applyTarget ->
+            albumsViewModel.commitAlbumViewTypePreference(albumKey, viewType, applyTarget) {
+                galleryViewModel.setViewType(viewType, scope)
+            }
+        },
         onToggleInfo = { galleryViewModel.toggleInfo(scope) },
         onUpdateBrowsingPath = { galleryViewModel.updateBrowsingPath(it) },
         onPerformOperationWithPath = { galleryViewModel.performOperationWithPath(it) },
@@ -232,8 +269,22 @@ fun AlbumDetailScreen(
             }
         },
         onEnterMediaSelectionMode = { galleryViewModel.enterMediaSelectionMode(it) },
-        onDecreaseColumns = { galleryViewModel.decreaseColumns(scope) },
-        onIncreaseColumns = { galleryViewModel.increaseColumns(scope) }
+        onDecreaseColumns = {
+            val key = latestAlbumKey
+            if (key == null) {
+                galleryViewModel.decreaseColumns(scope)
+            } else {
+                albumsViewModel.setAlbumColumns(key, latestPreferences.columns - 1)
+            }
+        },
+        onIncreaseColumns = {
+            val key = latestAlbumKey
+            if (key == null) {
+                galleryViewModel.increaseColumns(scope)
+            } else {
+                albumsViewModel.setAlbumColumns(key, latestPreferences.columns + 1)
+            }
+        }
     )
 }
 
@@ -267,11 +318,11 @@ fun AlbumDetailContent(
     onSelectAllMedia: () -> Unit,
     onSetSearchQuery: (String) -> Unit,
     onSetSearchActive: (Boolean) -> Unit,
-    onSetColumnsCount: (Int) -> Unit,
-    onSetMediaTypes: (Set<MediaType>) -> Unit,
-    onSetSort: (SortType, SortOrder) -> Unit,
-    onSetGroupBy: (GroupByType, SortOrder) -> Unit,
-    onSetViewType: (ViewType) -> Unit,
+    onCommitColumnsPreference: (Int, PreferenceApplyTarget) -> Unit,
+    onCommitMediaTypesPreference: (Set<MediaType>, PreferenceApplyTarget) -> Unit,
+    onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit,
+    onCommitGroupByPreference: (GroupByType, SortOrder, PreferenceApplyTarget) -> Unit,
+    onCommitViewTypePreference: (ViewType, PreferenceApplyTarget) -> Unit,
     onToggleInfo: () -> Unit,
     onUpdateBrowsingPath: (String) -> Unit,
     onPerformOperationWithPath: (String) -> Unit,
@@ -414,8 +465,10 @@ fun AlbumDetailContent(
         if (showColumnCountDialog) {
             ColumnCountDialog(
                 currentCount = preferences.columns,
-                onConfirm = { count, _ ->
-                    onSetColumnsCount(count)
+                settingLabel = R.string.column_count_title,
+                container = PreferenceContainer.ALBUM,
+                onConfirm = { count, applyTarget ->
+                    onCommitColumnsPreference(count, applyTarget)
                     showColumnCountDialog = false
                 },
                 onDismiss = { showColumnCountDialog = false }
@@ -425,8 +478,10 @@ fun AlbumDetailContent(
         if (showFilterDialog) {
             FilterMediaDialog(
                 initialSelectedTypes = preferences.mediaTypes,
-                onConfirm = { types, _ ->
-                    onSetMediaTypes(types)
+                settingLabel = R.string.filter_media_title,
+                container = PreferenceContainer.ALBUM,
+                onConfirm = { types, applyTarget ->
+                    onCommitMediaTypesPreference(types, applyTarget)
                     showFilterDialog = false
                 },
                 onDismiss = { showFilterDialog = false }
@@ -437,8 +492,10 @@ fun AlbumDetailContent(
             SortDialog(
                 currentSort = preferences.sortType,
                 currentOrder = preferences.sortOrder,
-                onConfirm = { sortType, sortOrder, _ ->
-                    onSetSort(sortType, sortOrder)
+                settingLabel = R.string.sort_by_title,
+                container = PreferenceContainer.ALBUM,
+                onConfirm = { sortType, sortOrder, applyTarget ->
+                    onCommitSortPreference(sortType, sortOrder, applyTarget)
                     showSortDialog = false
                 },
                 onDismiss = { showSortDialog = false }
@@ -449,8 +506,10 @@ fun AlbumDetailContent(
             GroupByDialog(
                 currentGroupBy = preferences.groupBy,
                 currentOrder = preferences.groupOrder,
-                onConfirm = { groupBy, groupOrder, _ ->
-                    onSetGroupBy(groupBy, groupOrder)
+                settingLabel = R.string.group_by_title,
+                container = PreferenceContainer.ALBUM,
+                onConfirm = { groupBy, groupOrder, applyTarget ->
+                    onCommitGroupByPreference(groupBy, groupOrder, applyTarget)
                     showGroupByDialog = false
                 },
                 onDismiss = { showGroupByDialog = false }
@@ -460,8 +519,10 @@ fun AlbumDetailContent(
         if (showViewTypeDialog) {
             ViewTypeDialog(
                 currentViewType = preferences.viewType,
-                onConfirm = { viewType, _ ->
-                    onSetViewType(viewType)
+                settingLabel = R.string.change_view_type_title,
+                container = PreferenceContainer.ALBUM,
+                onConfirm = { viewType, applyTarget ->
+                    onCommitViewTypePreference(viewType, applyTarget)
                     showViewTypeDialog = false
                 },
                 onDismiss = { showViewTypeDialog = false }

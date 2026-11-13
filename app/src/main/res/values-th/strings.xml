@@ -78,6 +78,9 @@
     <string name="apply_only_to_this_folder">ใช้กับโฟลเดอร์นี้เท่านั้น</string>
     <string name="apply_to_all_folders_title">ใช้กับทุกโฟลเดอร์ไหม</string>
     <string name="apply_to_all_folders_message">“%1$s” จะถูกใช้กับทุกโฟลเดอร์ ค่ากำหนดที่บันทึกไว้สำหรับแต่ละโฟลเดอร์จะหายไป</string>
+    <string name="apply_only_to_this_album">ใช้กับอัลบั้มนี้เท่านั้น</string>
+    <string name="apply_to_all_albums_title">ใช้กับทุกอัลบั้มไหม</string>
+    <string name="apply_to_all_albums_message">“%1$s” จะถูกใช้กับทุกอัลบั้ม ค่ากำหนดที่บันทึกไว้สำหรับแต่ละอัลบั้มจะหายไป</string>
     <string name="group_by_none">ไม่จัดกลุ่ม</string>
     <string name="group_by_file_type">ประเภทไฟล์</string>
     <string name="cd_video">วิดีโอ</string>
