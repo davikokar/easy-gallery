@@ -356,6 +356,9 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **4** | Content albums (Tier B) and rule editing — **runs before Stage 3**; planned in [albums-stage-4.md](albums-stage-4.md) | ⬜ Not started — plan drafted 2026-11-13 | Tier B | yes |
 | **3** | People albums — after Stage 4 | ⬜ Not started | Tier C | yes |
 
+Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
+In progress when a binding deliverable lands (step 4.1's ADRs or later), per *Who updates this*.
+
 Status is one of ⬜ Not started · 🔶 In progress · ✅ Complete. Stages 3 and 4 are each roughly the
 size of 0–2 combined. **The rows are in execution order, and the numbers were deliberately not
 swapped**: ADRs 0009, 0013, 0014, 0016, 0017, 0018 and 0020 say "Stage 3" for people and "Stage 4"
@@ -550,7 +553,7 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-10-08 | **The New album screen's Create button made to float.** It had not been floating: the screen reserved an empty strip along the bottom of its body so the **Create album action** could never overlap anything, leaving a dead band of background above the button at every scroll position — including the top, where nothing needed clearing. The clearance moved into the lazy containers' `contentPadding`, which is the mechanism Albums View's **Add album button** already used; `FolderGrid`, `FolderList`, `MediaGrid`, `MediaList` and `GroupedMediaContent` each gained an optional `contentPadding` whose default reproduces their previous behaviour exactly, so no other call site changed. ADR-0016 and its Amendment 1 needed nothing: neither ever described the strip, and the decision they record is untouched. The bounds-comparing instrumented tests added by the remediation above had passed throughout, because they prove the last row can be scrolled clear of the button, not that the button floats — so the convention behind both controls was written into `ui-vocabulary.instructions.md`, where both are defined, rather than left to be rediscovered a third time. 236 unit tests and 76 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
 | 2026-10-08 | **Stage 2 started.** Step 2.0 landed: ADR-0017 (an automatic album's rule is a composable predicate), ADR-0018 (the media index is a second database, excluded from backup), and ADR-0019 (offline reverse geocoding for region albums) adopted, and the stage plan written at [albums-stage-2.md](albums-stage-2.md). No code; nothing user-visible. The stage's seven implementation steps and its exit criteria live in that document, and the rule for when a stage becomes In progress was clarified above to say that a binding decision counts as a deliverable. |
 | 2026-11-12 | **Stage 2 complete, with three criteria carried.** Steps 2.0–2.7 are done: the Tier A index in its own database (four schema versions, three migrations), the constrained WorkManager pipeline and Index now, delta detection, the offline gazetteer and place resolver, the evaluation engine, and region and time albums created from the **New automatic album** screen. The stage's exit criteria moved into §7 and [albums-stage-2.md](albums-stage-2.md) was archived; its open question about volume resync became §10 question 11. Declared complete by the maintainer; the definition-of-done re-run after `56126a6`, the Play Console declaration and the documentation audit are carried — see §7, *Stage 2*. |
-| 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 28–31). |
+| 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 28–32). |
 
 ### Who updates this
 
@@ -1017,6 +1020,29 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     exclusions on edit, and the case of a rule with an unknown clause. All three are
     [albums-stage-4.md](albums-stage-4.md)'s questions.
 
+32. **The content model ships inside the app, and content albums are hidden on weaker devices.**
+    Decided by the maintainer on 2026-11-13, answering questions A3 and A4 of
+    [albums-stage-4.md](albums-stage-4.md). **Inside the app:** no download and no network, which is
+    what §11 already requires; the tip jar stays the only feature that touches the network. **Hidden
+    on weaker devices:** below a threshold, content albums are not offered, as Favourites is not
+    offered below API 30 (decision 3). **Reasons on record:** the maintainer gave none; these are the
+    ones the existing documents supply. Decision 3 already accepts that a feature may be absent on
+    hardware that cannot support it, and §10 question 3 expected the lowest device to decide the
+    model's size. **What hidden means:** the maintainer chose "the simplest solution". The Planner's
+    reading, to be confirmed by step 4.1, is that the Content criterion is not offered, Tier B
+    indexing is skipped from the same capability check, and an existing album carrying a content
+    clause on such a device is treated as unevaluatable (ADR-0017) with its own notice wording and
+    is never rewritten. **Not decided, and owed by step 4.1:** the threshold itself, which the
+    feasibility spike's memory and speed figures should set.
+
+    **A consequence the maintainer should know:** with the model in the app, its size adds to every
+    install, including on devices where the feature is hidden, unless the delivery mechanism can be
+    conditional. Play's size limits have not been checked; the plan lists that as A3a.
+
+    **Also approved by the maintainer on 2026-11-13:** third-party dependencies that live only under
+    `tools/content-model-spike/`, for the feasibility spike and never the app, and the download of
+    about 3 GB of model weights; adding any runtime to the app is still decided at step 4.1.
+
 ---
 
 ## 9. Consequences for the existing app
@@ -1087,7 +1113,10 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    not request `POST_NOTIFICATIONS`.** It is what step 2.4 already shipped, so the code was not
    changed by the answer. §8 decision 23 holds it, with the two properties it makes permanent — the
    API 31 limit on an expedited "Index now" and the worker's lack of `getForegroundInfo`.
-3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation.
+3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation. —
+   **Partly answered 2026-11-13 by the maintainer, for content albums:** weaker devices do not get
+   the feature (§8 decision 32). The threshold is still open; the Stage 4 spike's figures should set
+   it. Stage 3's people albums have not been asked.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
 5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
    — ✅ **Answered 2026-10-30 by the maintainer: it stays on.** The question as raised is kept below,
