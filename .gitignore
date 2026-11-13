@@ -21,3 +21,20 @@ tools/gazetteer/raw/
 /app/release/
 .kotlin/
 .artifacts/tmp/
+
+# Content-model spike (step 4.0): downloads, converted weights, venv, build output, and results that name private photos
+tools/content-model-spike/raw/
+tools/content-model-spike/models/
+tools/content-model-spike/.venv/
+tools/content-model-spike/results/
+tools/content-model-spike/**/build/
+tools/content-model-spike/**/src/main/assets/*.tflite
+tools/content-model-spike/**/src/main/assets/*.onnx
+tools/content-model-spike/**/src/main/assets/*.onnx_data
+tools/content-model-spike/**/src/main/assets/*.bin
+tools/content-model-spike/**/src/main/assets/*.npy
+tools/content-model-spike/**/src/main/assets/*.safetensors
+tools/content-model-spike/**/src/main/assets/*.task
+tools/content-model-spike/**/src/main/assets/*.litertlm
+**/__pycache__/
+tools/content-model-spike/**/*.pyc
