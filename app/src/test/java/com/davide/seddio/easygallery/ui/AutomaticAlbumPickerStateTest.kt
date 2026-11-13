@@ -9,7 +9,6 @@ import com.davide.seddio.easygallery.data.DateTakenSortState
 import com.davide.seddio.easygallery.data.GazetteerNames
 import com.davide.seddio.easygallery.data.JoinedMedia
 import com.davide.seddio.easygallery.data.LocationState
-import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
@@ -49,7 +48,6 @@ class AutomaticAlbumPickerStateTest {
     private val existingNames = MutableStateFlow(listOf("Trips"))
     private var locale: Locale = Locale.US
     private var zone: ZoneId = ZoneId.of("UTC")
-    private var locationGranted = true
     private var namesLoads = 0
     private var namesFailure: Exception? = null
 
@@ -59,7 +57,6 @@ class AutomaticAlbumPickerStateTest {
         existingAlbumNames = existingNames,
         zoneProvider = { zone },
         localeProvider = { locale },
-        locationAccess = { locationGranted },
         namesLoader = {
             namesLoads++
             namesFailure?.let { throw it }
@@ -114,7 +111,6 @@ class AutomaticAlbumPickerStateTest {
             join.value = libraryJoin()
             val ready = awaitState { it.status == AutomaticAlbumPickerStatus.READY }
             assertEquals(listOf("France", "Italy"), ready.content.countries.map { it.displayName })
-            assertEquals(MediaIndexCoverage(withoutLocation = 1, withoutDate = 1), ready.coverage)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -267,7 +263,7 @@ class AutomaticAlbumPickerStateTest {
         }
     }
 
-    // --- names, locale, permission ---------------------------------------------------------------
+    // --- names, locale ---------------------------------------------------------------
 
     @Test
     fun `the names are read once, and only when the picker opens`() = runTest {
@@ -295,7 +291,6 @@ class AutomaticAlbumPickerStateTest {
             state.open("Album")
             val failed = awaitState { it.status == AutomaticAlbumPickerStatus.NAMES_FAILED }
             assertTrue(failed.content.countries.isEmpty())
-            assertNull(failed.coverage)
 
             // A retry that fails again stays an error.
             state.retryLoadingNames()
@@ -371,23 +366,6 @@ class AutomaticAlbumPickerStateTest {
 
         state.close()
         assertFalse(state.hasDraftName)
-    }
-
-    @Test
-    fun `location access is read when the picker opens`() = runTest {
-        join.value = libraryJoin()
-        locationGranted = false
-
-        state.uiState.test {
-            state.open("Album")
-            assertFalse(awaitState { it.status == AutomaticAlbumPickerStatus.READY }.locationAccessGranted)
-
-            locationGranted = true
-            state.close()
-            state.open("Album")
-            assertTrue(awaitState { it.locationAccessGranted && it.status == AutomaticAlbumPickerStatus.READY }.locationAccessGranted)
-            cancelAndIgnoreRemainingEvents()
-        }
     }
 
     // --- helpers ---------------------------------------------------------------------------------

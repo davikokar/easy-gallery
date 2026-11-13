@@ -1,6 +1,5 @@
 package com.davide.seddio.easygallery.ui
 
-import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,16 +24,15 @@ class AutomaticAlbumIndexBandTest {
         indexedItemsCount = indexed,
         indexedWithDateCount = 0,
         indexedWithoutDateCount = 0,
+        indexedWithoutLocationCount = 0,
         notYetIndexedCount = notYetIndexed,
         lastRunStartedAtMillis = null,
         lastRunFinishedAtMillis = null,
         lastSuccessfulRunFinishedAtMillis = null,
         lastRunOutcome = null,
-        lastRunErrorMessage = null
+        lastRunErrorMessage = null,
+        locationAccessGranted = true
     )
-
-    private fun coverage(withoutLocation: Int = 0, withoutDate: Int = 0) =
-        MediaIndexCoverage(withoutLocation = withoutLocation, withoutDate = withoutDate)
 
     @Test
     fun `nothing waiting and nothing running is hidden`() {
@@ -115,53 +113,5 @@ class AutomaticAlbumIndexBandTest {
 
         assertTrue(automaticAlbumIndexBand(state(running, indexed = 0, notYetIndexed = 10)).emptyListMayStillFill())
         assertFalse(automaticAlbumIndexBand(state(indexed = 10, notYetIndexed = 0)).emptyListMayStillFill())
-    }
-
-    @Test
-    fun `location notice shows for a count above zero or when location access is off`() {
-        assertTrue(locationCoverageNoticeVisible(coverage(withoutLocation = 2), locationAccessGranted = true))
-        assertTrue(locationCoverageNoticeVisible(coverage(withoutLocation = 0), locationAccessGranted = false))
-        assertTrue(locationCoverageNoticeVisible(coverage = null, locationAccessGranted = false))
-        assertFalse(locationCoverageNoticeVisible(coverage(withoutLocation = 0), locationAccessGranted = true))
-        assertFalse(locationCoverageNoticeVisible(coverage = null, locationAccessGranted = true))
-    }
-
-    @Test
-    fun `date notice shows only for a count above zero`() {
-        assertTrue(dateCoverageNoticeVisible(coverage(withoutDate = 1)))
-        assertFalse(dateCoverageNoticeVisible(coverage(withoutDate = 0)))
-        assertFalse(dateCoverageNoticeVisible(coverage = null))
-    }
-
-    @Test
-    fun `place area has content for the band or the location notice and otherwise none`() {
-        val notIndexed = AutomaticAlbumIndexBand.NotIndexed(count = 2, nothingIndexed = false)
-        val hidden = AutomaticAlbumIndexBand.Hidden
-
-        assertTrue(placeStatusAreaHasContent(notIndexed, coverage(), locationAccessGranted = true))
-        assertTrue(placeStatusAreaHasContent(AutomaticAlbumIndexBand.Running, coverage = null, locationAccessGranted = true))
-        assertTrue(placeStatusAreaHasContent(hidden, coverage(withoutLocation = 3), locationAccessGranted = true))
-        assertFalse(placeStatusAreaHasContent(hidden, coverage(withoutDate = 3), locationAccessGranted = true))
-        assertFalse(placeStatusAreaHasContent(hidden, coverage = null, locationAccessGranted = true))
-    }
-
-    @Test
-    fun `place area has content when location access is off even with no count`() {
-        val hidden = AutomaticAlbumIndexBand.Hidden
-
-        assertTrue(placeStatusAreaHasContent(hidden, coverage = null, locationAccessGranted = false))
-        assertTrue(placeStatusAreaHasContent(hidden, coverage(), locationAccessGranted = false))
-    }
-
-    @Test
-    fun `date area has content for the band or the date notice and otherwise none`() {
-        val notIndexed = AutomaticAlbumIndexBand.NotIndexed(count = 2, nothingIndexed = true)
-        val hidden = AutomaticAlbumIndexBand.Hidden
-
-        assertTrue(dateStatusAreaHasContent(notIndexed, coverage()))
-        assertTrue(dateStatusAreaHasContent(AutomaticAlbumIndexBand.Running, coverage = null))
-        assertTrue(dateStatusAreaHasContent(hidden, coverage(withoutDate = 3)))
-        assertFalse(dateStatusAreaHasContent(hidden, coverage(withoutLocation = 3)))
-        assertFalse(dateStatusAreaHasContent(hidden, coverage = null))
     }
 }

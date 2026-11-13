@@ -6,10 +6,8 @@ import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AutomaticAlbumFacets
 import com.davide.seddio.easygallery.data.CountryBreakdown
 import com.davide.seddio.easygallery.data.GazetteerNames
-import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
 import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
-import com.davide.seddio.easygallery.data.MediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.MonthFacet
 import com.davide.seddio.easygallery.data.PlaceFacet
 import com.davide.seddio.easygallery.data.YearFacet
@@ -138,10 +136,6 @@ data class AutomaticAlbumPickerUi(
     val name: String,
     val selection: AutomaticAlbumSelection,
     val content: AutomaticAlbumPickerContent,
-    /** Library-wide counts for the coverage notices; null until the live media is known. */
-    val coverage: MediaIndexCoverage?,
-    /** False on API 29+ without `ACCESS_MEDIA_LOCATION`: the location notice says so instead of counting. */
-    val locationAccessGranted: Boolean,
     /** What to pass to `AlbumsViewModel.createAutomaticAlbum`; null while nothing is chosen. */
     val rule: AlbumRule.Evaluatable?,
     val canCreate: Boolean
@@ -176,24 +170,6 @@ fun AutomaticAlbumIndexBand.emptyListMayStillFill(): Boolean = when (this) {
     AutomaticAlbumIndexBand.Hidden -> false
 }
 
-/** Shared by the coverage notices and the Status area header, so the header never shows over nothing. */
-fun locationCoverageNoticeVisible(coverage: MediaIndexCoverage?, locationAccessGranted: Boolean): Boolean =
-    !locationAccessGranted || (coverage != null && coverage.withoutLocation > 0)
-
-fun dateCoverageNoticeVisible(coverage: MediaIndexCoverage?): Boolean =
-    coverage != null && coverage.withoutDate > 0
-
-/** Whether the Place picker's Status area has anything to show, and so whether it has a header. */
-fun placeStatusAreaHasContent(
-    band: AutomaticAlbumIndexBand,
-    coverage: MediaIndexCoverage?,
-    locationAccessGranted: Boolean
-): Boolean = band != AutomaticAlbumIndexBand.Hidden || locationCoverageNoticeVisible(coverage, locationAccessGranted)
-
-/** Whether the Date picker's Status area has anything to show, and so whether it has a header. */
-fun dateStatusAreaHasContent(band: AutomaticAlbumIndexBand, coverage: MediaIndexCoverage?): Boolean =
-    band != AutomaticAlbumIndexBand.Hidden || dateCoverageNoticeVisible(coverage)
-
 /**
  * The New automatic album screen's draft and what it lists. Owned by `AlbumsViewModel`, which hands
  * it the one join its album evaluation uses, so the picker and an album created from it agree by
@@ -204,10 +180,9 @@ class AutomaticAlbumPickerState(
     private val scope: CoroutineScope,
     liveJoin: Flow<MediaIndexLiveJoin?>,
     existingAlbumNames: Flow<List<String>>,
-    // The zone, the locale and the permission are read at each computation, never cached.
+    // The zone and the locale are read at each computation, never cached.
     private val zoneProvider: () -> ZoneId,
     private val localeProvider: () -> Locale,
-    private val locationAccess: MediaLocationAccessChecker,
     private val namesLoader: () -> GazetteerNames,
     private val workDispatcher: CoroutineDispatcher
 ) {
@@ -222,16 +197,14 @@ class AutomaticAlbumPickerState(
     private data class Snapshot(
         val status: AutomaticAlbumPickerStatus,
         val selection: AutomaticAlbumSelection,
-        val content: AutomaticAlbumPickerContent,
-        val coverage: MediaIndexCoverage?,
-        val locationAccessGranted: Boolean
+        val content: AutomaticAlbumPickerContent
     )
 
     private val _name = MutableStateFlow("")
     private val _selection = MutableStateFlow(AutomaticAlbumSelection())
     private val _names = MutableStateFlow<NamesState>(NamesState.NotLoaded)
 
-    // Bumped on open and refresh so the locale and the permission are read afresh after a recreate or a grant.
+    // Bumped on open and refresh so the locale is read afresh after a recreate.
     private val _openCount = MutableStateFlow(0)
 
     /** False when no draft was opened, as in a process restored onto this screen. */
@@ -248,8 +221,6 @@ class AutomaticAlbumPickerState(
             name = name,
             selection = snapshot.selection,
             content = snapshot.content,
-            coverage = snapshot.coverage,
-            locationAccessGranted = snapshot.locationAccessGranted,
             rule = rule,
             canCreate = rule != null && AlbumNaming.isAvailable(name.trim(), existing)
         )
@@ -262,8 +233,6 @@ class AutomaticAlbumPickerState(
             name = "",
             selection = AutomaticAlbumSelection(),
             content = AutomaticAlbumPickerContent(),
-            coverage = null,
-            locationAccessGranted = true,
             rule = null,
             canCreate = false
         )
@@ -277,7 +246,7 @@ class AutomaticAlbumPickerState(
         loadNamesIfNeeded()
     }
 
-    /** Recomputes the lists with the current locale and permission, keeping the draft. */
+    /** Recomputes the lists with the current locale, keeping the draft. */
     fun refresh() {
         _openCount.update { it + 1 }
     }
@@ -337,9 +306,8 @@ class AutomaticAlbumPickerState(
         namesState: NamesState,
         selection: AutomaticAlbumSelection
     ): Snapshot {
-        val locationAccessGranted = locationAccess.isGranted()
         fun waiting(status: AutomaticAlbumPickerStatus) =
-            Snapshot(status, selection, AutomaticAlbumPickerContent(), null, locationAccessGranted)
+            Snapshot(status, selection, AutomaticAlbumPickerContent())
 
         if (namesState is NamesState.Failed) return waiting(AutomaticAlbumPickerStatus.NAMES_FAILED)
         if (namesState !is NamesState.Ready) return waiting(AutomaticAlbumPickerStatus.LOADING_NAMES)
@@ -354,9 +322,7 @@ class AutomaticAlbumPickerState(
                 names = namesState.names,
                 locale = localeProvider(),
                 selection = selection
-            ),
-            coverage = join.coverage(),
-            locationAccessGranted = locationAccessGranted
+            )
         )
     }
 }

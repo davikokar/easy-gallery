@@ -164,8 +164,6 @@
     <string name="album_hidden_items_notice">بعض العناصر غير متاحة مؤقتًا. ستظهر مجددًا في هذا الألبوم عندما تصبح الملفات متاحة.</string>
     <string name="album_rule_unevaluatable_notice">تتطلب القاعدة التلقائية لهذا الألبوم إصدارًا أحدث من التطبيق. إلى أن تقوم بالتحديث، تُعرض العناصر التي أضفتها يدويًا فقط.</string>
     <string name="album_rule_unevaluatable_notice_short">يتطلب إصدارًا أحدث من التطبيق. تُعرض العناصر المضافة يدويًا فقط.</string>
-    <string name="album_rule_waiting_notice">لم يتم فحص بعض الصور والفيديوهات بعد، لذا قد يكون هذا الألبوم غير مكتمل. تحقق من الحالة الحالية في «%1$s» ضمن %2$s.</string>
-    <string name="album_rule_waiting_notice_short">قد يكون غير مكتمل: لم يتم فحص بعض العناصر بعد. راجع %1$s.</string>
     <string name="album_default_name">ألبومي %1$d</string>
     <string name="album_type_title">ألبوم جديد</string>
     <string name="album_type_manual_title">ألبوم يدوي</string>
@@ -207,23 +205,7 @@
     <string name="state_collapsed">مطوي</string>
     <string name="automatic_album_index_running">جارٍ قراءة الأماكن والتواريخ من صورك ومقاطع الفيديو.</string>
     <string name="automatic_album_not_indexed_empty">ستمتلئ هذه القائمة عند اكتمال الفهرسة.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="zero">%1$d عنصر من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
-        <item quantity="one">صورة أو فيديو واحد بلا موقع صالح للاستخدام، وهو خارج ألبومات الأماكن.</item>
-        <item quantity="two">عنصران من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهما خارج ألبومات الأماكن.</item>
-        <item quantity="few">%1$d عناصر من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
-        <item quantity="many">%1$d عنصرًا من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
-        <item quantity="other">%1$d عنصر من الصور ومقاطع الفيديو بلا موقع صالح للاستخدام، وهي خارج ألبومات الأماكن.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">الوصول إلى الموقع متوقف، لذا لا يمكن قراءة مواقع الصور ولا يمكن لألبومات الأماكن تضمينها.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="zero">%1$d عنصر من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
-        <item quantity="one">صورة أو فيديو واحد بلا تاريخ التقاط، وهو خارج ألبومات التواريخ.</item>
-        <item quantity="two">عنصران من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهما خارج ألبومات التواريخ.</item>
-        <item quantity="few">%1$d عناصر من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
-        <item quantity="many">%1$d عنصرًا من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
-        <item quantity="other">%1$d عنصر من الصور ومقاطع الفيديو بلا تاريخ التقاط، وهي خارج ألبومات التواريخ.</item>
-    </plurals>
     <string name="automatic_album_clear_place">مسح المكان %1$s</string>
     <string name="automatic_album_clear_date">مسح التاريخ %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -259,12 +241,20 @@
         <item quantity="other">%1$d عنصر وسائط يحتوي على تاريخ مفهرس</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="zero">لا يوجد عنصر وسائط مفهرس بلا تاريخ</item>
-        <item quantity="one">عنصر وسائط واحد مفهرس بلا تاريخ</item>
-        <item quantity="two">عنصرا وسائط مفهرسان بلا تاريخ</item>
-        <item quantity="few">%1$d عناصر وسائط مفهرسة بلا تاريخ</item>
-        <item quantity="many">%1$d عنصر وسائط مفهرس بلا تاريخ</item>
-        <item quantity="other">%1$d عنصر وسائط مفهرس بلا تاريخ</item>
+        <item quantity="zero">لا يوجد عنصر بلا معلومات تاريخ صالحة للاستخدام</item>
+        <item quantity="one">عنصر واحد بلا معلومات تاريخ صالحة للاستخدام</item>
+        <item quantity="two">عنصران بلا معلومات تاريخ صالحة للاستخدام</item>
+        <item quantity="few">%1$d عناصر بلا معلومات تاريخ صالحة للاستخدام</item>
+        <item quantity="many">%1$d عنصرًا بلا معلومات تاريخ صالحة للاستخدام</item>
+        <item quantity="other">%1$d عنصر بلا معلومات تاريخ صالحة للاستخدام</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="zero">لا يوجد عنصر بلا معلومات موقع صالحة للاستخدام</item>
+        <item quantity="one">عنصر واحد بلا معلومات موقع صالحة للاستخدام</item>
+        <item quantity="two">عنصران بلا معلومات موقع صالحة للاستخدام</item>
+        <item quantity="few">%1$d عناصر بلا معلومات موقع صالحة للاستخدام</item>
+        <item quantity="many">%1$d عنصرًا بلا معلومات موقع صالحة للاستخدام</item>
+        <item quantity="other">%1$d عنصر بلا معلومات موقع صالحة للاستخدام</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="zero">لا توجد عناصر وسائط غير مفهرسة بعد</item>

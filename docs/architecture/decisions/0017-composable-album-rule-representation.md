@@ -484,6 +484,10 @@ make it match — and that is what keeps a combined album from waiting on every 
 library. For a time-only album these rules reduce exactly to step 2.5's. Additions and exclusions
 are untouched: ADR-0012's formula applies after the clauses have answered.
 
+> **Amended 2026-11-13 — see Amendment 3 below.** The album no longer shows the Incomplete-album
+> notice. The settled/unsettled model above, and the waiting status the evaluator reports, are
+> unchanged.
+
 ### When this becomes binding
 
 As Amendment 1 says of the `time` clause: the `region` format becomes stored user data when a
@@ -511,6 +515,8 @@ every change.
 - A provisional match can show an item whose new place differs, until the next resolve pass; the
   Incomplete-album notice is shown meanwhile.
 
+  > **Amended 2026-11-13 — see Amendment 3 below.** No notice is shown meanwhile any more.
+
 ### References
 
 - [docs/design/albums-stage-2.md](../../design/albums-stage-2.md) step 2.7
@@ -521,3 +527,44 @@ every change.
   `name` form, the `00` admin1 code, and the cap
 - `data/AlbumRule.kt`, `data/AlbumRuleJson.kt` — the clause types, the reasons, the parser and the
   encoder; `PLACE_RESOLVER_VERSION` in `data/Gazetteer.kt`
+
+## Amendment 3 — 2026-11-13 — A waiting album no longer shows a notice
+
+This amendment changes what the user sees, not what the evaluator computes. The Decision, Amendment
+1, and Amendment 2's clauses, matching rules and settled/unsettled model all continue to govern
+unchanged. **The maintainer decided it on 2026-11-13**; [albums.md](../../design/albums.md) §8
+decision 29 records the decision, its reasons, and its accepted cost.
+
+### What changed
+
+- **The album no longer shows the Incomplete-album notice** — not on the Album tile, not on the
+  Album row, not in Album Detail View. Amendment 2's bullet "it makes the album show the
+  Incomplete-album notice" now reads "it makes the album waiting": the condition is the same, and
+  nothing displays it.
+- **The evaluator's output is unchanged.** An album with an unsettled clause and no settled
+  no-match on it is still reported as waiting on the index — `AlbumEvaluationStatus.WAITING_ON_INDEX`.
+  Only its surfacing is removed.
+- **The Newer-app notice is unaffected.** An unevaluatable album still says so, as the Decision
+  requires.
+
+### Why the status is kept
+
+The settled/unsettled model is what stops an album waiting forever on rows that will never change,
+and it is correct whether or not anything shows it. Keeping the status leaves this a decision about
+the UI alone: removing it would change the evaluator for a reason that is not about evaluation, and
+showing the album's waiting state again later needs no change here.
+
+### Consequences of this amendment
+
+**Negative**
+
+- An album waiting on the index can look short or empty with nothing on it saying why. Settings'
+  Media index area and the New automatic album screen's Index band still say how much is not yet
+  indexed.
+- Amendment 2's Positive — "an album reports itself incomplete only while waiting could change its
+  answer" — now holds of the status the evaluator reports, not of anything the user sees.
+- A provisional match whose place may still change is shown with no sign that it is provisional.
+
+### References added by this amendment
+
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 22 and 29

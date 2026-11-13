@@ -376,6 +376,9 @@ maintainer approved it on 2026-11-11**, as part of step 2.7 of
 8. **The picker is one of the two homes of the coverage notices.** Where they appear and what they
    count is [albums.md](../../design/albums.md) §8 decision 25's.
 
+   > **Amended 2026-11-13 — see Amendment 3 below.** The picker no longer shows the coverage
+   > notices; the figures are in Settings' Media index area only.
+
 ### Why a screen of its own
 
 **Not a mode of the New album screen.** The inputs differ — a folder browser that picks items,
@@ -422,3 +425,49 @@ counts and the coverage notices are a screen's worth of content.
 - [ADR-0020](0020-automatic-albums-resolve-against-live-media.md) — the live media both the picker
   and the evaluator resolve against
 - [docs/design/albums.md](../../design/albums.md) §8 decisions 25 and 26, §10 question 10
+
+## Amendment 3 — 2026-11-13 — The picker no longer shows the coverage notices
+
+This amendment withdraws item 8 of Amendment 2. Everything else in the record, Amendment 2's other
+items included, continues to govern. It is an amendment for the reason Amendment 2 gives: the
+decision with lasting structural impact — automatic creation on a draft-and-commit screen of its
+own — is untouched, and only part of that screen's content changes. **The maintainer decided it on
+2026-11-13**; [albums.md](../../design/albums.md) §8 decision 29 records the decision, its
+reasons, and its accepted cost.
+
+### What changed
+
+- **The New automatic album screen shows no location or date coverage notice.** Its Status area
+  keeps its header, its collapse control and its Index band, as albums.md §8 decision 27, amended,
+  describes. The two figures appear only in the Settings screen's Media index area.
+- **Item 5 is unaffected.** The picker still counts what the album will hold through the
+  evaluator's join over the gated live set. What leaves that join is the coverage computation
+  alone, which moves to `MediaIndexingViewModel`, and the picker stops reading whether
+  `ACCESS_MEDIA_LOCATION` is held.
+
+### Why a screen of its own still holds
+
+*Why a screen of its own* counted the coverage notices among a screen's worth of content. Without
+them, a name field, two scrolling lists with counts and the Status area still are, and the reasons
+for refusing a mode and a dialog did not depend on the notices. The conclusion stands.
+
+### Consequences of this amendment
+
+**Positive**
+
+- The Status area holds one kind of content, the Index band, so its header appears exactly when
+  the band does.
+- The picker no longer depends on the location permission state.
+
+**Negative**
+
+- A user creating a region or time album is no longer told, where they decide, how much of the
+  library has no usable location or date. A short Place or Date list is explained by the Index band
+  only while media is not yet indexed, and otherwise only in Settings — the cost decision 29
+  accepts.
+
+### References added by this amendment
+
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 25, 27 and 29
+- [ADR-0019](0019-offline-reverse-geocoding-for-region-albums.md) Amendment 3 — where the
+  location coverage figure and the access-denied reason are now said

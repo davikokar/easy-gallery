@@ -214,29 +214,39 @@ class AutomaticAlbumFacetsTest {
         assertEquals(3, facets.matchCount(region = null, time = year(2025)))
     }
 
-    // --- coverage -----------------------------------------------------------------------------
+    // --- location state -----------------------------------------------------------------------
 
     @Test
-    fun `coverage counts what indexing reached and found nothing in, never pending or not indexed items`() {
-        val join = joinOf(
-            item(1, JUNE_10, resolved("IT")),
-            item(2, JUNE_10, LocationState.NoCoordinates),
-            item(3, null, LocationState.ResolvedOutOfCap),
-            item(4, null, pendingOld("IT")),
-            item(5, JUNE_10, LocationState.PendingWithoutValues),
-            unreached(6)
-        )
+    fun `a row without coordinates has no coordinates whatever its place columns hold`() {
+        val state = locationStateOf(row(liveItem(1), JUNE_10, hasCoordinates = false, country = "IT", marker = PLACE_RESOLVER_VERSION))
 
-        assertEquals(MediaIndexCoverage(withoutLocation = 2, withoutDate = 2), join.coverage())
+        assertEquals(LocationState.NoCoordinates, state)
     }
 
     @Test
-    fun `coverage of an empty library is zero`() {
-        assertEquals(MediaIndexCoverage(0, 0), joinOf().coverage())
+    fun `a row the current resolver resolved is resolved with a place or out of cap without one`() {
+        val withPlace = row(liveItem(1), JUNE_10, country = "IT", region = "16", place = "Florence", marker = PLACE_RESOLVER_VERSION)
+        val beyondCap = row(liveItem(2), JUNE_10, marker = PLACE_RESOLVER_VERSION)
+
+        assertEquals(resolved("IT", "16", "Florence"), locationStateOf(withPlace))
+        assertEquals(LocationState.ResolvedOutOfCap, locationStateOf(beyondCap))
     }
 
     @Test
-    fun `coverage on a built join excludes pending and not indexed items`() {
+    fun `a row with no marker or an old one is pending, keeping any old values`() {
+        val noMarkerNoValues = row(liveItem(1), JUNE_10, marker = null)
+        val noMarkerOldValues = row(liveItem(2), JUNE_10, country = "IT", region = "16", place = "Florence", marker = null)
+        val oldMarkerNoValues = row(liveItem(3), JUNE_10, marker = PLACE_RESOLVER_VERSION - 1)
+        val oldMarkerOldValues = row(liveItem(4), JUNE_10, country = "IT", marker = PLACE_RESOLVER_VERSION - 1)
+
+        assertEquals(LocationState.PendingWithoutValues, locationStateOf(noMarkerNoValues))
+        assertEquals(pendingOld("IT", "16", "Florence"), locationStateOf(noMarkerOldValues))
+        assertEquals(LocationState.PendingWithoutValues, locationStateOf(oldMarkerNoValues))
+        assertEquals(pendingOld("IT"), locationStateOf(oldMarkerOldValues))
+    }
+
+    @Test
+    fun `a built join states each live item by its row and marks the unreached ones not indexed`() {
         val live = (1..6).map { liveItem(it) }
         val rows = listOf(
             row(live[0], JUNE_10, country = "IT", marker = PLACE_RESOLVER_VERSION),
@@ -247,9 +257,30 @@ class AutomaticAlbumFacetsTest {
             // live[5] is not indexed
         )
 
-        val coverage = MediaIndexLiveJoin.build(rows, live).coverage()
+        val join = MediaIndexLiveJoin.build(rows, live)
 
-        assertEquals(MediaIndexCoverage(withoutLocation = 2, withoutDate = 1), coverage)
+        assertEquals(
+            listOf(
+                resolved("IT"),
+                LocationState.NoCoordinates,
+                LocationState.ResolvedOutOfCap,
+                pendingOld("IT"),
+                LocationState.PendingWithoutValues,
+                LocationState.NotIndexed
+            ),
+            join.items.map { it.location }
+        )
+        assertEquals(
+            listOf(
+                DateTakenSortState.IndexedWithDate(JUNE_10),
+                DateTakenSortState.IndexedWithDate(JUNE_10),
+                DateTakenSortState.IndexedWithoutDate,
+                DateTakenSortState.IndexedWithDate(JUNE_10),
+                DateTakenSortState.IndexedWithDate(JUNE_10),
+                DateTakenSortState.NotIndexed
+            ),
+            join.items.map { it.date }
+        )
     }
 
     // --- facet consistency on real data -------------------------------------------------------

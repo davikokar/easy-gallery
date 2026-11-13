@@ -154,8 +154,6 @@
     <string name="album_hidden_items_notice">部分项目暂时不可用。文件恢复可用后，它们会重新显示在此相册中。</string>
     <string name="album_rule_unevaluatable_notice">此相册的自动规则需要更新版本的应用。更新之前，仅显示手动添加的项目。</string>
     <string name="album_rule_unevaluatable_notice_short">需要更新版本的应用。仅显示手动添加的项目。</string>
-    <string name="album_rule_waiting_notice">部分照片和视频尚未扫描，此相册可能不完整。请在%2$s的“%1$s”中查看当前状态。</string>
-    <string name="album_rule_waiting_notice_short">部分项目尚未扫描，可能不完整。请查看%1$s。</string>
     <string name="album_default_name">我的相册 %1$d</string>
     <string name="album_type_title">新建相册</string>
     <string name="album_type_manual_title">手动相册</string>
@@ -187,13 +185,7 @@
     <string name="state_collapsed">已收起</string>
     <string name="automatic_album_index_running">正在读取照片和视频中的地点和日期。</string>
     <string name="automatic_album_not_indexed_empty">建立索引完成后，此列表将显示内容。</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="other">有 %1$d 项照片和视频没有可用的位置信息，不包含在地点相册中。</item>
-    </plurals>
     <string name="automatic_album_location_access_off">位置信息访问权限已关闭，因此无法读取照片的位置，地点相册也无法包含这些照片。</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="other">有 %1$d 项照片和视频没有拍摄日期，不包含在日期相册中。</item>
-    </plurals>
     <string name="automatic_album_clear_place">清除地点 %1$s</string>
     <string name="automatic_album_clear_date">清除日期 %1$s</string>
     <string name="automatic_album_month_year">%2$d年%1$s</string>
@@ -219,7 +211,10 @@
         <item quantity="other">已索引且有日期的媒体项：%1$d 项</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="other">已索引但无日期的媒体项：%1$d 项</item>
+        <item quantity="other">没有可用日期信息的项目：%1$d 项</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="other">没有可用位置信息的项目：%1$d 项</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="other">尚未索引的媒体项：%1$d 项</item>

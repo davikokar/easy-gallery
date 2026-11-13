@@ -155,8 +155,6 @@
     <string name="album_hidden_items_notice">Beberapa item untuk sementara tidak tersedia. Item tersebut akan muncul kembali di album ini saat file tersedia lagi.</string>
     <string name="album_rule_unevaluatable_notice">Aturan otomatis album ini memerlukan versi aplikasi yang lebih baru. Hanya item yang Anda tambahkan secara manual yang ditampilkan hingga Anda memperbarui aplikasi.</string>
     <string name="album_rule_unevaluatable_notice_short">Memerlukan versi aplikasi yang lebih baru. Hanya item yang ditambahkan manual yang ditampilkan.</string>
-    <string name="album_rule_waiting_notice">Beberapa foto dan video belum dipindai, sehingga album ini mungkin belum lengkap. Periksa “%1$s” di %2$s untuk melihat status terkini.</string>
-    <string name="album_rule_waiting_notice_short">Mungkin belum lengkap: beberapa item belum dipindai. Lihat %1$s.</string>
     <string name="album_default_name">Album saya %1$d</string>
     <string name="album_type_title">Album baru</string>
     <string name="album_type_manual_title">Album manual</string>
@@ -188,13 +186,7 @@
     <string name="state_collapsed">Diciutkan</string>
     <string name="automatic_album_index_running">Membaca tempat dan tanggal dari foto dan video Anda.</string>
     <string name="automatic_album_not_indexed_empty">Daftar ini akan terisi seiring selesainya pengindeksan.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="other">%1$d foto atau video tidak memiliki lokasi yang dapat digunakan dan tidak disertakan dalam album tempat.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">Akses lokasi nonaktif, sehingga lokasi foto tidak dapat dibaca dan album tempat tidak dapat menyertakannya.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="other">%1$d foto atau video tidak memiliki tanggal pengambilan dan tidak disertakan dalam album tanggal.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Hapus tempat %1$s</string>
     <string name="automatic_album_clear_date">Hapus tanggal %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -220,7 +212,10 @@
         <item quantity="other">%1$d item media memiliki tanggal yang diindeks</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="other">%1$d item media diindeks tanpa tanggal</item>
+        <item quantity="other">%1$d item tidak memiliki informasi tanggal yang dapat digunakan</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="other">%1$d item tidak memiliki informasi lokasi yang dapat digunakan</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="other">%1$d item media belum diindeks</item>

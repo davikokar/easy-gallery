@@ -161,8 +161,6 @@
     <string name="album_hidden_items_notice">Niektóre elementy są tymczasowo niedostępne. Pojawią się ponownie w tym albumie, gdy pliki znów będą dostępne.</string>
     <string name="album_rule_unevaluatable_notice">Reguła automatyczna tego albumu wymaga nowszej wersji aplikacji. Do czasu aktualizacji wyświetlane są tylko elementy dodane ręcznie.</string>
     <string name="album_rule_unevaluatable_notice_short">Wymagana nowsza wersja aplikacji. Wyświetlane są tylko elementy dodane ręcznie.</string>
-    <string name="album_rule_waiting_notice">Niektóre zdjęcia i filmy nie zostały jeszcze przeskanowane, więc ten album może być niekompletny. Sprawdź aktualny stan – %2$s: „%1$s”.</string>
-    <string name="album_rule_waiting_notice_short">Może być niekompletny: część elementów nie została jeszcze przeskanowana. Zobacz: %1$s.</string>
     <string name="album_default_name">Mój album %1$d</string>
     <string name="album_type_title">Nowy album</string>
     <string name="album_type_manual_title">Album ręczny</string>
@@ -200,19 +198,7 @@
     <string name="state_collapsed">Zwinięto</string>
     <string name="automatic_album_index_running">Odczytywanie miejsc i dat ze zdjęć i filmów.</string>
     <string name="automatic_album_not_indexed_empty">Ta lista wypełni się po zakończeniu indeksowania.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="one">%1$d zdjęcie lub film nie ma użytecznej lokalizacji i jest pomijane w albumach miejsc.</item>
-        <item quantity="few">%1$d zdjęcia lub filmy nie mają użytecznej lokalizacji i są pomijane w albumach miejsc.</item>
-        <item quantity="many">%1$d zdjęć lub filmów nie ma użytecznej lokalizacji i jest pomijanych w albumach miejsc.</item>
-        <item quantity="other">%1$d zdjęcia lub filmu nie ma użytecznej lokalizacji i jest pomijane w albumach miejsc.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">Dostęp do lokalizacji jest wyłączony, więc nie można odczytać lokalizacji zdjęć, a albumy miejsc ich nie uwzględnią.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="one">%1$d zdjęcie lub film nie ma daty wykonania i jest pomijane w albumach dat.</item>
-        <item quantity="few">%1$d zdjęcia lub filmy nie mają daty wykonania i są pomijane w albumach dat.</item>
-        <item quantity="many">%1$d zdjęć lub filmów nie ma daty wykonania i jest pomijanych w albumach dat.</item>
-        <item quantity="other">%1$d zdjęcia lub filmu nie ma daty wykonania i jest pomijane w albumach dat.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Wyczyść miejsce: %1$s</string>
     <string name="automatic_album_clear_date">Wyczyść datę: %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -244,10 +230,16 @@
         <item quantity="other">%1$d elementu multimedialnego ma zaindeksowaną datę</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="one">%1$d element multimedialny zaindeksowano bez daty</item>
-        <item quantity="few">%1$d elementy multimedialne zaindeksowano bez daty</item>
-        <item quantity="many">%1$d elementów multimedialnych zaindeksowano bez daty</item>
-        <item quantity="other">%1$d elementu multimedialnego zaindeksowano bez daty</item>
+        <item quantity="one">%1$d element nie ma użytecznych informacji o dacie</item>
+        <item quantity="few">%1$d elementy nie mają użytecznych informacji o dacie</item>
+        <item quantity="many">%1$d elementów nie ma użytecznych informacji o dacie</item>
+        <item quantity="other">%1$d elementu nie ma użytecznych informacji o dacie</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="one">%1$d element nie ma użytecznych informacji o lokalizacji</item>
+        <item quantity="few">%1$d elementy nie mają użytecznych informacji o lokalizacji</item>
+        <item quantity="many">%1$d elementów nie ma użytecznych informacji o lokalizacji</item>
+        <item quantity="other">%1$d elementu nie ma użytecznych informacji o lokalizacji</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="one">%1$d element multimedialny nie został jeszcze zaindeksowany</item>

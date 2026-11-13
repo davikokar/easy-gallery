@@ -157,8 +157,6 @@
     <string name="album_hidden_items_notice">Bazı öğeler geçici olarak kullanılamıyor. Dosyalar yeniden kullanılabilir olduğunda bu albümde tekrar görünecekler.</string>
     <string name="album_rule_unevaluatable_notice">Bu albümün otomatik kuralı için uygulamanın daha yeni bir sürümü gerekiyor. Güncelleme yapana kadar yalnızca elle eklediğiniz öğeler gösterilir.</string>
     <string name="album_rule_unevaluatable_notice_short">Uygulamanın daha yeni bir sürümü gerekiyor. Yalnızca elle eklenen öğeler gösteriliyor.</string>
-    <string name="album_rule_waiting_notice">Bazı fotoğraf ve videolar henüz taranmadı, bu nedenle bu albüm eksik olabilir. Güncel durum: %2$s › “%1$s”.</string>
-    <string name="album_rule_waiting_notice_short">Eksik olabilir: bazı öğeler henüz taranmadı. Bkz. %1$s.</string>
     <string name="album_default_name">Albümüm %1$d</string>
     <string name="album_type_title">Yeni albüm</string>
     <string name="album_type_manual_title">Manuel albüm</string>
@@ -192,15 +190,7 @@
     <string name="state_collapsed">Daraltıldı</string>
     <string name="automatic_album_index_running">Fotoğraf ve videolarınızdan yerler ve tarihler okunuyor.</string>
     <string name="automatic_album_not_indexed_empty">Dizine ekleme tamamlandıkça bu liste dolacak.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="one">%1$d fotoğraf veya videonun kullanılabilir bir konumu yok ve yer albümlerinin dışında bırakıldı.</item>
-        <item quantity="other">%1$d fotoğraf ve videonun kullanılabilir bir konumu yok ve yer albümlerinin dışında bırakıldı.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">Konum erişimi kapalı olduğundan fotoğraf konumları okunamıyor ve yer albümleri bunları içeremiyor.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="one">%1$d fotoğraf veya videonun çekilme tarihi yok ve tarih albümlerinin dışında bırakıldı.</item>
-        <item quantity="other">%1$d fotoğraf ve videonun çekilme tarihi yok ve tarih albümlerinin dışında bırakıldı.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Yeri temizle: %1$s</string>
     <string name="automatic_album_clear_date">Tarihi temizle: %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -228,8 +218,12 @@
         <item quantity="other">%1$d medya öğesinin dizine eklenmiş bir tarihi var</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="one">%1$d medya öğesi tarihsiz olarak dizine eklendi</item>
-        <item quantity="other">%1$d medya öğesi tarihsiz olarak dizine eklendi</item>
+        <item quantity="one">%1$d öğenin kullanılabilir tarih bilgisi yok</item>
+        <item quantity="other">%1$d öğenin kullanılabilir tarih bilgisi yok</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="one">%1$d öğenin kullanılabilir konum bilgisi yok</item>
+        <item quantity="other">%1$d öğenin kullanılabilir konum bilgisi yok</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="one">%1$d medya öğesi henüz dizine eklenmedi</item>

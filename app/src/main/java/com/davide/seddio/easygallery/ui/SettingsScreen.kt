@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -34,6 +35,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.ui.theme.AppBackground
@@ -58,6 +61,16 @@ fun SettingsScreen(
     var showAboutDialog by remember { mutableStateOf(false) }
     var showPlaceDataDialog by remember { mutableStateOf(false) }
     val indexingState by mediaIndexingViewModel.uiState.collectAsState()
+
+    // The location permission is changed outside the app, so it is read again on every resume.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, mediaIndexingViewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) mediaIndexingViewModel.refreshLocationAccess()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     if (showAboutDialog) {
         AboutDialog(onDismiss = { showAboutDialog = false })
@@ -282,6 +295,20 @@ fun MediaIndexSettingsArea(
                 state.indexedWithoutDateCount,
                 state.indexedWithoutDateCount
             ),
+            color = Color.White.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        // Without the permission the count would blame photos whose coordinates Android hid from the app.
+        Text(
+            if (state.locationAccessGranted) {
+                pluralStringResource(
+                    R.plurals.settings_index_without_location,
+                    state.indexedWithoutLocationCount,
+                    state.indexedWithoutLocationCount
+                )
+            } else {
+                stringResource(R.string.automatic_album_location_access_off)
+            },
             color = Color.White.copy(alpha = 0.7f),
             style = MaterialTheme.typography.bodyMedium
         )

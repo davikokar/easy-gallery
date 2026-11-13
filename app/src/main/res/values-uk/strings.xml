@@ -161,8 +161,6 @@
     <string name="album_hidden_items_notice">Деякі елементи тимчасово недоступні. Вони знову з\'являться в цьому альбомі, коли файли стануть доступними.</string>
     <string name="album_rule_unevaluatable_notice">Для автоматичного правила цього альбому потрібна новіша версія додатка. Доки ви не оновите додаток, показуються лише елементи, додані вручну.</string>
     <string name="album_rule_unevaluatable_notice_short">Потрібна новіша версія додатка. Показано лише елементи, додані вручну.</string>
-    <string name="album_rule_waiting_notice">Деякі фото й відео ще не проскановано, тому цей альбом може бути неповним. Поточний стан: %2$s → %1$s.</string>
-    <string name="album_rule_waiting_notice_short">Може бути неповним: частину елементів ще не проскановано. Подробиці: %1$s.</string>
     <string name="album_default_name">Мій альбом %1$d</string>
     <string name="album_type_title">Новий альбом</string>
     <string name="album_type_manual_title">Альбом, створений вручну</string>
@@ -200,19 +198,7 @@
     <string name="state_collapsed">Згорнуто</string>
     <string name="automatic_album_index_running">Зчитування місць і дат із ваших фото й відео.</string>
     <string name="automatic_album_not_indexed_empty">Цей список заповниться, коли індексацію буде завершено.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="one">%1$d фото або відео без придатного місцезнаходження не включено до альбомів місць.</item>
-        <item quantity="few">%1$d фото або відео без придатного місцезнаходження не включено до альбомів місць.</item>
-        <item quantity="many">%1$d фото або відео без придатного місцезнаходження не включено до альбомів місць.</item>
-        <item quantity="other">%1$d фото або відео без придатного місцезнаходження не включено до альбомів місць.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">Доступ до місцезнаходження вимкнено, тому розташування фото неможливо зчитати, і альбоми місць не можуть їх містити.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="one">%1$d фото або відео без дати зйомки не включено до альбомів дат.</item>
-        <item quantity="few">%1$d фото або відео без дати зйомки не включено до альбомів дат.</item>
-        <item quantity="many">%1$d фото або відео без дати зйомки не включено до альбомів дат.</item>
-        <item quantity="other">%1$d фото або відео без дати зйомки не включено до альбомів дат.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Очистити місце: %1$s</string>
     <string name="automatic_album_clear_date">Очистити дату: %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -244,10 +230,16 @@
         <item quantity="other">Проіндексовано з датою: %1$d медіафайла</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="one">Проіндексовано без дати: %1$d медіафайл</item>
-        <item quantity="few">Проіндексовано без дати: %1$d медіафайли</item>
-        <item quantity="many">Проіндексовано без дати: %1$d медіафайлів</item>
-        <item quantity="other">Проіндексовано без дати: %1$d медіафайла</item>
+        <item quantity="one">%1$d елемент не має придатних відомостей про дату</item>
+        <item quantity="few">%1$d елементи не мають придатних відомостей про дату</item>
+        <item quantity="many">%1$d елементів не мають придатних відомостей про дату</item>
+        <item quantity="other">%1$d елемента не мають придатних відомостей про дату</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="one">%1$d елемент не має придатних відомостей про місцезнаходження</item>
+        <item quantity="few">%1$d елементи не мають придатних відомостей про місцезнаходження</item>
+        <item quantity="many">%1$d елементів не мають придатних відомостей про місцезнаходження</item>
+        <item quantity="other">%1$d елемента не мають придатних відомостей про місцезнаходження</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="one">Ще не проіндексовано: %1$d медіафайл</item>

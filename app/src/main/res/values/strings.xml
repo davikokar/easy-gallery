@@ -159,8 +159,6 @@
     <string name="album_hidden_items_notice">Some items are temporarily unavailable. They will reappear in this album when the files are available again.</string>
     <string name="album_rule_unevaluatable_notice">This album\'s automatic rule needs a newer version of the app. Only the items you added by hand are shown until you update.</string>
     <string name="album_rule_unevaluatable_notice_short">Needs a newer app version. Only items added by hand are shown.</string>
-    <string name="album_rule_waiting_notice">Some photos and videos have not been scanned yet, so this album may be incomplete. Check “%1$s” in %2$s for the current state.</string>
-    <string name="album_rule_waiting_notice_short">May be incomplete: some items not scanned yet. See %1$s.</string>
     <string name="album_default_name">My album %1$d</string>
     <string name="album_type_title">New album</string>
     <string name="album_type_manual_title">Manual album</string>
@@ -194,15 +192,7 @@
     <string name="state_collapsed">Collapsed</string>
     <string name="automatic_album_index_running">Reading places and dates from your photos and videos.</string>
     <string name="automatic_album_not_indexed_empty">This list fills in as indexing finishes.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="one">%1$d photo or video has no usable location and is left out of place albums.</item>
-        <item quantity="other">%1$d photos and videos have no usable location and are left out of place albums.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">Location access is off, so photo locations can\'t be read and place albums can\'t include them.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="one">%1$d photo or video has no capture date and is left out of date albums.</item>
-        <item quantity="other">%1$d photos and videos have no capture date and are left out of date albums.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Clear place %1$s</string>
     <string name="automatic_album_clear_date">Clear date %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -230,8 +220,12 @@
         <item quantity="other">%1$d media items have an indexed date</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="one">%1$d media item is indexed without a date</item>
-        <item quantity="other">%1$d media items are indexed without a date</item>
+        <item quantity="one">%1$d item has no usable date information</item>
+        <item quantity="other">%1$d items have no usable date information</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="one">%1$d item has no usable location information</item>
+        <item quantity="other">%1$d items have no usable location information</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="one">%1$d media item is not yet indexed</item>

@@ -446,14 +446,9 @@ private fun albumNotices(status: AlbumEvaluationStatus, hiddenMemberCount: Int):
             testTag = "album_rule_unevaluatable_notice",
             text = stringResource(R.string.album_rule_unevaluatable_notice_short)
         )
-        AlbumEvaluationStatus.WAITING_ON_INDEX -> StatusNotice(
-            testTag = "album_rule_waiting_notice",
-            text = stringResource(
-                R.string.album_rule_waiting_notice_short,
-                stringResource(R.string.settings_title)
-            )
-        )
-        AlbumEvaluationStatus.MANUAL, AlbumEvaluationStatus.COMPLETE -> null
+        AlbumEvaluationStatus.MANUAL,
+        AlbumEvaluationStatus.COMPLETE,
+        AlbumEvaluationStatus.WAITING_ON_INDEX -> null
     }
     val hiddenNotice = if (hiddenMemberCount > 0) {
         stringResource(R.string.album_hidden_items_notice)

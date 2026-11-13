@@ -606,72 +606,6 @@ class NewAutomaticAlbumContentTest {
     }
 
     @Test
-    fun locationCoverageLineSitsAtTheTopOfThePlaceSectionAndDateCoverageAtTheTopOfTheDateSection() {
-        composeTestRule.setContent { PickerHarness() }
-
-        composeTestRule.onNodeWithTag("new_automatic_album_location_coverage").assertIsDisplayed()
-        composeTestRule.onNodeWithText(locationCoverageText(2)).assertIsDisplayed()
-        composeTestRule.onAllNodesWithTag("new_automatic_album_date_coverage").assertCountEquals(0)
-        assertTrue(
-            boundsOf("new_automatic_album_location_coverage").bottom <=
-                rowTop("new_automatic_album_country_FR")
-        )
-
-        openCountry("IT")
-        composeTestRule.onNodeWithTag("new_automatic_album_location_coverage").assertIsDisplayed()
-        assertTrue(
-            boundsOf("new_automatic_album_location_coverage").bottom <= rowTop("new_automatic_album_place_back")
-        )
-
-        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
-        composeTestRule.onNodeWithTag("new_automatic_album_date_coverage").assertIsDisplayed()
-        composeTestRule.onNodeWithText(dateCoverageText(2)).assertIsDisplayed()
-        composeTestRule.onAllNodesWithTag("new_automatic_album_location_coverage").assertCountEquals(0)
-        assertTrue(
-            boundsOf("new_automatic_album_date_coverage").bottom <= rowTop("new_automatic_album_year_2025")
-        )
-    }
-
-    @Test
-    fun coverageLinesCountWhatWaitingWillNotChangeAndNeverSayYetStillOrScanning() {
-        composeTestRule.setContent { PickerHarness() }
-
-        val location = noticeText("new_automatic_album_location_coverage").lowercase()
-        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
-        val date = noticeText("new_automatic_album_date_coverage").lowercase()
-
-        listOf(location, date).forEach { shown ->
-            listOf("yet", "still", "scanning", "scanned", "%").forEach { word ->
-                assertFalse("A coverage line must not say '$word': $shown", shown.contains(word))
-            }
-        }
-    }
-
-    @Test
-    fun locationAccessOffReplacesTheLocationCountWithAStatement() {
-        composeTestRule.setContent { PickerHarness(locationAccessGranted = false) }
-
-        composeTestRule
-            .onNodeWithText(appContext.getString(R.string.automatic_album_location_access_off))
-            .assertIsDisplayed()
-        val shown = noticeText("new_automatic_album_location_coverage")
-        assertTrue("The access-off line must carry no count: $shown", shown.none { it.isDigit() })
-
-        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
-        composeTestRule.onNodeWithTag("new_automatic_album_date_coverage").assertIsDisplayed()
-    }
-
-    @Test
-    fun noCoverageLineWhenNothingWasIndexedWithoutALocationOrDate() {
-        val everythingKnown = MediaIndexLiveJoin(listOf(joined(1, "2025-06-10T12:00:00Z", place("IT", "16", "Florence"))))
-        composeTestRule.setContent { PickerHarness(join = everythingKnown) }
-
-        composeTestRule.onAllNodesWithTag("new_automatic_album_location_coverage").assertCountEquals(0)
-        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
-        composeTestRule.onAllNodesWithTag("new_automatic_album_date_coverage").assertCountEquals(0)
-    }
-
-    @Test
     fun createButtonClearsTheLastCountryRowAfterScrolling() {
         val manyCountries = (1..60).map { CountryEntry("C" + it.toString().padStart(2, '0'), "Country $it", it) }
         composeTestRule.setContent {
@@ -808,7 +742,7 @@ class NewAutomaticAlbumContentTest {
     }
 
     @Test
-    fun drilledLevelAndCoverageLinesHoldAtLargeFontScaleInRightToLeft() {
+    fun drilledLevelAndIndexBandHoldAtLargeFontScaleInRightToLeft() {
         composeTestRule.setContent {
             CompositionLocalProvider(
                 LocalLayoutDirection provides LayoutDirection.Rtl,
@@ -831,7 +765,6 @@ class NewAutomaticAlbumContentTest {
             "new_automatic_album_status_toggle",
             "new_automatic_album_index_band",
             "new_automatic_album_index_now",
-            "new_automatic_album_location_coverage",
             "new_automatic_album_place_back",
             "new_automatic_album_all_of_country"
         ).forEach { tag ->
@@ -865,16 +798,15 @@ class NewAutomaticAlbumContentTest {
         composeTestRule.onAllNodesWithTag("new_automatic_album_match_count").assertCountEquals(0)
     }
 
-    // The Status area is the first item of every picker list: header, then the Index band, then the coverage notice.
+    // The Status area is the first item of every picker list: the header, then the Index band.
     @Test
-    fun statusAreaIsFirstOnBothTabsWithTheBandAboveTheCoverageNotices() {
+    fun statusAreaIsFirstOnBothTabsWithTheBandAboveTheList() {
         composeTestRule.setContent { PickerHarness(indexBand = notIndexedBand()) }
 
         composeTestRule.onNodeWithTag("new_automatic_album_status_area").assertIsDisplayed()
         composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
         composeTestRule.onNodeWithTag("new_automatic_album_index_band").assertIsDisplayed()
         assertTrue(rowTop("new_automatic_album_status_toggle") < rowTop("new_automatic_album_index_band"))
-        assertTrue(rowTop("new_automatic_album_index_band") < rowTop("new_automatic_album_location_coverage"))
         assertTrue(rowTop("new_automatic_album_index_band") < rowTop("new_automatic_album_country_IT"))
 
         composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
@@ -882,7 +814,6 @@ class NewAutomaticAlbumContentTest {
         composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
         composeTestRule.onNodeWithTag("new_automatic_album_index_band").assertIsDisplayed()
         assertTrue(rowTop("new_automatic_album_status_toggle") < rowTop("new_automatic_album_index_band"))
-        assertTrue(rowTop("new_automatic_album_index_band") < rowTop("new_automatic_album_date_coverage"))
         assertTrue(rowTop("new_automatic_album_index_band") < rowTop("new_automatic_album_year_2025"))
     }
 
@@ -894,8 +825,7 @@ class NewAutomaticAlbumContentTest {
 
         composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
         composeTestRule.onNodeWithTag("new_automatic_album_index_band").assertIsDisplayed()
-        assertTrue(rowTop("new_automatic_album_index_band") < rowTop("new_automatic_album_location_coverage"))
-        assertTrue(rowTop("new_automatic_album_location_coverage") < rowTop("new_automatic_album_place_back"))
+        assertTrue(rowTop("new_automatic_album_index_band") < rowTop("new_automatic_album_place_back"))
     }
 
     @Test
@@ -925,7 +855,7 @@ class NewAutomaticAlbumContentTest {
     }
 
     @Test
-    fun bandAppearsAndDisappearsWithTheCountWhileTheAreaHasNoOtherContent() {
+    fun statusAreaAppearsAndDisappearsWithTheIndexBand() {
         var band by mutableStateOf<AutomaticAlbumIndexBand>(AutomaticAlbumIndexBand.Hidden)
         composeTestRule.setContent { PickerHarness(join = fullyKnownJoin(), indexBand = band) }
 
@@ -1064,8 +994,8 @@ class NewAutomaticAlbumContentTest {
     }
 
     @Test
-    fun headerIsAbsentWhenTheAreaHasNothingToShow() {
-        composeTestRule.setContent { PickerHarness(join = fullyKnownJoin(), indexBand = AutomaticAlbumIndexBand.Hidden) }
+    fun unlocatedAndUndatedMediaAloneDoNotOpenTheStatusArea() {
+        composeTestRule.setContent { PickerHarness(join = libraryJoin(), indexBand = AutomaticAlbumIndexBand.Hidden) }
 
         composeTestRule.onAllNodesWithTag("new_automatic_album_status_toggle").assertCountEquals(0)
         composeTestRule.onAllNodesWithTag("new_automatic_album_status_area").assertCountEquals(0)
@@ -1074,41 +1004,8 @@ class NewAutomaticAlbumContentTest {
         composeTestRule.onAllNodesWithTag("new_automatic_album_status_area").assertCountEquals(0)
     }
 
-    // Each tab judges its own notice: a library with undated items only has a Date area.
     @Test
-    fun headerFollowsTheSelectedTabsOwnCoverageNotice() {
-        val undatedOnly = MediaIndexLiveJoin(
-            listOf(
-                joined(1, "2025-06-10T12:00:00Z", place("IT", "16", "Florence")),
-                joined(2, null, place("IT", "16", "Pisa"))
-            )
-        )
-        composeTestRule.setContent { PickerHarness(join = undatedOnly, indexBand = AutomaticAlbumIndexBand.Hidden) }
-
-        composeTestRule.onAllNodesWithTag("new_automatic_album_status_toggle").assertCountEquals(0)
-
-        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
-
-        composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("new_automatic_album_date_coverage").assertIsDisplayed()
-    }
-
-    @Test
-    fun headerShowsOnThePlaceTabWhenLocationAccessIsOffEvenWithNoCount() {
-        composeTestRule.setContent {
-            PickerHarness(join = fullyKnownJoin(), locationAccessGranted = false, indexBand = AutomaticAlbumIndexBand.Hidden)
-        }
-
-        composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("new_automatic_album_location_coverage").assertIsDisplayed()
-
-        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
-
-        composeTestRule.onAllNodesWithTag("new_automatic_album_status_toggle").assertCountEquals(0)
-    }
-
-    @Test
-    fun collapsingLeavesOnlyTheHeaderAndExpandingRestoresTheBandAndTheNotice() {
+    fun collapsingLeavesOnlyTheHeaderAndExpandingRestoresTheBand() {
         composeTestRule.setContent { PickerHarness(indexBand = notIndexedBand()) }
 
         composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").performClick()
@@ -1116,26 +1013,12 @@ class NewAutomaticAlbumContentTest {
         composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
         composeTestRule.onAllNodesWithTag("new_automatic_album_index_band").assertCountEquals(0)
         composeTestRule.onAllNodesWithTag("new_automatic_album_index_now").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("new_automatic_album_location_coverage").assertCountEquals(0)
         composeTestRule.onNodeWithTag("new_automatic_album_country_IT").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").performClick()
 
         composeTestRule.onNodeWithTag("new_automatic_album_index_band").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("new_automatic_album_location_coverage").assertIsDisplayed()
-    }
-
-    @Test
-    fun collapsingHidesTheDateTabsNoticeToo() {
-        composeTestRule.setContent { PickerHarness(indexBand = AutomaticAlbumIndexBand.Hidden) }
-
-        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
-        composeTestRule.onNodeWithTag("new_automatic_album_date_coverage").assertIsDisplayed()
-
-        composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").performClick()
-
-        composeTestRule.onAllNodesWithTag("new_automatic_album_date_coverage").assertCountEquals(0)
-        composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("new_automatic_album_index_now").assertIsDisplayed()
     }
 
     @Test
@@ -1167,7 +1050,6 @@ class NewAutomaticAlbumContentTest {
 
         assertStatusToggleSays(R.string.state_collapsed)
         composeTestRule.onAllNodesWithTag("new_automatic_album_index_band").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("new_automatic_album_date_coverage").assertCountEquals(0)
 
         composeTestRule.onNodeWithTag("new_automatic_album_year_2025").performClick()
 
@@ -1179,7 +1061,7 @@ class NewAutomaticAlbumContentTest {
         openCountry("IT")
 
         assertStatusToggleSays(R.string.state_collapsed)
-        composeTestRule.onAllNodesWithTag("new_automatic_album_location_coverage").assertCountEquals(0)
+        composeTestRule.onAllNodesWithTag("new_automatic_album_index_band").assertCountEquals(0)
         composeTestRule.onNodeWithTag("new_automatic_album_place_back").performClick()
 
         composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").performClick()
@@ -1356,7 +1238,6 @@ class NewAutomaticAlbumContentTest {
         existingNames: List<String> = emptyList(),
         status: AutomaticAlbumPickerStatus = AutomaticAlbumPickerStatus.READY,
         join: MediaIndexLiveJoin? = libraryJoin(),
-        locationAccessGranted: Boolean = true,
         initialSelection: AutomaticAlbumSelection = AutomaticAlbumSelection(),
         indexBand: AutomaticAlbumIndexBand = AutomaticAlbumIndexBand.Hidden,
         onIndexNow: () -> Unit = {},
@@ -1378,8 +1259,6 @@ class NewAutomaticAlbumContentTest {
             name = name,
             selection = selection,
             content = content,
-            coverage = join?.coverage(),
-            locationAccessGranted = locationAccessGranted,
             rule = rule,
             canCreate = rule != null && AlbumNaming.isAvailable(name.trim(), existingNames)
         )
@@ -1413,8 +1292,6 @@ class NewAutomaticAlbumContentTest {
                 name = "My album 1",
                 selection = selection,
                 content = contentWith,
-                coverage = null,
-                locationAccessGranted = true,
                 rule = selection.toRule(),
                 canCreate = true
             ),
@@ -1446,18 +1323,6 @@ class NewAutomaticAlbumContentTest {
         .fetchSemanticsNode()
         .config[androidx.compose.ui.semantics.SemanticsProperties.Text]
         .joinToString(" ") { it.text }
-
-    private fun locationCoverageText(count: Int): String = appContext.resources.getQuantityString(
-        R.plurals.automatic_album_location_coverage,
-        count,
-        count
-    )
-
-    private fun dateCoverageText(count: Int): String = appContext.resources.getQuantityString(
-        R.plurals.automatic_album_date_coverage,
-        count,
-        count
-    )
 
     private fun place(country: String, region: String?, place: String?) =
         LocationState.Resolved(PlaceValues(country, region, place))

@@ -156,8 +156,6 @@
     <string name="album_hidden_items_notice">Alcuni elementi sono temporaneamente non disponibili. Riappariranno in questo album quando i file saranno di nuovo disponibili.</string>
     <string name="album_rule_unevaluatable_notice">La regola automatica di questo album richiede una versione più recente dell\'app. Fino all\'aggiornamento vengono mostrati solo gli elementi aggiunti manualmente.</string>
     <string name="album_rule_unevaluatable_notice_short">Richiede una versione più recente dell\'app. Sono mostrati solo gli elementi aggiunti manualmente.</string>
-    <string name="album_rule_waiting_notice">Alcune foto e video non sono ancora state scansionate, quindi questo album potrebbe essere incompleto. Controlla lo stato attuale in “%1$s”, in %2$s.</string>
-    <string name="album_rule_waiting_notice_short">Potrebbe essere incompleto: alcuni elementi non sono ancora scansionati. Vedi %1$s.</string>
     <string name="album_default_name">Album %1$d</string>
     <string name="album_type_title">Nuovo album</string>
     <string name="album_type_manual_title">Album manuale</string>
@@ -191,15 +189,7 @@
     <string name="state_collapsed">Compresso</string>
     <string name="automatic_album_index_running">Lettura di luoghi e date dalle tue foto e dai tuoi video.</string>
     <string name="automatic_album_not_indexed_empty">Questo elenco si riempirà al termine dell’indicizzazione.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="one">%1$d foto o video non ha una posizione utilizzabile e resta fuori dagli album di luoghi.</item>
-        <item quantity="other">%1$d foto e video non hanno una posizione utilizzabile e restano fuori dagli album di luoghi.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">L\'accesso alla posizione è disattivato, quindi le posizioni delle foto non possono essere lette e gli album di luoghi non possono includerle.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="one">%1$d foto o video non ha una data di scatto e resta fuori dagli album di date.</item>
-        <item quantity="other">%1$d foto e video non hanno una data di scatto e restano fuori dagli album di date.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Cancella il luogo %1$s</string>
     <string name="automatic_album_clear_date">Cancella la data %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -227,8 +217,12 @@
         <item quantity="other">%1$d elementi multimediali hanno una data indicizzata</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="one">%1$d elemento multimediale è indicizzato senza data</item>
-        <item quantity="other">%1$d elementi multimediali sono indicizzati senza data</item>
+        <item quantity="one">%1$d elemento non ha informazioni sulla data utilizzabili</item>
+        <item quantity="other">%1$d elementi non hanno informazioni sulla data utilizzabili</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="one">%1$d elemento non ha informazioni sulla posizione utilizzabili</item>
+        <item quantity="other">%1$d elementi non hanno informazioni sulla posizione utilizzabili</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="one">%1$d elemento multimediale non è ancora indicizzato</item>

@@ -91,11 +91,15 @@ membership rows. Nothing is written until Create.
 **[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)** Amendment 2 owns the
 screen and why it is a screen of its own; its draft and lists live in `AutomaticAlbumPickerState` (§3). A rule
 cannot be edited once written ([albums.md](../design/albums.md) §8 decision 26; §11). Each picker
-list opens with a collapsible **Status area** — a header over the **Index band** and that picker's
-coverage notice. The Index band is read from `MediaIndexingViewModel` rather than from the picker's
-state (§3) and is drawn only while a pass runs or some live media is not yet indexed; outside a pass
-it carries the not-yet-indexed figure Settings shows and offers Index now. It never starts indexing
-by itself ([albums.md](../design/albums.md) §8 decision 27).
+list opens with a collapsible **Status area** — a header and its collapse control over the **Index
+band**, and nothing else. The Index band is read from `MediaIndexingViewModel` rather than from the
+picker's state (§3) and is drawn only while a pass runs or some live media is not yet indexed;
+outside a pass it carries the not-yet-indexed figure Settings shows and offers Index now. When the
+band has nothing to draw, the Status area is not drawn either. It never starts indexing by itself
+([albums.md](../design/albums.md) §8 decision 27). The picker shows no coverage notice: how much of
+the library has no usable date or location is shown only by the two coverage rows of Settings' Media
+index area ([albums.md](../design/albums.md) §8 decision 29;
+**[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)** Amendment 3).
 
 ---
 
@@ -139,7 +143,8 @@ run: Tier A extraction, then the **place resolve pass**, which fills the derived
 the coordinates Tier A stored, against the bundled gazetteer, and opens no media file. It is *read* by
 `MediaIndexDateTakenState`, a `GalleryViewModel` delegate that projects captured date-taken by media
 URI so `SortType.DATE_TAKEN` can sort by it; by `MediaIndexingViewModel`, which also schedules the
-work and reports progress and last-indexed state to the Settings screen and, to the New automatic
+work and reports progress, last-indexed state and the two coverage figures to the Settings screen
+and, to the New automatic
 album screen's Index band, whether a pass is running and how many live items are not yet indexed;
 and by `AlbumsViewModel`,
 which evaluates automatic-album rules against it and counts the New automatic album screen's
@@ -200,7 +205,7 @@ below every property it reads, or the class does not compile. Do not work around
 | `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories, and `LiveMediaLookup` — the one lookup of a stored identity against live media, direct URI then healing key, with the URI key injectable: raw for album memberships, canonical for the index join. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. Membership resolution, rule evaluation and index reconciliation all use the lookup — reconciliation with the canonical key (§11 has why). |
 | `MediaIndexDatabase.kt` | The media index Room database: two entities, schema version 4, `exportSchema = true`, with `MIGRATION_1_2`, `MIGRATION_2_3` and `MIGRATION_3_4` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker — see §6. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
 | `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, ADR-0018's captured and derived column split, and `derivedPlaceResolverVersion`, the marker that says which resolver wrote the derived columns — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name. |
-| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeEvaluationProjection`, the narrow read rule evaluation and the picker use — identity, captured date, whether coordinates exist, the three derived place columns and the resolver marker, as a query result rather than an entity, so it needed no schema change; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. |
+| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeEvaluationProjection`, the narrow read that rule evaluation, the picker and `MediaIndexingViewModel`'s figures use — identity, captured date, whether coordinates exist, the three derived place columns and the resolver marker, as a query result rather than an entity, so it needed no schema change; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. |
 | `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexEvaluationProjection` and `ResolvedPlaceWrite` models. `observeEvaluationProjection()` returns every row unfiltered, with stored rather than canonicalised URIs, so the join can heal a moved item through the shared lookup; a pending row keeps its old derived values beside a null or stale marker. It replaced the date-only identity projection of step 2.5, which was deleted with its model and the evaluator's date-only overload. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. |
 | `MediaIndexWatermarkStore.kt` | `MediaIndexWatermarkStore` plus `RoomMediaIndexWatermarkStore` and `InMemoryMediaIndexWatermarkStore`, and the `MediaIndexVolumeWatermark` model — version, generation, and the API 28–29 date fallback, one entry per volume. |
 | `MediaIndexDeltaDetection.kt` | Pure, Android-free delta detection: the API-branch resolution, the volume plan (which volumes resync and what the next watermarks are), the per-row selection, the `DATE_MODIFIED` fallback predicate, and the `MediaIndexDeltaDetector` that composes a snapshot provider with the watermark store. |
@@ -212,9 +217,9 @@ below every property it reads, or the class does not compile. Do not work around
 | `Gazetteer.kt` | The pure nearest-place lookup of **[ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md)** Amendment 1: parses the three gazetteer assets into primitive arrays, rejecting an empty, truncated, mis-versioned or malformed one with `GazetteerLoadException`; answers `nearest` on a 1° bucket grid with haversine and the global distance cap; and owns `PLACE_RESOLVER_VERSION`, which the asset headers must equal. It also holds `GazetteerNames`, a names-only loader for the admin1 and country assets with the same rejection rules, which never reads the places asset: the picker needs names, not coordinates. `countryDisplayName` asks the platform for the name in a locale and falls back to the asset's English name; region and place names stay in GeoNames' `name` form. |
 | `GazetteerAssets.kt` | The Android side of the gazetteer: opens the packaged assets and hands them to `Gazetteer.load`, or, through `loadNames`, the two name assets to `GazetteerNames.load`. |
 | `MediaIndexPlaceResolution.kt` | `MediaIndexPlaceResolver` — the resolve pass. Pages pending located rows by URI cursor, loads the gazetteer once and only if a row is pending, and writes each chunk's answers through the store's conditional write; a load failure propagates before anything is written. It reads only stored coordinates and emits one log line per pass carrying ADR-0019's M2 and M4 figures. `MediaIndexingWorker` is its only caller. |
-| `MediaIndexLiveJoin.kt` | The evaluation projection joined to live media, one `JoinedMedia` per live item: its `DateTakenSortState` and a `LocationState` — resolved with a place, resolved beyond the cap, no coordinates, pending with old values, pending without values, or not indexed. Both sides join through `canonicalMediaStoreUriForJoin` and `LiveMediaLookup`, a direct match beating a heal. It also counts `MediaIndexCoverage` — live items indexed with no location or resolved beyond the cap, and live items indexed with no date — never counting a pending or unindexed item, because waiting may still change those ([albums.md](../design/albums.md) §8 decision 25). |
+| `MediaIndexLiveJoin.kt` | The evaluation projection joined to live media, one `JoinedMedia` per live item: its `DateTakenSortState` and a `LocationState` — resolved with a place, resolved beyond the cap, no coordinates, pending with old values, pending without values, or not indexed. Both sides join through `canonicalMediaStoreUriForJoin` and `LiveMediaLookup`, a direct match beating a heal. `locationStateOf`, which classifies one projection row, is public because `MediaIndexingViewModel` classifies rows with it for Settings' location figure, so that figure and a `region` clause read a row the same way. The join counts no coverage: that computation left it when the figures moved to Settings, so the join carries nothing only Settings reads ([albums.md](../design/albums.md) §8 decision 29). |
 | `AutomaticAlbumFacets.kt` | The picker's lists — countries, a country's regions and its places without a region, a region's places, years, a year's months — and the match count, each counted over a `MediaIndexLiveJoin` and filtered by the other dimension's choice. **A count is what `AlbumRuleEvaluator` would make members for the clause the entry writes**, with no additions or exclusions; a pending row counts under its old values, as the evaluator matches it. An entry that could not form a valid clause — a malformed country code, an empty code or name, a region the names asset cannot name — is dropped rather than listed. |
-| `MediaLocationAccess.kt` | `MediaLocationAccessChecker` and its Android implementation: whether `ACCESS_MEDIA_LOCATION` is held, always true below API 29. It reads the permission state and requests nothing; the location coverage notice uses it to say location access is off instead of counting. |
+| `MediaLocationAccess.kt` | `MediaLocationAccessChecker` and its Android implementation: whether `ACCESS_MEDIA_LOCATION` is held, always true below API 29. It reads the permission state and requests nothing. Its one reader is `MediaIndexingViewModel`, so that Settings' location row says location access is off instead of counting — without the permission extraction stores no location, and a count would blame the photos. No album and no picker reads it ([albums.md](../design/albums.md) §8 decision 29; [ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md) Amendment 3). |
 | `MediaIndexingWork.kt` | The WorkManager boundary: `MediaIndexingWorker` (a `CoroutineWorker` that runs one Tier A batch, reports progress, and then runs the place resolve pass on every run, even one where Tier A selected nothing; a resolver failure fails the run; its `@JvmOverloads` constructor takes the run-state store and factories for the batch indexer and the place resolver, defaulting to `EasyGalleryApp`'s wiring, so tests can inject fakes while WorkManager still uses the two-argument form), and `MediaIndexingWorkScheduler` with its `WorkManager*` implementation — the periodic request and its constraints under the unique work name `media-index-periodic`, and the one-time "Index now" request under its own, `media-index-now`. The worker runs in the app's process and writes through the shared index singleton, which is what lets evaluation follow a batch (§2). It **refuses to index without media read permission** and fails rather than running, because a run that cannot read rows would otherwise advance the watermark past the whole library — step 2.4's record in [the Stage 2 plan](../design/albums-stage-2.md) holds the detail. |
 | `MediaIndexRunStateStore.kt` | The index run-state store (`SharedPreferences*` and `InMemory*`) — last outcome, timestamps and row counters for the Settings surface. Liveness is deliberately **not** among them; see *Persistence*. |
 | `MediaIndexingLivenessStore.kt` | `MediaIndexingLivenessStore`, whose `WorkManager*` implementation derives a three-state `MediaIndexingWorkStatus` from `WorkInfo` across both unique work names rather than from anything persisted, and an `InMemory*` implementation for tests. `RUNNING` means a pass is executing; `WAITING` means WorkManager has work enqueued that its constraints keep from starting; `IDLE` means neither. Only `RUNNING` disables the Index now action. |
@@ -285,11 +290,11 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   - It runs on an injected `CoroutineDispatcher` — `Dispatchers.Default` in production, so off the
     main thread — and reads the zone through an injected provider at each evaluation rather than
     caching it, because the user can change the device zone while the app lives.
-  - `AlbumListItem` carries, beside the status, whether the rule has a `time` clause and a `region`
-    clause, the library-wide `MediaIndexCoverage` for an evaluatable rule (null otherwise), and
-    whether location access is held — read through `MediaLocationAccessChecker` only for an album
-    with a `region` clause, and only when that album recomputes (§11). Album Detail View draws its
-    coverage notices from them.
+  - `AlbumListItem` carries the status beside the member counts, and nothing about coverage or
+    location access. Only `UNEVALUATABLE` is drawn, as the Newer-app notice; `WAITING_ON_INDEX` is
+    still computed and published, but no tile, row or Album Detail View shows it
+    ([albums.md](../design/albums.md) §8 decision 29;
+    [ADR-0017](decisions/0017-composable-album-rule-representation.md) Amendment 3; §11).
   - `createAutomaticAlbum(name, rule)` encodes an `Evaluatable` rule and writes the album row with
     it and no membership rows — the first shipped path that writes `albums.rule` (§6).
   - **Per-album display overrides**
@@ -324,7 +329,7 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   and which country, region and year each picker is drilled into; it loads `GazetteerNames` once,
   off the main thread, and reports loading, failed, waiting for media, or ready rather than an empty
   list. Its UI state is shared `WhileSubscribed(5_000)`, so facets are computed only while the
-  screen is open. Zone, locale and location access are read at each computation; `refresh()`
+  screen is open. Zone and locale are read at each computation; `refresh()`
   recomputes them, which the screen calls on entry because a recreated Activity keeps the draft
   but not the locale its names were resolved in. `hasDraftName` tells the screen whether a draft
   was opened — false in a process restored onto the screen, which then opens one — because the
@@ -337,11 +342,21 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
 - **`MediaIndexingViewModel`** — the media index's state for two screens: the Settings screen's
   Media index area and the New automatic album screen's Index band. It is Activity-scoped —
   `MainActivity` holds the one instance and passes it to both — and it schedules the periodic
-  job, starts "Index now", and combines run state, WorkManager's three-state liveness and the index
-  projection into one UI state. The counts it publishes are **intersected with the live media
-  list** it is handed, and it reports three separate figures — indexed with a date, indexed with no
-  date, not yet indexed — rather than one percentage, because they are incommensurable. Settings
-  shows all three and is the only screen that measures progress. The picker reduces the same state
+  job, starts "Index now", and combines run state, WorkManager's three-state liveness, the index's
+  evaluation projection and whether location access is held into one UI state. The counts it
+  publishes are **intersected with the live media list** it is handed, by canonical URI and without
+  healing — so a moved item whose row has not yet healed counts as not yet indexed. It reports four
+  separate figures rather than one percentage, because they are incommensurable: two about the
+  indexing — indexed with a date, not yet indexed — and two **coverage figures** — indexed with no
+  usable date, and indexed with no usable location, meaning no coordinates or resolved beyond the
+  cap as the shared `locationStateOf` classifies a row. A pending or unindexed item is in neither
+  coverage figure. Settings shows all four and is the only screen that measures progress; the
+  coverage rows appear nowhere else and are kept apart from progress by their wording
+  ([albums.md](../design/albums.md) §8 decision 29). Location access is read through
+  `MediaLocationAccessChecker` at construction and again by `refreshLocationAccess()`, which the
+  Settings screen calls on every `ON_RESUME`, entry included, because the permission changes outside
+  the app; without it the location row shows the location-access-off sentence instead of a count.
+  The picker reduces the same state
   through the pure `automaticAlbumIndexBand()` in `AutomaticAlbumPickerState.kt` to `Running` while
   liveness is `RUNNING`; otherwise to `NotIndexed`, carrying the not-yet-indexed figure, when that
   figure is above zero; otherwise to `Hidden`, which draws nothing. `NotIndexed` also carries
@@ -360,11 +375,10 @@ it is about the indexing job rather than the albums' join, so the screen reads
 `MediaIndexingViewModel` directly and the picker state holds nothing of it. The Status area around
 it keeps its state in the screen as well: whether it is expanded is one `rememberSaveable` flag in
 `NewAutomaticAlbumContent`, shared by both pickers and dropped with the screen's saved state when
-the screen closes, and whether it has a header at all comes from the pure
-`placeStatusAreaHasContent()` and `dateStatusAreaHasContent()` beside the reduction. Those build on
-`locationCoverageNoticeVisible()` and `dateCoverageNoticeVisible()`, which Album Detail View's
-coverage notices call too, so a header cannot stand over a notice that declined to draw. The flag
-does not follow the area's content, so an area collapsed, emptied and refilled comes back collapsed
+the screen closes. The area holds the header, its collapse control and the Index band, and is
+drawn only when `automaticAlbumIndexBand()` is not `Hidden`, because the band is its only content
+([albums.md](../design/albums.md) §8 decision 29). The flag does not follow the area's content, so
+an area collapsed, hidden and shown again comes back collapsed
 ([albums.md](../design/albums.md) §8 decision 27). `GalleryViewModel` gained no album
 state and no indexing state; it still owns selection,
 media operations, and the viewer delegate, which Album Detail View reuses. What it gained for the
@@ -943,26 +957,46 @@ KSP.
   evaluator's members over the real index. **Not seen in the installed app**: the picker's group
   of places without a region and the location-access-off wording, which unit and Compose tests
   cover, and an unevaluatable album, which only data can produce. Kept struck through because
-  those residual checks are recorded against it in the Stage 2 plan.
+  those residual checks are recorded against it in the Stage 2 plan. What was seen on 2026-11-11 is
+  history: since 2026-11-13 neither the Incomplete-album notice nor the coverage notices exist, and
+  the location-access-off wording is shown by Settings' location row instead
+  ([albums.md](../design/albums.md) §8 decision 29).
 - **An automatic album's rule cannot be edited.** It is set at creation; rename, add, remove and
   delete work as on any album. A wrong rule is fixed by deleting the album and creating it again,
   which loses its manual additions and exclusions. Deliberate — [albums.md](../design/albums.md)
   §8 decision 26 — and any later editor inherits ADR-0017's never-rewrite rule.
+- **A rule album does not say that it is waiting for the index.** `AlbumRuleEvaluator` still
+  reports `WAITING_ON_INDEX` and `AlbumListItem` still carries it, but nothing draws it: a rule
+  album whose matches are not yet indexed looks short or empty on its tile, its row and in Album
+  Detail View, and nothing on the album says how much of the library has no usable date or location.
+  The not-yet-indexed count and Index now are on the New automatic album screen's Index band and in
+  Settings, and the coverage figures only in Settings. Accepted by the maintainer —
+  [albums.md](../design/albums.md) §8 decision 29 records the cost against
+  [ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md)'s "must say why",
+  which its Amendment 3 now meets in Settings, and
+  albums.md §6's *Be honest about staleness*. The status was kept, so showing it again needs UI only.
 - **Images indexed without `ACCESS_MEDIA_LOCATION` are never re-extracted after a later grant.** On
   API 29+ Tier A's `setRequireOriginal` read yields nothing without it — no location and no date —
   and the row is stored as final, because delta detection never re-extracts unchanged media. After
-  a grant those images count as "no location" and "no date" in the coverage notices. Known and not
+  a grant those images count in Settings' two coverage rows, as having no usable location and no
+  usable date; before it, the location row says location access is off instead of counting. Known and not
   fixed: recovering them is a re-index, which is a decision — [albums.md](../design/albums.md) §10
   question 9.
 - **Media in excluded folders counts in rule albums and in the picker's counts.** Both read the
   same gated live set, which ignores Folders View's exclusions; changing it for one reader and not
   the other would make a picker count disagree with the album it creates. Recorded as current
   behaviour, which the maintainer may revisit — [albums.md](../design/albums.md) §10 question 10.
-- **Location access is re-read only when an album recomputes.** `AlbumListItem.locationAccessGranted`
+- ~~**Location access is re-read only when an album recomputes.** `AlbumListItem.locationAccessGranted`
   is read inside the album computation, which runs on the album, membership, live-media and index
   inputs — none of which a permission grant changes. So granting `ACCESS_MEDIA_LOCATION` while the
   app runs shows in Album Detail View only after the next recompute. The picker does not share the
-  lag: it re-reads on every computation and on `refresh()`.
+  lag: it re-reads on every computation and on `refresh()`.~~ **Resolved 2026-11-13, by removal**
+  ([albums.md](../design/albums.md) §8 decision 29): no album and no picker reads location access
+  any more. Its one reader is `MediaIndexingViewModel`, for Settings' location row, and the Settings
+  screen re-reads it on every `ON_RESUME` — the event a grant made in system settings returns
+  through — so the lag has no surface left. Kept struck through because the shape, a permission read
+  inside a computation that no permission change triggers, will recur wherever the next reader is
+  put.
 - ~~**Index reconciliation still has its own copy of the live-media lookup.** `LiveMediaLookup` in
   `data/MediaIdentity.kt` was extracted at step 2.5 and is used by membership resolution and rule
   evaluation, but `MediaIndexReconciler` in `data/MediaIndexReconciliation.kt` still builds its own
@@ -1014,8 +1048,9 @@ KSP.
   `allMedia` to `MediaIndexingViewModel.setLiveMedia` ungated. On a cold start the placeholder is a
   no-op — the ViewModel's live canonical-URI set already starts empty — but that empty set is the
   defect: it is read by one consumer only, the `uiState` combine that intersects index rows with
-  live media, so until the first `getAllMedia()` returns, all three figures show zero on a library
-  of any size, and "0 not yet indexed" reads as "nothing to do". It reaches the user only if
+  live media, so until the first `getAllMedia()` returns, all four figures show zero on a library
+  of any size: "0 not yet indexed" reads as "nothing to do", and the two coverage rows' zeros read
+  as a library in which every item has a usable date and location. It reaches the user only if
   Settings is opened before loading finishes, and permanently if the first load throws. **It feeds
   no indexing input** — `MediaIndexingWorker` reads `MediaStore` itself and nothing passes the set
   to the scheduler — and nothing derived from it is persisted, so it self-corrects when media
@@ -1025,7 +1060,7 @@ KSP.
   misstate anything: zero not yet indexed and no pass running is the band's absent form, so they
   hide it. What they still cost there is the empty-list wording — with no pass running and nothing
   flagged as unindexed, an empty picker list says nothing was found rather than that it fills in as
-  indexing finishes — and, on a picker whose coverage notice has nothing to show either, the whole
+  indexing finishes — and, because the Status area is drawn only with the band, the whole
   Status area. It is mitigated there rather than fixed: the band is drawn only once the picker is
   ready, which needs `AlbumsViewModel`'s join, which is built only after `isMediaLoaded` (§3) — so
   it never sees the placeholder, and if the first load throws the picker waits instead of showing a
@@ -1054,13 +1089,16 @@ KSP.
   arrives and it re-emits. If the first load throws, the picker stays empty rather than showing the
   error. Nothing is written, and an album created from it has no members, which is allowed anyway.
   Found by reading; not device-observed and not fixed.
-- **If the first `loadFolders()` throws, rule albums blame scanning for a library that was never
-  read.** `isMediaLoaded` stays false, so `AlbumsViewModel` never receives a live list and every
-  rule album keeps showing the Incomplete-album notice, which points at indexing, although the real
-  cause is that `MediaStore` was never read. Albums View is still reachable, because
-  `AlbumsViewBody` does not check `uiState`. The load reruns only on Activity recreation or after the
-  app's own file operations, not on `onResume`. Better than the behaviour it replaced — `COMPLETE`
-  with zero members — and it writes nothing back; not fixed.
+- **If the first `loadFolders()` throws, albums read empty and nothing names the cause.**
+  `isMediaLoaded` stays false, so `AlbumsViewModel` never receives a live list. Every rule album keeps
+  reporting `WAITING_ON_INDEX`, which no UI shows since [albums.md](../design/albums.md) §8 decision
+  29, so it reads as an empty album with no notice; until that decision it showed the
+  Incomplete-album notice, which blamed indexing instead. Any album with stored additions, manual or
+  rule, shows the Hidden-members notice, because nothing resolves against no list. Neither says that
+  `MediaStore` was never read. Albums View is still reachable, because `AlbumsViewBody` does not
+  check `uiState`. The load reruns only on Activity recreation or after the app's own file
+  operations, not on `onResume`. What the null live list still buys over the behaviour it replaced —
+  `COMPLETE` with zero members — is that nothing is written back; not fixed.
 - **The Kotlin runtime artifacts are forced to 2.1.0** while the catalog pins Kotlin 2.2.10.
   `app/build.gradle.kts` holds three `resolutionStrategy.force` lines for `kotlin-stdlib`,
   `kotlin-stdlib-jdk8` and `kotlin-reflect`. They predate albums and were a workaround, not a

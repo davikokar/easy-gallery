@@ -8,7 +8,6 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOn
@@ -30,7 +29,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.Folder
-import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.OperationType
@@ -203,43 +201,11 @@ class AlbumDetailContentTest {
         composeTestRule
             .onAllNodesWithText(appContext.getString(R.string.album_hidden_items_notice))
             .assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_rule_waiting_notice").assertCountEquals(0)
         composeTestRule.onNodeWithTag("media_tile_$mediaUri").assertIsDisplayed()
     }
 
     @Test
-    fun waitingAlbumShowsStillScanningNoticePointingToSettingsWithoutAnyFigure() {
-        val album = ruleAlbum(AlbumEvaluationStatus.WAITING_ON_INDEX, resolved = 1, stored = 0, hidden = 0)
-
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                hiddenMemberCount = album.hiddenMemberCount,
-                evaluationStatus = album.status
-            )
-        }
-
-        composeTestRule.onNodeWithTag("album_rule_waiting_notice").assertIsDisplayed()
-        composeTestRule.onNodeWithText(waitingNoticeText()).assertIsDisplayed()
-        val shown = noticeText("album_rule_waiting_notice")
-        assertTrue(
-            "The notice must name the Media index area and Settings: $shown",
-            shown.contains(appContext.getString(R.string.settings_media_index)) &&
-                shown.contains(appContext.getString(R.string.settings_title))
-        )
-        assertTrue(
-            "The notice must carry no count or percentage: $shown",
-            shown.none { it.isDigit() || it == '%' }
-        )
-        composeTestRule
-            .onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
-            .assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_rule_unevaluatable_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_hidden_items_notice").assertCountEquals(0)
-    }
-
-    @Test
-    fun waitingAlbumWithHiddenItemsShowsBothNoticesWithoutOverlap() {
+    fun waitingAlbumWithHiddenItemsShowsOnlyTheHiddenItemsNotice() {
         val album = ruleAlbum(AlbumEvaluationStatus.WAITING_ON_INDEX, resolved = 0, stored = 2, hidden = 2)
 
         composeTestRule.setContent {
@@ -250,14 +216,10 @@ class AlbumDetailContentTest {
             )
         }
 
-        composeTestRule.onNodeWithTag("album_rule_waiting_notice").assertIsDisplayed()
         composeTestRule.onNodeWithTag("album_hidden_items_notice").assertIsDisplayed()
         composeTestRule.onNodeWithTag("album_empty_state").assertIsDisplayed()
-        val waiting = composeTestRule.onNodeWithTag("album_rule_waiting_notice")
-            .fetchSemanticsNode().boundsInRoot
-        val hidden = composeTestRule.onNodeWithTag("album_hidden_items_notice")
-            .fetchSemanticsNode().boundsInRoot
-        assertTrue("The two notices must stack, not overlap", waiting.bottom <= hidden.top)
+        composeTestRule.onAllNodesWithTag("album_rule_waiting_notice").assertCountEquals(0)
+        composeTestRule.onAllNodesWithTag("album_rule_unevaluatable_notice").assertCountEquals(0)
     }
 
     @Test
@@ -288,7 +250,6 @@ class AlbumDetailContentTest {
 
         composeTestRule.onAllNodesWithTag("album_hidden_items_notice").assertCountEquals(0)
         composeTestRule.onAllNodesWithTag("album_rule_unevaluatable_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_rule_waiting_notice").assertCountEquals(0)
     }
 
     @Test
@@ -306,7 +267,7 @@ class AlbumDetailContentTest {
 
     @Test
     fun noticesStayWithinTheScreenAtLargeFontScaleInRightToLeft() {
-        val album = ruleAlbum(AlbumEvaluationStatus.WAITING_ON_INDEX, resolved = 0, stored = 2, hidden = 2)
+        val album = ruleAlbum(AlbumEvaluationStatus.UNEVALUATABLE, resolved = 0, stored = 2, hidden = 2)
 
         composeTestRule.setContent {
             CompositionLocalProvider(
@@ -322,7 +283,7 @@ class AlbumDetailContentTest {
         }
 
         val root = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot
-        listOf("album_rule_waiting_notice", "album_hidden_items_notice").forEach { tag ->
+        listOf("album_rule_unevaluatable_notice", "album_hidden_items_notice").forEach { tag ->
             composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
             val bounds = composeTestRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
             assertTrue(
@@ -333,219 +294,18 @@ class AlbumDetailContentTest {
     }
 
     @Test
-    fun regionAlbumShowsLocationCoverageBandWithTheCountAndNoDateBand() {
+    fun noticeBandsAreAnnouncedToScreenReaders() {
         composeTestRule.setContent {
             AlbumDetailContentWrapper(
                 media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.COMPLETE,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 3, withoutDate = 9)
+                hiddenMemberCount = 1,
+                evaluationStatus = AlbumEvaluationStatus.UNEVALUATABLE
             )
         }
 
-        composeTestRule.onNodeWithTag("album_location_coverage_notice").assertIsDisplayed()
-        composeTestRule.onNodeWithText(locationCoverageText(3)).assertIsDisplayed()
-        composeTestRule.onAllNodesWithTag("album_date_coverage_notice").assertCountEquals(0)
-    }
-
-    @Test
-    fun timeAlbumShowsDateCoverageBandWithTheCountAndNoLocationBand() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.COMPLETE,
-                hasTimeClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 3, withoutDate = 9)
-            )
-        }
-
-        composeTestRule.onNodeWithTag("album_date_coverage_notice").assertIsDisplayed()
-        composeTestRule.onNodeWithText(dateCoverageText(9)).assertIsDisplayed()
-        composeTestRule.onAllNodesWithTag("album_location_coverage_notice").assertCountEquals(0)
-    }
-
-    @Test
-    fun coverageBandsStackAfterTheStatusNoticeAndBeforeTheHiddenItemsNotice() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = emptyList(),
-                hiddenMemberCount = 2,
-                evaluationStatus = AlbumEvaluationStatus.WAITING_ON_INDEX,
-                hasTimeClause = true,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 4, withoutDate = 7)
-            )
-        }
-
-        val inStackOrder = listOf(
-            "album_rule_waiting_notice",
-            "album_location_coverage_notice",
-            "album_date_coverage_notice",
-            "album_hidden_items_notice"
-        )
-        val bounds = inStackOrder.map { tag ->
-            composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
-            composeTestRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
-        }
-        for (index in 0 until bounds.size - 1) {
-            assertTrue(
-                "${inStackOrder[index]} must sit above ${inStackOrder[index + 1]}",
-                bounds[index].bottom <= bounds[index + 1].top
-            )
-        }
-    }
-
-    @Test
-    fun manualAlbumShowsNoCoverageBands() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.MANUAL,
-                hasTimeClause = false,
-                hasRegionClause = false,
-                coverage = null
-            )
-        }
-
-        composeTestRule.onAllNodesWithTag("album_location_coverage_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_date_coverage_notice").assertCountEquals(0)
-    }
-
-    @Test
-    fun manualAlbumShowsNoCoverageBandsEvenIfClauseFlagsAndCountsArrive() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.MANUAL,
-                hasTimeClause = true,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 3, withoutDate = 9)
-            )
-        }
-
-        composeTestRule.onAllNodesWithTag("album_location_coverage_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_date_coverage_notice").assertCountEquals(0)
-    }
-
-    @Test
-    fun unevaluatableAlbumShowsNoCoverageBandsOnlyTheNewerAppNotice() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.UNEVALUATABLE,
-                hasTimeClause = true,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 3, withoutDate = 9),
-                locationAccessGranted = false
-            )
-        }
-
-        composeTestRule.onNodeWithTag("album_rule_unevaluatable_notice").assertIsDisplayed()
-        composeTestRule.onAllNodesWithTag("album_location_coverage_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_date_coverage_notice").assertCountEquals(0)
-    }
-
-    @Test
-    fun locationAccessOffReplacesTheCountWithAStatementAndLeavesTheDateBand() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.COMPLETE,
-                hasTimeClause = true,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 5, withoutDate = 6),
-                locationAccessGranted = false
-            )
-        }
-
-        composeTestRule.onNodeWithTag("album_location_coverage_notice").assertIsDisplayed()
-        composeTestRule
-            .onNodeWithText(appContext.getString(R.string.automatic_album_location_access_off))
-            .assertIsDisplayed()
-        val shown = noticeText("album_location_coverage_notice")
-        assertTrue("The access-off line must carry no count: $shown", shown.none { it.isDigit() })
-        composeTestRule.onNodeWithText(dateCoverageText(6)).assertIsDisplayed()
-    }
-
-    @Test
-    fun coverageBandsAreAbsentWhenThereIsNothingToCount() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.COMPLETE,
-                hasTimeClause = true,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 0, withoutDate = 0)
-            )
-        }
-
-        composeTestRule.onAllNodesWithTag("album_location_coverage_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_date_coverage_notice").assertCountEquals(0)
-    }
-
-    @Test
-    fun coverageBandsNeverPromiseAChangeOrMentionScanning() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.COMPLETE,
-                hasTimeClause = true,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 1, withoutDate = 1)
-            )
-        }
-
-        listOf("album_location_coverage_notice", "album_date_coverage_notice").forEach { tag ->
-            val shown = noticeText(tag).lowercase()
-            listOf("yet", "still", "scanning", "scanned").forEach { word ->
-                assertTrue("$tag must not say '$word': $shown", !shown.contains(word))
-            }
-        }
-    }
-
-    @Test
-    fun coverageBandsAreAnnouncedToScreenReaders() {
-        composeTestRule.setContent {
-            AlbumDetailContentWrapper(
-                media = listOf(mediaItem),
-                evaluationStatus = AlbumEvaluationStatus.COMPLETE,
-                hasTimeClause = true,
-                hasRegionClause = true,
-                coverage = MediaIndexCoverage(withoutLocation = 2, withoutDate = 2)
-            )
-        }
-
-        listOf("album_location_coverage_notice", "album_date_coverage_notice").forEach { tag ->
+        listOf("album_rule_unevaluatable_notice", "album_hidden_items_notice").forEach { tag ->
             val config = composeTestRule.onNodeWithTag(tag).fetchSemanticsNode().config
             assertEquals(LiveRegionMode.Polite, config.getOrNull(SemanticsProperties.LiveRegion))
-        }
-    }
-
-    @Test
-    fun coverageBandsStayWithinTheScreenAtLargeFontScaleInRightToLeft() {
-        composeTestRule.setContent {
-            CompositionLocalProvider(
-                LocalLayoutDirection provides LayoutDirection.Rtl,
-                LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)
-            ) {
-                AlbumDetailContentWrapper(
-                    media = emptyList(),
-                    evaluationStatus = AlbumEvaluationStatus.COMPLETE,
-                    hasTimeClause = true,
-                    hasRegionClause = true,
-                    coverage = MediaIndexCoverage(withoutLocation = 1234, withoutDate = 5678)
-                )
-            }
-        }
-
-        val root = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot
-        listOf("album_location_coverage_notice", "album_date_coverage_notice").forEach { tag ->
-            composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
-            val bounds = composeTestRule.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
-            assertTrue(
-                "$tag must fit inside the screen: $bounds in $root",
-                bounds.left >= root.left && bounds.right <= root.right && bounds.bottom <= root.bottom
-            )
         }
     }
 
@@ -726,30 +486,6 @@ class AlbumDetailContentTest {
         }
     }
 
-    private fun locationCoverageText(count: Int): String = appContext.resources.getQuantityString(
-        R.plurals.automatic_album_location_coverage,
-        count,
-        count
-    )
-
-    private fun dateCoverageText(count: Int): String = appContext.resources.getQuantityString(
-        R.plurals.automatic_album_date_coverage,
-        count,
-        count
-    )
-
-    private fun waitingNoticeText(): String = appContext.getString(
-        R.string.album_rule_waiting_notice,
-        appContext.getString(R.string.settings_media_index),
-        appContext.getString(R.string.settings_title)
-    )
-
-    private fun noticeText(tag: String): String = composeTestRule
-        .onNodeWithTag(tag)
-        .fetchSemanticsNode()
-        .config[SemanticsProperties.Text]
-        .joinToString(" ") { it.text }
-
     private fun ruleAlbum(
         status: AlbumEvaluationStatus,
         resolved: Int,
@@ -773,10 +509,6 @@ class AlbumDetailContentTest {
         media: List<MediaItem> = emptyList(),
         hiddenMemberCount: Int = 0,
         evaluationStatus: AlbumEvaluationStatus = AlbumEvaluationStatus.MANUAL,
-        hasTimeClause: Boolean = false,
-        hasRegionClause: Boolean = false,
-        coverage: MediaIndexCoverage? = null,
-        locationAccessGranted: Boolean = true,
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         selectedMedia: List<MediaItem> = emptyList(),
@@ -792,10 +524,6 @@ class AlbumDetailContentTest {
             media = media,
             hiddenMemberCount = hiddenMemberCount,
             evaluationStatus = evaluationStatus,
-            hasTimeClause = hasTimeClause,
-            hasRegionClause = hasRegionClause,
-            coverage = coverage,
-            locationAccessGranted = locationAccessGranted,
             preferences = ViewPreferences.defaultFor(PreferenceScope.ALBUM_DETAIL),
             searchQuery = "",
             isSearchActive = false,

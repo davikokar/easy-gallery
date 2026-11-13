@@ -806,14 +806,12 @@ class FolderListContentTest {
                 .assertTextEquals(appContext.getString(R.string.album_rule_unevaluatable_notice_short))
             composeTestRule.onAllNodesWithTag("album_hidden_items_notice", useUnmergedTree = true)
                 .assertCountEquals(0)
-            composeTestRule.onAllNodesWithTag("album_rule_waiting_notice", useUnmergedTree = true)
-                .assertCountEquals(0)
         }
     }
 
     @Test
-    fun albumsViewShowsStillScanningNoticeWithoutAnyFigureOnTileAndRow() {
-        val album = albumItem(AlbumEvaluationStatus.WAITING_ON_INDEX)
+    fun albumsViewShowsNoNoticeAndNoStateDescriptionForAWaitingAlbumOnTileAndRow() {
+        val album = albumItem(AlbumEvaluationStatus.WAITING_ON_INDEX, name = "Castles")
         var albumsViewType by mutableStateOf(ViewType.GRID)
 
         composeTestRule.setContent {
@@ -828,35 +826,27 @@ class FolderListContentTest {
             albumsViewType = viewType
             composeTestRule.waitForIdle()
 
-            val notice = composeTestRule
-                .onNodeWithTag("album_rule_waiting_notice", useUnmergedTree = true)
-                .assertIsDisplayed()
-            val expected = appContext.getString(
-                R.string.album_rule_waiting_notice_short,
-                appContext.getString(R.string.settings_title)
-            )
-            notice.assertTextEquals(expected)
-            val shown = notice.fetchSemanticsNode().config[SemanticsProperties.Text]
-                .joinToString(" ") { it.text }
-            assertTrue(
-                "The notice must carry no count or percentage: $shown",
-                shown.none { it.isDigit() || it == '%' }
-            )
-            composeTestRule
-                .onAllNodes(
-                    SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo),
-                    useUnmergedTree = true
-                )
+            composeTestRule.onNodeWithTag("album_tile_${album.id}").assertIsDisplayed()
+            listOf(
+                "album_rule_waiting_notice",
+                "album_rule_unevaluatable_notice",
+                "album_hidden_items_notice"
+            ).forEach { tag ->
+                composeTestRule.onAllNodesWithTag(tag, useUnmergedTree = true).assertCountEquals(0)
+            }
+            composeTestRule.onAllNodesWithText("scanned", substring = true, useUnmergedTree = true)
                 .assertCountEquals(0)
-            composeTestRule.onAllNodesWithTag("album_rule_unevaluatable_notice", useUnmergedTree = true)
-                .assertCountEquals(0)
+            val config = composeTestRule.onNodeWithTag("album_tile_${album.id}")
+                .fetchSemanticsNode().config
+            assertFalse(SemanticsProperties.StateDescription in config)
+            assertTrue(config[SemanticsProperties.ContentDescription].contains("Castles"))
         }
     }
 
     @Test
     fun albumsViewShowsStatusNoticeAndHiddenItemsNoticeTogether() {
         val album = albumItem(
-            status = AlbumEvaluationStatus.WAITING_ON_INDEX,
+            status = AlbumEvaluationStatus.UNEVALUATABLE,
             resolved = 0,
             stored = 3,
             hidden = 3
@@ -876,7 +866,7 @@ class FolderListContentTest {
             composeTestRule.waitForIdle()
 
             composeTestRule
-                .onNodeWithTag("album_rule_waiting_notice", useUnmergedTree = true)
+                .onNodeWithTag("album_rule_unevaluatable_notice", useUnmergedTree = true)
                 .assertIsDisplayed()
             composeTestRule
                 .onNodeWithTag("album_hidden_items_notice", useUnmergedTree = true)
@@ -901,8 +891,7 @@ class FolderListContentTest {
         composeTestRule.onNodeWithTag("album_tile_22").assertIsDisplayed()
         listOf(
             "album_hidden_items_notice",
-            "album_rule_unevaluatable_notice",
-            "album_rule_waiting_notice"
+            "album_rule_unevaluatable_notice"
         ).forEach { tag ->
             composeTestRule.onAllNodesWithTag(tag, useUnmergedTree = true).assertCountEquals(0)
         }
@@ -930,7 +919,7 @@ class FolderListContentTest {
 
     @Test
     fun albumRowKeepsItsNoticeFullyVisibleAtLargeFontScaleInRightToLeft() {
-        val album = albumItem(AlbumEvaluationStatus.WAITING_ON_INDEX)
+        val album = albumItem(AlbumEvaluationStatus.UNEVALUATABLE)
 
         composeTestRule.setContent {
             CompositionLocalProvider(
@@ -948,7 +937,7 @@ class FolderListContentTest {
         val row = composeTestRule.onNodeWithTag("album_tile_${album.id}")
             .fetchSemanticsNode().boundsInRoot
         val notice = composeTestRule
-            .onNodeWithTag("album_rule_waiting_notice", useUnmergedTree = true)
+            .onNodeWithTag("album_rule_unevaluatable_notice", useUnmergedTree = true)
             .assertIsDisplayed()
             .fetchSemanticsNode().boundsInRoot
         assertTrue(
@@ -956,40 +945,6 @@ class FolderListContentTest {
             notice.left >= row.left && notice.right <= row.right &&
                 notice.top >= row.top && notice.bottom <= row.bottom
         )
-    }
-
-    @Test
-    fun albumTilesAndRowsNeverShowCoverageNotices() {
-        var albumsViewType by mutableStateOf(ViewType.GRID)
-        val album = albumItem(AlbumEvaluationStatus.COMPLETE).copy(
-            hasTimeClause = true,
-            hasRegionClause = true,
-            coverage = MediaIndexCoverage(withoutLocation = 12, withoutDate = 34),
-            locationAccessGranted = false
-        )
-
-        composeTestRule.setContent {
-            FolderListContentWrapper(
-                displayMode = DisplayMode.ALBUMS,
-                albums = listOf(album),
-                albumsViewType = albumsViewType
-            )
-        }
-
-        composeTestRule.onNodeWithTag("album_tile_${album.id}").assertIsDisplayed()
-        assertNoCoverageNotices()
-
-        albumsViewType = ViewType.LIST
-        composeTestRule.onNodeWithTag("album_tile_${album.id}").assertIsDisplayed()
-        assertNoCoverageNotices()
-    }
-
-    private fun assertNoCoverageNotices() {
-        composeTestRule.onAllNodesWithTag("album_location_coverage_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithTag("album_date_coverage_notice").assertCountEquals(0)
-        composeTestRule.onAllNodesWithText("no usable location", substring = true).assertCountEquals(0)
-        composeTestRule.onAllNodesWithText("no capture date", substring = true).assertCountEquals(0)
-        composeTestRule.onAllNodesWithText("Location access is off", substring = true).assertCountEquals(0)
     }
 
     private fun albumItem(

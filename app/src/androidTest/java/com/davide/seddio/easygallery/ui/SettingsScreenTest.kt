@@ -106,8 +106,90 @@ class SettingsScreenTest {
 
         composeTestRule.onNodeWithText("7 items still to scan").assertIsDisplayed()
         composeTestRule.onNodeWithText("3 media items have an indexed date").assertIsDisplayed()
-        composeTestRule.onNodeWithText("2 media items are indexed without a date").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 items have no usable date information").assertIsDisplayed()
         composeTestRule.onNodeWithText("4 media items are not yet indexed").assertIsDisplayed()
+    }
+
+    @Test
+    fun mediaIndexAreaShowsOneItemWithoutDateInTheSingularForm() {
+        composeTestRule.setContent {
+            MediaIndexSettingsArea(
+                state = indexingState(indexedWithoutDateCount = 1),
+                onIndexNow = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("1 item has no usable date information").assertIsDisplayed()
+    }
+
+    @Test
+    fun mediaIndexAreaShowsTheNoLocationCountRightAfterTheNoDateCount() {
+        composeTestRule.setContent {
+            MediaIndexSettingsArea(
+                state = indexingState(
+                    indexedWithoutDateCount = 2,
+                    indexedWithoutLocationCount = 5,
+                    notYetIndexedCount = 4
+                ),
+                onIndexNow = {}
+            )
+        }
+
+        val withoutDate = composeTestRule.onNodeWithText("2 items have no usable date information")
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val withoutLocation = composeTestRule.onNodeWithText("5 items have no usable location information")
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val notYetIndexed = composeTestRule.onNodeWithText("4 media items are not yet indexed")
+            .assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+
+        assertTrue(withoutDate.bottom <= withoutLocation.top)
+        assertTrue(withoutLocation.bottom <= notYetIndexed.top)
+    }
+
+    @Test
+    fun mediaIndexAreaShowsOneItemWithoutLocationInTheSingularForm() {
+        composeTestRule.setContent {
+            MediaIndexSettingsArea(
+                state = indexingState(indexedWithoutLocationCount = 1),
+                onIndexNow = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("1 item has no usable location information").assertIsDisplayed()
+    }
+
+    @Test
+    fun mediaIndexAreaStillShowsAZeroNoLocationCount() {
+        composeTestRule.setContent {
+            MediaIndexSettingsArea(
+                state = indexingState(indexedWithoutLocationCount = 0),
+                onIndexNow = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("0 items have no usable location information").assertIsDisplayed()
+    }
+
+    @Test
+    fun mediaIndexAreaSaysLocationAccessIsOffInPlaceOfTheNoLocationCount() {
+        composeTestRule.setContent {
+            MediaIndexSettingsArea(
+                state = indexingState(indexedWithoutLocationCount = 5, locationAccessGranted = false),
+                onIndexNow = {}
+            )
+        }
+
+        composeTestRule.onNodeWithText("Location access is off", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("5 items have no usable location information").assertDoesNotExist()
+        composeTestRule.onNodeWithText("0 items have no usable date information").assertIsDisplayed()
+    }
+
+    @Test
+    fun settingsScreenAsksTheViewModelToReadLocationAccessAgain() {
+        setSettingsContent()
+        composeTestRule.waitForIdle()
+
+        verify { mediaIndexingViewModel.refreshLocationAccess() }
     }
 
     @Test
@@ -245,7 +327,9 @@ class SettingsScreenTest {
             processedRows: Int = 0,
             indexedWithDateCount: Int = 0,
             indexedWithoutDateCount: Int = 0,
-            notYetIndexedCount: Int = 0
+            notYetIndexedCount: Int = 0,
+            indexedWithoutLocationCount: Int = 0,
+            locationAccessGranted: Boolean = true
         ) = MediaIndexingUiState(
             workStatus = workStatus,
             isRunning = workStatus == MediaIndexingWorkStatus.RUNNING,
@@ -263,7 +347,9 @@ class SettingsScreenTest {
             lastRunFinishedAtMillis = null,
             lastSuccessfulRunFinishedAtMillis = null,
             lastRunOutcome = MediaIndexRunOutcome.SUCCESS,
-            lastRunErrorMessage = null
+            lastRunErrorMessage = null,
+            indexedWithoutLocationCount = indexedWithoutLocationCount,
+            locationAccessGranted = locationAccessGranted
         )
     }
 }

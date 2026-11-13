@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.EasyGalleryApp
+import com.davide.seddio.easygallery.data.AndroidMediaLocationAccessChecker
+import com.davide.seddio.easygallery.data.LocationState
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaIndexRunOutcome
 import com.davide.seddio.easygallery.data.MediaIndexRunStateStore
@@ -11,8 +13,10 @@ import com.davide.seddio.easygallery.data.MediaIndexStore
 import com.davide.seddio.easygallery.data.MediaIndexingLivenessStore
 import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import com.davide.seddio.easygallery.data.MediaIndexingWorkScheduler
+import com.davide.seddio.easygallery.data.MediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.WorkManagerMediaIndexingLivenessStore
 import com.davide.seddio.easygallery.data.canonicalMediaStoreUriForJoin
+import com.davide.seddio.easygallery.data.locationStateOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,7 +42,11 @@ data class MediaIndexingUiState(
     val lastRunFinishedAtMillis: Long?,
     val lastSuccessfulRunFinishedAtMillis: Long?,
     val lastRunOutcome: MediaIndexRunOutcome?,
-    val lastRunErrorMessage: String?
+    val lastRunErrorMessage: String?,
+    /** Live, indexed items with no coordinates or resolved beyond the cap; pending and unindexed items wait. */
+    val indexedWithoutLocationCount: Int = 0,
+    /** False when ACCESS_MEDIA_LOCATION is missing, which makes [indexedWithoutLocationCount] meaningless. */
+    val locationAccessGranted: Boolean = true
 )
 
 class MediaIndexingViewModel @JvmOverloads constructor(
@@ -52,29 +60,53 @@ class MediaIndexingViewModel @JvmOverloads constructor(
     livenessStore: MediaIndexingLivenessStore =
         (application as EasyGalleryApp).let { app ->
             WorkManagerMediaIndexingLivenessStore(app)
-        }
+        },
+    private val locationAccessChecker: MediaLocationAccessChecker =
+        AndroidMediaLocationAccessChecker(application)
 ) : AndroidViewModel(application) {
     private val workStatusFlow: Flow<MediaIndexingWorkStatus> = livenessStore.status
 
     private val liveCanonicalUris = MutableStateFlow<Set<String>>(emptySet())
 
-    private val indexedCanonicalUris: Flow<Set<String>> = mediaIndexStore
-        .observeDateTakenProjection()
-        .map { projection -> projection.keys }
+    private val locationAccessFlow = MutableStateFlow(locationAccessChecker.isGranted())
 
-    private val indexedProjection: Flow<Map<String, Long?>> = mediaIndexStore.observeDateTakenProjection()
+    /** What one index row says, keyed by canonical URI; no healing, as the counts have always been. */
+    private class IndexedFacts(val dateTakenEpochMillis: Long?, val location: LocationState)
+
+    private val indexedFacts: Flow<Map<String, IndexedFacts>> = mediaIndexStore
+        .observeEvaluationProjection()
+        .map { rows ->
+            buildMap(rows.size) {
+                for (row in rows) {
+                    put(
+                        canonicalMediaStoreUriForJoin(row.identity.mediaUri),
+                        IndexedFacts(row.capturedDateTakenEpochMillis, locationStateOf(row))
+                    )
+                }
+            }
+        }
 
     val uiState: StateFlow<MediaIndexingUiState> = combine(
         runStateStore.state,
         workStatusFlow,
         liveCanonicalUris,
-        indexedCanonicalUris,
-        indexedProjection
-    ) { runState, workStatus, liveUris, indexedUris, projection ->
-        val liveIndexedUris = indexedUris.intersect(liveUris)
-        val liveNotYetIndexed = (liveUris.size - liveIndexedUris.size).coerceAtLeast(0)
-        val indexedWithDateCount = liveIndexedUris.count { uri -> projection[uri] != null }
-        val indexedWithoutDateCount = liveIndexedUris.size - indexedWithDateCount
+        indexedFacts,
+        locationAccessFlow
+    ) { runState, workStatus, liveUris, facts, locationGranted ->
+        var indexedItemsCount = 0
+        var indexedWithDateCount = 0
+        var indexedWithoutLocationCount = 0
+        for (uri in liveUris) {
+            val indexed = facts[uri] ?: continue
+            indexedItemsCount++
+            if (indexed.dateTakenEpochMillis != null) indexedWithDateCount++
+            when (indexed.location) {
+                LocationState.NoCoordinates, LocationState.ResolvedOutOfCap -> indexedWithoutLocationCount++
+                else -> Unit
+            }
+        }
+        val liveNotYetIndexed = (liveUris.size - indexedItemsCount).coerceAtLeast(0)
+        val indexedWithoutDateCount = indexedItemsCount - indexedWithDateCount
         MediaIndexingUiState(
             workStatus = workStatus,
             isRunning = workStatus == MediaIndexingWorkStatus.RUNNING,
@@ -84,7 +116,7 @@ class MediaIndexingViewModel @JvmOverloads constructor(
             skippedRows = runState.skippedRows,
             deletedRows = runState.deletedRows,
             healedRows = runState.healedRows,
-            indexedItemsCount = liveIndexedUris.size,
+            indexedItemsCount = indexedItemsCount,
             indexedWithDateCount = indexedWithDateCount,
             indexedWithoutDateCount = indexedWithoutDateCount,
             notYetIndexedCount = liveNotYetIndexed,
@@ -92,7 +124,9 @@ class MediaIndexingViewModel @JvmOverloads constructor(
             lastRunFinishedAtMillis = runState.lastRunFinishedAtMillis,
             lastSuccessfulRunFinishedAtMillis = runState.lastSuccessfulRunFinishedAtMillis,
             lastRunOutcome = runState.lastRunOutcome,
-            lastRunErrorMessage = runState.lastRunErrorMessage
+            lastRunErrorMessage = runState.lastRunErrorMessage,
+            indexedWithoutLocationCount = indexedWithoutLocationCount,
+            locationAccessGranted = locationGranted
         )
     }.stateIn(
         viewModelScope,
@@ -114,9 +148,16 @@ class MediaIndexingViewModel @JvmOverloads constructor(
             lastRunFinishedAtMillis = null,
             lastSuccessfulRunFinishedAtMillis = null,
             lastRunOutcome = null,
-            lastRunErrorMessage = null
+            lastRunErrorMessage = null,
+            indexedWithoutLocationCount = 0,
+            locationAccessGranted = locationAccessFlow.value
         )
     )
+
+    /** The user can change the permission outside the app, so the screen asks again when it resumes. */
+    fun refreshLocationAccess() {
+        locationAccessFlow.value = locationAccessChecker.isGranted()
+    }
 
     fun ensurePeriodicIndexing() {
         scheduler.ensurePeriodicIndexing()

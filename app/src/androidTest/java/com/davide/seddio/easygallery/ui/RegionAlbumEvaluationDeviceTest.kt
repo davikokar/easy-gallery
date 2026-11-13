@@ -168,7 +168,6 @@ class RegionAlbumEvaluationDeviceTest {
             members = countryMembers.size
         )
         assertTrue("The country album must have members", countryMembers.isNotEmpty())
-        assertTrue("A region album must show its region clause", countryItem.hasRegionClause)
         assertEquals("Members must be unique", countryMemberUris.size, countryMemberUris.toSet().size)
         assertEquals("Album list count and the members it lists must agree", countryItem.resolvedMemberCount, countryMembers.size)
         assertEquals("Member count must equal the picker's match count", countryPickerCount, countryMembers.size)

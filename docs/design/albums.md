@@ -292,9 +292,11 @@ afternoon should appear in *Castles* when the app opens, not next time the phone
 **That promise was struck on 2026-11-10** (§8 decision 22, answering §10 question 7), because
 nothing delivers it. What holds is this: evaluation is cheap and runs on app open, but an item
 matches a rule only once the index has reached it, and the index reaches a new photo at the next
-index pass — the periodic constrained job, or "Index now". Until then the album's Incomplete-album
-notice says it is incomplete and points at indexing; that notice is the bridge. A new photo appears
-after the next index pass, not when the app opens.
+index pass — the periodic constrained job, or "Index now". ~~Until then the album's Incomplete-album
+notice says it is incomplete and points at indexing; that notice is the bridge.~~ A new photo appears
+after the next index pass, not when the app opens. **Amended 2026-11-13, see §8 decision 29:** the
+Incomplete-album notice is no longer shown, so nothing on the album bridges the gap; Settings' Media
+index area and the New automatic album screen's Index band say how much is not yet indexed.
 
 ### Be honest about staleness
 
@@ -317,14 +319,16 @@ next media read rather than at the next scan.
 [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md) is
 binding here and states what that costs. The staleness that remains is therefore the **addition**
 direction only, which the paragraph above covers: a photo that has not been indexed yet cannot
-match a rule yet, and the user is told so.
+match a rule yet, and the user is told so — **amended 2026-11-13, see §8 decision 29:** in Settings
+and on the New automatic album screen, not on the album.
 
 **A third state exists and it is not staleness at all.** An item can be fully indexed and still
 carry no value for the column a rule tests — the index stores an absent fact as absent rather than
 substituting an approximation, so the row will never change and waiting will not help it. Such an
 item must not be counted as outstanding work, because that count would never reach zero, and must
 not be counted as covered either, because the album that tests the column will not contain it. The
-missing-GPS case is already visible as ADR-0019's coverage notice; Stage 2 step 2.3 found the same
+missing-GPS case is already visible as ~~ADR-0019's coverage notice~~ **Settings' location figure
+(amended 2026-11-13, see §8 decision 29)**; Stage 2 step 2.3 found the same
 shape for date-taken, where a photo with no EXIF date at all gets a null rather than a `dateModified`
 fallback, and Tiers B and C will meet it again whenever inference declines to produce a result.
 
@@ -756,15 +760,22 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 1,
     which defines what "no date" means for a `time` clause and rules out `dateAdded` because it
     invents members; that reasoning is untouched. So the answer is to say it rather than paper over
-    it: time albums get a **date-coverage notice**, the counterpart of ADR-0019's location coverage
-    notice, which is an exit criterion of step 2.7 in [albums-stage-2.md](albums-stage-2.md). It
-    counts live items indexed without a date, says what it counts, and is never presented as
+    it: ~~time albums get a **date-coverage notice**, the counterpart of ADR-0019's location coverage
+    notice, which is an exit criterion of step 2.7 in [albums-stage-2.md](albums-stage-2.md)~~
+    **a date-coverage figure, in Settings' Media index area (amended 2026-11-13, see decision
+    29)**. It counts live items indexed without a date, says what it counts, and is never presented as
     pending work, because §6's closing paragraph already rules that such an item is neither
     outstanding nor covered. The only earlier measurement, step 2.5's on the SM-G990B, points the
     same way, and was taken before a video container's zero creation date was treated as absent
     ([ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 3), so
     if anything it understated the undated share. **Not decided by this:** how soon a photo that
     *does* have a date reaches an album, which was §10 question 7 and is decision 22.
+
+    **Amended 2026-11-13, see decision 29.** What this decision settled is unchanged: no second date
+    source, and undated items are said rather than papered over. Where it is said changed. A time
+    album no longer carries a date-coverage notice; the figure is a row of Settings' Media index
+    area, which rewords the without-date row that area already had. "Coverage notice" in this
+    decision's title now reads as that row.
 
 22. **A new photo reaches a time or region album after the next index pass, not when the app
     opens.** Decided by the maintainer on 2026-11-10, answering §10 question 7 with its option
@@ -773,14 +784,21 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 1
     rules out a `dateAdded` fallback, and a place is written only by the resolver in the worker — and
     the index reaches a new item at the periodic constrained job or at "Index now". §6's promise was
-    rewritten to say so, with the original struck rather than deleted, and the Incomplete-album
-    notice is the bridge. **Why not the alternatives.** An app-open index pass would add battery and
+    rewritten to say so, with the original struck rather than deleted~~, and the Incomplete-album
+    notice is the bridge~~. **Why not the alternatives.** An app-open index pass would add battery and
     file-open cost to every start-up, and running outside decision 18's constraints pulls the
     scheduling toward expedited or foreground work, which decision 23 rules out by refusing a
     notification. Extracting on view would pay ADR-0001's per-item cost on the evaluation path, which
     §6 keeps separate from indexing on purpose. Narrowing the gap by relaxing a constraint or
     shortening the period was not taken either; it would be a decision of its own. **For step 2.7:**
-    no app-open index pass; the coverage notices and the Incomplete-album notice carry the honesty.
+    no app-open index pass; ~~the coverage notices and the Incomplete-album notice carry the honesty~~.
+
+    **Amended 2026-11-13, see decision 29.** The decision stands: a new photo reaches a time or
+    region album after the next index pass, and there is no app-open pass. What changed is the
+    bridge. The Incomplete-album notice is no longer shown, so the album itself no longer says it is
+    waiting; Settings' Media index area and the New automatic album screen's Index band say how much
+    is not yet indexed, and Settings carries the coverage figures. Decision 29 records that as an
+    accepted cost.
 
 23. **Indexing shows no notification; its progress is in-app only.** Decided by the maintainer on
     2026-11-10, answering §10 question 2. Progress and last-indexed state stay ~~in the Settings
@@ -824,25 +842,27 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     the `INTERNET` permission a library adds to the merged manifest, which question 6 records as an
     observation for the Play declaration of §9.
 
-25. **The coverage notices appear in the place picker and in Album Detail View only, and count
+25. **The coverage notices appear ~~in the place picker and in Album Detail View only~~, and count
     what waiting will not change.** Decided by the maintainer on 2026-11-11, answering open
     question 4 of [albums-stage-2.md](albums-stage-2.md), which asked where the location coverage
     notice of ADR-0019 and the date-coverage notice of decision 21 live.
-    - **Where.** In the **New automatic album** screen's picker and in Album Detail View; never on
+    - **Where.** ~~In the **New automatic album** screen's picker and in Album Detail View; never on
       an Album tile or Album row, and never in Settings. The location notice is for an album with a
       `region` clause, the date notice for one with a `time` clause, and an album with both shows
-      both.
+      both.~~ **Amended 2026-11-13, see decision 29:** in Settings' Media index area only.
     - **What.** Library-wide counts of live items: for location, those indexed with no coordinates
       or resolved beyond the cap; for date, those indexed with no date. Counts, not percentages.
-      **Never pending work** — an unindexed or pending item is in neither count, because that is
-      the Incomplete-album notice's business. The wording never says "yet", "still" or "scanning".
+      **Never pending work** — an unindexed or pending item is in neither count~~, because that is
+      the Incomplete-album notice's business~~. The wording never says "yet", "still" or "scanning".
     - **When location access is off.** On API 29+ without `ACCESS_MEDIA_LOCATION`, the location
       notice says that location access is off instead of giving a count. It reads the permission
       state and adds no permission.
-    - **Stacking, in Album Detail View:** the status notice — Newer-app or Incomplete-album — then
+    - ~~**Stacking, in Album Detail View:** the status notice — Newer-app or Incomplete-album — then
       location, then date, then Hidden-members. **An unevaluatable album shows no coverage notice**:
       its rule contributes nothing, so a statement about what the rule can reach would be about a
-      rule that is not being applied.
+      rule that is not being applied.~~ **Amended 2026-11-13, see decision 29:** Album Detail View
+      shows no coverage notice and no Incomplete-album notice, so there is nothing left to stack
+      under this decision.
 
     **Why.** The picker is where the user decides, so it is where a short album should be explained
     before it is created — ADR-0019's "working feature reads as broken" failure is cheapest to
@@ -871,6 +891,15 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     not that there be only one. This amendment first said the band carried no count; the
     maintainer's change to decision 27 the same day made that untrue, and these sentences replaced it.
 
+    **Amended 2026-11-13, see decision 29 — the placement is reversed.** The two figures leave the
+    picker and Album Detail View and appear only in Settings' Media index area, the one place the
+    *Where* bullet ruled out. The Why above is kept as the reasoning of 2026-11-11; decision 29
+    says why its conclusion was given up. What survives is *What* and the permission case: the same
+    counts of live items, never pending and never "yet", and without `ACCESS_MEDIA_LOCATION` the
+    location-access-off sentence in place of a count — now on Settings' location row. The risk the
+    Why named, that a coverage figure beside the indexing figures reads as progress, is accepted
+    there and held off by wording alone.
+
 26. **An automatic album's rule cannot be edited in Stage 2 step 2.7.** Decided by the maintainer
     on 2026-11-11. The rule is set at creation; rename, add, remove and delete work on an automatic
     album as on any other. **Why:** an editor must round-trip every rule this build can parse,
@@ -888,14 +917,14 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     see *Why the maintainer changed it* below. Landed 2026-11-12, after Stage 2 closed; Stage 2's
     status is unchanged. Decisions 23 and 25 were amended in place for it.
     - **What.** Each picker list, at every drill level, opens with a collapsible **Status area**: a
-      header, then the **Index band**, then that picker's coverage notice — location on the Place
-      picker, date on the Date picker. The Index band has three forms. **Not indexed:** outside a
+      header, then the **Index band**~~, then that picker's coverage notice — location on the Place
+      picker, date on the Date picker~~. The Index band has three forms. **Not indexed:** outside a
       pass, when X — the live media not yet indexed, the same figure Settings' Media index area
       shows — is above zero, an icon-only Index now beside a text giving X as not indexed yet, the
       whole row one button. **Running:** while a pass runs, a progress indicator and a
       running text, with no count and no action. **Absent:** X is zero and no pass runs. The header
-      appears only when the area has something to show, judged by the same rules that decide
-      whether each coverage notice draws, so it never heads an empty area. One expanded flag serves
+      appears only when the area has something to show~~, judged by the same rules that decide
+      whether each coverage notice draws~~, so it never heads an empty area. One expanded flag serves
       both pickers: it starts expanded, survives a tab switch, a drill and rotation, and resets
       when the screen closes. While indexing may still fill an empty list — nothing is indexed yet,
       or a pass is running — the list says so rather than that nothing was found.
@@ -934,6 +963,14 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     album; the band makes the gap one tap shorter for a user who notices it, and closes it for
     nobody else.
 
+    **Amended 2026-11-13, see decision 29.** The coverage notice leaves the Status area; the
+    header, the collapse control and the Index band are unchanged. With no coverage notice, the
+    area has something to show exactly when the Index band does, so the header appears with the
+    band and not otherwise. The accepted cost above — a "not yet indexed" count beside a "no usable
+    location" count — no longer arises in the picker; it moves to Settings, where both figures now
+    sit, kept apart by the same wording rule. The consequence about an emptied area now reads with
+    the band alone as its content.
+
 28. **Each album, and Favourites, can override the display preferences, on the per-folder
     model.** Requested by the maintainer and decided on 2026-11-13 in
     [ADR-0021](../architecture/decisions/0021-per-album-display-preference-overrides.md), which
@@ -951,6 +988,58 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     with no event to hook. **Not decided by this:** renaming the shared types away from "folder",
     which ADR-0021 defers, and any marker of an overridden album or a reset-this-album action,
     which folders lack too.
+
+29. **Albums no longer show the Incomplete-album notice or the coverage notices; the two coverage
+    figures are shown only in Settings.** Decided by the maintainer on 2026-11-13, reversing parts
+    of decisions 21, 22, 25 and 27, which are amended in place. Recorded before the change that
+    implements it; no stage's status changes.
+    - **The Incomplete-album notice goes** from the Album tile, the Album row and Album Detail View.
+      The evaluator still reports an album waiting on the index — the settled/unsettled model of
+      [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment
+      2 is unchanged, and so is its output — but nothing shows it on the album.
+    - **The location and date coverage notices go** from Album Detail View and from the New
+      automatic album screen. The picker's Status area keeps its header, its collapse control and
+      its Index band.
+    - **The two figures appear only in Settings' Media index area**, worded "N items have no usable
+      date information" and "N items have no usable location information". The date row rewords
+      the without-date row Settings already had; there is no second date row. The location row is
+      new. They count what decision 25 counted — live items, never pending work, never "yet".
+    - **Without `ACCESS_MEDIA_LOCATION`**, on API 29+, the location row shows the existing
+      location-access-off sentence in place of a count. That is where
+      [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md)'s
+      "region albums are empty and must say why" is now met, rather than on the album.
+    - **How the figures are computed.** In `MediaIndexingViewModel`, by the method Settings' other
+      rows already use: the index projection intersected with live media by canonical URI. Not
+      through the albums' shared live join. The coverage computation in that join, and the
+      location-access plumbing in `AlbumsViewModel` and the picker, are deleted.
+
+    **Why the figures can live in Settings after all.** Decision 25 ruled Settings out because a
+    coverage figure beside the indexing figures would read as progress. But Settings already
+    carried a without-date row beside those figures, counting — healing aside — the items the date
+    notice counted, so
+    the library had the same number on two screens under two wordings. Rewording that row and adding
+    its location counterpart leaves one place for each figure. The wording — "no usable ...
+    information", never "yet" — is what keeps the rows from reading as work still to do.
+    **Why compute them with Settings' rows.** Every figure in the Media index area then comes from
+    one intersection, so they agree with each other, and the albums' join no longer carries a
+    computation only Settings reads. Unlike the albums' join, that intersection does not heal by
+    the healing key, so an item whose content URI changed and whose index row has not yet been
+    healed is counted as not yet indexed rather than by its stored row; the existing rows already
+    behave this way.
+    **Why the access sentence moves with the row.** Without the permission extraction stores no
+    location, so a count would blame the photos for the app's missing access — decision 25's reason,
+    unchanged, now applied where the figure is.
+
+    **The accepted cost.** A rule album waiting for the index may look short or empty with no
+    explanation anywhere outside Settings — the album never says it is waiting, and never says how
+    much of the library lacks a date or a location. That is ADR-0019's working-feature-reads-as-broken
+    risk, and §6's *Be honest about staleness*, accepted on the album and met only in Settings and on
+    the New automatic album screen, whose Status area still shows the not-yet-indexed count and
+    Index now. The bridge decision 22 named is therefore gone from the album itself. And in Settings,
+    coverage figures now sit beside the indexing figures, which decision 25 avoided; they are kept
+    apart by wording only. **Not decided by this:** the Newer-app and Hidden-members notices, which
+    are per album and stay; §10 question 9, whose "no location" and "no date" items now show up in
+    Settings' rows rather than in album notices.
 
 ---
 
@@ -1219,8 +1308,9 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    path, and without the permission that read yields nothing — no location, and no date either. The
    row is stored as final: delta detection never re-extracts unchanged media, so granting the
    permission later recovers neither value. The user sees those images as "no location" and "no
-   date" in the coverage notices of §8 decision 25 — after the grant, not before it, because while
-   the permission is off the location notice says so instead of counting.
+   date" in ~~the coverage notices of §8 decision 25~~ **Settings' coverage rows (amended 2026-11-13,
+   see §8 decision 29)** — after the grant, not before it, because while the permission is off the
+   location ~~notice~~ **row** says so instead of counting.
 
    **Why it is not fixed in 2.7.** Recovering the values needs the file, which makes it a re-index,
    and a re-index is a decision of its own — [albums-stage-2.md](albums-stage-2.md)'s rule for any

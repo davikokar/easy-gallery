@@ -159,8 +159,6 @@
     <string name="album_hidden_items_notice">Unele elemente sunt temporar indisponibile. Vor reapărea în acest album când fișierele vor fi din nou disponibile.</string>
     <string name="album_rule_unevaluatable_notice">Regula automată a acestui album necesită o versiune mai nouă a aplicației. Până la actualizare sunt afișate doar elementele adăugate manual.</string>
     <string name="album_rule_unevaluatable_notice_short">Necesită o versiune mai nouă a aplicației. Sunt afișate doar elementele adăugate manual.</string>
-    <string name="album_rule_waiting_notice">Unele fotografii și videoclipuri nu au fost încă scanate, deci acest album poate fi incomplet. Starea curentă: %2$s › „%1$s”.</string>
-    <string name="album_rule_waiting_notice_short">Poate fi incomplet: unele elemente nu au fost încă scanate. Vedeți: %1$s.</string>
     <string name="album_default_name">Albumul meu %1$d</string>
     <string name="album_type_title">Album nou</string>
     <string name="album_type_manual_title">Album manual</string>
@@ -196,17 +194,7 @@
     <string name="state_collapsed">Restrâns</string>
     <string name="automatic_album_index_running">Se citesc locurile și datele din fotografiile și videoclipurile dvs.</string>
     <string name="automatic_album_not_indexed_empty">Această listă se completează pe măsură ce indexarea se încheie.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="one">%1$d fotografie sau videoclip nu are o locație utilizabilă și este omis din albumele de locuri.</item>
-        <item quantity="few">%1$d fotografii și videoclipuri nu au o locație utilizabilă și sunt omise din albumele de locuri.</item>
-        <item quantity="other">%1$d de fotografii și videoclipuri nu au o locație utilizabilă și sunt omise din albumele de locuri.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">Accesul la locație este dezactivat, deci locațiile fotografiilor nu pot fi citite, iar albumele de locuri nu le pot include.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="one">%1$d fotografie sau videoclip nu are dată de captură și este omis din albumele de date.</item>
-        <item quantity="few">%1$d fotografii și videoclipuri nu au dată de captură și sunt omise din albumele de date.</item>
-        <item quantity="other">%1$d de fotografii și videoclipuri nu au dată de captură și sunt omise din albumele de date.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Eliminați locul: %1$s</string>
     <string name="automatic_album_clear_date">Eliminați data: %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
@@ -236,9 +224,14 @@
         <item quantity="other">%1$d de elemente media au o dată indexată</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="one">%1$d element media este indexat fără dată</item>
-        <item quantity="few">%1$d elemente media sunt indexate fără dată</item>
-        <item quantity="other">%1$d de elemente media sunt indexate fără dată</item>
+        <item quantity="one">%1$d element nu are informații utilizabile despre dată</item>
+        <item quantity="few">%1$d elemente nu au informații utilizabile despre dată</item>
+        <item quantity="other">%1$d de elemente nu au informații utilizabile despre dată</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="one">%1$d element nu are informații utilizabile despre locație</item>
+        <item quantity="few">%1$d elemente nu au informații utilizabile despre locație</item>
+        <item quantity="other">%1$d de elemente nu au informații utilizabile despre locație</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="one">%1$d element media nu este încă indexat</item>

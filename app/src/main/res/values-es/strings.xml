@@ -156,8 +156,6 @@
     <string name="album_hidden_items_notice">Algunos elementos no están disponibles temporalmente. Volverán a aparecer en este álbum cuando los archivos estén disponibles de nuevo.</string>
     <string name="album_rule_unevaluatable_notice">La regla automática de este álbum requiere una versión más reciente de la app. Hasta que actualices, solo se muestran los elementos que añadiste manualmente.</string>
     <string name="album_rule_unevaluatable_notice_short">Requiere una app más reciente. Solo se muestran los elementos añadidos manualmente.</string>
-    <string name="album_rule_waiting_notice">Aún no se han analizado algunas fotos y videos, así que este álbum puede estar incompleto. Consulta el estado actual en “%1$s”, dentro de %2$s.</string>
-    <string name="album_rule_waiting_notice_short">Puede estar incompleto: hay elementos sin analizar. Consulta %1$s.</string>
     <string name="album_default_name">Mi álbum %1$d</string>
     <string name="album_type_title">Álbum nuevo</string>
     <string name="album_type_manual_title">Álbum manual</string>
@@ -191,15 +189,7 @@
     <string name="state_collapsed">Contraído</string>
     <string name="automatic_album_index_running">Leyendo los lugares y las fechas de tus fotos y vídeos.</string>
     <string name="automatic_album_not_indexed_empty">Esta lista se completará cuando termine la indexación.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="one">%1$d foto o vídeo no tiene una ubicación utilizable y queda fuera de los álbumes de lugares.</item>
-        <item quantity="other">%1$d fotos y vídeos no tienen una ubicación utilizable y quedan fuera de los álbumes de lugares.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">El acceso a la ubicación está desactivado, así que no se pueden leer las ubicaciones de las fotos ni incluirlas en los álbumes de lugares.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="one">%1$d foto o vídeo no tiene fecha de captura y queda fuera de los álbumes de fechas.</item>
-        <item quantity="other">%1$d fotos y vídeos no tienen fecha de captura y quedan fuera de los álbumes de fechas.</item>
-    </plurals>
     <string name="automatic_album_clear_place">Quitar el lugar %1$s</string>
     <string name="automatic_album_clear_date">Quitar la fecha %1$s</string>
     <string name="automatic_album_month_year">%1$s de %2$d</string>
@@ -227,8 +217,12 @@
         <item quantity="other">%1$d elementos multimedia tienen fecha indexada</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="one">%1$d elemento multimedia está indexado sin fecha</item>
-        <item quantity="other">%1$d elementos multimedia están indexados sin fecha</item>
+        <item quantity="one">%1$d elemento no tiene información de fecha utilizable</item>
+        <item quantity="other">%1$d elementos no tienen información de fecha utilizable</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="one">%1$d elemento no tiene información de ubicación utilizable</item>
+        <item quantity="other">%1$d elementos no tienen información de ubicación utilizable</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="one">%1$d elemento multimedia aún no está indexado</item>

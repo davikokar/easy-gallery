@@ -48,15 +48,20 @@ data class JoinedMedia(
 )
 
 /**
- * Library-wide counts of live items the index reached and found nothing usable in (albums.md §8
- * decision 25). Items not indexed, or pending, are in neither: waiting may still change them.
+ * Where an index row stands for a `region` clause. Null Island (0.0, 0.0) is absent at extraction
+ * (ADR-0019), so it reaches here as [LocationState.NoCoordinates].
  */
-data class MediaIndexCoverage(
-    /** Indexed with no coordinates, or resolved beyond the cap. */
-    val withoutLocation: Int,
-    /** Indexed with no date. */
-    val withoutDate: Int
-)
+fun locationStateOf(row: MediaIndexEvaluationProjection): LocationState {
+    if (!row.hasCoordinates) return LocationState.NoCoordinates
+
+    val country = row.derivedCountryCode
+    val values = country?.let { PlaceValues(it, row.derivedRegionCode, row.derivedPlaceName) }
+    return if (row.derivedPlaceResolverVersion == PLACE_RESOLVER_VERSION) {
+        if (values != null) LocationState.Resolved(values) else LocationState.ResolvedOutOfCap
+    } else {
+        if (values != null) LocationState.PendingWithOldValues(values) else LocationState.PendingWithoutValues
+    }
+}
 
 /**
  * The index evaluation projection joined to live media, one [JoinedMedia] per live item in live order
@@ -66,22 +71,6 @@ class MediaIndexLiveJoin(val items: List<JoinedMedia>) {
 
     // The join is shared by albums and the picker, which compute on different threads.
     val liveMedia: List<MediaItem> by lazy { items.map { it.item } }
-
-    // Memoised: every album's list item carries it, and it is a pass over the whole library.
-    private val coverage: MediaIndexCoverage by lazy {
-        var withoutLocation = 0
-        var withoutDate = 0
-        for (joined in items) {
-            if (joined.date == DateTakenSortState.IndexedWithoutDate) withoutDate++
-            when (joined.location) {
-                LocationState.NoCoordinates, LocationState.ResolvedOutOfCap -> withoutLocation++
-                else -> Unit
-            }
-        }
-        MediaIndexCoverage(withoutLocation = withoutLocation, withoutDate = withoutDate)
-    }
-
-    fun coverage(): MediaIndexCoverage = coverage
 
     companion object {
 
@@ -121,18 +110,6 @@ class MediaIndexLiveJoin(val items: List<JoinedMedia>) {
                 DateTakenSortState.IndexedWithDate(dateTaken)
             } else {
                 DateTakenSortState.IndexedWithoutDate
-            }
-        }
-
-        private fun locationStateOf(row: MediaIndexEvaluationProjection): LocationState {
-            if (!row.hasCoordinates) return LocationState.NoCoordinates
-
-            val country = row.derivedCountryCode
-            val values = country?.let { PlaceValues(it, row.derivedRegionCode, row.derivedPlaceName) }
-            return if (row.derivedPlaceResolverVersion == PLACE_RESOLVER_VERSION) {
-                if (values != null) LocationState.Resolved(values) else LocationState.ResolvedOutOfCap
-            } else {
-                if (values != null) LocationState.PendingWithOldValues(values) else LocationState.PendingWithoutValues
             }
         }
     }

@@ -154,8 +154,6 @@
     <string name="album_hidden_items_notice">일부 항목을 일시적으로 사용할 수 없습니다. 파일을 다시 사용할 수 있게 되면 이 앨범에 다시 표시됩니다.</string>
     <string name="album_rule_unevaluatable_notice">이 앨범의 자동 규칙을 사용하려면 더 최신 버전의 앱이 필요합니다. 업데이트하기 전까지는 직접 추가한 항목만 표시됩니다.</string>
     <string name="album_rule_unevaluatable_notice_short">더 최신 버전의 앱이 필요합니다. 직접 추가한 항목만 표시됩니다.</string>
-    <string name="album_rule_waiting_notice">아직 스캔하지 않은 사진과 동영상이 있어 이 앨범이 완전하지 않을 수 있습니다. 현재 상태는 %2$s의 “%1$s”에서 확인하세요.</string>
-    <string name="album_rule_waiting_notice_short">아직 스캔하지 않은 항목이 있어 완전하지 않을 수 있습니다. %1$s에서 확인하세요.</string>
     <string name="album_default_name">내 앨범 %1$d</string>
     <string name="album_type_title">새 앨범</string>
     <string name="album_type_manual_title">수동 앨범</string>
@@ -187,13 +185,7 @@
     <string name="state_collapsed">접힘</string>
     <string name="automatic_album_index_running">사진과 동영상에서 장소와 날짜를 읽는 중입니다.</string>
     <string name="automatic_album_not_indexed_empty">색인이 끝나면 이 목록이 채워집니다.</string>
-    <plurals name="automatic_album_location_coverage">
-        <item quantity="other">사용할 수 있는 위치 정보가 없는 사진과 동영상 %1$d개는 장소 앨범에 포함되지 않습니다.</item>
-    </plurals>
     <string name="automatic_album_location_access_off">위치 정보 접근이 꺼져 있어 사진의 위치를 읽을 수 없으며 장소 앨범에 포함할 수 없습니다.</string>
-    <plurals name="automatic_album_date_coverage">
-        <item quantity="other">촬영 날짜가 없는 사진과 동영상 %1$d개는 날짜 앨범에 포함되지 않습니다.</item>
-    </plurals>
     <string name="automatic_album_clear_place">장소 %1$s 지우기</string>
     <string name="automatic_album_clear_date">날짜 %1$s 지우기</string>
     <string name="automatic_album_month_year">%2$d년 %1$s</string>
@@ -219,7 +211,10 @@
         <item quantity="other">날짜가 색인된 미디어 항목 %1$d개</item>
     </plurals>
     <plurals name="settings_index_without_date">
-        <item quantity="other">날짜 없이 색인된 미디어 항목 %1$d개</item>
+        <item quantity="other">사용할 수 있는 날짜 정보가 없는 항목 %1$d개</item>
+    </plurals>
+    <plurals name="settings_index_without_location">
+        <item quantity="other">사용할 수 있는 위치 정보가 없는 항목 %1$d개</item>
     </plurals>
     <plurals name="settings_index_not_yet_indexed">
         <item quantity="other">아직 색인되지 않은 미디어 항목 %1$d개</item>

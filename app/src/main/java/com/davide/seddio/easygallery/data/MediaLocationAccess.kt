@@ -7,8 +7,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 
 /**
- * Whether `ACCESS_MEDIA_LOCATION` is held. Without it extraction stores no location at all, so a
- * coverage count would blame the photos for the app's missing access (albums.md §8 decision 25).
+ * Whether `ACCESS_MEDIA_LOCATION` is held; without it extraction stores no location at all.
  */
 fun interface MediaLocationAccessChecker {
     fun isGranted(): Boolean

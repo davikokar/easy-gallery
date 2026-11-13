@@ -600,21 +600,14 @@ private fun PlaceTab(
             state = rememberLazyListState(),
             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
         ) {
-            if (placeStatusAreaHasContent(indexBand, ui.coverage, ui.locationAccessGranted)) {
+            if (indexBand != AutomaticAlbumIndexBand.Hidden) {
                 item(key = "status-area") {
                     StatusArea(
                         band = indexBand,
                         expanded = statusAreaExpanded,
                         onToggleExpanded = onToggleStatusArea,
                         onIndexNow = onIndexNow
-                    ) {
-                        LocationCoverageNotice(
-                            coverage = ui.coverage,
-                            locationAccessGranted = ui.locationAccessGranted,
-                            testTag = "new_automatic_album_location_coverage",
-                            announce = false
-                        )
-                    }
+                    )
                 }
             }
 
@@ -768,20 +761,14 @@ private fun DateTab(
             state = rememberLazyListState(),
             contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)
         ) {
-            if (dateStatusAreaHasContent(indexBand, ui.coverage)) {
+            if (indexBand != AutomaticAlbumIndexBand.Hidden) {
                 item(key = "status-area") {
                     StatusArea(
                         band = indexBand,
                         expanded = statusAreaExpanded,
                         onToggleExpanded = onToggleStatusArea,
                         onIndexNow = onIndexNow
-                    ) {
-                        DateCoverageNotice(
-                            coverage = ui.coverage,
-                            testTag = "new_automatic_album_date_coverage",
-                            announce = false
-                        )
-                    }
+                    )
                 }
             }
 
@@ -846,14 +833,13 @@ private fun DateTab(
     }
 }
 
-// The header is always there; collapsed, the band and the coverage notice are not composed at all.
+// The header is always there; collapsed, the band is not composed at all.
 @Composable
 private fun StatusArea(
     band: AutomaticAlbumIndexBand,
     expanded: Boolean,
     onToggleExpanded: () -> Unit,
-    onIndexNow: () -> Unit,
-    coverageNotice: @Composable () -> Unit
+    onIndexNow: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -863,7 +849,6 @@ private fun StatusArea(
         StatusAreaHeader(expanded = expanded, onToggle = onToggleExpanded)
         if (expanded) {
             IndexBand(band = band, onIndexNow = onIndexNow)
-            coverageNotice()
         }
     }
 }

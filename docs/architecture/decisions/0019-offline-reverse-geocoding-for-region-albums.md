@@ -152,6 +152,9 @@ not personal.
   a location — rather than presenting a short list as though it were everything. This is §6's "be
   honest about staleness" applied to coverage rather than to progress, and it is the single most
   likely way for this feature to read as broken while working exactly as designed.
+
+  > **Amended 2026-11-13 — see Amendment 3 below.** The figure is said in the Settings screen's
+  > Media index area only, not on the album or in the picker.
 - **`ACCESS_MEDIA_LOCATION` plus `setRequireOriginal` is mandatory on API 29+**, and the indexer
   must use that path rather than a plain URI. Confirmed against `data/MediaLocation.kt`, which
   already does precisely this for images from `Build.VERSION_CODES.Q` upwards. A plain URI returns
@@ -160,6 +163,9 @@ not personal.
   permission is already declared and is requested separately from the media-access gate; ADR-0001's
   warning against folding it into `MainActivity`'s `permissions.all { }` check still applies. It may
   also be denied, in which case region albums are empty and must say why.
+
+  > **Amended 2026-11-13 — see Amendment 3 below.** The reason is said on the Settings screen's
+  > location row, which shows that location access is off in place of a count, not on the album.
 - **Video location is a second code path** — `MediaMetadataRetriever` and ISO-6709 parsing, as
   ADR-0001 records. The indexer inherits both paths and both sets of failure modes.
 - **The dataset is a snapshot and will age.** Places are renamed and administrative divisions are
@@ -541,3 +547,38 @@ and no dataset step is added.
   from `alternateNamesV2`, filtered to the shipped languages, as the path not adopted. Each added
   language enlarges that filtered extract. Its size is still unmeasured, and adopting it is still a
   new decision on the size budget.
+
+## Amendment 3 — 2026-11-13 — Coverage and the access-denied reason are said in Settings
+
+The Decision and Amendments 1 and 2 stand unchanged. This amendment moves where two obligations in
+*Consequences — Negative* are met; it does not drop either. **The maintainer decided it on
+2026-11-13**; [albums.md](../../design/albums.md) §8 decision 29 records the decision, its
+reasons, and its accepted cost.
+
+Step 2.7 met both obligations on the album and in the picker, through the location coverage notice
+of albums.md §8 decision 25. From this amendment they are met in the Settings screen's Media index
+area only:
+
+- **"The UI must say so."** A row reads "N items have no usable location information", counting
+  live items indexed with no coordinates or resolved beyond the cap — the items decision 25's notice
+  counted. It states the share without a location rather than the share with one, as the notice
+  did; either answers the obligation, which is that a short list is not presented as everything.
+- **"Must say why" when access is denied.** On API 29+ without `ACCESS_MEDIA_LOCATION`, that row
+  shows the existing sentence saying location access is off, in place of the count. A count there
+  would blame the photos for the app's missing access, because without the permission extraction
+  stores no location at all.
+
+### Consequences of this amendment
+
+- **Negative.** A region album that is short or empty — for lack of GPS, for lack of the
+  permission, or because the index has not reached its items — no longer says why on the album or
+  in the picker. The user has to go to Settings for it. That is the "read as broken while working
+  exactly as designed" risk named above, accepted by the maintainer rather than prevented.
+- **Positive.** Each figure is in one place, beside the other index figures, and computed the same
+  way they are.
+
+### References added by this amendment
+
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 25 and 29, §10 question 9
+- [ADR-0016](0016-album-creation-type-choice-and-picker-screen.md) Amendment 3 — the picker no
+  longer shows the coverage notices

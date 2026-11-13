@@ -11,11 +11,9 @@ import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumMembership
 import com.davide.seddio.easygallery.data.AlbumNaming
 import com.davide.seddio.easygallery.data.AlbumRule
-import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleEvaluator
 import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
-import com.davide.seddio.easygallery.data.AndroidMediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.FolderViewOverrides
 import com.davide.seddio.easygallery.data.FolderViewPreferencesStore
@@ -23,12 +21,10 @@ import com.davide.seddio.easygallery.data.GazetteerAssets
 import com.davide.seddio.easygallery.data.GazetteerNames
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
-import com.davide.seddio.easygallery.data.MediaIndexCoverage
 import com.davide.seddio.easygallery.data.MediaIndexEvaluationProjection
 import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
 import com.davide.seddio.easygallery.data.MediaIndexStore
 import com.davide.seddio.easygallery.data.MediaItem
-import com.davide.seddio.easygallery.data.MediaLocationAccessChecker
 import com.davide.seddio.easygallery.data.MediaStoreVersionProvider
 import com.davide.seddio.easygallery.data.MediaStoreVersionStore
 import com.davide.seddio.easygallery.data.MediaType
@@ -78,19 +74,7 @@ data class AlbumListItem(
     /** Stored additions that did not resolve to a live item; rule matches never count. */
     val hiddenMemberCount: Int,
     val storedMembershipCount: Int,
-    val status: AlbumEvaluationStatus,
-    /** The rule has a `time` clause; false for a manual or unevaluatable album. */
-    val hasTimeClause: Boolean = false,
-    /** The rule has a `region` clause; false for a manual or unevaluatable album. */
-    val hasRegionClause: Boolean = false,
-    /**
-     * Library-wide counts from the join (albums.md §8 decision 25). Null for a manual or
-     * unevaluatable album, and until the live media is known; the notice for a clause kind the
-     * album does not have is the caller's to leave out.
-     */
-    val coverage: MediaIndexCoverage? = null,
-    /** False on API 29+ without `ACCESS_MEDIA_LOCATION`; only read for an album with a region clause. */
-    val locationAccessGranted: Boolean = true
+    val status: AlbumEvaluationStatus
 )
 
 /** [membershipId] is null for a rule match that has no addition row. */
@@ -118,7 +102,6 @@ class AlbumsViewModel @JvmOverloads constructor(
     // The seam that lets a test count how often the join is built.
     private val joinFactory: (List<MediaIndexEvaluationProjection>, List<MediaItem>) -> MediaIndexLiveJoin =
         { projection, liveMedia -> MediaIndexLiveJoin.build(projection, liveMedia) },
-    private val locationAccessChecker: MediaLocationAccessChecker = AndroidMediaLocationAccessChecker(application),
     private val gazetteerNamesLoader: () -> GazetteerNames = { GazetteerAssets.loadNames(application) },
     // Read when the picker computes, never cached: a language change recreates the Activity.
     private val localeProvider: () -> Locale = {
@@ -140,10 +123,6 @@ class AlbumsViewModel @JvmOverloads constructor(
         val hiddenMemberCount: Int,
         val storedMembershipCount: Int,
         val status: AlbumEvaluationStatus,
-        val hasTimeClause: Boolean,
-        val hasRegionClause: Boolean,
-        val coverage: MediaIndexCoverage?,
-        val locationAccessGranted: Boolean,
         val additionIdsByUri: Map<String, List<Long>>,
         val uriRewrites: List<MembershipUriRewrite>,
         val orphanStateChanges: List<MembershipOrphanStateChange>
@@ -163,11 +142,7 @@ class AlbumsViewModel @JvmOverloads constructor(
                 storedMemberCount = storedMemberCount,
                 hiddenMemberCount = hiddenMemberCount,
                 storedMembershipCount = storedMembershipCount,
-                status = status,
-                hasTimeClause = hasTimeClause,
-                hasRegionClause = hasRegionClause,
-                coverage = coverage,
-                locationAccessGranted = locationAccessGranted
+                status = status
             )
         }
     }
@@ -252,7 +227,6 @@ class AlbumsViewModel @JvmOverloads constructor(
         existingAlbumNames = albums.map { items -> items.map { it.name } },
         zoneProvider = zoneProvider,
         localeProvider = localeProvider,
-        locationAccess = locationAccessChecker,
         namesLoader = gazetteerNamesLoader,
         workDispatcher = evaluationDispatcher
     )
@@ -637,9 +611,6 @@ class AlbumsViewModel @JvmOverloads constructor(
         val items = evaluation?.members ?: resolution.albumItems
         val status = evaluation?.status ?: AlbumEvaluationStatus.MANUAL
 
-        val clauses = (rule as? AlbumRule.Evaluatable)?.clauses.orEmpty()
-        val hasRegionClause = clauses.any { it is AlbumRuleClause.Region }
-
         val members = items.map { item ->
             AlbumDetailMember(
                 membershipId = additionIdsByUri[item.uri.toString()]?.firstOrNull(),
@@ -667,11 +638,6 @@ class AlbumsViewModel @JvmOverloads constructor(
             hiddenMemberCount = storedMemberCount - resolution.resolvedAdditions.size,
             storedMembershipCount = memberships.size,
             status = status,
-            hasTimeClause = clauses.any { it is AlbumRuleClause.Time },
-            hasRegionClause = hasRegionClause,
-            // An unevaluatable rule reaches nothing, so a statement about what it can reach would be false.
-            coverage = if (rule is AlbumRule.Evaluatable) join?.coverage() else null,
-            locationAccessGranted = !hasRegionClause || locationAccessChecker.isGranted(),
             additionIdsByUri = additionIdsByUri,
             // Before MediaStore is read every row looks unresolved; writing that back would be false.
             uriRewrites = if (liveMedia == null) emptyList() else resolution.uriRewrites,

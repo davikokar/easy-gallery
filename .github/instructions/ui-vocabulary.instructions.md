@@ -125,28 +125,25 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
   `new_automatic_album_year_<year>`, `new_automatic_album_month_<1-12>` and
   `new_automatic_album_all_of_country` / `_region` / `_year`.
 
-  Each picker's list opens with the **Status area**, a collapsible region made of the **Index band**
-  and the picker's coverage notice (the **Location coverage notice** on the **Place picker**, the
-  **Date coverage notice** on the **Date picker**, tagged `new_automatic_album_location_coverage` and
-  `new_automatic_album_date_coverage`). It appears only once the picker is ready, at every drill
-  level, and appears nowhere but these two pickers. Say "Status area" of the **New automatic album
-  screen** in full: the **Media index area** of the **Settings screen** is a different region (its tag,
-  `media_index_status_area`, shares the word), and "status notice" already means the **Newer-app
-  notice** and **Incomplete-album notice**.
+  Each picker's list opens with the **Status area**, a collapsible region holding the **Index band**.
+  It appears only once the picker is ready, at every drill level, and appears nowhere but these two
+  pickers. Say "Status area" of the **New automatic album screen** in full: the **Media index area**
+  of the **Settings screen** is a different region (its tag, `media_index_status_area`, shares the
+  word). The library-wide counts of items with no usable location or date are **not** shown here or
+  anywhere else on this screen; they live only in the **Media index area**.
   - The **Status area header** (tagged `new_automatic_album_status_toggle`) is the area's first list
     item: a full-width row with the title **Index status** and an expand/collapse chevron at the end
     (`ExpandMore` / `ExpandLess`, which do not mirror). The whole row is the one Button-role target and
-    exposes Expanded or Collapsed as its state. It is shown only when the area has any content —
-    an **Index band**, a coverage notice, or both — so with nothing to show there is no header and
-    no area. Aliases: **status toggle**, **status header**
+    exposes Expanded or Collapsed as its state. It is shown only when there is an **Index band** to
+    hold — so with nothing to say there is no header and no area. Aliases: **status toggle**,
+    **status header**
   - The **Status area** (tagged `new_automatic_album_status_area`) is the header plus its content.
     It starts **expanded** each time the screen opens; collapsed, only the header remains. It is one
     flag shared by both pickers: it survives a tab switch, a drill level, and rotation, and is
     dropped with the screen's saved state when the screen closes (ADR-0016 Amendment 2), so a
     second visit opens expanded again.
-  - The **Index band** (tagged `new_automatic_album_index_band`) is the first thing inside the
-    expanded area, ahead of the coverage notice. It is **not a notice**: it is not one of the
-    coverage notices and has no tinted container. Say "Index band" in full; a bare "band" is
+  - The **Index band** (tagged `new_automatic_album_index_band`) is the only content of the
+    expanded area. It is **not a notice**: it has no tinted container. Say "Index band" in full; a bare "band" is
     ambiguous. It is **shown only while something needs saying**: live media is not yet indexed
     (a count X > 0), or an indexing pass is running. Otherwise it is absent, not blank. It has two
     forms, and the same tag `new_automatic_album_index_now` marks the action in both:
@@ -167,8 +164,14 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
   Aliases: **automatic album picker**, **automatic album creation screen**
 - **Settings screen** (`SettingsScreen`): App preferences, language, support, legal, and the tip
   jar. Its **Media index area** (`MediaIndexSettingsArea`, tagged `media_index_status_area`) reports
-  current scan progress, items indexed with a date, items indexed with no date, deferred items,
-  and the last successful scan. The **Index now action** (tagged `media_index_now_action`) starts
+  current scan progress, items indexed with a date, two coverage rows, deferred items, and the last
+  successful scan. It is the **only** place scan progress is measured and the **only** surface for
+  the two library-wide coverage figures. The coverage rows follow the with-a-date row, in this
+  order: "N items have no usable date information", then "N items have no usable location
+  information". They are plain counts of items the index reached and found nothing usable in, never
+  percentages; an item not yet scanned is in neither. When location access is not granted (API 29+
+  without `ACCESS_MEDIA_LOCATION`) the location row shows the "location access is off" sentence
+  instead of a count. Neither figure appears on any other screen, Album Detail View included. The **Index now action** (tagged `media_index_now_action`) starts
   a user-requested scan and is disabled without a click action while indexing is already running.
   The **New automatic album screen** offers the same action in the **Index band** of its **Status
   area**, as an icon-only row, only while some media is not yet indexed.
@@ -343,43 +346,10 @@ Shared parts:
   app is what changes that — unlike the **Hidden-members notice**, it does not promise anything will
   reappear. It is drawn on the **Album tile**, the **Album row**, and in Album Detail View, with a
   short wording on the tile and row and the full wording in Album Detail View.
-- **Incomplete-album notice** (tagged `album_rule_waiting_notice`; `AlbumEvaluationStatus.WAITING_ON_INDEX`):
-  The notice shown when an automatic Album may be incomplete because some photos and videos have
-  not been scanned yet. It makes **no promise that a scan is running** — it holds whether indexing
-  is in progress, paused, or not started — and points to the **Media index area** of the
-  **Settings screen** for the current state. It shows **no count, percentage, or progress
-  indicator of its own** — the **Media index area** is the only place progress is measured. The
-  **Index band** of the **New automatic album screen** shows one plain count (media not yet
-  indexed) and an indeterminate indicator while running, never a percentage or measured progress,
-  so a second count here, measured differently, could contradict it. It is not the **Hidden-members notice** (stored references that cannot be
-  resolved) or the **Newer-app notice** (a rule this build cannot read). Same three surfaces and
-  the same short/full split as the **Newer-app notice**. The Album Detail View wording names the
-  **Media index area** and Settings; the tile and row wording names Settings only. Renamed from
-  "Still-scanning notice", which implied a running scan; that name is now an alias only, and the
-  `testTag` keeps its older `waiting` name because tests depend on it.
-  Aliases: **Still-scanning notice**
-- **Location coverage notice** (tagged `album_location_coverage_notice` in Album Detail View;
-  `new_automatic_album_location_coverage` in the **Place picker**) and **Date coverage notice**
-  (`album_date_coverage_notice`; `new_automatic_album_date_coverage` in the **Date picker**): Library-wide
-  *counts* of photos and videos the index reached and found nothing usable in — no usable location,
-  or no capture date — which an album with a `region` or a `time` clause leaves out (albums.md §8
-  decisions 21 and 25). They appear in **exactly two places**: the pickers, inside the collapsible
-  **Status area** below the **Index band** (hidden while it is collapsed), and Album Detail View.
-  **Never on an Album tile or Album row, and never in Settings.** They are
-  counts, not percentages; an item not yet scanned is in neither count, and the wording never says
-  "yet", "still" or "scanning", because waiting will not change what they count. When location access
-  is off (API 29+ without `ACCESS_MEDIA_LOCATION`) the Location coverage notice says so instead of
-  giving a count. Neither appears when its count is zero, on a Manual album, or on an album with the
-  **Newer-app notice**. In Album Detail View they are announced to screen readers; in the pickers
-  they are not.
-- Either notice may appear together with the **Hidden-members notice** on the same Album. In Album
-  Detail View they stack as separate notices in a fixed order: the **Newer-app notice** or
-  **Incomplete-album notice** first, then the **Location coverage notice**, then the **Date coverage
-  notice**, and the **Hidden-members notice** last. The two status notices never appear together,
-  because an Album has one evaluation status; the two coverage notices can, when the rule has both
-  a place and a date. On the tile and row the status notices are also announced as the tile's state
-  description, because its content description is the Album name alone; the coverage notices are not
-  shown there at all.
+- The **Newer-app notice** may appear together with the **Hidden-members notice** on the same Album.
+  In Album Detail View they stack as separate notices, the **Newer-app notice** first and the
+  **Hidden-members notice** last. On the tile and row the **Newer-app notice** is also announced as
+  the tile's state description, because its content description is the Album name alone.
 - **Add to album** (`AddToAlbumDialog`): Add the selected media references to an existing Album, or
   start creating a new Album. This never copies or moves files.
 - **Remove from album**: Remove selected media references from the current Album without deleting
