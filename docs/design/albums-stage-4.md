@@ -11,7 +11,7 @@
 > says why; §7 says why the numbers were kept.
 >
 > **This is a draft.** Written 2026-11-13. Nothing in it is approved except what
-> [albums.md](albums.md) §8 decisions 27–30 already decide. The steps, the exit criteria and every
+> [albums.md](albums.md) §8 decisions 28–31 already decide. The steps, the exit criteria and every
 > recommendation below are proposals until the maintainer answers the open questions and step 4.1
 > records the decisions. Where something was not known, it is a question, not a guess.
 
@@ -55,9 +55,9 @@ On the **New automatic album** screen, next to Place and Date, a **Content** cri
 Later, the user can **edit** an automatic album's rule. The Album type dialog does not change.
 
 Already decided, and not reopened here:
-- One automatic album with mixed criteria — [albums.md](albums.md) §8 decision 27.
-- Content is free text only — decision 28.
-- Rule editing is in this stage — decision 30.
+- One automatic album with mixed criteria — [albums.md](albums.md) §8 decision 28.
+- Content is free text only — decision 29.
+- Rule editing is in this stage — decision 31.
 
 ---
 
@@ -85,7 +85,7 @@ measured here.
 
 **Why it is a strong candidate:**
 - One model covers both the images and the query.
-- It is multilingual, which decision 28 needs.
+- It is multilingual, which decision 29 needs.
 - The truncatable output keeps storage small.
 
 **What is unknown and could rule it out:**
@@ -326,7 +326,7 @@ Each says what it blocks. A recommendation is given only where there is a reason
 ## Related
 
 - [albums.md](albums.md): §3 membership, §4 the kinds, §6 the index, §7 progress, §8 decisions
-  (13 as amended, and 27–30), §10 questions 3 and 12.
+  (13 as amended, and 28–31), §10 questions 3 and 12.
 - [ADR-0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md),
   [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md),
   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md),
