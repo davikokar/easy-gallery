@@ -100,7 +100,7 @@ must be stored distinctly, or every re-evaluation resurrects the photo the user 
 
 ## 4. The four kinds
 
-> **How the user sees them — §8 decision 28, 2026-11-13.** The user sees two kinds of album,
+> **How the user sees them — §8 decision 30, 2026-11-13.** The user sees two kinds of album,
 > Manual and Automatic, and Favourites. Content, people, region and time are **not** separate album
 > kinds to the user: they are **criteria** of one automatic album, mixed freely on the **New
 > automatic album** screen. "Castles in Italy, 2024" is content + place + date; "Silvia and Davide
@@ -176,7 +176,7 @@ The user types a description — "castles" — and the album collects matching p
 open-vocabulary image–text matching (embedding the query and the images into a shared space), not
 a fixed-label classifier. ML Kit's image labelling cannot answer arbitrary words.
 
-**Free text only** (§8 decision 29): the user types the description, and no keywords are suggested.
+**Free text only** (§8 decision 31): the user types the description, and no keywords are suggested.
 It is the one criterion that is typed rather than picked. It combines with place and date, and
 later with people. Planned as Stage 4 in [albums-stage-4.md](albums-stage-4.md), which carries the
 model, runtime and matching questions.
@@ -186,7 +186,7 @@ The user picks one or more people and the album collects photos of them. Require
 *and* recognition: detection finds faces, embeddings and clustering decide which faces are the same
 person. ML Kit detects but does not recognise.
 
-**Picking several people means all of them are in the photo** (§8 decision 30). "Silvia or Davide"
+**Picking several people means all of them are in the photo** (§8 decision 32). "Silvia or Davide"
 is not expressible. How a person gets a name, and where that name lives when face data is excluded
 from backup and the albums are not, is open — §10 question 12.
 
@@ -195,7 +195,7 @@ The user picks an area and/or a date range. Needs no ML — only indexed EXIF lo
 is still impossible without the index, for the reason in §6. **Shipped in Stage 2.** Both are picked
 from what the index actually found, never typed (§8 decision 16), and a rule may combine them. In
 Stage 2 the rule is set at creation and cannot be edited (§8 decision 26); Stage 4 adds editing
-(§8 decision 31).
+(§8 decision 33).
 
 ---
 
@@ -571,7 +571,7 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-10-08 | **The New album screen's Create button made to float.** It had not been floating: the screen reserved an empty strip along the bottom of its body so the **Create album action** could never overlap anything, leaving a dead band of background above the button at every scroll position — including the top, where nothing needed clearing. The clearance moved into the lazy containers' `contentPadding`, which is the mechanism Albums View's **Add album button** already used; `FolderGrid`, `FolderList`, `MediaGrid`, `MediaList` and `GroupedMediaContent` each gained an optional `contentPadding` whose default reproduces their previous behaviour exactly, so no other call site changed. ADR-0016 and its Amendment 1 needed nothing: neither ever described the strip, and the decision they record is untouched. The bounds-comparing instrumented tests added by the remediation above had passed throughout, because they prove the last row can be scrolled clear of the button, not that the button floats — so the convention behind both controls was written into `ui-vocabulary.instructions.md`, where both are defined, rather than left to be rediscovered a third time. 236 unit tests and 76 instrumented tests pass, the latter on the SM-G990B. Stage 1 stays Complete: no exit criterion was broken. |
 | 2026-10-08 | **Stage 2 started.** Step 2.0 landed: ADR-0017 (an automatic album's rule is a composable predicate), ADR-0018 (the media index is a second database, excluded from backup), and ADR-0019 (offline reverse geocoding for region albums) adopted, and the stage plan written at [albums-stage-2.md](albums-stage-2.md). No code; nothing user-visible. The stage's seven implementation steps and its exit criteria live in that document, and the rule for when a stage becomes In progress was clarified above to say that a binding decision counts as a deliverable. |
 | 2026-11-12 | **Stage 2 complete, with three criteria carried.** Steps 2.0–2.7 are done: the Tier A index in its own database (four schema versions, three migrations), the constrained WorkManager pipeline and Index now, delta detection, the offline gazetteer and place resolver, the evaluation engine, and region and time albums created from the **New automatic album** screen. The stage's exit criteria moved into §7 and [albums-stage-2.md](albums-stage-2.md) was archived; its open question about volume resync became §10 question 11. Declared complete by the maintainer; the definition-of-done re-run after `56126a6`, the Play Console declaration and the documentation audit are carried — see §7, *Stage 2*. |
-| 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 28–32). |
+| 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 30–34). |
 
 ### Who updates this
 
@@ -971,7 +971,7 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     Creation alone delivers the stage's goal. **The cost:** a wrong rule is fixed by deleting the
     album and creating it again, losing its manual additions and exclusions. Adding editing later is
     a decision of its own, and any editor inherits the never-rewrite rule. **That later decision
-    is 31**, taken 2026-11-13: editing ships in Stage 4. This decision stays true of Stage 2 as
+    is 33**, taken 2026-11-13: editing ships in Stage 4. This decision stays true of Stage 2 as
     shipped.
 
 27. **The New automatic album screen offers Index now while media is not yet indexed, says how
@@ -1239,7 +1239,7 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     not reach the ADR; the §2 note and the note on decision 11 cite it by title or number and must
     be checked then.
 
-28. **To the user, content, people, place and date are criteria of one automatic album, not four
+30. **To the user, content, people, place and date are criteria of one automatic album, not four
     album kinds.** Decided by the maintainer on 2026-11-13. The **New automatic album** screen that
     Stage 2 built with Place and Date gains Content in Stage 4 and People in Stage 3, and any mix
     can be chosen: "castles in Italy, 2024", "Silvia and Davide in France, 2025". **Why it fits
@@ -1251,7 +1251,7 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     holds three and then four criteria, beside decision 27's Status area, is a design question
     for Stage 4's plan.
 
-29. **The content criterion is free text only.** Decided by the maintainer on 2026-11-13. The
+31. **The content criterion is free text only.** Decided by the maintainer on 2026-11-13. The
     user types a description and no keywords are suggested. **It is the one exception to decision
     16** (places and dates are picked, never typed). That decision's argument was specific to
     places: picking from what the index found removes the need for a name→location lookup. A
@@ -1265,12 +1265,12 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     How a typed description becomes a yes/no membership is Stage 4's open question, not settled
     here.
 
-30. **Picking several people means all of them are in the photo.** Decided by the maintainer on
+32. **Picking several people means all of them are in the photo.** Decided by the maintainer on
     2026-11-13. It is the reading ADR-0017's conjunction already gives. "Silvia or Davide" is not
     expressible, and adding it would be the `any` extension ADR-0017 leaves room for: a new ADR.
     How the clause stores its people is Stage 3's to decide.
 
-31. **An automatic album's rule becomes editable in Stage 4.** Decided by the maintainer on
+33. **An automatic album's rule becomes editable in Stage 4.** Decided by the maintainer on
     2026-11-13. This is the later decision that decision 26 said would be needed. **Why now:** with
     three criteria, and a content match whose strictness can only be judged by looking at the
     result, delete-and-recreate becomes a bad cost, because it loses the album's manual additions
@@ -1280,7 +1280,7 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     exclusions on edit, and the case of a rule with an unknown clause. All three are
     [albums-stage-4.md](albums-stage-4.md)'s questions.
 
-32. **The content model ships inside the app, and content albums are hidden on weaker devices.**
+34. **The content model ships inside the app, and content albums are hidden on weaker devices.**
     Decided by the maintainer on 2026-11-13, answering questions A3 and A4 of
     [albums-stage-4.md](albums-stage-4.md). **Inside the app:** no download and no network, which is
     what §11 already requires; the tip jar stays the only feature that touches the network. **Hidden
@@ -1375,7 +1375,7 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    API 31 limit on an expedited "Index now" and the worker's lack of `getForegroundInfo`.
 3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation. —
    **Partly answered 2026-11-13 by the maintainer, for content albums:** weaker devices do not get
-   the feature (§8 decision 32). The threshold is still open; the Stage 4 spike's figures should set
+   the feature (§8 decision 34). The threshold is still open; the Stage 4 spike's figures should set
    it. Stage 3's people albums have not been asked.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
 5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
