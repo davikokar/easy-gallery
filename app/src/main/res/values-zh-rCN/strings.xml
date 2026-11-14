@@ -93,6 +93,8 @@
     <string name="menu_use_as_wallpaper">设为壁纸</string>
     <string name="menu_change_folder_thumbnail">更改文件夹封面</string>
     <string name="thumbnail_picker_title">选择文件夹封面</string>
+    <string name="menu_change_album_thumbnail">更改相册封面</string>
+    <string name="album_thumbnail_picker_title">选择相册封面</string>
     <string name="wallpaper_app_not_found">没有可用于设置壁纸的应用</string>
     <string name="menu_select_all">全选</string>
     <string name="search_placeholder">搜索…</string>
@@ -189,6 +191,10 @@
     <string name="automatic_album_clear_place">清除地点 %1$s</string>
     <string name="automatic_album_clear_date">清除日期 %1$s</string>
     <string name="automatic_album_month_year">%2$d年%1$s</string>
+    <string name="menu_album_info">相册信息</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">自%1$s起</string>
+    <string name="album_info_date_until">截至%1$s</string>
     <string name="new_album_select_media">选择要放入此相册的照片和视频</string>
     <string name="favourites_title">收藏</string>
     <string name="cd_favourite_indicator">已收藏</string>

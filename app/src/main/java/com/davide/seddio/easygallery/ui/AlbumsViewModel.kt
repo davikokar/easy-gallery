@@ -1,6 +1,7 @@
 package com.davide.seddio.easygallery.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davide.seddio.easygallery.EasyGalleryApp
@@ -43,6 +44,7 @@ import com.davide.seddio.easygallery.data.StoredMembershipKind
 import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.albumOverrideKey
+import com.davide.seddio.easygallery.data.toMediaIdentity
 import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
@@ -70,6 +72,8 @@ data class AlbumListItem(
     val cover: MediaItem?,
     val isCoverFallback: Boolean,
     val resolvedMemberCount: Int,
+    /** Resolved members per type, with every [MediaType] present; the values sum to [resolvedMemberCount]. */
+    val mediaCountsByType: Map<MediaType, Int>,
     val storedMemberCount: Int,
     /** Stored additions that did not resolve to a live item; rule matches never count. */
     val hiddenMemberCount: Int,
@@ -119,10 +123,13 @@ class AlbumsViewModel @JvmOverloads constructor(
         val cover: MediaItem?,
         val isCoverFallback: Boolean,
         val resolvedMemberCount: Int,
+        val mediaCountsByType: Map<MediaType, Int>,
         val storedMemberCount: Int,
         val hiddenMemberCount: Int,
         val storedMembershipCount: Int,
         val status: AlbumEvaluationStatus,
+        // Null for a manual album; an unevaluatable rule keeps its raw text, which only the summary may read.
+        val rule: AlbumRule?,
         val additionIdsByUri: Map<String, List<Long>>,
         val uriRewrites: List<MembershipUriRewrite>,
         val orphanStateChanges: List<MembershipOrphanStateChange>
@@ -139,6 +146,7 @@ class AlbumsViewModel @JvmOverloads constructor(
                 cover = cover,
                 isCoverFallback = isCoverFallback,
                 resolvedMemberCount = resolvedMemberCount,
+                mediaCountsByType = mediaCountsByType,
                 storedMemberCount = storedMemberCount,
                 hiddenMemberCount = hiddenMemberCount,
                 storedMembershipCount = storedMembershipCount,
@@ -163,7 +171,20 @@ class AlbumsViewModel @JvmOverloads constructor(
     private val _errorMessage = MutableStateFlow<String?>(null)
     private val mediaStoreVersionCheckMutex = Mutex()
 
+    private val _isAlbumCoverPickerMode = MutableStateFlow(false)
+    private val _albumCoverDraftUri = MutableStateFlow<Uri?>(null)
+    private val _albumCoverPreselectedUri = MutableStateFlow<Uri?>(null)
+
     val selectedAlbumId: StateFlow<Long?> = _selectedAlbumId.asStateFlow()
+
+    /** Album cover picker mode in Album Detail View (ADR-0015 Amendment 1); never set for Favourites. */
+    val isAlbumCoverPickerMode: StateFlow<Boolean> = _isAlbumCoverPickerMode.asStateFlow()
+
+    /** Only what the user tapped this session; it alone swaps Close for the back arrow. */
+    val albumCoverDraftUri: StateFlow<Uri?> = _albumCoverDraftUri.asStateFlow()
+
+    /** Display-only: the saved cover when it resolves to a displayed member, never a fallback. */
+    val albumCoverPreselectedUri: StateFlow<Uri?> = _albumCoverPreselectedUri.asStateFlow()
 
     /** The Album selected by long-press in Albums View (Album selection mode); not the open Album Detail. */
     val albumSelectionId: StateFlow<Long?> = _albumSelectionId.asStateFlow()
@@ -220,6 +241,12 @@ class AlbumsViewModel @JvmOverloads constructor(
             computed.firstOrNull { it.album.id == selectedAlbumId }?.members.orEmpty()
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** The open Album's stored rule, as read at evaluation; null for a manual album and when none is open. */
+    val selectedAlbumRule: StateFlow<AlbumRule?> =
+        combine(_selectedAlbumId, computedAlbums) { selectedAlbumId, computed ->
+            computed.firstOrNull { it.album.id == selectedAlbumId }?.rule
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     // Counts the same join the albums above evaluate over, so a count here is a member count there.
     val automaticAlbumPicker: AutomaticAlbumPickerState = AutomaticAlbumPickerState(
         scope = viewModelScope,
@@ -236,6 +263,7 @@ class AlbumsViewModel @JvmOverloads constructor(
             computedAlbums.collect { computed ->
                 if (_selectedAlbumId.value != null && computed.none { it.album.id == _selectedAlbumId.value }) {
                     _selectedAlbumId.value = null
+                    clearAlbumCoverPickerState()
                 }
                 if (_albumSelectionId.value != null && computed.none { it.album.id == _albumSelectionId.value }) {
                     _albumSelectionId.value = null
@@ -265,6 +293,7 @@ class AlbumsViewModel @JvmOverloads constructor(
         // Opening an album leaves Album selection mode, so Back lands on Albums View as it was (ADR-0013 Am. 2 point 7).
         if (albumId != null) _albumSelectionId.value = null
         _selectedAlbumId.value = albumId
+        clearAlbumCoverPickerState()
     }
 
     fun enterAlbumSelection(albumId: Long) {
@@ -279,6 +308,61 @@ class AlbumsViewModel @JvmOverloads constructor(
     fun cancelAlbumSelectionAndDetail() {
         _albumSelectionId.value = null
         _selectedAlbumId.value = null
+        clearAlbumCoverPickerState()
+    }
+
+    /** Does nothing with no Album open, which is also Favourites: it has no cover to choose. */
+    fun enterAlbumCoverPicker() {
+        val albumId = _selectedAlbumId.value ?: return
+        val computed = computedAlbums.value.firstOrNull { it.album.id == albumId } ?: return
+
+        _albumCoverDraftUri.value = null
+        _albumCoverPreselectedUri.value = computed.album.coverMembershipId?.let { coverId ->
+            computed.members.firstOrNull { it.membershipId == coverId }?.mediaItem?.uri
+        }
+        _isAlbumCoverPickerMode.value = true
+    }
+
+    /** A tap while picking only drafts; tapping the drafted item again changes nothing. */
+    fun setAlbumCoverDraft(item: MediaItem) {
+        if (!_isAlbumCoverPickerMode.value) return
+        _albumCoverDraftUri.value = item.uri
+    }
+
+    /** Close with or without a draft: writes nothing. */
+    fun exitAlbumCoverPicker() {
+        clearAlbumCoverPickerState()
+    }
+
+    /**
+     * Writes the draft as the cover when it is still a member of the open Album, and nothing otherwise:
+     * a rule match that has since gone must not be written back in as an addition (ADR-0015 Amendment 1).
+     */
+    fun commitAlbumCoverDraft() {
+        val albumId = _selectedAlbumId.value
+        val draftUri = _albumCoverDraftUri.value
+        clearAlbumCoverPickerState()
+        if (albumId == null || draftUri == null) return
+
+        val member = computedAlbums.value.firstOrNull { it.album.id == albumId }
+            ?.members
+            ?.firstOrNull { it.mediaItem.uri == draftUri }
+            ?: return
+
+        viewModelScope.launch {
+            val membershipId = member.membershipId
+            if (membershipId != null) {
+                albumStore.setCover(albumId, membershipId)
+            } else {
+                albumStore.setCoverToMedia(albumId, member.mediaItem.toMediaIdentity())
+            }
+        }
+    }
+
+    private fun clearAlbumCoverPickerState() {
+        _isAlbumCoverPickerMode.value = false
+        _albumCoverDraftUri.value = null
+        _albumCoverPreselectedUri.value = null
     }
 
     fun clearError() {
@@ -361,6 +445,7 @@ class AlbumsViewModel @JvmOverloads constructor(
             albumDisplayPrefs.remove(albumOverrideKey(albumId))
             if (_selectedAlbumId.value == albumId) {
                 _selectedAlbumId.value = null
+                clearAlbumCoverPickerState()
             }
             if (_albumSelectionId.value == albumId) {
                 _albumSelectionId.value = null
@@ -634,10 +719,14 @@ class AlbumsViewModel @JvmOverloads constructor(
             cover = cover,
             isCoverFallback = isCoverFallback,
             resolvedMemberCount = members.size,
+            mediaCountsByType = MediaType.entries.associateWith { type ->
+                members.count { it.mediaItem.type == type }
+            },
             storedMemberCount = storedMemberCount,
             hiddenMemberCount = storedMemberCount - resolution.resolvedAdditions.size,
             storedMembershipCount = memberships.size,
             status = status,
+            rule = rule,
             additionIdsByUri = additionIdsByUri,
             // Before MediaStore is read every row looks unresolved; writing that back would be false.
             uriRewrites = if (liveMedia == null) emptyList() else resolution.uriRewrites,

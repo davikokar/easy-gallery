@@ -138,6 +138,9 @@ it, or (later) the user picking a cover. A resolution failure is not an event th
 Stage 1 has no affordance to change a cover. The album detail surfaces do not offer one, and no
 string is added for one.
 
+> **Amended 2026-11-14 — see Amendment 1 below.** Album Detail View gains a cover picker. This
+> paragraph was scoped to Stage 1 and is kept as the record of what Stage 1 shipped.
+
 ## Relationship to ADR-0007
 
 Folder thumbnails are **automatic with an optional override**. Album covers are **persisted always**.
@@ -153,6 +156,10 @@ the user. Making an album's cover automatic would therefore buy nothing and cost
 property a curated collection most needs to keep.
 
 The two records do not conflict. ADR-0007 continues to govern folder thumbnails unchanged.
+
+> **Amended 2026-11-14 — see Amendment 1 below.** The two pickers now share one interaction,
+> ADR-0007's draft-and-commit as its Amendments 1 and 2 leave it. Their storage still differs, for
+> the reasons in this section.
 
 ## Alternatives Considered
 
@@ -221,9 +228,16 @@ from inside it, and the app would be the only thing in its own grid not showing 
 
 - Stage 1 ships a column the user cannot change, which is dead weight until the picker lands. That is
   deliberate: it is cheaper than the migration avoiding it would cost.
+
+  > **Discharged 2026-11-14 — see Amendment 1 below.** The picker writes this column; no migration
+  > was needed.
+
 - A random pick can be a poor cover — a dark frame, a screenshot, the back of someone's head — and
   until the picker ships the only remedy is to empty the album and re-add its contents. That is a real
   rough edge of Stage 1 and should not be presented as a feature.
+
+  > **Discharged 2026-11-14 — see Amendment 1 below.** The user can choose the cover.
+
 - **A cover can only be an item that has a membership row, and from Stage 2 that is not every
   member.** Under ADR-0012 an automatic album's members are `(rule matches ∪ additions) −
   exclusions`, and a rule match carries no stored row — so it cannot be referenced as a cover. The
@@ -231,6 +245,12 @@ from inside it, and the app would be the only thing in its own grid not showing 
   row for it, which is a no-op under the union and therefore changes no membership. That is **not**
   decided here: Stage 2 must settle it when automatic albums are planned, and this record's "chosen
   when the album first gains a member" is defined over membership rows until it does.
+
+  > **Settled 2026-11-14 — see Amendment 1 below.** Stage 2 closed without settling it. A user's
+  > pick of a rule-matched item now materialises an addition row; a random pick still does not.
+  > "Changes no membership" holds only at the moment the row is written — Amendment 1 says what the
+  > row changes afterwards.
+
 - **A cover that is not a member is now foreclosed.** The bare-URI column left that possibility open
   without deciding it; a foreign key into membership closes it. Accepted, because this record's own
   definition of a cover is "one of its members" — but reopening it would now take a new column and a
@@ -261,3 +281,160 @@ from inside it, and the app would be the only thing in its own grid not showing 
 - ADR-0013 — Albums View, the grid that needs a cover per tile
 - ADR-0014 — backup and restore, the case this record is shaped by: a restored cover heals with its
   membership instead of missing permanently
+
+## Amendment 1 — 2026-11-14 — The cover picker, and the rule-match case
+
+This amendment **fills two gaps the Decision left open; it reverses nothing**. The Decision deferred
+the picker while already listing "the user picking a cover" among the explicit events that may write
+`coverMembershipId`, and its Negatives left the rule-match case for Stage 2 to settle. Stage 2 closed
+without settling it: [ADR-0016](0016-album-creation-type-choice-and-picker-screen.md) Amendment 2
+accepted an unpersisted cover for a rule-only album instead, *because* the picker was still deferred.
+**The maintainer approved this on 2026-11-14**, before any of it was coded.
+
+Everything else continues to govern verbatim: the nullable, indexed `coverMembershipId` foreign key
+into `album_memberships`, `onDelete = SET_NULL` followed by a random re-roll when the cover's item is
+removed, random-once for the initial value, the display-only fallback that is never written back, and
+the write-path invariant that the cover is one of the album's own rows. It is an amendment rather
+than a superseding record for the reason ADR-0007 Amendment 1 gives: the part with lasting structural
+impact — what the cover references and how it heals — has not stopped applying. This adds the third
+write event the Decision anticipated, and it needs **no new column, no migration, no schema version
+bump, no new exported schema, and no preferences file.** That was the Decision's bet in shipping the
+column at version 1, and it is the bet paying out.
+
+### What changed
+
+1. **Album Detail View has a cover picker.** Its Overflow menu gains **Change album thumbnail**,
+   after Change view type and before Album info. "Thumbnail" is the maintainer's wording for the
+   label; the record and the vocabulary keep calling the thing a cover. The item is absent for
+   Favourites, which has no row in the album database to hold a cover and keeps its automatic one —
+   its first item.
+2. **The interaction is the Folder thumbnail picker's.** ADR-0007 Amendments 1 and 2 govern it
+   unchanged: any displayed member can be picked; a tap only drafts, never opens the viewer, and
+   tapping the drafted item again is a no-op; the navigation icon is Close with no draft and a back
+   arrow with one; Close writes nothing; the back arrow and system Back with a draft commit it;
+   long-press does nothing while picking; the Main view bar is hidden while picking; the draft is
+   drawn with the existing `selected_checkmark`. Hiding the bar extends
+   [ADR-0013](0013-albums-as-third-display-mode.md) point 3's Hidden column to this mode of Album
+   Detail View, on P1's own reason for the Folder thumbnail picker: a tab tap would have to commit
+   or discard the draft silently. Mode, draft and pre-selection are ViewModel-owned
+   under [ADR-0002](0002-viewmodel-owned-transient-viewer-state.md), as ADR-0007 Amendment 1 point 2
+   requires, and **not in `GalleryViewModel`'s body**, which holds no album state. They are cleared
+   wherever Album Detail View is left or media selection mode is entered. *Clarified 2026-11-14:*
+   the code reaches the same end the other way round — selection cannot start while picking
+   (long-press does nothing), and entering the picker exits selection first — so the two modes are
+   never both active.
+3. **Only the saved cover is pre-selected.** The pre-selection is the member that
+   `coverMembershipId` points at, when that membership resolves to a displayed member. It is never
+   the display-only fallback — an orphaned cover's stand-in, or a rule-only album's first member —
+   for ADR-0007 Amendment 2 point 2's reason: the checkmark asserts a choice, and those were not
+   one. As there, the pre-selection is a flow separate from the draft, so opening the picker and
+   leaving writes nothing.
+4. **There is no reset to a random or automatic cover**, matching ADR-0007 Amendment 1's withdrawal
+   of the folder reset. An album has less to reset to than a folder does: its random cover was a
+   one-time value, not a recomputed one.
+5. **Commit writes `coverMembershipId`, and nothing else unless it must.**
+   - If the drafted member has an addition row, the cover points at it — the same row Album Detail
+     View already associates with that item.
+   - If it has none, because it is a rule match, an **addition** membership is written for it with
+     ADR-0010's healing key, through `data/MediaIdentity.kt` as ADR-0020 requires, and the cover
+     points at that row — **in one transaction**, so there is never a row without the cover or a
+     cover without the row.
+   - If the drafted item is no longer a displayed member when commit runs — deleted or removed while
+     the picker was open — nothing is written. That keeps the write-path invariant from the Decision:
+     the cover is chosen from the album's own members, and a rule match that has gone must not be
+     written back in as an addition.
+   - *Noted 2026-11-14:* the store-level `setCoverToMedia` does not itself check for an
+     **exclusion** row for the item; the ViewModel's commit check against the displayed members is
+     what keeps an excluded item from being picked. A code-review finding, left open for the
+     maintainer.
+
+### The rule-match case
+
+A rule match has no membership row, so it cannot be referenced. The Negatives named the escape —
+materialise an addition row — and this amendment takes it **for the user's pick only**. A random
+cover is still never materialised: a rule-only album with no pick keeps a null column and ADR-0016
+Amendment 2's display-only fallback, because a row written by a random pick would pin an item nobody
+chose, which is the "membership row the user never created" that amendment refused. A pick is the
+user choosing that item, and a row for it is the user's.
+
+The Negatives also said such a row "is a no-op under the union and therefore changes no membership".
+**That is true when the row is written and not afterwards.** The maintainer accepted both
+differences:
+
+- **The item is pinned.** An addition keeps it a member even if the rule stops matching it — after a
+  place re-resolution under ADR-0018 Amendment 4, a date repair, or a rule edit should one ever
+  exist. The picked cover stays in the album rather than leaving it under the user.
+- **Its deletion is reported.** ADR-0010 retains an addition whose media is gone as an orphan, so a
+  deleted cover is counted by the Hidden-members notice, where a rule match would simply have
+  vanished under ADR-0020.
+
+Removing the item later needs nothing new. The removal path already records an exclusion for a
+rule-album item and deletes its addition rows, so `SET NULL` and the re-roll run as for any cover;
+in a rule-only album there is no other row to re-roll to, and the cover returns to null and the
+display-only fallback.
+
+### Alternatives considered in this amendment
+
+**A second cover column holding a media key for rule matches** — ADR-0016 Amendment 2's "second kind
+of cover reference". Rejected: a migration, a new schema, and a second healing path to keep in step
+with ADR-0010, which is the exact cost the Decision refused when it rejected the bare-URI column.
+
+**A third membership kind that marks a cover without making it a member.** Avoids the pin. Rejected:
+every reader of membership kind — resolution, the evaluator, the counts, the Hidden-members notice —
+would have to learn it, an ADR-0014 restore onto an older build would meet a kind it cannot read,
+and the cover would stop being "one of its members" by structure.
+
+**Offer only items that already have an addition row.** No new rows at all. Rejected: a rule-only
+album would have nothing to pick, and it is the kind whose cover is least stable.
+
+**Persist a rule-only album's random cover too, by materialising a row at random.** Rejected above:
+it pins an item the user never chose.
+
+### Consequences of this amendment
+
+**Positive**
+
+- A poor cover can be fixed, which discharges the Negative that said only emptying the album could.
+- A rule-only album gets a stable cover once the user picks one, which ADR-0016 Amendment 2 could
+  not give it.
+- No storage changes. The picked cover heals, survives a restore, and is cleared on removal by
+  machinery that already exists and is already tested.
+- One interaction for both pickers, so nothing new to learn and nothing to keep consistent beyond
+  the one already described by ADR-0007.
+
+**Negative**
+
+- Picking a rule-matched item pins it, and its later deletion shows the Hidden-members notice. Both
+  accepted, above.
+- Removing a picked cover from the album replaces the user's choice with a random one, or with the
+  display-only fallback in a rule-only album. Accepted: the user removed that item themselves, which
+  is the Decision's argument for the re-roll.
+- No way back to a random or automatic cover once one is picked, as for folders.
+- The pre-selected cover is not shown when Album Detail View's own media filter or search hides it.
+  ADR-0007 Amendment 2 accepted the same gap for folders, for the same reasons.
+- An uncommitted draft is lost on process death, as ADR-0007 Amendment 1 accepted.
+- Covers still do not follow Albums View's media filter ([albums.md](../../design/albums.md) §8,
+  the Filter media decision); picking one does not change that.
+
+### Code and tests this governs
+
+- `ui/AlbumDetailScreen.kt` and the Overflow menu in `ui/components/SearchTopBar.kt` — the item,
+  the mode, and the top bar. The folder picker's `thumbnail_picker_title` reads "Choose folder
+  thumbnail", so the album picker needs a title of its own in every shipped locale, as well as its
+  menu label.
+- `data/AlbumStore.kt` — the commit, including the transactional add-and-point for a rule match.
+  A test should assert that a commit for an item that is no longer a member writes nothing.
+
+### References added by this amendment
+
+- ADR-0002 — why the draft is ViewModel-owned
+- ADR-0007 Amendments 1 and 2 — the interaction this picker adopts
+- [ADR-0013](0013-albums-as-third-display-mode.md) point 3 and P1 — where the Main view bar is
+  hidden, and why a draft-and-commit mode is among those places
+- [ADR-0016](0016-album-creation-type-choice-and-picker-screen.md) Amendment 2 — the unpersisted
+  rule-only cover this amendment gives a way out of
+- ADR-0018 Amendment 4 and ADR-0020 — why a rule match can stop matching or vanish, and so what
+  pinning changes
+- [docs/design/albums.md](../../design/albums.md) §8, the decision *An album's cover can be chosen
+  in Album Detail View*, which records the product decision. It is cited by title rather than
+  number because §8's numbering on this branch collides with `feat/album-content`'s.

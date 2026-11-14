@@ -2,7 +2,6 @@ package com.davide.seddio.easygallery.ui.components
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,12 +63,14 @@ fun DisplayMode.toMainViewTab(): MainViewTab = when (this) {
 }
 
 /**
- * Stateless: the caller derives [selectedTab] and decides what a tap does, including a re-tap.
- * Settings is a button after the tabs, not a tab: it never shows as selected.
+ * Stateless: the caller derives the selection and decides what a tap does, including a re-tap.
+ * Settings is a fourth destination after the three tabs and is selected like one; it is not a view, so
+ * [selectedTab] is null while [isSettingsSelected] is true (ADR-0013 Amendment 3).
  */
 @Composable
 fun MainViewBar(
-    selectedTab: MainViewTab,
+    selectedTab: MainViewTab?,
+    isSettingsSelected: Boolean,
     onTabSelected: (MainViewTab) -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -124,8 +125,12 @@ fun MainViewBar(
                 icon = Icons.Filled.Settings,
                 label = R.string.settings_title,
                 tag = "main_view_settings_button",
-                selected = false,
-                actionModifier = Modifier.clickable(role = Role.Button, onClick = onSettingsClick)
+                selected = isSettingsSelected,
+                actionModifier = Modifier.selectable(
+                    selected = isSettingsSelected,
+                    role = Role.Tab,
+                    onClick = onSettingsClick
+                )
             )
         }
     }

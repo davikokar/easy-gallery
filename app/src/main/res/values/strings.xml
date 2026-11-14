@@ -97,6 +97,8 @@
     <string name="menu_use_as_wallpaper">Use as background</string>
     <string name="menu_change_folder_thumbnail">Change folder thumbnail</string>
     <string name="thumbnail_picker_title">Choose folder thumbnail</string>
+    <string name="menu_change_album_thumbnail">Change album thumbnail</string>
+    <string name="album_thumbnail_picker_title">Choose album thumbnail</string>
     <string name="wallpaper_app_not_found">No app available to set the wallpaper</string>
     <string name="menu_select_all">Select all</string>
     <string name="search_placeholder">Search...</string>
@@ -196,6 +198,10 @@
     <string name="automatic_album_clear_place">Clear place %1$s</string>
     <string name="automatic_album_clear_date">Clear date %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
+    <string name="menu_album_info">Album info</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">From %1$s</string>
+    <string name="album_info_date_until">Until %1$s</string>
     <string name="new_album_select_media">Choose the photos and videos for this album</string>
     <string name="favourites_title">Favourites</string>
     <string name="cd_favourite_indicator">Favourite</string>

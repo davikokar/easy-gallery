@@ -414,6 +414,12 @@ counts and the coverage notices are a screen's worth of content.
   change as members arrive and leave, and changes once more when a first manual addition persists
   one. Accepted because ADR-0015's cover picker is still deferred, and a persisted cover here would
   need a membership row the user never created or a second kind of cover reference.
+
+  > **Amended 2026-11-14 — see [ADR-0015](0015-album-cover-persisted-random-member.md)
+  > Amendment 1.** The picker is no longer deferred. A rule-only album's cover stays unpersisted
+  > until the user picks one; picking a rule-matched item writes an addition row for it — a row the
+  > user did create, by choosing the item — and the cover points at that row. Item 4 above still
+  > describes an album with no pick.
 - With no rule editing, a wrong rule is fixed by deleting the album and creating it again, which
   loses its manual additions and exclusions.
 

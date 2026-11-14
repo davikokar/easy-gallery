@@ -3,6 +3,7 @@ package com.davide.seddio.easygallery.ui.components
 import com.davide.seddio.easygallery.data.DisplayMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -82,19 +83,42 @@ class MainViewBarRulesTest {
 
     @Test
     fun `the bar is shown on main views and both album detail screens`() {
-        assertTrue(shouldShowMainViewBar(ShownScreen.MAIN_VIEW, isThumbnailPickerMode = false))
-        assertTrue(shouldShowMainViewBar(ShownScreen.ALBUM_DETAIL, isThumbnailPickerMode = false))
-        assertTrue(shouldShowMainViewBar(ShownScreen.FAVOURITES, isThumbnailPickerMode = false))
+        assertTrue(shouldShowMainViewBar(ShownScreen.MAIN_VIEW, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false))
+        assertTrue(shouldShowMainViewBar(ShownScreen.ALBUM_DETAIL, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false))
+        assertTrue(shouldShowMainViewBar(ShownScreen.FAVOURITES, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false))
     }
 
     @Test
     fun `the bar is shown on folder detail outside the thumbnail picker`() {
-        assertTrue(shouldShowMainViewBar(ShownScreen.FOLDER_DETAIL, isThumbnailPickerMode = false))
+        assertTrue(shouldShowMainViewBar(ShownScreen.FOLDER_DETAIL, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false))
     }
 
     @Test
     fun `the bar is hidden on folder detail while the thumbnail picker is open`() {
-        assertFalse(shouldShowMainViewBar(ShownScreen.FOLDER_DETAIL, isThumbnailPickerMode = true))
+        assertFalse(shouldShowMainViewBar(ShownScreen.FOLDER_DETAIL, isThumbnailPickerMode = true, isAlbumCoverPickerMode = false))
+    }
+
+    @Test
+    fun `the bar is hidden on album detail while the album cover picker is open`() {
+        assertFalse(shouldShowMainViewBar(ShownScreen.ALBUM_DETAIL, isThumbnailPickerMode = false, isAlbumCoverPickerMode = true))
+    }
+
+    @Test
+    fun `the album cover picker flag hides the bar only on album detail`() {
+        assertTrue(shouldShowMainViewBar(ShownScreen.FOLDER_DETAIL, isThumbnailPickerMode = false, isAlbumCoverPickerMode = true))
+        assertTrue(shouldShowMainViewBar(ShownScreen.FAVOURITES, isThumbnailPickerMode = false, isAlbumCoverPickerMode = true))
+        assertTrue(shouldShowMainViewBar(ShownScreen.MAIN_VIEW, isThumbnailPickerMode = false, isAlbumCoverPickerMode = true))
+        assertTrue(shouldShowMainViewBar(ShownScreen.SETTINGS, isThumbnailPickerMode = false, isAlbumCoverPickerMode = true))
+    }
+
+    @Test
+    fun `the thumbnail picker flag does not hide the bar on album detail`() {
+        assertTrue(shouldShowMainViewBar(ShownScreen.ALBUM_DETAIL, isThumbnailPickerMode = true, isAlbumCoverPickerMode = false))
+    }
+
+    @Test
+    fun `the bar is shown on the settings screen`() {
+        assertTrue(shouldShowMainViewBar(ShownScreen.SETTINGS, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false))
     }
 
     @Test
@@ -102,37 +126,55 @@ class MainViewBarRulesTest {
         listOf(
             ShownScreen.FULL_SCREEN_VIEWER,
             ShownScreen.MANAGE_EXCLUDED,
-            ShownScreen.SETTINGS,
             ShownScreen.NEW_ALBUM,
             ShownScreen.NEW_AUTOMATIC_ALBUM,
             ShownScreen.PERMISSION_DENIED
         ).forEach { screen ->
-            assertFalse("$screen", shouldShowMainViewBar(screen, isThumbnailPickerMode = false))
+            assertFalse("$screen", shouldShowMainViewBar(screen, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false))
         }
     }
 
     @Test
-    fun `a stale picker flag does not show the bar on a hidden screen or hide it on a main view`() {
-        assertFalse(shouldShowMainViewBar(ShownScreen.SETTINGS, isThumbnailPickerMode = true))
-        assertTrue(shouldShowMainViewBar(ShownScreen.MAIN_VIEW, isThumbnailPickerMode = true))
+    fun `the bar stays hidden on manage excluded although settings sits underneath it`() {
+        val screen = resolve(isManageExcludedMode = true, isSettingsMode = true)
+
+        assertEquals(ShownScreen.MANAGE_EXCLUDED, screen)
+        assertFalse(shouldShowMainViewBar(screen, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false))
+    }
+
+    @Test
+    fun `a stale picker flag does not show the bar on a hidden screen or hide it on a main view or settings`() {
+        assertFalse(shouldShowMainViewBar(ShownScreen.NEW_ALBUM, isThumbnailPickerMode = true, isAlbumCoverPickerMode = false))
+        assertTrue(shouldShowMainViewBar(ShownScreen.MAIN_VIEW, isThumbnailPickerMode = true, isAlbumCoverPickerMode = false))
+        assertTrue(shouldShowMainViewBar(ShownScreen.SETTINGS, isThumbnailPickerMode = true, isAlbumCoverPickerMode = false))
     }
 
     @Test
     fun `every screen has an explicit visibility rule`() {
-        val shown = ShownScreen.entries.filter { shouldShowMainViewBar(it, isThumbnailPickerMode = false) }
+        val shown = ShownScreen.entries.filter {
+            shouldShowMainViewBar(it, isThumbnailPickerMode = false, isAlbumCoverPickerMode = false)
+        }
 
         assertEquals(
             setOf(
                 ShownScreen.MAIN_VIEW,
                 ShownScreen.FOLDER_DETAIL,
                 ShownScreen.ALBUM_DETAIL,
-                ShownScreen.FAVOURITES
+                ShownScreen.FAVOURITES,
+                ShownScreen.SETTINGS
             ),
             shown.toSet()
         )
     }
 
     // --- selectedMainViewTab ------------------------------------------------------------------
+
+    @Test
+    fun `the settings screen selects no tab whatever the display mode`() {
+        DisplayMode.entries.forEach { mode ->
+            assertNull("$mode", selectedMainViewTab(ShownScreen.SETTINGS, mode))
+        }
+    }
 
     @Test
     fun `a main view selects the tab of its display mode`() {

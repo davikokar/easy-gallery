@@ -395,9 +395,9 @@ fun FolderListContent(
                     onColumnCountClick = { showColumnCountDialog = true },
                     onGroupByClick = if (displayMode == DisplayMode.TIMELINE) { { showGroupByDialog = true } } else null,
                     onViewTypeClick = { showViewTypeDialog = true },
-                    onFilterMediaClick = if (displayMode == DisplayMode.ALBUMS) null else { { showFilterDialog = true } },
+                    onFilterMediaClick = { showFilterDialog = true },
                     onShowExcludedClick = if (displayMode == DisplayMode.ALBUMS) null else { { onSetShowExcludedTemporarily(true) } },
-                    onCreateFolderClick = if (displayMode == DisplayMode.ALBUMS) null else { { onSetCreateFolderDialogOpen(true) } },
+                    onCreateFolderClick = if (displayMode == DisplayMode.FOLDERS) { { onSetCreateFolderDialogOpen(true) } } else null,
                     onCreateAlbumClick = if (displayMode == DisplayMode.ALBUMS) { { showAlbumTypeDialog = true } } else null
                 )
             }
@@ -709,25 +709,26 @@ private fun AlbumsViewBody(
     onZoomOut: () -> Unit
 ) {
     var cumulativeScale by remember { mutableFloatStateOf(1f) }
-    val visibleAlbums = remember(albums, searchQuery, preferences.sortType, preferences.sortOrder) {
-        val filtered = albums.filter { it.name.contains(searchQuery, ignoreCase = true) }
-        val sorted = when (preferences.sortType) {
-            SortType.NAME -> filtered.sortedBy { it.name.lowercase() }
-            SortType.SIZE -> filtered.sortedBy { it.resolvedMemberCount }
-            SortType.LAST_MODIFIED, SortType.DATE_TAKEN -> filtered.sortedBy { it.createdAt }
-            SortType.RANDOM -> filtered.shuffled()
-            SortType.PATH -> filtered.sortedBy { it.name.lowercase() }
-        }
-        if (preferences.sortType != SortType.RANDOM && preferences.sortOrder == SortOrder.DESCENDING) {
-            sorted.reversed()
-        } else {
-            sorted
-        }
+    // The media-type filter hides an album it empties, as Folders View does; covers stay as they are.
+    val visibleAlbums = remember(albums, searchQuery, preferences.sortType, preferences.sortOrder, preferences.mediaTypes) {
+        filterAndSortAlbums(
+            albums = albums,
+            query = searchQuery,
+            sortType = preferences.sortType,
+            sortOrder = preferences.sortOrder,
+            mediaTypes = preferences.mediaTypes
+        )
+    }
+    val favouriteItemCount = remember(favouriteMedia, preferences.mediaTypes) {
+        favouriteMedia.count { it.type in preferences.mediaTypes }
     }
     val showFavourites = favouritesAvailable && stringResource(R.string.favourites_title)
         .contains(searchQuery, ignoreCase = true)
 
-    if (!showFavourites && visibleAlbums.isEmpty()) {
+    // Only an empty list before the media filter reads as "no albums"; a filter that hides them all leaves the grid blank.
+    val hasAlbumsBeforeMediaFilter = albums.any { it.name.contains(searchQuery, ignoreCase = true) }
+
+    if (!showFavourites && visibleAlbums.isEmpty() && !hasAlbumsBeforeMediaFilter) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(stringResource(R.string.albums_empty), color = Color.White)
         }
@@ -766,18 +767,19 @@ private fun AlbumsViewBody(
             if (showFavourites) {
                 item(key = "favourites") {
                     FavouritesAlbumGridItem(
-                        itemCount = favouriteMedia.size,
+                        itemCount = favouriteItemCount,
                         coverUri = favouriteMedia.firstOrNull()?.uri,
                         isSelected = false,
                         onClick = onSelectFavourites
                     )
                 }
             }
-            items(visibleAlbums, key = { it.id }) { album ->
+            items(visibleAlbums, key = { it.album.id }) { visible ->
+                val album = visible.album
                 AlbumGridItem(
                     albumId = album.id,
                     name = album.name,
-                    itemCount = album.resolvedMemberCount,
+                    itemCount = visible.itemCount,
                     hiddenMemberCount = album.hiddenMemberCount,
                     status = album.status,
                     coverUri = album.cover?.uri,
@@ -798,18 +800,19 @@ private fun AlbumsViewBody(
             if (showFavourites) {
                 item(key = "favourites") {
                     FavouritesAlbumListItem(
-                        itemCount = favouriteMedia.size,
+                        itemCount = favouriteItemCount,
                         coverUri = favouriteMedia.firstOrNull()?.uri,
                         isSelected = false,
                         onClick = onSelectFavourites
                     )
                 }
             }
-            items(visibleAlbums, key = { it.id }) { album ->
+            items(visibleAlbums, key = { it.album.id }) { visible ->
+                val album = visible.album
                 AlbumListItem(
                     albumId = album.id,
                     name = album.name,
-                    itemCount = album.resolvedMemberCount,
+                    itemCount = visible.itemCount,
                     hiddenMemberCount = album.hiddenMemberCount,
                     status = album.status,
                     coverUri = album.cover?.uri,

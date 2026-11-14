@@ -531,12 +531,25 @@ class GalleryViewModel @JvmOverloads constructor(
     }
 
     // A tab tap cancels every selection and search before switching, so no view opens onto a stale one (ADR-0013 Amendment 2).
+    // It also leaves Settings, which is where a tab tap can arrive from (Amendment 3, point 5).
     fun selectMainView(mode: DisplayMode) {
+        cancelSelectionsAndSearchAndLeaveDetail()
+        setDisplayMode(mode)
+        _isSettingsMode.value = false
+    }
+
+    // The Settings item does what a tab tap does, then opens Settings over Folders View so Back lands there (Amendment 3, point 4).
+    fun selectSettings() {
+        cancelSelectionsAndSearchAndLeaveDetail()
+        setDisplayMode(DisplayMode.FOLDERS)
+        _isSettingsMode.value = true
+    }
+
+    private fun cancelSelectionsAndSearchAndLeaveDetail() {
         exitSelectionMode()
         exitMediaSelectionMode()
         backToFolders()
         prefs.closeAllSearches()
-        setDisplayMode(mode)
     }
 
     fun setShowExcludedTemporarily(show: Boolean) {

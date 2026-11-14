@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -436,6 +437,152 @@ class AlbumStoreTest {
         val roomSnapshot = runParityScenario(roomBacked)
 
         assertEquals(inMemorySnapshot, roomSnapshot)
+    }
+
+    // --- the user's cover pick (ADR-0015 Amendment 1); each runs against both implementations ------
+
+    private fun bothStores(): List<Pair<String, AlbumStore>> = listOf(
+        "in-memory" to InMemoryAlbumStore(random = Random(9)),
+        "room" to RoomAlbumStore(database = database, random = Random(9))
+    )
+
+    private suspend fun AlbumStore.addImage(albumId: Long, id: Int): Long = addMember(
+        albumId = albumId,
+        mediaUri = "content://media/external/images/media/$id",
+        displayName = "$id.jpg",
+        size = id.toLong(),
+        dateModified = id * 10L
+    )
+
+    private suspend fun AlbumStore.coverOf(albumId: Long): Long? =
+        observeAlbums().first().first { it.id == albumId }.coverMembershipId
+
+    @Test
+    fun `setCover points the cover at one of the album's own additions`() = runTest {
+        for ((name, store) in bothStores()) {
+            val albumId = store.createAlbum(name = "Pick", createdAt = 90L)
+            store.addImage(albumId, 1)
+            val second = store.addImage(albumId, 2)
+            store.addImage(albumId, 3)
+
+            store.setCover(albumId, second)
+
+            assertEquals(name, second, store.coverOf(albumId))
+        }
+    }
+
+    @Test
+    fun `setCover refuses a membership of another album`() = runTest {
+        for ((name, store) in bothStores()) {
+            val albumId = store.createAlbum(name = "Mine", createdAt = 91L)
+            val otherId = store.createAlbum(name = "Other", createdAt = 92L)
+            val own = store.addImage(albumId, 1)
+            val foreign = store.addImage(otherId, 2)
+
+            store.setCover(albumId, foreign)
+
+            assertEquals(name, own, store.coverOf(albumId))
+            assertEquals(name, foreign, store.coverOf(otherId))
+        }
+    }
+
+    @Test
+    fun `setCover refuses an exclusion row and an unknown row`() = runTest {
+        for ((name, store) in bothStores()) {
+            val albumId = store.createAlbum(name = "Mine", createdAt = 93L)
+            val own = store.addImage(albumId, 1)
+            val exclusion = store.recordExclusion(
+                albumId = albumId,
+                mediaUri = "content://media/external/images/media/9",
+                displayName = "9.jpg",
+                size = 9L,
+                dateModified = 90L
+            )
+
+            store.setCover(albumId, exclusion)
+            assertEquals(name, own, store.coverOf(albumId))
+
+            store.setCover(albumId, 9_999L)
+            assertEquals(name, own, store.coverOf(albumId))
+        }
+    }
+
+    @Test
+    fun `setCoverToMedia on a rule match creates one addition and points the cover at it`() = runTest {
+        for ((name, store) in bothStores()) {
+            val albumId = store.createAlbum(name = "Rule", createdAt = 94L, rule = "{}")
+
+            store.setCoverToMedia(
+                albumId,
+                mediaIdentityOf(
+                    mediaUri = "content://media/external/images/media/5",
+                    displayName = "5.jpg",
+                    size = 55L,
+                    dateModified = 505L
+                )
+            )
+
+            val rows = store.observeMembershipsForAlbum(albumId).first()
+            assertEquals(name, 1, rows.size)
+            val row = rows.single()
+            assertEquals(name, StoredMembershipKind.ADDITION, row.kind)
+            assertEquals(name, "content://media/external/images/media/5", row.mediaUri)
+            assertEquals(name, listOf("5.jpg", 55L, 505L), listOf(row.displayName, row.size, row.dateModified))
+            assertFalse(name, row.isOrphaned)
+            assertEquals(name, row.id, store.coverOf(albumId))
+        }
+    }
+
+    @Test
+    fun `setCoverToMedia reuses an existing addition instead of inserting a second`() = runTest {
+        for ((name, store) in bothStores()) {
+            val albumId = store.createAlbum(name = "Reuse", createdAt = 95L)
+            store.addImage(albumId, 1)
+            val second = store.addImage(albumId, 2)
+            val identity = mediaIdentityOf(
+                mediaUri = "content://media/external/images/media/2",
+                displayName = "2.jpg",
+                size = 2L,
+                dateModified = 20L
+            )
+
+            store.setCoverToMedia(albumId, identity)
+            store.setCoverToMedia(albumId, identity)
+
+            assertEquals(name, 2, store.observeMembershipsForAlbum(albumId).first().size)
+            assertEquals(name, second, store.coverOf(albumId))
+        }
+    }
+
+    @Test
+    fun `setCoverToMedia on a missing album writes nothing`() = runTest {
+        for ((name, store) in bothStores()) {
+            val albumId = store.createAlbum(name = "Real", createdAt = 96L)
+
+            store.setCoverToMedia(
+                albumId + 100L,
+                mediaIdentityOf("content://media/external/images/media/1", "1.jpg", 1L, 10L)
+            )
+
+            assertTrue(name, store.observeMembershipsForAlbum(albumId + 100L).first().isEmpty())
+            assertNull(name, store.coverOf(albumId))
+        }
+    }
+
+    @Test
+    fun `removing a picked cover rerolls it as for any cover`() = runTest {
+        for ((name, store) in bothStores()) {
+            val albumId = store.createAlbum(name = "Reroll", createdAt = 97L)
+            store.addImage(albumId, 1)
+            val picked = store.addImage(albumId, 2)
+            store.setCover(albumId, picked)
+
+            store.removeMembership(albumId, picked)
+
+            val cover = store.coverOf(albumId)
+            assertNotNull(name, cover)
+            assertNotEquals(name, picked, cover)
+        }
     }
 
     private suspend fun runParityScenario(store: AlbumStore): AlbumScenarioSnapshot {

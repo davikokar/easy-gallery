@@ -95,6 +95,8 @@
     <string name="menu_use_as_wallpaper">Duvar kağıdı olarak kullan</string>
     <string name="menu_change_folder_thumbnail">Klasör küçük resmini değiştir</string>
     <string name="thumbnail_picker_title">Klasör küçük resmini seçin</string>
+    <string name="menu_change_album_thumbnail">Albüm küçük resmini değiştir</string>
+    <string name="album_thumbnail_picker_title">Albüm küçük resmini seçin</string>
     <string name="wallpaper_app_not_found">Duvar kağıdını ayarlayabilecek uygulama yok</string>
     <string name="menu_select_all">Tümünü seç</string>
     <string name="search_placeholder">Ara…</string>
@@ -194,6 +196,10 @@
     <string name="automatic_album_clear_place">Yeri temizle: %1$s</string>
     <string name="automatic_album_clear_date">Tarihi temizle: %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
+    <string name="menu_album_info">Albüm bilgisi</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">%1$s tarihinden itibaren</string>
+    <string name="album_info_date_until">%1$s tarihine kadar</string>
     <string name="new_album_select_media">Bu albüm için fotoğraf ve videoları seçin</string>
     <string name="favourites_title">Favoriler</string>
     <string name="cd_favourite_indicator">Favori</string>

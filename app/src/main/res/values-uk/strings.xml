@@ -97,6 +97,8 @@
     <string name="menu_use_as_wallpaper">Установити як шпалери</string>
     <string name="menu_change_folder_thumbnail">Змінити мініатюру папки</string>
     <string name="thumbnail_picker_title">Виберіть мініатюру папки</string>
+    <string name="menu_change_album_thumbnail">Змінити мініатюру альбому</string>
+    <string name="album_thumbnail_picker_title">Виберіть мініатюру альбому</string>
     <string name="wallpaper_app_not_found">Немає додатка для встановлення шпалер</string>
     <string name="menu_select_all">Вибрати все</string>
     <string name="search_placeholder">Пошук…</string>
@@ -202,6 +204,10 @@
     <string name="automatic_album_clear_place">Очистити місце: %1$s</string>
     <string name="automatic_album_clear_date">Очистити дату: %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
+    <string name="menu_album_info">Інформація про альбом</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">Від %1$s</string>
+    <string name="album_info_date_until">До %1$s</string>
     <string name="new_album_select_media">Виберіть фото та відео для цього альбому</string>
     <string name="favourites_title">Обране</string>
     <string name="cd_favourite_indicator">Обране</string>

@@ -47,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -54,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -65,8 +67,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
+import com.davide.seddio.easygallery.data.AlbumRule
+import com.davide.seddio.easygallery.data.AlbumRuleClause
+import com.davide.seddio.easygallery.data.AlbumRuleSummary
 import com.davide.seddio.easygallery.data.FAVOURITES_OVERRIDE_KEY
 import com.davide.seddio.easygallery.data.GalleryTransformations
+import com.davide.seddio.easygallery.data.GazetteerAssets
+import com.davide.seddio.easygallery.data.GazetteerNames
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
@@ -80,6 +87,8 @@ import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.albumOverrideKey
 import com.davide.seddio.easygallery.data.canonicalMediaStoreUriForJoin
 import com.davide.seddio.easygallery.data.resolveAlbumDetailPreferences
+import com.davide.seddio.easygallery.data.summarizeAlbumRule
+import com.davide.seddio.easygallery.ui.components.AlbumInfoDialog
 import com.davide.seddio.easygallery.ui.components.ColumnCountDialog
 import com.davide.seddio.easygallery.ui.components.DestinationFolderPickerDialog
 import com.davide.seddio.easygallery.ui.components.FilterMediaDialog
@@ -87,11 +96,15 @@ import com.davide.seddio.easygallery.ui.components.GroupByDialog
 import com.davide.seddio.easygallery.ui.components.MediaPropertiesDialog
 import com.davide.seddio.easygallery.ui.components.PreferenceContainer
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
+import com.davide.seddio.easygallery.ui.components.ThumbnailPickerTopBar
 import com.davide.seddio.easygallery.ui.components.setImageAsWallpaper
 import com.davide.seddio.easygallery.ui.components.shareMedia
 import com.davide.seddio.easygallery.ui.components.supportsWallpaper
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AlbumDetailScreen(
@@ -120,6 +133,38 @@ fun AlbumDetailScreen(
     val pendingOperation by galleryViewModel.pendingOperation.collectAsState()
     val browsingPath by galleryViewModel.browsingPath.collectAsState()
     val browsingFolders by galleryViewModel.browsingFolders.collectAsState()
+    val albumRule by albumsViewModel.selectedAlbumRule.collectAsState()
+    val isAlbumCoverPickerMode by albumsViewModel.isAlbumCoverPickerMode.collectAsState()
+    val albumCoverDraftUri by albumsViewModel.albumCoverDraftUri.collectAsState()
+    val albumCoverPreselectedUri by albumsViewModel.albumCoverPreselectedUri.collectAsState()
+
+    val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
+    // Only a rule with a place clause needs country names, so nothing is read for any other album.
+    val needsCountryNames = !isFavouritesAlbum && albumRule.hasPlaceClause()
+    val countryNames by produceState<Result<GazetteerNames>?>(null, needsCountryNames) {
+        value = null
+        if (needsCountryNames) {
+            value = withContext(Dispatchers.IO) {
+                try {
+                    Result.success(GazetteerAssets.loadNames(context))
+                } catch (e: IOException) {
+                    Result.failure(e)
+                }
+            }
+        }
+    }
+    val isAlbumKnown = album != null
+    // Null hides the Album info item: Favourites has no rule, and an album is not known until it is loaded.
+    val albumRuleSummary = remember(isFavouritesAlbum, isAlbumKnown, albumRule, needsCountryNames, countryNames, locale) {
+        when {
+            isFavouritesAlbum || !isAlbumKnown -> null
+            needsCountryNames && countryNames == null -> null
+            else -> summarizeAlbumRule(albumRule) { code ->
+                countryNames?.getOrNull()?.countryDisplayName(code, locale) ?: code
+            }
+        }
+    }
 
     // Null while the open album is not known yet; commits then no-op and pinch falls back to global.
     val albumKey = if (isFavouritesAlbum) {
@@ -179,6 +224,7 @@ fun AlbumDetailScreen(
         } else {
             album?.status ?: AlbumEvaluationStatus.MANUAL
         },
+        albumRuleSummary = albumRuleSummary,
         preferences = preferences,
         searchQuery = searchQuery,
         isSearchActive = isSearchActive,
@@ -254,7 +300,9 @@ fun AlbumDetailScreen(
         onPerformOperationWithPath = { galleryViewModel.performOperationWithPath(it) },
         onCancelOperation = { galleryViewModel.cancelOperation() },
         onSelectMedia = { item ->
-            if (isMediaSelectionMode) {
+            if (isAlbumCoverPickerMode) {
+                albumsViewModel.setAlbumCoverDraft(item)
+            } else if (isMediaSelectionMode) {
                 galleryViewModel.toggleMediaSelection(item)
             } else {
                 galleryViewModel.openMedia(item, media)
@@ -276,9 +324,21 @@ fun AlbumDetailScreen(
             } else {
                 albumsViewModel.setAlbumColumns(key, latestPreferences.columns + 1)
             }
-        }
+        },
+        isAlbumCoverPickerMode = isAlbumCoverPickerMode,
+        draftCoverUri = albumCoverDraftUri,
+        preselectedCoverUri = albumCoverPreselectedUri,
+        onEnterAlbumCoverPicker = {
+            galleryViewModel.exitMediaSelectionMode()
+            albumsViewModel.enterAlbumCoverPicker()
+        },
+        onExitAlbumCoverPicker = { albumsViewModel.exitAlbumCoverPicker() },
+        onCommitAlbumCoverPicker = { albumsViewModel.commitAlbumCoverDraft() }
     )
 }
+
+private fun AlbumRule?.hasPlaceClause(): Boolean =
+    this is AlbumRule.Evaluatable && clauses.any { it is AlbumRuleClause.Region }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -287,6 +347,7 @@ fun AlbumDetailContent(
     media: List<MediaItem>,
     hiddenMemberCount: Int,
     evaluationStatus: AlbumEvaluationStatus,
+    albumRuleSummary: AlbumRuleSummary?,
     preferences: ViewPreferences,
     searchQuery: String,
     isSearchActive: Boolean,
@@ -319,6 +380,12 @@ fun AlbumDetailContent(
     onEnterMediaSelectionMode: (MediaItem) -> Unit,
     onDecreaseColumns: () -> Unit,
     onIncreaseColumns: () -> Unit,
+    isAlbumCoverPickerMode: Boolean,
+    draftCoverUri: Uri?,
+    preselectedCoverUri: Uri?,
+    onEnterAlbumCoverPicker: () -> Unit,
+    onExitAlbumCoverPicker: () -> Unit,
+    onCommitAlbumCoverPicker: () -> Unit,
     favouritesAvailable: Boolean = false,
     favouriteUris: Set<Uri> = emptySet(),
     isFavouritePending: Boolean = false,
@@ -333,8 +400,27 @@ fun AlbumDetailContent(
         ?.takeIf { supportsWallpaper(it.type) }
     val allSelectedAreFavourite = selectedMedia.isNotEmpty() &&
         selectedMedia.all { it.uri in favouriteUris }
+    val displayedSelectedItems = if (isAlbumCoverPickerMode) {
+        setOfNotNull(draftCoverUri ?: preselectedCoverUri)
+    } else {
+        selectedMediaItems
+    }
+    // Long-press would swap to the selection bar mid-pick and leave the picker flag set.
+    val onMediaLongClick: (MediaItem) -> Unit = if (isAlbumCoverPickerMode) {
+        {}
+    } else {
+        onEnterMediaSelectionMode
+    }
 
-    if (isMediaSelectionMode) {
+    if (isAlbumCoverPickerMode) {
+        BackHandler {
+            if (draftCoverUri != null) {
+                onCommitAlbumCoverPicker()
+            } else {
+                onExitAlbumCoverPicker()
+            }
+        }
+    } else if (isMediaSelectionMode) {
         BackHandler { onExitMediaSelectionMode() }
     } else {
         BackHandler { onBackToAlbums() }
@@ -347,10 +433,20 @@ fun AlbumDetailContent(
     var showViewTypeDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPropertiesDialog by remember { mutableStateOf(false) }
+    var showAlbumInfoDialog by remember { mutableStateOf(false) }
+    // Favourites has no rule to describe, whatever the caller passes.
+    val showAlbumInfo = !isFavouritesAlbum && albumRuleSummary != null
 
     Scaffold(
         topBar = {
-            if (isMediaSelectionMode) {
+            if (isAlbumCoverPickerMode) {
+                ThumbnailPickerTopBar(
+                    hasDraft = draftCoverUri != null,
+                    onCancel = onExitAlbumCoverPicker,
+                    onConfirm = onCommitAlbumCoverPicker,
+                    title = R.string.album_thumbnail_picker_title
+                )
+            } else if (isMediaSelectionMode) {
                 AlbumMediaSelectionTopBar(
                     selectedCount = selectedMediaItems.size,
                     totalCount = media.size,
@@ -388,6 +484,13 @@ fun AlbumDetailContent(
                     onSortClick = { showSortDialog = true },
                     onGroupByClick = { showGroupByDialog = true },
                     onViewTypeClick = { showViewTypeDialog = true },
+                    // An unknown album has no members, so an empty list also hides the item until it is known.
+                    onChangeThumbnailClick = if (!isFavouritesAlbum && media.isNotEmpty()) {
+                        onEnterAlbumCoverPicker
+                    } else {
+                        null
+                    },
+                    changeThumbnailLabel = R.string.menu_change_album_thumbnail,
                     navigationIcon = {
                         IconButton(
                             onClick = onBackToAlbums,
@@ -408,6 +511,11 @@ fun AlbumDetailContent(
                                 tint = Color.White
                             )
                         }
+                    },
+                    onAlbumInfoClick = if (showAlbumInfo) {
+                        { showAlbumInfoDialog = true }
+                    } else {
+                        null
                     }
                 )
             }
@@ -447,6 +555,13 @@ fun AlbumDetailContent(
             MediaPropertiesDialog(
                 media = selectedMedia,
                 onDismiss = { showPropertiesDialog = false }
+            )
+        }
+
+        if (showAlbumInfoDialog && showAlbumInfo && albumRuleSummary != null) {
+            AlbumInfoDialog(
+                summary = albumRuleSummary,
+                onDismiss = { showAlbumInfoDialog = false }
             )
         }
 
@@ -575,9 +690,9 @@ fun AlbumDetailContent(
                         columns = preferences.columns,
                         state = gridState,
                         showInfo = preferences.showInfo,
-                        selectedItems = selectedMediaItems,
+                        selectedItems = displayedSelectedItems,
                         onItemClick = onSelectMedia,
-                        onItemLongClick = onEnterMediaSelectionMode,
+                        onItemLongClick = onMediaLongClick,
                         onZoomIn = onDecreaseColumns,
                         onZoomOut = onIncreaseColumns
                     )
@@ -586,9 +701,9 @@ fun AlbumDetailContent(
                         media = media,
                         state = listState,
                         showInfo = preferences.showInfo,
-                        selectedItems = selectedMediaItems,
+                        selectedItems = displayedSelectedItems,
                         onItemClick = onSelectMedia,
-                        onItemLongClick = onEnterMediaSelectionMode
+                        onItemLongClick = onMediaLongClick
                     )
                 }
             } else {
@@ -599,9 +714,9 @@ fun AlbumDetailContent(
                     gridState = gridState,
                     listState = listState,
                     showInfo = preferences.showInfo,
-                    selectedItems = selectedMediaItems,
+                    selectedItems = displayedSelectedItems,
                     onItemClick = onSelectMedia,
-                    onItemLongClick = onEnterMediaSelectionMode,
+                    onItemLongClick = onMediaLongClick,
                     onZoomIn = onDecreaseColumns,
                     onZoomOut = onIncreaseColumns
                 )

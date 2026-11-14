@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Image
@@ -47,12 +49,14 @@ fun SearchTopBar(
     onGroupByClick: (() -> Unit)? = null,
     onViewTypeClick: (() -> Unit)? = null,
     onChangeThumbnailClick: (() -> Unit)? = null,
+    @StringRes changeThumbnailLabel: Int = R.string.menu_change_folder_thumbnail,
     onFilterMediaClick: (() -> Unit)? = null,
     onShowExcludedClick: (() -> Unit)? = null,
     onCreateFolderClick: (() -> Unit)? = null,
     onCreateAlbumClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
-    actions: @Composable (RowScope.() -> Unit)? = null
+    actions: @Composable (RowScope.() -> Unit)? = null,
+    onAlbumInfoClick: (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -227,7 +231,7 @@ fun SearchTopBar(
                         )
                         if (onChangeThumbnailClick != null) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.menu_change_folder_thumbnail)) },
+                                text = { Text(stringResource(changeThumbnailLabel)) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.Image,
@@ -269,6 +273,22 @@ fun SearchTopBar(
                                 onClick = {
                                     showMenu = false
                                     onCreateAlbumClick()
+                                }
+                            )
+                        }
+                        if (onAlbumInfoClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_album_info)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Description,
+                                        contentDescription = null
+                                    )
+                                },
+                                modifier = Modifier.testTag("album_info_button"),
+                                onClick = {
+                                    showMenu = false
+                                    onAlbumInfoClick()
                                 }
                             )
                         }

@@ -93,6 +93,8 @@
     <string name="menu_use_as_wallpaper">壁紙に設定</string>
     <string name="menu_change_folder_thumbnail">フォルダのサムネイルを変更</string>
     <string name="thumbnail_picker_title">フォルダのサムネイルを選択</string>
+    <string name="menu_change_album_thumbnail">アルバムのサムネイルを変更</string>
+    <string name="album_thumbnail_picker_title">アルバムのサムネイルを選択</string>
     <string name="wallpaper_app_not_found">壁紙を設定できるアプリがありません</string>
     <string name="menu_select_all">すべて選択</string>
     <string name="search_placeholder">検索…</string>
@@ -189,6 +191,10 @@
     <string name="automatic_album_clear_place">場所「%1$s」をクリア</string>
     <string name="automatic_album_clear_date">日付「%1$s」をクリア</string>
     <string name="automatic_album_month_year">%2$d年%1$s</string>
+    <string name="menu_album_info">アルバム情報</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">%1$s以降</string>
+    <string name="album_info_date_until">%1$sまで</string>
     <string name="new_album_select_media">このアルバムに入れる写真と動画を選択してください</string>
     <string name="favourites_title">お気に入り</string>
     <string name="cd_favourite_indicator">お気に入り</string>

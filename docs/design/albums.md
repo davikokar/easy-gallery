@@ -66,6 +66,11 @@ unchanged — §8 decision 28 and
 excluding and custom thumbnails still stop at folders; an album's cover is ADR-0015's, not a
 folder thumbnail.
 
+**Amended 2026-11-14: an album's cover can be chosen.** Album Detail View gains a cover picker
+that behaves like the Folder thumbnail picker. It writes ADR-0015's own cover column, not a folder
+thumbnail override, so the sentence above still holds of the mechanism — §8, *An album's cover can
+be chosen in Album Detail View*, and ADR-0015 Amendment 1.
+
 ### Favourite is not Pinned
 
 The app already has **pinned folders**. Favourites is a different thing at a different level:
@@ -629,6 +634,10 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     This deliberately diverges from ADR-0007's automatic-with-override folder thumbnails, for the
     reason set out in ADR-0015.
 
+    **Amended 2026-11-14 — the picker is decided: decision 32 and ADR-0015 Amendment 1.** The
+    deferral above ends. Random-once still sets the initial cover; the user can now replace it, and
+    the storage shipped at Stage 1 took the choice without a migration, as intended.
+
 12. **Creating an album asks what kind first, and manual creation gets a screen** (ADR-0016). The
     name is the wrong first question — the contents are the point, so the name is pre-filled with
     the first unused `My album N` and edited in place above the picker. The type dialog exists as
@@ -1040,6 +1049,141 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     apart by wording only. **Not decided by this:** the Newer-app and Hidden-members notices, which
     are per album and stay; §10 question 9, whose "no location" and "no date" items now show up in
     Settings' rows rather than in album notices.
+
+30. **Albums View's Filter media ~~changes the counts, never the list~~ hides an album it empties,
+    as Folders View does, but never the Favourites tile.** Decided by the maintainer
+    on 2026-11-14 and landed the same day, after Stage 2 closed; no stage's status changes.
+    **Reversed the same day — see the amendment at the end of this decision.**
+    - **What.** Albums View's Overflow menu offers Filter media, after Column count. It writes
+      Albums View's own `mediaTypes` — the `ALBUMS` scope, already persisted with the other
+      per-view preferences, so no store was added. Each Album tile and row, and the Favourites tile,
+      counts only its members of the chosen types. ~~An album with none shows 0 and stays listed: only
+      search hides an album.~~ Covers do not change — an album's is the member ADR-0015 persisted,
+      Favourites' its first item — even when the cover is of a type filtered out. Size sorts by the
+      filtered count, so the order matches the numbers on the tiles.
+    - **What not.** The filter does not reach Album Detail View, which has its own, and it is not a
+      per-album preference.
+
+    **Why.** The maintainer chose count-only explicitly. The reason he gave was consistency: he
+    believed Folders View's filter behaves the same way. **It does not.** In Folders View a folder
+    with no item of the chosen types is not listed at all, and its automatic thumbnail becomes its
+    first matching item. That difference predates this decision, and it had not been put to the
+    maintainer when this was recorded. Whether Albums View keeps count-only, or one of the two views
+    changes to match the other, is his to decide.
+    **Other reasons the documents supply**, recorded as reasons rather than as the maintainer's:
+    an album is something the user built (§2), and a persisted filter that made one vanish would
+    read as data loss — ADR-0016 Amendment 1 refused to let a persisted filter hide a folder in the
+    picker on the same grounds; and an album's cover is persisted (ADR-0015), so following the
+    filter would have needed a second cover rule.
+
+    **Amended 2026-11-14 — reversed by the maintainer: the filter now hides an album it empties.**
+    Recorded as an amendment in place rather than as a new decision. That is not the precedent for
+    a reversal: decisions 23 and 25 were amended in place, but for details only, and the one earlier
+    reversal was recorded as a new decision, 29, with the decisions it reversed — 21, 22, 25 and
+    27 — amended in place to point to it. This one departs from that because a new number would
+    collide with decisions 30 to 34 on `feat/album-content`, and the number other documents cite
+    should keep meaning one thing. The text above is kept as the reasoning of the first landing;
+    the struck phrases are the parts it gives up.
+    - **What changed.** An album the filter leaves with no item is not listed, **if it had items
+      without the filter**. An album that is empty anyway — a new manual album, one whose members
+      were all removed, a rule album that matches nothing — stays listed, so it can still be opened
+      and a manual one filled. **The Favourites tile is always listed**, even when the filter leaves it with none,
+      because it is predefined rather than built; its count follows the filter, as before. Search
+      still hides albums and Favourites by name. The "No albums yet" message appears only when
+      nothing is left **before** the media filter — but after the search, which still narrows it:
+      albums are counted by search match before the media filter. When the filter alone empties the
+      list, the grid is blank, as Folders View's is.
+    - **What did not change.** Covers, Size sorting by the filtered count, the `ALBUMS` scope, and
+      the *What not* bullet. Covers still do not follow the filter, so the two views still differ
+      there: a folder's automatic thumbnail becomes its first matching item, an album's cover does
+      not.
+
+    **Why reversed.** The *Why* above rested on a belief about Folders View that the maintainer
+    traced, on device, to the wrong level: he had been describing Album Detail View, which filters
+    its items as Folder Detail View does, and not the list. Seeing the two lists side by side, he
+    found count-only inconsistent and asked for albums to behave like folders, with Favourites kept
+    as predefined. **Why an empty album is exempt.** The data-loss reading the other reasons raised
+    is real for an album that has nothing to show under any filter: hiding it would leave a new or
+    emptied manual album unreachable for as long as the filter is set, with no way to add to it. An
+    album hidden because the filter emptied it reappears the moment the filter allows its media, as
+    a folder does. **Why covers stay.** The second-cover-rule reason above still holds; the
+    maintainer asked for the list to match, not the covers. **The accepted cost** is the one the
+    other reasons named: a persisted filter can make an album the user built disappear from Albums
+    View until the filter is changed, exactly as it already could a folder.
+
+31. **Album Detail View shows an album's rule in a read-only Album info dialog.** Landed
+    2026-11-14, after Stage 2 closed; no stage's status changes, and decision 26 stands.
+    - **What.** The last item of Album Detail View's Overflow menu, **Album info**, opens a dialog
+      that says what defines the open Album: that it is manual; or the Place and Date conditions of
+      its rule, each label above its values, places first, years and months newest first; or, for a
+      rule this build cannot read, the Newer-app notice's wording. It never shows the stored text.
+      The item is absent for Favourites, which has no rule, and until the album is known; for a
+      rule with a place clause it is also absent until the country names have loaded. A failed load
+      does not hide it: each country then shows as its code.
+    - **What not.** Nothing in the dialog can be changed, and no summary of the rule appears on the
+      Album tile or row.
+
+    **Why read-only.** Decision 26's reasons apply to editing, not to reading: an editor must
+    round-trip every rule and never rewrite an unreadable one, while a reader only has to describe
+    every rule shape the parser accepts, including combinations creation never writes, and changes
+    nothing. **Why never the stored text.** A rule this build cannot read is one it cannot describe
+    truthfully, and raw JSON would expose the storage format as if it were an explanation; the
+    summary type carries neither the text nor the reason, so the screen cannot show them by
+    accident. **Why label above value.** It needs no per-locale "label: value" string. **What it
+    changes about decision 26's cost:** a wrong rule is still fixed only by deleting and recreating
+    the album, but the user can now see that it is wrong without reasoning backwards from its
+    members.
+
+    **Open consequence.** Every clause of a rule must match (`AlbumRuleEvaluation.kt`), but the
+    dialog lists several Place or several Date values under one label without saying "all of
+    these". A rule with two dates that do not overlap, which matches nothing, therefore reads like a
+    choice between them. The creation screen writes at most one clause of each kind, so only a
+    hand-made rule or one written by a future build shows it. This has not been put to the
+    maintainer.
+
+32. **An album's cover can be chosen in Album Detail View.** Decided by the maintainer on
+    2026-11-14 and recorded before the change that implements it; no stage's status changes.
+    [ADR-0015](../architecture/decisions/0015-album-cover-persisted-random-member.md) Amendment 1
+    holds the technical decision and its alternatives; this is the product record.
+    - **What.** Album Detail View's Overflow menu gains **Change album thumbnail**, after Change
+      view type and before Album info. It opens a picker with the Folder thumbnail picker's
+      interaction (ADR-0007 Amendments 1 and 2): any displayed member can be picked; a tap only
+      drafts; Close with no draft writes nothing; the back arrow or system Back with a draft saves
+      it; long-press does nothing while picking; the Main view bar is hidden while picking. The
+      saved cover is pre-selected; a display-only fallback never is.
+    - **Storage.** The choice is written to the `coverMembershipId` the album already has. No
+      column, migration, schema JSON or preferences file is added. Removing the cover's item still
+      nulls it and re-rolls (decision 11).
+    - **A rule match.** It has no membership row, so picking one writes a manual addition for it
+      and points the cover at that. ADR-0016 Amendment 2's unpersisted rule-only cover still applies
+      to an album with no pick.
+    - **What not.** No reset to a random or automatic cover. No picker for Favourites, which has no
+      row in the album database and keeps its automatic cover. Covers still do not follow Albums
+      View's Filter media (decision 30). The label says "thumbnail", the maintainer's word; the UI
+      vocabulary carries "cover" as its alias.
+
+    **Why.** A random cover can be a poor one, and until now the only remedy was to empty the album
+    and refill it (ADR-0015's Negatives); a rule-only album had no stable cover at all. **Why the
+    folder interaction.** It already exists, it settled after two amendments, and the user has
+    already learned it; two pickers for one idea would have to be kept consistent forever. **Why
+    pin a rule match rather than add a second kind of cover reference.** A cover is one of the
+    album's members by ADR-0015's own definition, and a membership row is the only reference that
+    heals and survives a restore without a migration.
+
+    **The accepted costs.** A picked rule match is pinned: it stays in the album even if the rule
+    stops matching it. If its media is deleted, the album shows the Hidden-members notice, where a
+    rule match would simply have gone. Removing a picked cover from the album replaces it at random,
+    or with the display-only fallback in a rule-only album. **Settled in the implementation, not
+    by this decision:** the item is hidden when the album shows no items, where the picker would
+    have nothing to offer. Not an ADR-level choice. The caveat is that the test is the *displayed*
+    list, so the item also disappears when Search or Filter media empties it; and the ViewModel
+    refuses to enter the picker with no album open.
+
+    **Numbering.** 32 is this branch's next number. `feat/album-content` uses 30 to 34 (see
+    decision 30's amendment), so this decision, like 30 and 31, must be renumbered when the
+    branches merge. ADR-0015 Amendment 1 cites it by title, not number, so that renumbering does
+    not reach the ADR; the §2 note and the note on decision 11 cite it by title or number and must
+    be checked then.
 
 ---
 

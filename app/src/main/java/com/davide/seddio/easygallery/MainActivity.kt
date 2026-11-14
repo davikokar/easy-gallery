@@ -67,6 +67,7 @@ import com.davide.seddio.easygallery.ui.CreateFolderViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
 import com.davide.seddio.easygallery.ui.MediaIndexingViewModel
 import com.davide.seddio.easygallery.ui.components.MainViewBar
+import com.davide.seddio.easygallery.ui.components.ShownScreen
 import com.davide.seddio.easygallery.ui.components.resolveShownScreen
 import com.davide.seddio.easygallery.ui.components.selectedMainViewTab
 import com.davide.seddio.easygallery.ui.components.shouldShowMainViewBar
@@ -186,6 +187,7 @@ class MainActivity : ComponentActivity() {
                     val isSettingsMode by viewModel.isSettingsMode.collectAsState()
                     val displayMode by viewModel.displayMode.collectAsState()
                     val isThumbnailPickerMode by viewModel.isThumbnailPickerMode.collectAsState()
+                    val isAlbumCoverPickerMode by albumsViewModel.isAlbumCoverPickerMode.collectAsState()
                     val selectedFolderPath = selectedFolder?.path
                     var isFavouritesSelected by rememberSaveable { mutableStateOf(false) }
                     var mediaPendingAddToAlbum by remember { mutableStateOf(emptyList<com.davide.seddio.easygallery.data.MediaItem>()) }
@@ -242,7 +244,7 @@ class MainActivity : ComponentActivity() {
                         isNewAutomaticAlbumOpen = newAutomaticAlbumOpen,
                         hasPermission = hasPermission
                     )
-                    val showMainViewBar = shouldShowMainViewBar(shownScreen, isThumbnailPickerMode)
+                    val showMainViewBar = shouldShowMainViewBar(shownScreen, isThumbnailPickerMode, isAlbumCoverPickerMode)
                     val mainViewBarInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
                         .only(WindowInsetsSides.Bottom)
 
@@ -297,6 +299,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                         ManageExcludedScreen(viewModel)
                                     } else if (isSettingsMode) {
+                                        // Settings opens over Folders View, so Back lands there (ADR-0013 Amendment 3, point 6).
                                         BackHandler {
                                             viewModel.setSettingsMode(false)
                                         }
@@ -394,13 +397,19 @@ class MainActivity : ComponentActivity() {
                             if (showMainViewBar) {
                                 MainViewBar(
                                     selectedTab = selectedMainViewTab(shownScreen, displayMode),
+                                    isSettingsSelected = shownScreen == ShownScreen.SETTINGS,
                                     onTabSelected = { tab ->
                                         // Re-tapping the selected tab cancels too, and does not scroll (P4).
                                         viewModel.selectMainView(tab.toDisplayMode())
                                         albumsViewModel.cancelAlbumSelectionAndDetail()
                                         isFavouritesSelected = false
                                     },
-                                    onSettingsClick = { viewModel.setSettingsMode(true) }
+                                    onSettingsClick = {
+                                        // Same cancellation as a tab tap, then Settings (ADR-0013 Amendment 3, point 4).
+                                        viewModel.selectSettings()
+                                        albumsViewModel.cancelAlbumSelectionAndDetail()
+                                        isFavouritesSelected = false
+                                    }
                                 )
                             }
                         }

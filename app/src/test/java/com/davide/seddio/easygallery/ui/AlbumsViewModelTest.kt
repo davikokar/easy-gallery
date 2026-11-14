@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -934,6 +935,138 @@ class AlbumsViewModelTest {
         assertNull(viewModel.selectedAlbumId.value)
     }
 
+    @Test
+    fun `a manual album counts its resolved members by media type`() = runTest {
+        val viewModel = createViewModel()
+        val photo = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val secondPhoto = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val clip = mediaItem("content://media/external/video/media/3", "3.mp4", type = MediaType.VIDEO)
+        val animation = mediaItem("content://media/external/images/media/4", "4.gif", type = MediaType.GIF)
+        viewModel.setAllMedia(listOf(photo, secondPhoto, clip, animation))
+
+        viewModel.createAlbum("Mixed", listOf(photo, secondPhoto, clip, animation))
+        advanceUntilIdle()
+
+        val album = viewModel.albums.value.single()
+        assertEquals(
+            mapOf(MediaType.IMAGE to 2, MediaType.VIDEO to 1, MediaType.GIF to 1),
+            album.mediaCountsByType
+        )
+        assertEquals(album.resolvedMemberCount, album.mediaCountsByType.values.sum())
+    }
+
+    @Test
+    fun `an album with no members has a zero count for every media type`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.createAlbum("Empty")
+        advanceUntilIdle()
+
+        assertEquals(MediaType.entries.associateWith { 0 }, viewModel.albums.value.single().mediaCountsByType)
+    }
+
+    @Test
+    fun `an orphaned addition is not counted by media type`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.createAlbum("Orphans")
+        advanceUntilIdle()
+        val albumId = viewModel.albums.value.single().id
+        val photo = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val clip = mediaItem("content://media/external/video/media/2", "2.mp4", type = MediaType.VIDEO)
+        viewModel.setAllMedia(listOf(photo, clip))
+        viewModel.addMembers(albumId, listOf(photo, clip))
+        advanceUntilIdle()
+
+        viewModel.setAllMedia(listOf(photo))
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.album(albumId).mediaCountsByType[MediaType.IMAGE])
+        assertEquals(0, viewModel.album(albumId).mediaCountsByType[MediaType.VIDEO])
+    }
+
+    @Test
+    fun `an automatic album counts its rule matches by media type`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val albumId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val photo = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val clip = mediaItem("content://media/external/video/media/2", "2.mp4", type = MediaType.VIDEO)
+        val januaryClip = mediaItem("content://media/external/video/media/3", "3.mp4", type = MediaType.VIDEO)
+        indexStore.upsert(
+            listOf(indexEntry(photo, JUNE_15), indexEntry(clip, JUNE_15), indexEntry(januaryClip, JANUARY_15))
+        )
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+
+        viewModel.setAllMedia(listOf(photo, clip, januaryClip))
+        advanceUntilIdle()
+
+        assertEquals(
+            mapOf(MediaType.IMAGE to 1, MediaType.VIDEO to 1, MediaType.GIF to 0),
+            viewModel.album(albumId).mediaCountsByType
+        )
+    }
+
+    @Test
+    fun `the selected album rule is null while no album is open`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val viewModel = createViewModel(albumStore = albumStore)
+        advanceUntilIdle()
+
+        assertNull(viewModel.selectedAlbumRule.value)
+    }
+
+    @Test
+    fun `the selected album rule follows the open album`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val manualId = albumStore.createAlbum("Manual", 1_000L, null)
+        val juneId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val italyId = albumStore.createAlbum("Italy", 1_000L, italyRuleText())
+        val futureId = albumStore.createAlbum("Future", 1_000L, UNKNOWN_VERSION_RULE)
+        val viewModel = createViewModel(albumStore = albumStore)
+        advanceUntilIdle()
+
+        viewModel.selectAlbum(juneId)
+        advanceUntilIdle()
+        assertEquals(
+            AlbumRule.Evaluatable(
+                listOf(AlbumRuleClause.Time(LocalDate.of(2025, 6, 1), LocalDate.of(2025, 6, 30)))
+            ),
+            viewModel.selectedAlbumRule.value
+        )
+
+        viewModel.selectAlbum(italyId)
+        advanceUntilIdle()
+        assertEquals(italyRule(), viewModel.selectedAlbumRule.value)
+
+        viewModel.selectAlbum(manualId)
+        advanceUntilIdle()
+        assertNull(viewModel.selectedAlbumRule.value)
+
+        viewModel.selectAlbum(futureId)
+        advanceUntilIdle()
+        assertTrue(viewModel.selectedAlbumRule.value is AlbumRule.Unevaluatable)
+
+        viewModel.selectAlbum(null)
+        advanceUntilIdle()
+        assertNull(viewModel.selectedAlbumRule.value)
+    }
+
+    @Test
+    fun `the selected album rule is dropped when the open album is deleted`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val juneId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val viewModel = createViewModel(albumStore = albumStore)
+        viewModel.selectAlbum(juneId)
+        advanceUntilIdle()
+        assertTrue(viewModel.selectedAlbumRule.value is AlbumRule.Evaluatable)
+
+        viewModel.deleteAlbum(juneId)
+        advanceUntilIdle()
+
+        assertNull(viewModel.selectedAlbumRule.value)
+    }
+
     private fun AlbumsViewModel.album(albumId: Long): AlbumListItem =
         albums.value.first { it.id == albumId }
 
@@ -1168,6 +1301,311 @@ class AlbumsViewModelTest {
         assertEquals(mapOf("1" to FolderViewOverrides(columns = 6)), viewModel.albumDisplayOverrides.value)
     }
 
+    // --- album cover picker (ADR-0015 Amendment 1) ------------------------------------------------
+
+    private suspend fun AlbumStore.coverMembershipId(albumId: Long): Long? =
+        observeAlbums().first().first { it.id == albumId }.coverMembershipId
+
+    // A manual album of [items] opened in Album Detail View, its cover pointed at [coverItem]'s row.
+    private suspend fun TestScope.openManualAlbum(
+        store: InMemoryAlbumStore,
+        viewModel: AlbumsViewModel,
+        items: List<MediaItem>,
+        coverItem: MediaItem
+    ): Long {
+        viewModel.setAllMedia(items)
+        viewModel.createAlbum("Cover", items)
+        advanceUntilIdle()
+        val albumId = viewModel.albums.value.single().id
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+        val coverRow = viewModel.selectedAlbumMembers.value.first { it.mediaItem == coverItem }.membershipId!!
+        store.setCover(albumId, coverRow)
+        advanceUntilIdle()
+        return albumId
+    }
+
+    @Test
+    fun `entering the album cover picker does nothing with no album open`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.enterAlbumCoverPicker()
+
+        assertFalse(viewModel.isAlbumCoverPickerMode.value)
+        assertNull(viewModel.albumCoverDraftUri.value)
+        assertNull(viewModel.albumCoverPreselectedUri.value)
+    }
+
+    @Test
+    fun `entering the album cover picker pre-selects the saved cover and drafts nothing`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        openManualAlbum(store, viewModel, listOf(first, second), coverItem = second)
+
+        viewModel.enterAlbumCoverPicker()
+
+        assertTrue(viewModel.isAlbumCoverPickerMode.value)
+        assertEquals(second.uri, viewModel.albumCoverPreselectedUri.value)
+        assertNull(viewModel.albumCoverDraftUri.value)
+    }
+
+    @Test
+    fun `a rule album without a saved cover pre-selects nothing although it shows a fallback cover`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val albumId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        val item = mediaItem("content://media/external/images/media/1", "1.jpg")
+        indexStore.upsert(listOf(indexEntry(item, JUNE_15)))
+        viewModel.setAllMedia(listOf(item))
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+        assertTrue(viewModel.album(albumId).isCoverFallback)
+
+        viewModel.enterAlbumCoverPicker()
+
+        assertTrue(viewModel.isAlbumCoverPickerMode.value)
+        assertNull(viewModel.albumCoverPreselectedUri.value)
+    }
+
+    @Test
+    fun `an orphaned saved cover is not pre-selected and a fallback never is`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        openManualAlbum(store, viewModel, listOf(first, second), coverItem = second)
+
+        viewModel.setAllMedia(listOf(first))
+        advanceUntilIdle()
+        assertTrue(viewModel.album(viewModel.albums.value.single().id).isCoverFallback)
+
+        viewModel.enterAlbumCoverPicker()
+
+        assertNull(viewModel.albumCoverPreselectedUri.value)
+    }
+
+    @Test
+    fun `a tap drafts the item and closing the album cover picker writes nothing`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val albumId = openManualAlbum(store, viewModel, listOf(first, second), coverItem = first)
+        val coverBefore = store.coverMembershipId(albumId)
+        val rowsBefore = store.memberships(albumId)
+        viewModel.enterAlbumCoverPicker()
+
+        viewModel.setAlbumCoverDraft(second)
+        viewModel.setAlbumCoverDraft(second)
+
+        assertEquals(second.uri, viewModel.albumCoverDraftUri.value)
+        assertTrue(viewModel.isAlbumCoverPickerMode.value)
+
+        viewModel.exitAlbumCoverPicker()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isAlbumCoverPickerMode.value)
+        assertNull(viewModel.albumCoverDraftUri.value)
+        assertNull(viewModel.albumCoverPreselectedUri.value)
+        assertEquals(coverBefore, store.coverMembershipId(albumId))
+        assertEquals(rowsBefore, store.memberships(albumId))
+    }
+
+    @Test
+    fun `a tap outside the album cover picker drafts nothing`() = runTest {
+        val viewModel = createViewModel()
+
+        viewModel.setAlbumCoverDraft(mediaItem("content://media/external/images/media/1", "1.jpg"))
+
+        assertNull(viewModel.albumCoverDraftUri.value)
+    }
+
+    @Test
+    fun `committing writes the drafted member's own row as the cover and leaves the picker`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val albumId = openManualAlbum(store, viewModel, listOf(first, second), coverItem = first)
+        val rowsBefore = store.memberships(albumId)
+        val secondRow = viewModel.selectedAlbumMembers.value.first { it.mediaItem == second }.membershipId
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(second)
+
+        viewModel.commitAlbumCoverDraft()
+        advanceUntilIdle()
+
+        assertEquals(secondRow, store.coverMembershipId(albumId))
+        assertEquals(rowsBefore, store.memberships(albumId))
+        assertFalse(viewModel.isAlbumCoverPickerMode.value)
+        assertNull(viewModel.albumCoverDraftUri.value)
+        assertNull(viewModel.albumCoverPreselectedUri.value)
+        assertEquals(second, viewModel.album(albumId).cover)
+        assertFalse(viewModel.album(albumId).isCoverFallback)
+    }
+
+    @Test
+    fun `committing without a draft writes nothing and leaves the picker`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val albumId = openManualAlbum(store, viewModel, listOf(first, second), coverItem = first)
+        val coverBefore = store.coverMembershipId(albumId)
+        viewModel.enterAlbumCoverPicker()
+
+        viewModel.commitAlbumCoverDraft()
+        advanceUntilIdle()
+
+        assertEquals(coverBefore, store.coverMembershipId(albumId))
+        assertFalse(viewModel.isAlbumCoverPickerMode.value)
+    }
+
+    @Test
+    fun `committing a rule match saves one addition and the stored member count follows it`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val albumId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg", size = 11L, dateModified = 21L)
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg", size = 12L, dateModified = 22L)
+        indexStore.upsert(listOf(indexEntry(first, JUNE_15), indexEntry(second, JUNE_15)))
+        viewModel.setAllMedia(listOf(first, second))
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+        assertEquals(0, viewModel.album(albumId).storedMemberCount)
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(second)
+
+        viewModel.commitAlbumCoverDraft()
+        advanceUntilIdle()
+
+        val rows = albumStore.memberships(albumId)
+        assertEquals(1, rows.size)
+        assertEquals(StoredMembershipKind.ADDITION, rows.single().kind)
+        assertEquals(second.uri.toString(), rows.single().mediaUri)
+        assertEquals(listOf("2.jpg", 12L, 22L), listOf(rows.single().displayName, rows.single().size, rows.single().dateModified))
+        assertEquals(rows.single().id, albumStore.coverMembershipId(albumId))
+
+        // Still two members: the row is a no-op under the union. One stored addition, none hidden.
+        val album = viewModel.album(albumId)
+        assertEquals(2, album.resolvedMemberCount)
+        assertEquals(1, album.storedMemberCount)
+        assertEquals(0, album.hiddenMemberCount)
+        assertEquals(second, album.cover)
+        assertFalse(album.isCoverFallback)
+        assertEquals(rows.single().id, viewModel.selectedAlbumMembers.value.first { it.mediaItem == second }.membershipId)
+    }
+
+    @Test
+    fun `committing writes nothing when the drafted item is no longer shown in the album`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val albumId = albumStore.createAlbum("June", 1_000L, JUNE_RULE)
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        indexStore.upsert(listOf(indexEntry(first, JUNE_15), indexEntry(second, JUNE_15)))
+        viewModel.setAllMedia(listOf(first, second))
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(second)
+
+        viewModel.setAllMedia(listOf(first))
+        advanceUntilIdle()
+        viewModel.commitAlbumCoverDraft()
+        advanceUntilIdle()
+
+        assertTrue(albumStore.memberships(albumId).isEmpty())
+        assertNull(albumStore.coverMembershipId(albumId))
+        assertFalse(viewModel.isAlbumCoverPickerMode.value)
+    }
+
+    @Test
+    fun `the album cover picker is cleared when another album is opened`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val second = mediaItem("content://media/external/images/media/2", "2.jpg")
+        openManualAlbum(store, viewModel, listOf(first, second), coverItem = first)
+        viewModel.createAlbum("Other")
+        advanceUntilIdle()
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(second)
+
+        viewModel.selectAlbum(viewModel.albums.value.first { it.name == "Other" }.id)
+
+        assertCoverPickerCleared(viewModel)
+    }
+
+    @Test
+    fun `the album cover picker is cleared when the open album is left`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        openManualAlbum(store, viewModel, listOf(first), coverItem = first)
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(first)
+
+        viewModel.selectAlbum(null)
+
+        assertCoverPickerCleared(viewModel)
+    }
+
+    @Test
+    fun `the album cover picker is cleared by a main view tab tap`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        openManualAlbum(store, viewModel, listOf(first), coverItem = first)
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(first)
+
+        viewModel.cancelAlbumSelectionAndDetail()
+
+        assertCoverPickerCleared(viewModel)
+    }
+
+    @Test
+    fun `the album cover picker is cleared when the open album is deleted`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val albumId = openManualAlbum(store, viewModel, listOf(first), coverItem = first)
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(first)
+
+        viewModel.deleteAlbum(albumId)
+        advanceUntilIdle()
+
+        assertCoverPickerCleared(viewModel)
+    }
+
+    @Test
+    fun `the album cover picker is cleared when the open album vanishes from the store`() = runTest {
+        val store = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        val first = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val albumId = openManualAlbum(store, viewModel, listOf(first), coverItem = first)
+        viewModel.enterAlbumCoverPicker()
+        viewModel.setAlbumCoverDraft(first)
+
+        store.deleteAlbum(albumId)
+        advanceUntilIdle()
+
+        assertCoverPickerCleared(viewModel)
+    }
+
+    private fun assertCoverPickerCleared(viewModel: AlbumsViewModel) {
+        assertFalse(viewModel.isAlbumCoverPickerMode.value)
+        assertNull(viewModel.albumCoverDraftUri.value)
+        assertNull(viewModel.albumCoverPreselectedUri.value)
+    }
+
     private fun createViewModel(
         albumStore: AlbumStore = InMemoryAlbumStore(),
         albumNameFormatter: (Locale, String, Int) -> String = { locale, format, ordinal ->
@@ -1201,7 +1639,8 @@ class AlbumsViewModelTest {
         uri: String,
         name: String,
         size: Long = 1L,
-        dateModified: Long = 1L
+        dateModified: Long = 1L,
+        type: MediaType = MediaType.IMAGE
     ): MediaItem {
         val uriMock = mockk<Uri>()
         every { uriMock.toString() } returns uri
@@ -1212,7 +1651,7 @@ class AlbumsViewModelTest {
             dateAdded = dateModified,
             dateModified = dateModified,
             size = size,
-            type = MediaType.IMAGE,
+            type = type,
             bucketName = "Camera",
             folderPath = "/storage/emulated/0/DCIM/Camera"
         )

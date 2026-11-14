@@ -35,6 +35,19 @@ interface AlbumStore {
 
     suspend fun removeMembership(albumId: Long, membershipId: Long)
 
+    /**
+     * The user's pick (ADR-0015 Amendment 1). Does nothing unless [membershipId] is an ADDITION row of
+     * [albumId]: the schema cannot say the row belongs to this album, so this is the guard.
+     */
+    suspend fun setCover(albumId: Long, membershipId: Long)
+
+    /**
+     * The user's pick of an item with no addition row, a rule match. Finds the album's ADDITION for
+     * [identity]'s URI or inserts one, and points the cover at it, in one transaction. Never touches a
+     * missing album.
+     */
+    suspend fun setCoverToMedia(albumId: Long, identity: MediaIdentity)
+
     suspend fun recordExclusion(
         albumId: Long,
         mediaUri: String,
@@ -125,6 +138,42 @@ class RoomAlbumStore(
             if (removingCurrentCover) {
                 rerollCover(albumId)
             }
+        }
+    }
+
+    override suspend fun setCover(albumId: Long, membershipId: Long) {
+        database.withTransaction {
+            val album = dao.getAlbumById(albumId) ?: return@withTransaction
+            val membership = dao.getMembershipById(membershipId) ?: return@withTransaction
+            if (membership.albumId != albumId || membership.kind != AlbumMembershipKind.ADDITION) {
+                return@withTransaction
+            }
+
+            dao.updateAlbum(album.copy(coverMembershipId = membershipId))
+        }
+    }
+
+    override suspend fun setCoverToMedia(albumId: Long, identity: MediaIdentity) {
+        database.withTransaction {
+            val album = dao.getAlbumById(albumId) ?: return@withTransaction
+            val existing = dao.observeMembershipsForAlbum(albumId)
+                .first()
+                .firstOrNull {
+                    it.kind == AlbumMembershipKind.ADDITION && it.mediaUri == identity.mediaUri
+                }
+            val membershipId = existing?.id ?: dao.insertMembership(
+                AlbumMembershipEntity(
+                    albumId = albumId,
+                    mediaUri = identity.mediaUri,
+                    displayName = identity.healingKey.displayName,
+                    size = identity.healingKey.size,
+                    dateModified = identity.healingKey.dateModified,
+                    kind = AlbumMembershipKind.ADDITION,
+                    isOrphaned = false
+                )
+            )
+
+            dao.updateAlbum(album.copy(coverMembershipId = membershipId))
         }
     }
 
@@ -339,6 +388,51 @@ class InMemoryAlbumStore(
                 rerollCoverLocked(albumId)
             }
 
+            publishLocked()
+        }
+    }
+
+    override suspend fun setCover(albumId: Long, membershipId: Long) {
+        lock.withLock {
+            val album = albums[albumId] ?: return@withLock
+            val row = memberships[membershipId] ?: return@withLock
+            if (row.albumId != albumId || row.membership.kind != StoredMembershipKind.ADDITION) {
+                return@withLock
+            }
+
+            albums[albumId] = album.copy(coverMembershipId = membershipId)
+            publishLocked()
+        }
+    }
+
+    override suspend fun setCoverToMedia(albumId: Long, identity: MediaIdentity) {
+        lock.withLock {
+            val album = albums[albumId] ?: return@withLock
+            val existing = memberships.values.firstOrNull { row ->
+                row.albumId == albumId &&
+                    row.membership.kind == StoredMembershipKind.ADDITION &&
+                    row.membership.mediaUri == identity.mediaUri
+            }
+            val membershipId = if (existing != null) {
+                existing.membership.id
+            } else {
+                val newId = nextMembershipId++
+                memberships[newId] = MembershipRow(
+                    albumId = albumId,
+                    membership = StoredMembership(
+                        id = newId,
+                        mediaUri = identity.mediaUri,
+                        displayName = identity.healingKey.displayName,
+                        size = identity.healingKey.size,
+                        dateModified = identity.healingKey.dateModified,
+                        kind = StoredMembershipKind.ADDITION,
+                        isOrphaned = false
+                    )
+                )
+                newId
+            }
+
+            albums[albumId] = album.copy(coverMembershipId = membershipId)
             publishLocked()
         }
     }

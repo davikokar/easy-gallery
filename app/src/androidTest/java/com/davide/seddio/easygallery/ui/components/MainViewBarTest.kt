@@ -52,7 +52,12 @@ class MainViewBarTest {
     @Test
     fun tabsAreOrderedFoldersAlbumsTimeline() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = MainViewTab.FOLDERS,
+                isSettingsSelected = false,
+                onTabSelected = {},
+                onSettingsClick = {}
+            )
         }
 
         composeTestRule.onNodeWithTag("main_view_bar").assertIsDisplayed()
@@ -64,7 +69,12 @@ class MainViewBarTest {
     fun tabsAreMirroredInRightToLeft() {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
+                MainViewBar(
+                    selectedTab = MainViewTab.FOLDERS,
+                    isSettingsSelected = false,
+                    onTabSelected = {},
+                    onSettingsClick = {}
+                )
             }
         }
 
@@ -75,7 +85,12 @@ class MainViewBarTest {
     @Test
     fun tabsShowTheirExistingTitles() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = MainViewTab.FOLDERS,
+                isSettingsSelected = false,
+                onTabSelected = {},
+                onSettingsClick = {}
+            )
         }
 
         composeTestRule.onNodeWithTag(folders).assertTextEquals(string(R.string.folders_title))
@@ -87,12 +102,18 @@ class MainViewBarTest {
     fun onlyTheSelectedTabIsMarkedSelected() {
         var selected by mutableStateOf(MainViewTab.FOLDERS)
         composeTestRule.setContent {
-            MainViewBar(selectedTab = selected, onTabSelected = {}, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = selected,
+                isSettingsSelected = false,
+                onTabSelected = {},
+                onSettingsClick = {}
+            )
         }
 
         composeTestRule.onNodeWithTag(folders).assertIsSelected()
         composeTestRule.onNodeWithTag(albums).assertIsNotSelected()
         composeTestRule.onNodeWithTag(timeline).assertIsNotSelected()
+        composeTestRule.onNodeWithTag(settings).assertIsNotSelected()
 
         selected = MainViewTab.TIMELINE
         composeTestRule.waitForIdle()
@@ -109,22 +130,33 @@ class MainViewBarTest {
     }
 
     @Test
-    fun tabsExposeTheTabRole() {
+    fun tabsAndSettingsExposeTheTabRole() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = MainViewTab.FOLDERS,
+                isSettingsSelected = false,
+                onTabSelected = {},
+                onSettingsClick = {}
+            )
         }
 
         val isTab = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Tab)
         composeTestRule.onNodeWithTag(folders).assert(isTab)
         composeTestRule.onNodeWithTag(albums).assert(isTab)
         composeTestRule.onNodeWithTag(timeline).assert(isTab)
+        composeTestRule.onNodeWithTag(settings).assert(isTab)
     }
 
     @Test
     fun tappingEachTabReportsThatTab() {
         val taps = mutableListOf<MainViewTab>()
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = { taps += it }, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = MainViewTab.FOLDERS,
+                isSettingsSelected = false,
+                onTabSelected = { taps += it },
+                onSettingsClick = {}
+            )
         }
 
         composeTestRule.onNodeWithTag(timeline).performClick()
@@ -138,7 +170,12 @@ class MainViewBarTest {
     fun retappingTheSelectedTabStillCallsBack() {
         val taps = mutableListOf<MainViewTab>()
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.ALBUMS, onTabSelected = { taps += it }, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = MainViewTab.ALBUMS,
+                isSettingsSelected = false,
+                onTabSelected = { taps += it },
+                onSettingsClick = {}
+            )
         }
 
         composeTestRule.onNodeWithTag(albums).performClick()
@@ -150,10 +187,15 @@ class MainViewBarTest {
     @Test
     fun everyTabIsAtLeast48dpTall() {
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = MainViewTab.FOLDERS,
+                isSettingsSelected = false,
+                onTabSelected = {},
+                onSettingsClick = {}
+            )
         }
 
-        listOf(folders, albums, timeline).forEach { tag ->
+        listOf(folders, albums, timeline, settings).forEach { tag ->
             composeTestRule.onNodeWithTag(tag).assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
         }
     }
@@ -165,11 +207,16 @@ class MainViewBarTest {
             CompositionLocalProvider(
                 LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)
             ) {
-                MainViewBar(selectedTab = MainViewTab.TIMELINE, onTabSelected = { taps += it }, onSettingsClick = {})
+                MainViewBar(
+                    selectedTab = MainViewTab.TIMELINE,
+                    isSettingsSelected = false,
+                    onTabSelected = { taps += it },
+                    onSettingsClick = {}
+                )
             }
         }
 
-        listOf(folders, albums, timeline).forEach { tag ->
+        listOf(folders, albums, timeline, settings).forEach { tag ->
             composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
         }
         composeTestRule.onNodeWithTag(timeline).performClick()
@@ -178,14 +225,18 @@ class MainViewBarTest {
     }
 
     @Test
-    fun settingsButtonIsLastShowsSettingsTitleAndIsNotATab() {
+    fun settingsIsLastShowsSettingsTitleAndReportsClicks() {
         var clicks = 0
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = {}, onSettingsClick = { clicks++ })
+            MainViewBar(
+                selectedTab = MainViewTab.FOLDERS,
+                isSettingsSelected = false,
+                onTabSelected = {},
+                onSettingsClick = { clicks++ }
+            )
         }
 
         composeTestRule.onNodeWithTag(settings).assertTextEquals(string(R.string.settings_title))
-        composeTestRule.onNodeWithTag(settings).assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         assertTrue(leftOf(timeline) < leftOf(settings))
 
         composeTestRule.onNodeWithTag(settings).performClick()
@@ -193,10 +244,66 @@ class MainViewBarTest {
     }
 
     @Test
-    fun settingsButtonDoesNotReportATab() {
+    fun settingsIsSelectedAndNoTabIsWhileSettingsIsShown() {
+        composeTestRule.setContent {
+            MainViewBar(
+                selectedTab = null,
+                isSettingsSelected = true,
+                onTabSelected = {},
+                onSettingsClick = {}
+            )
+        }
+
+        composeTestRule.onNodeWithTag(settings).assertIsSelected()
+        composeTestRule.onNodeWithTag(folders).assertIsNotSelected()
+        composeTestRule.onNodeWithTag(albums).assertIsNotSelected()
+        composeTestRule.onNodeWithTag(timeline).assertIsNotSelected()
+    }
+
+    @Test
+    fun retappingSettingsWhileSelectedStillCallsBack() {
+        var clicks = 0
+        composeTestRule.setContent {
+            MainViewBar(
+                selectedTab = null,
+                isSettingsSelected = true,
+                onTabSelected = {},
+                onSettingsClick = { clicks++ }
+            )
+        }
+
+        composeTestRule.onNodeWithTag(settings).performClick()
+
+        assertEquals(1, clicks)
+    }
+
+    @Test
+    fun tappingATabWhileSettingsIsSelectedReportsThatTab() {
         val taps = mutableListOf<MainViewTab>()
         composeTestRule.setContent {
-            MainViewBar(selectedTab = MainViewTab.FOLDERS, onTabSelected = { taps += it }, onSettingsClick = {})
+            MainViewBar(
+                selectedTab = null,
+                isSettingsSelected = true,
+                onTabSelected = { taps += it },
+                onSettingsClick = {}
+            )
+        }
+
+        composeTestRule.onNodeWithTag(folders).performClick()
+
+        assertEquals(listOf(MainViewTab.FOLDERS), taps)
+    }
+
+    @Test
+    fun settingsDoesNotReportATab() {
+        val taps = mutableListOf<MainViewTab>()
+        composeTestRule.setContent {
+            MainViewBar(
+                selectedTab = MainViewTab.FOLDERS,
+                isSettingsSelected = false,
+                onTabSelected = { taps += it },
+                onSettingsClick = {}
+            )
         }
 
         composeTestRule.onNodeWithTag(settings).performClick()

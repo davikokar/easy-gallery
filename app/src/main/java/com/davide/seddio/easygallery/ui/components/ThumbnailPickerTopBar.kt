@@ -1,5 +1,6 @@
 package com.davide.seddio.easygallery.ui.components
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -15,10 +16,11 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 fun ThumbnailPickerTopBar(
     hasDraft: Boolean,
     onCancel: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    @StringRes title: Int = R.string.thumbnail_picker_title
 ) {
     TopAppBar(
-        title = { Text(stringResource(R.string.thumbnail_picker_title), color = Color.White) },
+        title = { Text(stringResource(title), color = Color.White) },
         navigationIcon = {
             IconButton(onClick = if (hasDraft) onConfirm else onCancel) {
                 Icon(

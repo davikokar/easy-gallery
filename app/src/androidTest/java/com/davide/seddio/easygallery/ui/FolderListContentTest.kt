@@ -508,6 +508,7 @@ class FolderListContentTest {
             cover = null,
             isCoverFallback = false,
             resolvedMemberCount = 3,
+            mediaCountsByType = countsOf(images = 3),
             storedMemberCount = 3,
             hiddenMemberCount = 0,
             storedMembershipCount = 3,
@@ -527,7 +528,7 @@ class FolderListContentTest {
     }
 
     @Test
-    fun albumsOverflowShowsNewAlbumAndHidesMediaOnlyActions() {
+    fun albumsOverflowShowsNewAlbumAndFilterMediaAndHidesShowExcluded() {
         composeTestRule.setContent {
             FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
         }
@@ -535,8 +536,185 @@ class FolderListContentTest {
         composeTestRule.onNodeWithContentDescription("More options").performClick()
 
         composeTestRule.onNodeWithText("New album").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Filter media").assertIsDisplayed()
         composeTestRule.onNodeWithText("Temporarily show excluded").assertDoesNotExist()
-        composeTestRule.onNodeWithText("Filter media").assertDoesNotExist()
+    }
+
+    @Test
+    fun albumsOverflowShowsFilterMediaDirectlyAfterColumnCount() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.ALBUMS)
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        val tops = listOf(
+            R.string.sort_by_title,
+            R.string.column_count_title,
+            R.string.filter_media_title,
+            R.string.change_view_type_title,
+            R.string.menu_new_album
+        ).map { label ->
+            composeTestRule.onNodeWithText(appContext.getString(label))
+                .assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+        }
+        assertEquals(tops.sorted(), tops)
+        assertEquals(tops.size, tops.toSet().size)
+        // The items that sit between them in other views are absent here.
+        composeTestRule.onNodeWithText(appContext.getString(R.string.group_by_title)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.menu_show_excluded)).assertDoesNotExist()
+    }
+
+    @Test
+    fun filteringAlbumsByMediaTypeHidesAnAlbumItEmptiesAndRecountsTheRest() {
+        val mixed = albumItem(
+            AlbumEvaluationStatus.MANUAL,
+            id = 1L,
+            name = "Mixed",
+            resolved = 5,
+            mediaCountsByType = countsOf(images = 3, videos = 2)
+        )
+        val videosOnly = albumItem(
+            AlbumEvaluationStatus.MANUAL,
+            id = 2L,
+            name = "Videos only",
+            resolved = 4,
+            mediaCountsByType = countsOf(videos = 4)
+        )
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(mixed, videosOnly)
+            )
+        }
+        assertAlbumCount(tag = "album_tile_1", count = 5)
+        assertAlbumCount(tag = "album_tile_2", count = 4)
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_media_title)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_videos)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.action_ok)).performClick()
+
+        composeTestRule.onNodeWithTag("album_tile_1").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_tile_2").assertDoesNotExist()
+        assertAlbumCount(tag = "album_tile_1", count = 3)
+    }
+
+    @Test
+    fun favouritesTileStaysWhenTheMediaFilterLeavesItWithNoItems() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                favouritesAvailable = true,
+                favouriteMedia = listOf(fakeMedia)
+            )
+        }
+        assertAlbumCount(tag = "album_tile_favourites", count = 1)
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_media_title)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_images)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.action_ok)).performClick()
+
+        composeTestRule.onNodeWithTag("album_tile_favourites").assertIsDisplayed()
+        assertAlbumCount(tag = "album_tile_favourites", count = 0)
+    }
+
+    @Test
+    fun aNaturallyEmptyAlbumStaysListedWhenTheMediaFilterChanges() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(
+                    albumItem(
+                        AlbumEvaluationStatus.MANUAL,
+                        id = 5L,
+                        name = "Empty",
+                        resolved = 0,
+                        mediaCountsByType = countsOf()
+                    )
+                )
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_media_title)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_videos)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.action_ok)).performClick()
+
+        composeTestRule.onNodeWithTag("album_tile_5").assertIsDisplayed()
+        assertAlbumCount(tag = "album_tile_5", count = 0)
+    }
+
+    @Test
+    fun mediaFilterHidingEveryAlbumWithoutFavouritesDoesNotShowTheNoAlbumsText() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(
+                    albumItem(
+                        AlbumEvaluationStatus.MANUAL,
+                        id = 2L,
+                        name = "Videos only",
+                        resolved = 4,
+                        mediaCountsByType = countsOf(videos = 4)
+                    )
+                ),
+                favouritesAvailable = false
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_media_title)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.filter_videos)).performClick()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.action_ok)).performClick()
+
+        composeTestRule.onNodeWithTag("album_tile_2").assertDoesNotExist()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.albums_empty)).assertDoesNotExist()
+    }
+
+    @Test
+    fun noAlbumsAtAllWithoutFavouritesShowsTheNoAlbumsText() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = emptyList(),
+                favouritesAvailable = false
+            )
+        }
+
+        composeTestRule.onNodeWithText(appContext.getString(R.string.albums_empty)).assertIsDisplayed()
+    }
+
+    @Test
+    fun timelineOverflowHasNoCreateFolderAction() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.TIMELINE)
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithText(appContext.getString(R.string.sort_by_title)).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("create_folder_button").assertDoesNotExist()
+    }
+
+    @Test
+    fun foldersOverflowStillOffersCreateFolderAction() {
+        composeTestRule.setContent {
+            FolderListContentWrapper(displayMode = DisplayMode.FOLDERS)
+        }
+
+        composeTestRule.onNodeWithContentDescription("More options").performClick()
+
+        composeTestRule.onNodeWithTag("create_folder_button").assertIsDisplayed()
+    }
+
+    private fun assertAlbumCount(tag: String, count: Int) {
+        val text = appContext.resources.getQuantityString(R.plurals.album_item_count, count, count)
+        composeTestRule
+            .onNode(hasText(text) and hasAnyAncestor(hasTestTag(tag)), useUnmergedTree = true)
+            .assertIsDisplayed()
     }
 
     @Test
@@ -653,6 +831,7 @@ class FolderListContentTest {
                 cover = null,
                 isCoverFallback = false,
                 resolvedMemberCount = index.toInt(),
+                mediaCountsByType = countsOf(images = index.toInt()),
                 storedMemberCount = index.toInt(),
                 hiddenMemberCount = 0,
                 storedMembershipCount = index.toInt(),
@@ -695,6 +874,7 @@ class FolderListContentTest {
                 cover = null,
                 isCoverFallback = false,
                 resolvedMemberCount = index.toInt(),
+                mediaCountsByType = countsOf(images = index.toInt()),
                 storedMemberCount = index.toInt(),
                 hiddenMemberCount = 0,
                 storedMembershipCount = index.toInt(),
@@ -754,6 +934,7 @@ class FolderListContentTest {
             cover = null,
             isCoverFallback = true,
             resolvedMemberCount = 0,
+            mediaCountsByType = countsOf(),
             storedMemberCount = 5,
             hiddenMemberCount = 5,
             storedMembershipCount = 5,
@@ -766,6 +947,7 @@ class FolderListContentTest {
             cover = null,
             isCoverFallback = false,
             resolvedMemberCount = 0,
+            mediaCountsByType = countsOf(),
             storedMemberCount = 0,
             hiddenMemberCount = 0,
             storedMembershipCount = 0,
@@ -947,13 +1129,21 @@ class FolderListContentTest {
         )
     }
 
+    // Every MediaType is present and the values sum to the resolved count, as the ViewModel builds it.
+    private fun countsOf(images: Int = 0, videos: Int = 0, gifs: Int = 0): Map<MediaType, Int> = mapOf(
+        MediaType.IMAGE to images,
+        MediaType.VIDEO to videos,
+        MediaType.GIF to gifs
+    )
+
     private fun albumItem(
         status: AlbumEvaluationStatus,
         id: Long = 31L,
         name: String = "Rule album",
         resolved: Int = 2,
         stored: Int = 0,
-        hidden: Int = 0
+        hidden: Int = 0,
+        mediaCountsByType: Map<MediaType, Int> = countsOf(images = resolved)
     ) = AlbumListItem(
         id = id,
         name = name,
@@ -961,6 +1151,7 @@ class FolderListContentTest {
         cover = null,
         isCoverFallback = false,
         resolvedMemberCount = resolved,
+        mediaCountsByType = mediaCountsByType,
         storedMemberCount = stored,
         hiddenMemberCount = hidden,
         storedMembershipCount = stored,
@@ -991,6 +1182,7 @@ class FolderListContentTest {
         albums: List<AlbumListItem> = emptyList(),
         initialAlbumSelectionId: Long? = null,
         favouritesAvailable: Boolean = false,
+        favouriteMedia: List<MediaItem> = emptyList(),
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         groupedAllMedia: Map<String, List<MediaItem>> = emptyMap(),
@@ -1000,6 +1192,7 @@ class FolderListContentTest {
     ) {
         // Held here, as the ViewModel holds it in the app.
         var albumSelectionId by remember { mutableStateOf(initialAlbumSelectionId) }
+        var albumsMediaTypes by remember { mutableStateOf(MediaType.entries.toSet()) }
 
         FolderListContent(
             uiState = uiState,
@@ -1008,7 +1201,7 @@ class FolderListContentTest {
             timelinePreferences = ViewPreferences.defaultFor(PreferenceScope.TIMELINE)
                 .copy(groupBy = GroupByType.NONE),
             albumsPreferences = ViewPreferences.defaultFor(PreferenceScope.ALBUMS)
-                .copy(viewType = albumsViewType),
+                .copy(viewType = albumsViewType, mediaTypes = albumsMediaTypes),
             searchQuery = "",
             isSearchActive = isSearchActive,
             isSelectionMode = isSelectionMode,
@@ -1019,8 +1212,8 @@ class FolderListContentTest {
             albums = albums,
             albumSelectionId = albumSelectionId,
             favouritesAvailable = favouritesAvailable,
-            favouriteMedia = emptyList(),
-            favouriteUris = emptySet(),
+            favouriteMedia = favouriteMedia,
+            favouriteUris = favouriteMedia.map { it.uri }.toSet(),
             isFavouritePending = false,
             groupedAllMedia = groupedAllMedia,
             isDestinationPickerActive = false,
@@ -1049,7 +1242,7 @@ class FolderListContentTest {
             onSetGroupByAndOrder = { _, _ -> },
             onSetColumnsCount = {},
             onSetViewType = {},
-            onSetSelectedMediaTypes = {},
+            onSetSelectedMediaTypes = { if (displayMode == DisplayMode.ALBUMS) albumsMediaTypes = it },
             onSetShowExcludedTemporarily = {},
             onSetCreateFolderDialogOpen = {},
             onStartManualAlbum = onStartManualAlbum,

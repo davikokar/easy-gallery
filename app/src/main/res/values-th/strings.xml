@@ -94,6 +94,8 @@
     <string name="menu_use_as_wallpaper">ตั้งเป็นวอลเปเปอร์</string>
     <string name="menu_change_folder_thumbnail">เปลี่ยนภาพขนาดย่อของโฟลเดอร์</string>
     <string name="thumbnail_picker_title">เลือกภาพขนาดย่อของโฟลเดอร์</string>
+    <string name="menu_change_album_thumbnail">เปลี่ยนภาพขนาดย่อของอัลบั้ม</string>
+    <string name="album_thumbnail_picker_title">เลือกภาพขนาดย่อของอัลบั้ม</string>
     <string name="wallpaper_app_not_found">ไม่มีแอปที่ตั้งวอลเปเปอร์ได้</string>
     <string name="menu_select_all">เลือกทั้งหมด</string>
     <string name="search_placeholder">ค้นหา...</string>
@@ -190,6 +192,10 @@
     <string name="automatic_album_clear_place">ล้างสถานที่ %1$s</string>
     <string name="automatic_album_clear_date">ล้างวันที่ %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
+    <string name="menu_album_info">ข้อมูลอัลบั้ม</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">ตั้งแต่ %1$s</string>
+    <string name="album_info_date_until">จนถึง %1$s</string>
     <string name="new_album_select_media">เลือกภาพถ่ายและวิดีโอสำหรับอัลบั้มนี้</string>
     <string name="favourites_title">รายการโปรด</string>
     <string name="cd_favourite_indicator">รายการโปรด</string>

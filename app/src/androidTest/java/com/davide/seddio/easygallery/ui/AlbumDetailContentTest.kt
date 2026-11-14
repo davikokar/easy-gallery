@@ -3,6 +3,9 @@ package com.davide.seddio.easygallery.ui
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -22,12 +25,15 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.platform.app.InstrumentationRegistry
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
+import com.davide.seddio.easygallery.data.AlbumRuleSummary
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
@@ -408,6 +414,290 @@ class AlbumDetailContentTest {
         }
     }
 
+    @Test
+    fun albumInfoIsTheLastItemOfTheMenu() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(albumRuleSummary = AlbumRuleSummary.Manual)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        val albumInfoTop = composeTestRule.onNodeWithTag("album_info_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        preferenceDialogs.forEach { (menuLabel, name) ->
+            val itemTop = composeTestRule.onNodeWithText(appContext.getString(menuLabel))
+                .fetchSemanticsNode().boundsInRoot.top
+            assertTrue("Album info must come after $name", albumInfoTop > itemTop)
+        }
+    }
+
+    @Test
+    fun albumInfoIsHiddenUntilTheAlbumIsKnown() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(albumRuleSummary = null)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onAllNodesWithTag("album_info_button").assertCountEquals(0)
+    }
+
+    @Test
+    fun albumInfoIsHiddenForFavouritesEvenWhenASummaryIsPassed() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                isFavouritesAlbum = true,
+                albumRuleSummary = AlbumRuleSummary.Manual
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onAllNodesWithTag("album_info_button").assertCountEquals(0)
+    }
+
+    @Test
+    fun albumInfoOpensTheDialogAndCloseDismissesIt() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(albumRuleSummary = AlbumRuleSummary.Manual)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule.onNodeWithTag("album_info_button").performClick()
+
+        composeTestRule.onNodeWithTag("album_info_content").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_info_manual").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("album_info_close_button").performClick()
+
+        composeTestRule.onAllNodesWithTag("album_info_content").assertCountEquals(0)
+    }
+
+    @Test
+    fun albumInfoShowsTheNewerAppNoticeForAnUnreadableRule() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                evaluationStatus = AlbumEvaluationStatus.UNEVALUATABLE,
+                albumRuleSummary = AlbumRuleSummary.Unreadable
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule.onNodeWithTag("album_info_button").performClick()
+
+        composeTestRule.onNodeWithTag("album_info_unreadable").assertIsDisplayed()
+    }
+
+    @Test
+    fun changeAlbumThumbnailComesAfterChangeViewTypeAndBeforeAlbumInfo() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                albumRuleSummary = AlbumRuleSummary.Manual
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        val viewTypeTop = composeTestRule
+            .onNodeWithText(appContext.getString(R.string.change_view_type_title))
+            .fetchSemanticsNode().boundsInRoot.top
+        val thumbnailTop = composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_album_thumbnail))
+            .fetchSemanticsNode().boundsInRoot.top
+        val albumInfoTop = composeTestRule.onNodeWithTag("album_info_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Change album thumbnail must follow Change view type", thumbnailTop > viewTypeTop)
+        assertTrue("Change album thumbnail must precede Album info", thumbnailTop < albumInfoTop)
+    }
+
+    @Test
+    fun changeAlbumThumbnailIsAbsentForFavourites() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = listOf(mediaItem), isFavouritesAlbum = true)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.change_view_type_title))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_album_thumbnail))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun changeAlbumThumbnailIsAbsentWhenTheAlbumShowsNoItems() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = emptyList())
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.change_view_type_title))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_album_thumbnail))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun changeAlbumThumbnailEntersThePickerOnce() {
+        var enterCalls = 0
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                onEnterAlbumCoverPicker = { enterCalls++ }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_album_thumbnail))
+            .performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals(1, enterCalls)
+        }
+    }
+
+    @Test
+    fun albumCoverPickerModeShowsPickerTopBarAndHidesSearchAndOverflow() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isAlbumCoverPickerMode = true
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.album_thumbnail_picker_title))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_search))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_back))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithTag("selected_checkmark", useUnmergedTree = true)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun albumCoverPickerTapDraftsTheItemAndBackArrowCommitsIt() {
+        var draft by mutableStateOf<Uri?>(null)
+        var commitCalls = 0
+        var exitCalls = 0
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isAlbumCoverPickerMode = true,
+                draftCoverUri = draft,
+                onSelectMedia = { draft = it.uri },
+                onCommitAlbumCoverPicker = { commitCalls++ },
+                onExitAlbumCoverPicker = { exitCalls++ }
+            )
+        }
+        composeTestRule
+            .onNodeWithTag("selected_checkmark", useUnmergedTree = true)
+            .assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("media_tile_$mediaUri").performClick()
+
+        composeTestRule
+            .onNodeWithTag("selected_checkmark", useUnmergedTree = true)
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_back))
+            .performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals(1, commitCalls)
+            assertEquals(0, exitCalls)
+        }
+    }
+
+    @Test
+    fun albumCoverPickerWithSavedCoverShowsCheckmarkAndCloseOnly() {
+        var commitCalls = 0
+        var exitCalls = 0
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isAlbumCoverPickerMode = true,
+                preselectedCoverUri = mediaUri,
+                onCommitAlbumCoverPicker = { commitCalls++ },
+                onExitAlbumCoverPicker = { exitCalls++ }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithTag("selected_checkmark", useUnmergedTree = true)
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_back))
+            .assertDoesNotExist()
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_exit_selection))
+            .performClick()
+
+        composeTestRule.runOnIdle {
+            assertEquals(0, commitCalls)
+            assertEquals(1, exitCalls)
+        }
+    }
+
+    @Test
+    fun albumCoverPickerLongPressDoesNotEnterSelectionMode() {
+        var selectionCalls = 0
+        var openedCalls = 0
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isAlbumCoverPickerMode = true,
+                onEnterMediaSelectionMode = { selectionCalls++ },
+                onSelectMedia = { openedCalls++ }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("media_tile_$mediaUri").performTouchInput { longClick() }
+
+        composeTestRule.runOnIdle {
+            assertEquals(0, selectionCalls)
+            assertEquals(0, openedCalls)
+        }
+    }
+
     // Menu label of each dialog, paired with the name the wrapper reports its commit under.
     private val preferenceDialogs = listOf(
         R.string.column_count_title to "columns",
@@ -498,6 +788,7 @@ class AlbumDetailContentTest {
         cover = null,
         isCoverFallback = false,
         resolvedMemberCount = resolved,
+        mediaCountsByType = MediaType.entries.associateWith { 0 } + (MediaType.IMAGE to resolved),
         storedMemberCount = stored,
         hiddenMemberCount = hidden,
         storedMembershipCount = stored,
@@ -509,14 +800,22 @@ class AlbumDetailContentTest {
         media: List<MediaItem> = emptyList(),
         hiddenMemberCount: Int = 0,
         evaluationStatus: AlbumEvaluationStatus = AlbumEvaluationStatus.MANUAL,
+        albumRuleSummary: AlbumRuleSummary? = null,
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         selectedMedia: List<MediaItem> = emptyList(),
         isFavouritesAlbum: Boolean = false,
+        isAlbumCoverPickerMode: Boolean = false,
+        draftCoverUri: Uri? = null,
+        preselectedCoverUri: Uri? = null,
         onBackToAlbums: () -> Unit = {},
         onRemoveSelectedFromAlbum: () -> Unit = {},
         onDeleteSelectedMedia: () -> Unit = {},
         onSelectMedia: (MediaItem) -> Unit = {},
+        onEnterMediaSelectionMode: (MediaItem) -> Unit = {},
+        onEnterAlbumCoverPicker: () -> Unit = {},
+        onExitAlbumCoverPicker: () -> Unit = {},
+        onCommitAlbumCoverPicker: () -> Unit = {},
         onCommitPreference: (String, PreferenceApplyTarget) -> Unit = { _, _ -> }
     ) {
         AlbumDetailContent(
@@ -524,6 +823,7 @@ class AlbumDetailContentTest {
             media = media,
             hiddenMemberCount = hiddenMemberCount,
             evaluationStatus = evaluationStatus,
+            albumRuleSummary = albumRuleSummary,
             preferences = ViewPreferences.defaultFor(PreferenceScope.ALBUM_DETAIL),
             searchQuery = "",
             isSearchActive = false,
@@ -553,9 +853,15 @@ class AlbumDetailContentTest {
             onPerformOperationWithPath = {},
             onCancelOperation = {},
             onSelectMedia = onSelectMedia,
-            onEnterMediaSelectionMode = {},
+            onEnterMediaSelectionMode = onEnterMediaSelectionMode,
             onDecreaseColumns = {},
             onIncreaseColumns = {},
+            isAlbumCoverPickerMode = isAlbumCoverPickerMode,
+            draftCoverUri = draftCoverUri,
+            preselectedCoverUri = preselectedCoverUri,
+            onEnterAlbumCoverPicker = onEnterAlbumCoverPicker,
+            onExitAlbumCoverPicker = onExitAlbumCoverPicker,
+            onCommitAlbumCoverPicker = onCommitAlbumCoverPicker,
             isFavouritesAlbum = isFavouritesAlbum
         )
     }

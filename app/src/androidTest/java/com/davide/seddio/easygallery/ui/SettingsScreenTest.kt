@@ -57,6 +57,14 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun settingsTopBarKeepsTheTitleAndHasNoBackButton() {
+        setSettingsContent()
+
+        composeTestRule.onAllNodesWithText("Settings").onFirst().assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Back").assertDoesNotExist()
+    }
+
+    @Test
     fun clickingManageExcludedCallsViewModel() {
         composeTestRule.setContent {
             SettingsScreen(

@@ -97,6 +97,8 @@
     <string name="menu_use_as_wallpaper">Ustaw jako tapetę</string>
     <string name="menu_change_folder_thumbnail">Zmień miniaturę folderu</string>
     <string name="thumbnail_picker_title">Wybierz miniaturę folderu</string>
+    <string name="menu_change_album_thumbnail">Zmień miniaturę albumu</string>
+    <string name="album_thumbnail_picker_title">Wybierz miniaturę albumu</string>
     <string name="wallpaper_app_not_found">Brak aplikacji do ustawienia tapety</string>
     <string name="menu_select_all">Zaznacz wszystko</string>
     <string name="search_placeholder">Szukaj…</string>
@@ -202,6 +204,10 @@
     <string name="automatic_album_clear_place">Wyczyść miejsce: %1$s</string>
     <string name="automatic_album_clear_date">Wyczyść datę: %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
+    <string name="menu_album_info">Informacje o albumie</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">Od %1$s</string>
+    <string name="album_info_date_until">Do %1$s</string>
     <string name="new_album_select_media">Wybierz zdjęcia i filmy do tego albumu</string>
     <string name="favourites_title">Ulubione</string>
     <string name="cd_favourite_indicator">Ulubione</string>

@@ -50,9 +50,10 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
 > **Album is not Folder.** An **Album** is a virtual, app-owned collection of references; an item
 > can belong to any number of Albums, and deleting an Album never deletes its media. A **folder**
 > is a filesystem / `MediaStore` container; each item belongs to one folder, and deleting the
-> folder deletes files. Folder pinning, exclusion, and thumbnail picking do not apply to Albums.
-> Display overrides do apply to Albums, as a separate **Per-album override** (ADR-0021), and never
-> share a store or a wording with the folder one.
+> folder deletes files. Folder pinning and exclusion do not apply to Albums, and the **Folder
+> thumbnail picker** is folder-only; an Album has its own **Album cover picker**. Display overrides
+> do apply to Albums, as a separate **Per-album override** (ADR-0021), and never share a store or a
+> wording with the folder one.
 
 ## Other screens
 
@@ -163,7 +164,9 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
     under the same `new_automatic_album_place_empty` / `new_automatic_album_date_empty` tags.
   Aliases: **automatic album picker**, **automatic album creation screen**
 - **Settings screen** (`SettingsScreen`): App preferences, language, support, legal, and the tip
-  jar. Its **Media index area** (`MediaIndexSettingsArea`, tagged `media_index_status_area`) reports
+  jar. Reached from the **Main view bar Settings destination**, which stays visible and selected
+  while it is shown. Its top bar shows the title "Settings" only, with no **Back button**: system
+  Back returns to Folders View, and a **Main view tab** leaves it. Its **Media index area** (`MediaIndexSettingsArea`, tagged `media_index_status_area`) reports
   current scan progress, items indexed with a date, two coverage rows, deferred items, and the last
   successful scan. It is the **only** place scan progress is measured and the **only** surface for
   the two library-wide coverage figures. The coverage rows follow the with-a-date row, in this
@@ -176,7 +179,8 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
   The **New automatic album screen** offers the same action in the **Index band** of its **Status
   area**, as an icon-only row, only while some media is not yet indexed.
 - **Manage excluded screen** (`ManageExcludedScreen`): Lists excluded folders so they can be
-  brought back.
+  brought back. Reached only from the Settings screen; it hides the **Main view bar**, and its
+  back arrow and system Back return to the Settings screen.
 - **Permission denied screen** (`PermissionDeniedScreen`, in `MainActivity.kt`): The message and
   retry action shown when media access is refused.
 
@@ -213,8 +217,11 @@ A view shows exactly one top bar at a time. The order it resolves in is given pe
   Albums View. Carries Rename and Delete; Favourites cannot enter this mode.
 - **Album media selection top bar** (`AlbumMediaSelectionTopBar`): Shown while media items are
   multi-selected in Album Detail View. Carries album membership and media actions.
-- **Thumbnail picker top bar** (`ThumbnailPickerTopBar`): Shown while the Folder thumbnail picker
-  is open in Folder Detail View. Takes precedence over both selection bars.
+- **Thumbnail picker top bar** (`ThumbnailPickerTopBar`): The one top bar of both pickers: the
+  **Folder thumbnail picker** in Folder Detail View (title "Choose folder thumbnail", the default)
+  and the **Album cover picker** in Album Detail View (title "Choose album thumbnail", passed in).
+  Close with no draft, a back arrow once a draft exists. Takes precedence over the browse and
+  selection bars in both views.
 
 Shared parts:
 
@@ -226,28 +233,36 @@ Shared parts:
 
 ## Main view bar
 
-- **Main view bar** (`MainViewBar`, tagged `main_view_bar`): The persistent three-tab bar at the
-  bottom of the screen that switches between Folders View, Albums View, and Timeline View. It
-  replaced the title dropdown (ADR-0013 Amendment 2), which no longer exists; the top bar's title
-  is now the app name. Stateless: the caller passes
-  `selectedTab` and `onTabSelected`. Never call it the "bottom bar" (that is the **Viewer bottom
+- **Main view bar** (`MainViewBar`, tagged `main_view_bar`): The persistent four-item bar at the
+  bottom of the screen: three **Main view tabs** that switch between Folders View, Albums View, and
+  Timeline View, then the **Main view bar Settings destination**. It replaced the title dropdown
+  (ADR-0013 Amendment 2), which no longer exists; the top bar's title is now the app name.
+  Stateless: the caller passes `selectedTab` (null on the Settings screen), `isSettingsSelected`,
+  `onTabSelected` and `onSettingsClick`. Never call it the "bottom bar" (that is the **Viewer bottom
   bar**) or the "navigation bar" (that is the system bar directly beneath it); it pads itself for
   the system navigation bar and the side insets.
 - **Main view tab** (`MainViewTab`; tagged `main_view_tab_folders`, `main_view_tab_albums`,
-  `main_view_tab_timeline`): One tab of the bar — an icon over a one-line label, reusing the
-  titles Folders, Albums and Timeline. Always in that order, which is not `DisplayMode` order. The
-  selected tab has a tinted pill behind its icon and is exposed to accessibility as a selected
-  tab. Tapping the selected tab still calls back.
-- **Main view bar Settings button** (tagged `main_view_settings_button`): The fourth, rightmost
-  item of the bar — a Settings icon over the Settings title. It is a button, not a tab: it never
-  shows as selected and opens the Settings screen. It replaced the Settings item in the **Browse
-  top bar**'s Overflow menu, which no longer has one.
-- The bar is **shown** on Folders View, Albums View, Timeline View, Folder Detail View, and
-  Album Detail View (including Favourites), and stays visible during selection and search; a tab
-  tap cancels both and switches. It is **hidden** on the Full-screen viewer, the Folder thumbnail
-  picker, the New album screen, the New automatic album screen, the Settings screen, the Manage
-  excluded screen, and the Permission denied screen. On a detail screen the selected tab is the
-  main view that owns it: Folders for Folder Detail View, Albums for Album Detail View.
+  `main_view_tab_timeline`): One of the three view-switching items of the bar — an icon over a
+  one-line label, reusing the titles Folders, Albums and Timeline. Always in that order, which is
+  not `DisplayMode` order. The selected tab has a tinted pill behind its icon and is exposed to
+  accessibility as a selected tab. Tapping the selected tab still calls back. The Settings
+  destination is not a Main view tab, even though it is drawn and announced the same way.
+- **Main view bar Settings destination** (tagged `main_view_settings_button`): The fourth,
+  rightmost item of the bar — a Settings icon over the Settings title. It is a destination, not a
+  view: it opens the **Settings screen**, which is not a `DisplayMode` and not one of the five main
+  views. It is selectable. It shows as selected while the Settings screen is shown, and then no
+  Main view tab is selected. Tapping it behaves like a tab tap: it cancels selections and search,
+  leaves any detail screen, switches to Folders View, and opens the Settings screen. A Main view
+  tab tap while on Settings leaves Settings. It replaced the Settings item in the **Browse top
+  bar**'s Overflow menu, which no longer has one. Aliases: **bar Settings item** (it was the
+  **Main view bar Settings button** before ADR-0013 Amendment 3; the test tag keeps "button")
+- The bar is **shown** on Folders View, Albums View, Timeline View, Folder Detail View, Album
+  Detail View (including Favourites), and the Settings screen, and stays visible during selection
+  and search; a tab tap cancels both and switches. It is **hidden** on the Full-screen viewer, the
+  Folder thumbnail picker, the Album cover picker, the New album screen, the New automatic album
+  screen, the Manage excluded screen, and the Permission denied screen. On a detail screen the selected tab is the
+  main view that owns it: Folders for Folder Detail View, Albums for Album Detail View. On the
+  Settings screen the selected item is the Settings destination and no tab is.
 
 ## Folders View
 
@@ -284,7 +299,7 @@ Shared parts:
   interactive **Favourite heart** action in the Full-screen viewer or selection overflow menus.
 - **Duration badge**: The running time drawn on a video's Media tile.
 - **Folder thumbnail picker**: The mode, entered from the browse overflow menu, in which tapping
-  an item chooses the folder's cover. It is **draft and commit**: a tap only drafts, the top-bar
+  an item chooses the folder's thumbnail (its **Folder thumbnail override**). It is **draft and commit**: a tap only drafts, the top-bar
   icon swaps from Close to a back arrow once a draft exists, the back arrow commits, and Close
   cancels. The current override is pre-selected for display only and is never re-committed by
   backing out (ADR-0007, Amendments 1 and 2).
@@ -300,7 +315,10 @@ Shared parts:
   list. Both are tagged `album_tile_<id>`.
 - **Album cover** (`AlbumCover`): The media thumbnail representing an Album. It is selected at
   random when the Album first gains a member and persisted; removing that member reselects it.
-  Empty or fully unavailable Albums show the placeholder. There is no Album cover picker.
+  Empty or fully unavailable Albums show the placeholder. The user can replace it in Album Detail
+  View through the **Change album thumbnail item** and the **Album cover picker**; the random
+  cover is only the initial value. An Album with no saved cover, such as a rule-only Automatic
+  album, shows a display-only fallback until one is chosen, and nothing is persisted by showing it.
 - **Add album button** (tagged `add_album_button`): The circular bottom-right Albums View
   control that opens the **Album type dialog**. It is shown only in Albums View while
   **Album selection mode** is not active, and mirrors the **New album** overflow action.
@@ -313,6 +331,17 @@ Shared parts:
 - **Favourites** (`FavouritesAlbumGridItem`, `FavouritesAlbumListItem`): The fixed, system-backed
   collection of media marked with `MediaStore.IS_FAVORITE`. It cannot be created, renamed, or
   deleted, and is unavailable on API 28–29.
+- **Filter media in Albums View**: The same **Filter media dialog** as elsewhere, reached from the
+  **Browse top bar**'s Overflow menu. It chooses which media types are *counted* on each **Album
+  tile** and **Album row**, and it hides an Album it empties: an Album with no items of the chosen
+  types is hidden, but only if it had items without the filter — a naturally empty Album stays
+  visible, showing 0. The **Search field** hides Albums by name as well. **Favourites** is never
+  hidden by the filter (it still follows the **Search field** and API availability): its count
+  follows the filter, but its **Album cover** does not. No **Album cover** is changed by the
+  filter. **Size** sorts by the filtered count. When the filter alone leaves no Albums, the grid or
+  list is blank and the "No albums yet" empty state is **not** shown; that state appears only when
+  there are no Albums before the filter is applied. Albums View's Overflow menu has no Show
+  excluded item.
 
 > **Favourite is not Pinned.** **Favourite / Unfavourite** marks individual media items and
 > controls Favourites. **Pin / Unpin** only changes the ordering of folders in Folders View. Never
@@ -350,6 +379,48 @@ Shared parts:
   In Album Detail View they stack as separate notices, the **Newer-app notice** first and the
   **Hidden-members notice** last. On the tile and row the **Newer-app notice** is also announced as
   the tile's state description, because its content description is the Album name alone.
+- **Album info item** (tagged `album_info_button`): The last item of the **Browse top bar**'s
+  Overflow menu in Album Detail View, labelled "Album info" and carrying the `Description` icon (not
+  `Info`, which is the top bar's caption toggle). It is shown only once the Album is known and never
+  for Favourites, which has no rule. For an Automatic album whose rule has a place clause it is also
+  hidden until the country names have loaded; if they fail to load it is shown anyway, and the
+  dialog names countries by their code. No other view's Overflow menu has it, Folder Detail View's
+  included. It opens the **Album info dialog**.
+- **Album info dialog** (`AlbumInfoDialog`): A read-only dialog titled "Album info", with a **Close**
+  button (tagged `album_info_close_button`), that says what defines the open Album. Its content is
+  tagged `album_info_content` and is one of three forms. A **Manual album** shows the existing
+  Manual album title and description (`album_info_manual`). An **Automatic album** shows the
+  Automatic album heading (`album_info_automatic_heading`), then a **Place** entry
+  (`album_info_place`) and a **Date** entry (`album_info_date`), each a label above its values and
+  each present only if the rule has such a condition, Place first. A country reads "All of Italy",
+  a region "All of Lombardy, Italy", a single place "Milan, Lombardy, Italy". Years and months
+  read "2026" and "December 2025", newest first, one per line; a day is a medium-length date, and
+  the other periods read "From …", "Until …" and "… – …". An unreadable rule shows the
+  **Newer-app notice** wording (`album_info_unreadable`) and never the stored text. It describes
+  the rule only; the rule cannot be edited from it (albums.md §8 decision 26).
+- **Change album thumbnail item** (`R.string.menu_change_album_thumbnail`; the `Image` icon): The
+  item of the **Browse top bar**'s Overflow menu in Album Detail View, placed after Change view type
+  and before the **Album info item**. It enters the **Album cover picker**. It is shown only for an
+  Album that is known and currently shows at least one item, and never for Favourites, which has no
+  row in the album database to hold a cover and keeps its automatic one. The word "thumbnail"
+  appears only in this item's label and in the **Album cover picker**'s title; the thing it sets is
+  the **Album cover**, and that is the term to use everywhere else (albums.md §8 decision 32).
+  **Folder thumbnail** is a separate term for a separate thing, stored differently (ADR-0007, not
+  ADR-0015); it is not an alias of **Album cover**, and the two are not interchangeable.
+- **Album cover picker**: The mode, entered from the **Change album thumbnail item**, in which tapping
+  an item chooses the Album's **Album cover**. It has the **Folder thumbnail picker**'s interaction
+  (ADR-0007 Amendments 1 and 2): a tap only drafts and never opens the viewer; the **Thumbnail picker
+  top bar** (title "Choose album thumbnail") shows Close with no draft and a back arrow once a draft
+  exists; the back arrow and system Back with a draft commit it; Close and system Back without a
+  draft write nothing; long-press does nothing. The draft, and the Album's saved cover as a
+  pre-selection, are drawn with the **Selection checkmark**; only the saved cover is pre-selected,
+  never the display-only fallback. Picking a rule-matched item pins it as a manual addition
+  (ADR-0015 Amendment 1). There is no reset to a random or automatic cover.
+- **Album cover picker mode** (`AlbumsViewModel.isAlbumCoverPickerMode`): The state in which the
+  **Album cover picker** is open. The **Thumbnail picker top bar** replaces the **Browse top bar**
+  and the **Album media selection top bar**, so the **Search button** and the Overflow menu are
+  absent; the **Main view bar** is hidden; entering it leaves media selection mode. Leaving Album
+  Detail View clears it.
 - **Add to album** (`AddToAlbumDialog`): Add the selected media references to an existing Album, or
   start creating a new Album. This never copies or moves files.
 - **Remove from album**: Remove selected media references from the current Album without deleting
@@ -387,6 +458,7 @@ Shared parts:
   trail across the top, and the **Browser row** (`FolderBrowserItem`), one subdirectory.
 - **Media properties dialog** (`MediaPropertiesDialog`): Name, size, date, and — for a single
   item only — GPS.
+- **Album info dialog** (`AlbumInfoDialog`): The rule behind the open Album; see Album Detail View.
 - **Folder properties dialog** (`PropertiesDialog`, in `ui/FolderDialogs.kt`): The properties of
   one or more selected **folders**. A different dialog from the Media properties dialog; never
   call either one just "the properties dialog".
@@ -445,7 +517,10 @@ OK is pressed (ADR-0006).
 - **Excluded folder row** (`ExcludedFolderItem`): One excluded folder, with the control that
   brings it back.
 - **Show excluded**: The browse overflow item that reveals excluded folders temporarily. It is
-  deliberately transient and is never persisted.
+  deliberately transient and is never persisted. It exists in the Overflow menu of Folders View
+  and Timeline View only; Folder Detail View and Albums View have none. Folder Detail View has none
+  because the item reveals whole folders, which belongs to Folders View (the list of folders) and
+  not inside one folder (the maintainer's reason).
 
 ## Preference scopes
 
@@ -477,7 +552,8 @@ These are mutually exclusive and clearing them is bidirectional. Entering one mu
 - **Album selection mode**: One Album is selected for Rename or Delete in Albums View. Favourites
   cannot enter it.
 - **Album media selection mode**: Media items are multi-selected in Album Detail View.
-- **Thumbnail picker mode**: The folder cover is being chosen in Folder Detail View.
+- **Thumbnail picker mode**: The **Folder thumbnail** is being chosen in Folder Detail View. The Album
+  equivalent is the **Album cover picker mode**, owned by `AlbumsViewModel`.
 - **Immersive mode**: Viewer chrome is hidden. This one is a viewer state, not a selection mode.
 
 ## Interaction language
@@ -485,7 +561,7 @@ These are mutually exclusive and clearing them is bidirectional. Entering one mu
 - **Open**: Navigate to a screen or view, or reveal a menu or dialog.
 - **Select**: Add a folder or media item to the current multi-selection.
 - **Pick**: Choose a single thing that is then committed, as in the Folder thumbnail picker, the
-  Destination picker, or the **Place picker** and **Date picker**.
+  Album cover picker, the Destination picker, or the **Place picker** and **Date picker**.
 - **Pin** / **Unpin**: Move a folder to the top of Folders View, and undo that.
 - **Favourite** / **Unfavourite**: Add or remove a media item from the system-backed Favourites
   collection. Never use these words for pinning folders.

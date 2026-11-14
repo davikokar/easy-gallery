@@ -94,6 +94,8 @@
     <string name="menu_use_as_wallpaper">Đặt làm hình nền</string>
     <string name="menu_change_folder_thumbnail">Đổi hình thu nhỏ của thư mục</string>
     <string name="thumbnail_picker_title">Chọn hình thu nhỏ của thư mục</string>
+    <string name="menu_change_album_thumbnail">Đổi hình thu nhỏ của album</string>
+    <string name="album_thumbnail_picker_title">Chọn hình thu nhỏ của album</string>
     <string name="wallpaper_app_not_found">Không có ứng dụng nào để đặt hình nền</string>
     <string name="menu_select_all">Chọn tất cả</string>
     <string name="search_placeholder">Tìm kiếm…</string>
@@ -190,6 +192,10 @@
     <string name="automatic_album_clear_place">Xóa địa điểm %1$s</string>
     <string name="automatic_album_clear_date">Xóa ngày %1$s</string>
     <string name="automatic_album_month_year">%1$s %2$d</string>
+    <string name="menu_album_info">Thông tin album</string>
+    <string name="album_info_date_range">%1$s – %2$s</string>
+    <string name="album_info_date_from">Từ %1$s</string>
+    <string name="album_info_date_until">Đến %1$s</string>
     <string name="new_album_select_media">Chọn ảnh và video cho album này</string>
     <string name="favourites_title">Mục yêu thích</string>
     <string name="cd_favourite_indicator">Yêu thích</string>

@@ -1770,4 +1770,105 @@ class GalleryViewModelTest {
         assertFalse(viewModel.isSearchActive(PreferenceScope.TIMELINE).value)
         assertEquals("", viewModel.searchQuery(PreferenceScope.TIMELINE).value)
     }
+
+    @Test
+    fun `selectMainView leaves settings`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.selectSettings()
+
+        viewModel.selectMainView(DisplayMode.TIMELINE)
+
+        assertFalse(viewModel.isSettingsMode.value)
+        assertEquals(DisplayMode.TIMELINE, viewModel.displayMode.value)
+    }
+
+    @Test
+    fun `selectSettings opens settings over folders view`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.selectMainView(DisplayMode.ALBUMS)
+
+        viewModel.selectSettings()
+
+        assertTrue(viewModel.isSettingsMode.value)
+        assertEquals(DisplayMode.FOLDERS, viewModel.displayMode.value)
+    }
+
+    @Test
+    fun `back from settings lands on folders view`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.selectMainView(DisplayMode.TIMELINE)
+        viewModel.selectSettings()
+
+        viewModel.setSettingsMode(false)
+
+        assertFalse(viewModel.isSettingsMode.value)
+        assertEquals(DisplayMode.FOLDERS, viewModel.displayMode.value)
+    }
+
+    @Test
+    fun `selectSettings cancels folder and media selection`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.enterSelectionMode("/storage/emulated/0/Pictures")
+        viewModel.enterMediaSelectionMode(createMediaItem(mockUri1, "/storage/emulated/0/Pictures"))
+
+        viewModel.selectSettings()
+
+        assertFalse(viewModel.isSelectionMode.value)
+        assertTrue(viewModel.selectedFolders.value.isEmpty())
+        assertFalse(viewModel.isMediaSelectionMode.value)
+        assertTrue(viewModel.selectedMediaItems.value.isEmpty())
+    }
+
+    @Test
+    fun `selectSettings closes search in every scope and clears the queries`() = runTest {
+        val viewModel = createViewModel()
+        PreferenceScope.entries.forEach { scope ->
+            viewModel.setSearchActive(true, scope)
+            viewModel.setSearchQuery("beach", scope)
+        }
+
+        viewModel.selectSettings()
+
+        PreferenceScope.entries.forEach { scope ->
+            assertFalse("search active in $scope", viewModel.isSearchActive(scope).value)
+            assertEquals("query in $scope", "", viewModel.searchQuery(scope).value)
+        }
+    }
+
+    @Test
+    fun `selectSettings clears show excluded`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.setShowExcludedTemporarily(true)
+
+        viewModel.selectSettings()
+
+        assertFalse(viewModel.showExcludedTemporarily.value)
+    }
+
+    @Test
+    fun `selectSettings leaves Folder Detail and its thumbnail picker`() = runTest {
+        val folderPath = "/storage/emulated/0/Pictures/Camera"
+        val folder = Folder(name = "Camera", imageCount = 1, thumbnailUri = mockUri1, path = folderPath)
+        repository.mediaItems = listOf(createMediaItem(mockUri1, folderPath))
+        val viewModel = createViewModel(folderThumbnailStore = InMemoryFolderThumbnailStore())
+        viewModel.selectFolder(folder)
+        viewModel.enterThumbnailPickerMode()
+
+        viewModel.selectSettings()
+
+        assertNull(viewModel.selectedFolder.value)
+        assertFalse(viewModel.isThumbnailPickerMode.value)
+        assertTrue(viewModel.isSettingsMode.value)
+    }
+
+    @Test
+    fun `selectSettings while on settings stays on settings`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.selectSettings()
+
+        viewModel.selectSettings()
+
+        assertTrue(viewModel.isSettingsMode.value)
+        assertEquals(DisplayMode.FOLDERS, viewModel.displayMode.value)
+    }
 }

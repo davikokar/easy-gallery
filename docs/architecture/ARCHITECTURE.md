@@ -52,15 +52,21 @@ grouping and selection machinery. Albums View joined them rather than becoming a
 **[ADR-0013](decisions/0013-albums-as-third-display-mode.md)**. Folder Detail View and Album
 Detail View are separate screens.
 
-The **Main view bar** (`MainViewBar`) switches between those three modes: three tabs at the bottom of the
-screen, in the order Folders, Albums, Timeline — deliberately not `DisplayMode.entries` order. It
-is shown on all five main views, including during selection and search, and hidden on every other
-screen and on the Folder thumbnail picker; a tab tap cancels every selection and search and leaves
-any detail screen before switching. It replaced the title dropdown, which no longer exists, and the
-three main views' title is now the app's name beside its logo —
-**[ADR-0013](decisions/0013-albums-as-third-display-mode.md)** Amendment 2. Where it sits is in
-§4. Pressing back from Timeline or Albums View returns to Folders View rather than leaving the app,
-and tab taps add no history.
+The **Main view bar** (`MainViewBar`) switches between those three modes and opens Settings: three
+tabs at the bottom of the screen, in the order Folders, Albums, Timeline — deliberately not
+`DisplayMode.entries` order — then a fourth item, **Settings**, which is a destination but neither a
+main view nor a `DisplayMode`. It is shown on all five main views, including during selection and
+search, and on the Settings screen, where the Settings item is selected and no tab is. It is hidden
+in the full-screen viewer, on the Folder thumbnail picker and the Album cover picker — the
+draft-and-commit modes of the two detail views — on the New album and New automatic album
+screens, on the Manage excluded screen and on the Permission denied screen. A tap on any of its four
+items cancels every selection and search and leaves any detail screen before switching. It replaced
+the title dropdown, which no longer exists, and the three main views' title is now the app's name
+beside its logo — **[ADR-0013](decisions/0013-albums-as-third-display-mode.md)** Amendment 2;
+Settings as a destination is its Amendment 3, and the Album cover picker joined the hidden list with
+**[ADR-0015](decisions/0015-album-cover-persisted-random-member.md)** Amendment 1. Where it sits is in §4. Pressing back from Timeline
+View, Albums View or the Settings screen returns to Folders View rather than leaving the app, and
+taps on the bar add no history.
 
 > **Naming debt:** `FolderListScreen` and `CalendarGrid` predate the canonical names, and
 > `FolderListScreen` now hosts three views rather than two, which makes its name worse than it
@@ -90,7 +96,8 @@ counts filtered by the other's choice — then writes one row whose `rule` holds
 membership rows. Nothing is written until Create.
 **[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)** Amendment 2 owns the
 screen and why it is a screen of its own; its draft and lists live in `AutomaticAlbumPickerState` (§3). A rule
-cannot be edited once written ([albums.md](../design/albums.md) §8 decision 26; §11). Each picker
+cannot be edited once written, only read, in Album Detail View's **Album info dialog**
+([albums.md](../design/albums.md) §8 decisions 26 and 31; §11). Each picker
 list opens with a collapsible **Status area** — a header and its collapse control over the **Index
 band**, and nothing else. The Index band is read from `MediaIndexingViewModel` rather than from the
 picker's state (§3) and is drawn only while a pass runs or some live media is not yet indexed;
@@ -197,10 +204,11 @@ below every property it reads, or the class does not compile. Do not work around
 | `EasyGalleryDatabase.kt` | The album Room database: two entities, schema version 1, `exportSchema = true`. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
 | `AlbumEntities.kt` | `AlbumEntity`, `AlbumMembershipEntity`, `AlbumMembershipKind`, and its type converter. |
 | `AlbumDao.kt` | The album DAO. UI-facing queries return `Flow`. |
-| `AlbumStore.kt` | `AlbumStore` plus `RoomAlbumStore` and `InMemoryAlbumStore`, and the `StoredAlbum` model. |
+| `AlbumStore.kt` | `AlbumStore` plus `RoomAlbumStore` and `InMemoryAlbumStore`, and the `StoredAlbum` model. Besides ADR-0015's two automatic cover writes — first member added, cover's item removed — it carries the user's pick ([ADR-0015](decisions/0015-album-cover-persisted-random-member.md) Amendment 1): `setCover` points `coverMembershipId` at an addition row of that album and otherwise writes nothing, which is the write-path guard the schema cannot express; `setCoverToMedia`, for a rule match, finds or inserts the album's addition row for a `MediaIdentity` and points the cover at it in one transaction. |
 | `AlbumMembership.kt` | Pure, Android-free membership resolution and healing — direct URI match, then healing key, then orphan — through `LiveMediaLookup` in `MediaIdentity.kt`. It returns resolved additions and exclusions separately, which is what rule evaluation composes with. |
 | `AlbumRule.kt` | The rule model of **[ADR-0017](decisions/0017-composable-album-rule-representation.md)**: `AlbumRule.Evaluatable`, a non-empty conjunction of clauses; `AlbumRule.Unevaluatable`, which keeps the stored text verbatim with an `UnevaluatableReason`; the `time` clause as inclusive calendar-date bounds (Amendment 1); and the `region` clause of **Amendment 2** — a country, optionally an admin1 code with its name, optionally a place name, stamped with the gazetteer `dataset` it was written against. A `region` value can be built only for the current `PLACE_RESOLVER_VERSION`. A `NULL` column is a manual album and has no `AlbumRule` at all. |
 | `AlbumRuleJson.kt` | The strict, hand-written reader and writer for `albums.rule`. Anything it does not fully understand becomes `Unevaluatable` and `parse` never throws — a `region` clause stamped with another dataset is `UNKNOWN_DATASET`; `encode` takes `Evaluatable` only, so an unevaluatable rule cannot be re-encoded, and escapes every string it writes so the stored rule is plain ASCII. Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is approved. |
+| `AlbumRuleSummary.kt` | `summarizeAlbumRule` — pure, read-only summary of an album's stored rule for the Album info dialog: `Manual` for no rule; `Unreadable` for an unevaluatable one, carrying neither its text nor its reason so the stored text cannot reach the screen; or `Automatic`, a list of place and date conditions, places in stored order and dates newest period first, each `time` clause named as a year, month, day or range. It holds no app string, and the caller supplies country names. It also owns `placeNames` and `placeChoiceLabel`, which the New automatic album screen's choice chips share. |
 | `AlbumRuleEvaluation.kt` | `AlbumRuleEvaluator` — pure evaluation of `(rule matches ∪ additions) − exclusions` over a `MediaIndexLiveJoin`, in a zone the caller passes in, writing nothing back — and `AlbumEvaluationStatus`: `MANUAL`, `COMPLETE`, `WAITING_ON_INDEX` and `UNEVALUATABLE`. Each clause answers per item whether it matches and whether that answer is **settled**, ADR-0017 Amendment 2's rule: a pending row matches provisionally on its old place values, and an item makes the album wait only when some clause is unsettled and none is a settled no-match. An overload takes memberships already resolved, so `AlbumsViewModel` resolves each album once. |
 | `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories, and `LiveMediaLookup` — the one lookup of a stored identity against live media, direct URI then healing key, with the URI key injectable: raw for album memberships, canonical for the index join. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. Membership resolution, rule evaluation and index reconciliation all use the lookup — reconciliation with the canonical key (§11 has why). |
 | `MediaIndexDatabase.kt` | The media index Room database: two entities, schema version 4, `exportSchema = true`, with `MIGRATION_1_2`, `MIGRATION_2_3` and `MIGRATION_3_4` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker — see §6. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
@@ -232,11 +240,11 @@ below every property it reads, or the class does not compile. Do not work around
 There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 (`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
 `AlbumMembership`, `MediaIdentity`, `AlbumRule`, `AlbumRuleJson`, `AlbumRuleEvaluation`,
-`MediaIndexLiveJoin`, `AutomaticAlbumFacets`, `MediaIndexDeltaDetection`,
+`AlbumRuleSummary`, `MediaIndexLiveJoin`, `AutomaticAlbumFacets`, `MediaIndexDeltaDetection`,
 `MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`, `AlbumNaming`,
-`Favourites`) and in `ui/components/` helper files (`MediaDuration`, `ShareIntents`,
-`WallpaperIntents`, `MainViewBarRules`) specifically so it can be unit tested on a plain JVM
-without Robolectric.
+`Favourites`), in `ui/AlbumListFiltering.kt`, and in `ui/components/` helper files
+(`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`) specifically so it can
+be unit tested on a plain JVM without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
 the `AlbumMembership` precedent `MediaIndexReconciliation` follows.
 
@@ -252,8 +260,12 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   app; prefer a new state holder or a feature ViewModel over adding to its body.
   - `selectMainView(mode)` is its half of a Main view bar tab tap: it exits folder and media
     selection, leaves Folder Detail View by `backToFolders()`, closes search in all five scopes
-    through `DisplayPreferencesState.closeAllSearches()`, clears Show excluded, and sets the
-    `DisplayMode`. The other halves are in `AlbumsViewModel` and `MainActivity` (§4).
+    through `DisplayPreferencesState.closeAllSearches()`, clears Show excluded, sets the
+    `DisplayMode`, and clears `isSettingsMode`, because a tab tap can arrive from the Settings
+    screen. `selectSettings()` is its half of a tap on the bar's Settings item: the same
+    cancellations, then the `DisplayMode` set to Folders and `isSettingsMode` set, so that Back from
+    Settings stays the single `setSettingsMode(false)` and lands on Folders View. The other halves
+    are in `AlbumsViewModel` and `MainActivity` (§4).
   - `allMedia` starts as an `emptyList()` placeholder, so `isMediaLoaded` says whether it is real:
     false until `loadFolders()` has assigned the first result of `getAllMedia()`, never reset by a
     later reload, and still false if that first load throws. **Anything that must not read the
@@ -273,8 +285,8 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   memberships against the live media list it is handed, writes healed URIs and orphan flags back,
   and owns `selectedAlbumId` — the open Album Detail View — and `albumSelectionId`, the Album
   long-pressed in Albums View's Album selection mode. The second was a `remember` inside
-  `FolderListContent` until the Main view bar, which must cancel it from `MainActivity`; a tab tap
-  clears both through `cancelAlbumSelectionAndDetail()`. It also owns the
+  `FolderListContent` until the Main view bar, which must cancel it from `MainActivity`; a tap on
+  any bar item, Settings included, clears both through `cancelAlbumSelectionAndDetail()`. It also owns the
   `MediaStore.getVersion()` watermark that decides
   when a re-resolve is worth doing. It takes a `MediaIndexStore` and evaluates each album's stored
   rule through `AlbumRuleEvaluator`, publishing an `AlbumEvaluationStatus` per album:
@@ -290,13 +302,34 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   - It runs on an injected `CoroutineDispatcher` — `Dispatchers.Default` in production, so off the
     main thread — and reads the zone through an injected provider at each evaluation rather than
     caching it, because the user can change the device zone while the app lives.
-  - `AlbumListItem` carries the status beside the member counts, and nothing about coverage or
-    location access. Only `UNEVALUATABLE` is drawn, as the Newer-app notice; `WAITING_ON_INDEX` is
+  - `AlbumListItem` carries the status beside the member counts — among them
+    `mediaCountsByType`, the resolved members per `MediaType`, from which Albums View's media-type
+    filter counts (§5) — and nothing about coverage or location access. Only `UNEVALUATABLE` is drawn, as the Newer-app notice; `WAITING_ON_INDEX` is
     still computed and published, but no tile, row or Album Detail View shows it
     ([albums.md](../design/albums.md) §8 decision 29;
     [ADR-0017](decisions/0017-composable-album-rule-representation.md) Amendment 3; §11).
   - `createAutomaticAlbum(name, rule)` encodes an `Evaluatable` rule and writes the album row with
     it and no membership rows — the first shipped path that writes `albums.rule` (§6).
+  - `selectedAlbumRule` is the open Album's stored rule as last read at evaluation — null for a
+    manual album and while none is open. Its one reader is `AlbumDetailScreen`, which summarises it
+    through `summarizeAlbumRule` for the **Album info dialog**. Country names come from
+    `GazetteerAssets.loadNames` on `Dispatchers.IO`, and only for a rule with a place clause; a
+    load failure falls back to the country code. Until the album is known — and, for such a rule,
+    until that load has finished — `AlbumDetailContent` gets no summary and the menu has no Album
+    info item; Favourites never has one.
+  - **The Album cover picker**
+    ([ADR-0015](decisions/0015-album-cover-persisted-random-member.md) Amendment 1), Album Detail
+    View's draft-and-commit mode, ViewModel-owned under ADR-0002 and held here, not in
+    `GalleryViewModel`:
+    `isAlbumCoverPickerMode`, `albumCoverDraftUri` — only what was tapped this session — and
+    `albumCoverPreselectedUri`, the saved cover when its membership resolves to a member and never a
+    display-only fallback. `enterAlbumCoverPicker` does nothing with no Album open, so Favourites
+    never enters it; `setAlbumCoverDraft` only drafts; `exitAlbumCoverPicker` writes nothing.
+    `commitAlbumCoverDraft` writes only if the draft is still a member of the open Album, through
+    `AlbumStore.setCover` when it has a membership row and `setCoverToMedia` when it is a rule match
+    (§6). All three are cleared whenever the open Album changes or disappears, on its deletion, and
+    by `cancelAlbumSelectionAndDetail()`. The screen exits `GalleryViewModel`'s media selection
+    before entering the mode, and long-press does nothing while it is open.
   - **Per-album display overrides**
     ([ADR-0021](decisions/0021-per-album-display-preference-overrides.md)). It holds a second
     `FolderViewPreferencesState`, over `album_display_preferences` (§6), and publishes its map as
@@ -396,25 +429,40 @@ signature change breaks them loudly, by design.
 
 ### `ui/components/`
 
-Top bars (`SearchTopBar`, `SelectionTopBar`, `MediaSelectionTopBar`, `ThumbnailPickerTopBar`),
+Top bars (`SearchTopBar`, `SelectionTopBar`, `MediaSelectionTopBar`, and `ThumbnailPickerTopBar`,
+shared by the Folder thumbnail picker and the Album cover picker, which passes its own title),
 dialogs (`ColumnCountDialog`, `SortOptions`, `GroupByDialog`, `FilterMediaDialog`,
-`CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`), the `PreferenceScopeSelector`
+`CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`, and the read-only
+`AlbumInfoDialog`), the `PreferenceScopeSelector`
 state holder those dialogs share for their draft-and-commit "apply only to this folder" or "this
 album" target — its `PreferenceContainer` chooses the wording only, and both commit the same
 `PreferenceApplyTarget` —
 media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `ZoomableImage`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
 helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, plus
-`MediaLocationUi` and `VideoPlaybackState`, which are Compose-bound).
+`MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
+is the one formatter for years and months, shared by the New automatic album screen and the Album
+info dialog.
 
-`MainViewBar` is stateless — it takes the selected tab and a tap callback — and draws its own fixed
-colours rather than theme roles. `MainViewBarRules` holds the pure decisions `MainActivity` makes
-about it: which screen the chain is showing, whether the bar shows there, which tab is selected,
-and each tab's `DisplayMode` (§4).
+`MainViewBar(selectedTab: MainViewTab?, isSettingsSelected: Boolean, onTabSelected, onSettingsClick)`
+is stateless: the caller derives which item is selected — a tab, or Settings, in which case
+`selectedTab` is null — and decides what each tap does, a re-tap included. `MainViewTab` names the
+three tabs only, because Settings is not a view. The bar draws its own fixed colours rather than
+theme roles. `MainViewBarRules` holds the pure decisions `MainActivity` makes about it: which
+screen the chain is showing, whether the bar shows there given the two picker modes, which tab is selected — none on the
+Settings screen — and each tab's `DisplayMode` (§4).
 
 `SearchTopBar` no longer carries a view switcher and takes no `DisplayMode`. Its `showAppIcon`
 flag draws the app's logo before the title, which `FolderListContent` sets on the three main views;
-the detail screens leave it off.
+the detail screens leave it off. An Overflow menu item whose callback is null is not drawn, which is
+how each view gets its own menu: `FolderListContent` passes `onCreateFolderClick` in Folders View
+only, `onCreateAlbumClick` in Albums View only, and `onShowExcludedClick` everywhere but Albums
+View. No detail screen passes `onShowExcludedClick`: the flag is read only by the folder lists, so
+from Folder Detail View it took effect only after going back. Both detail screens pass
+`onChangeThumbnailClick`, with `changeThumbnailLabel` naming the folder or the album item;
+`AlbumDetailContent` passes it only for an Album showing at least one item, never for Favourites.
+Only `AlbumDetailContent` passes the last parameter, `onAlbumInfoClick`, whose item is the menu's
+last.
 
 ### App entry points
 
@@ -486,23 +534,36 @@ changes, and the viewer branch renders neither the provider nor the bar —
   `screenKey`'s `when` maps them to a key, and `resolveShownScreen` in
   `ui/components/MainViewBarRules.kt` maps the same flags, in the same order, to a `ShownScreen`.
   Reordering one without the others still compiles, so keep all three in step. `shouldShowMainViewBar` and
-  `selectedMainViewTab` are derived from the `ShownScreen`. The selected tab follows the screen
-  rather than `displayMode` because the two can disagree after process death: `displayMode`
-  resets to Folders while `isFavouritesSelected` is restored.
+  `selectedMainViewTab` are derived from the `ShownScreen` — the first also from the two picker
+  modes, `GalleryViewModel.isThumbnailPickerMode` and `AlbumsViewModel.isAlbumCoverPickerMode`,
+  which hide the bar on a detail screen — and so is the Settings item's
+  selection: `MainActivity` passes `shownScreen == SETTINGS`, and `selectedMainViewTab` returns
+  null there. The selected item follows the screen rather than `displayMode` because the two can
+  disagree — after process death `displayMode` resets to Folders while `isFavouritesSelected` is
+  restored, and on Settings `displayMode` is Folders while no tab is selected.
 - **The bar owns the bottom inset.** It pads itself for the system bars' and display cutout's
   bottom and horizontal insets, and while it shows, the `Box` above it consumes the bottom one so
   the screen's `Scaffold` does not pay it twice. Screens shown without the bar still apply it
   themselves.
-- **A tab tap has three halves**, run together whatever tab is tapped, the selected one included:
-  `GalleryViewModel.selectMainView` (§3), `AlbumsViewModel.cancelAlbumSelectionAndDetail()`, and
-  clearing `isFavouritesSelected` here. It writes no history; back behaves as it did before the
-  bar.
+- **A tap on the bar has three halves**, run together whatever item is tapped, the selected one
+  included: `GalleryViewModel.selectMainView` for a tab or `GalleryViewModel.selectSettings` for
+  Settings (§3), `AlbumsViewModel.cancelAlbumSelectionAndDetail()`, and clearing
+  `isFavouritesSelected` here. It writes no history.
+- **Settings opens over Folders View.** Because `selectSettings` sets `displayMode` to Folders as
+  Settings opens, Back from Settings is the one `setSettingsMode(false)` call and lands on Folders
+  View — never on the detail screen Settings was opened from, which the tap has already left. The
+  Settings top bar carries its title and no back arrow, so system Back and the bar are the ways
+  out. The Manage excluded screen, reachable only from Settings, keeps the bar hidden and its own
+  back arrow; Back from it returns to Settings, with the bar, because `isSettingsMode` stays set
+  beneath it and the chain tests `isManageExcludedMode` first —
+  **[ADR-0013](decisions/0013-albums-as-third-display-mode.md)** Amendment 3.
 
 Switching screens removes the previous one from composition, so a plain `remember` in a screen
 does **not** survive navigation. A `rememberSaveableStateHolder` in `MainActivity` retains each
 non-viewer screen's saveable state (lazy scroll position) under a `screenKey` that includes the
 folder path or album id — `folder_detail:$path`, `album_detail:$albumId`, the literal
-`album_detail:favourites`, `new_album`, and `new_automatic_album`.
+`album_detail:favourites`, `new_album`, and `new_automatic_album`. Settings keeps its scroll
+position under `settings`, so leaving it by a tab and coming back restores it.
 
 The three main views share one entry, `folder_list`. Inside it, `FolderListContent` nests a second
 `rememberSaveableStateHolder` keyed by `DisplayMode.name`, so each main view keeps its own grid
@@ -537,10 +598,24 @@ the scope: `setGroupBy(type, scope)`.
 
 Derived flows in `GalleryViewModel` are bound to the owning scope: `filteredFolders` → `FOLDERS`,
 `filteredAllMedia`/`groupedAllMedia` → `TIMELINE`, `filteredMedia`/`groupedFolderMedia` →
-`FOLDER_DETAIL`. The two album scopes have **no ViewModel-level derived flow**: Albums View sorts
-and filters the album list inside `AlbumsViewBody`, and Album Detail View runs
-`GalleryTransformations` under `remember` inside `AlbumDetailScreen`, because the input is an
-album's resolved member list rather than a `GalleryViewModel` flow.
+`FOLDER_DETAIL`. The two album scopes have **no ViewModel-level derived flow**: Albums View runs
+the pure `filterAndSortAlbums` (`ui/AlbumListFiltering.kt`) under `remember` inside
+`AlbumsViewBody`, and Album Detail View runs `GalleryTransformations` under `remember` inside
+`AlbumDetailScreen`, because the input is an `AlbumsViewModel` list rather than a
+`GalleryViewModel` flow.
+
+**Albums View's media-type filter hides an album it empties, as Folders View's hides a folder, but
+leaves covers and the Favourites tile alone.** `filterAndSortAlbums` keeps the albums the search
+query matches, counts each over the selected types from `AlbumListItem.mediaCountsByType`, and
+drops one whose filtered count is 0 only if its unfiltered count is not — an album that is empty
+anyway stays listed so it can be opened and filled. Size sorts by the filtered count. Unlike
+`filterAndSortFolders`, whose automatic thumbnail becomes a folder's first matching item, it leaves
+the cover untouched. `AlbumsViewBody` shows the Favourites tile whenever search allows, with a
+filtered count and an unfiltered cover. Its "No albums yet" message appears only when nothing is
+left before the media filter; a list emptied by the filter alone is simply blank, as Folders View's
+is. The filter is `ALBUMS`' own `mediaTypes` in `display_preferences`, so it needed no new store —
+[albums.md](../design/albums.md) §8 decision 30, which records that this reverses an earlier
+count-only behaviour and why.
 
 `newAlbumFolders` is the exception to that scope binding: it reads the `FOLDERS` bundle for sort
 order and layout, and for pinning, exclusion, and thumbnail overrides, but passes an empty search
@@ -699,7 +774,10 @@ its media by a content URI with the healing key as a fallback, and an unresolvab
 marked orphaned and retained rather than deleted —
 **[ADR-0010](decisions/0010-album-membership-dual-key-identity.md)**. The cover is a foreign key
 to a membership row, chosen at random once, so it heals through the ordinary membership path —
-**[ADR-0015](decisions/0015-album-cover-persisted-random-member.md)**.
+**[ADR-0015](decisions/0015-album-cover-persisted-random-member.md)**. The user can replace it in
+Album Detail View's Album cover picker; picking a rule match first writes an addition row for it, in
+the same transaction, so the column still points only at the album's own rows and no schema or
+preference file changed — its **Amendment 1**.
 
 The database is in scope for Android auto-backup and device transfer, which is the project
 template's default kept deliberately —
@@ -893,7 +971,8 @@ KSP.
 - ~~**Back from Timeline View exited the app**, because the view switcher was a toggle with no
   notion of a home view.~~ Resolved when the switcher became a dropdown: back from Timeline or
   Albums View now returns to Folders View. Still true since the dropdown was replaced by the Main
-  view bar on 2026-11-11, whose tab taps add no history.
+  view bar on 2026-11-11, whose taps add no history; Back from the Settings screen lands on Folders
+  View too, since ADR-0013 Amendment 3.
 - **`SortType.DATE_TAKEN` reads the index for media, and not for folders or grouping.** The
   item-level sort was resolved at Stage 2 step 2.4: all four sites that sort media — Timeline View,
   Folder Detail View, Album Detail View and the New album screen — pass the index's projection into
@@ -935,9 +1014,13 @@ KSP.
   not lost. Nothing ever deletes one, so a long-lived album accumulates rows for media that will
   not return. There is no cost yet at Stage 1 volumes and no policy for deciding when a row is
   truly dead.
-- **An album's cover cannot be chosen.** [ADR-0015](decisions/0015-album-cover-persisted-random-member.md)
+- ~~**An album's cover cannot be chosen.** [ADR-0015](decisions/0015-album-cover-persisted-random-member.md)
   picks one member at random and persists it; the picker that would let the user change it is not
-  built. A user who dislikes the cover has no way to change it short of deleting the album.
+  built. A user who dislikes the cover has no way to change it short of deleting the album.~~
+  **Resolved 2026-11-14, by [ADR-0015](decisions/0015-album-cover-persisted-random-member.md)
+  Amendment 1**: Album Detail View's Album cover picker writes the existing `coverMembershipId`
+  (§3, §6). Favourites still has no picker, and there is no way back to a random cover. Verified by
+  unit tests, with the instrumented tests compiled but not run on a device.
 - ~~**The `rule` column is read, and written only by tests.** `albums.rule` exists for
   [ADR-0012](decisions/0012-one-album-type-rule-additions-exclusions.md)'s rule half, and since
   Stage 2 step 2.5 `AlbumsViewModel` parses and evaluates it. But every album the app creates still
@@ -961,8 +1044,9 @@ KSP.
   history: since 2026-11-13 neither the Incomplete-album notice nor the coverage notices exist, and
   the location-access-off wording is shown by Settings' location row instead
   ([albums.md](../design/albums.md) §8 decision 29).
-- **An automatic album's rule cannot be edited.** It is set at creation; rename, add, remove and
-  delete work as on any album. A wrong rule is fixed by deleting the album and creating it again,
+- **An automatic album's rule cannot be edited.** It is set at creation, and since 2026-11-14 it
+  can be read in Album Detail View's Album info dialog but not changed there; rename, add, remove
+  and delete work as on any album. A wrong rule is fixed by deleting the album and creating it again,
   which loses its manual additions and exclusions. Deliberate — [albums.md](../design/albums.md)
   §8 decision 26 — and any later editor inherits ADR-0017's never-rewrite rule.
 - **A rule album does not say that it is waiting for the index.** `AlbumRuleEvaluator` still
@@ -1133,7 +1217,7 @@ KSP.
   and nothing would fail.
 - **The Main view bar's colours are fixed, not theme roles.** `MainViewBarContainer`,
   `MainViewBarBorder`, `MainViewBarUnselected` and `MainViewBarIndicator` in `ui/theme/Color.kt`,
-  with `BrandBlue` and `BrandBlueLight` for the selected tab, will not follow a light theme or
+  with `BrandBlue` and `BrandBlueLight` for the selected item, will not follow a light theme or
   dynamic colour. Accepted while the theme is dark-only —
   [ADR-0013](decisions/0013-albums-as-third-display-mode.md) Amendment 2, point 9.
 - **Two user-facing strings are English-only in nine locales.** `support_email_subject` and

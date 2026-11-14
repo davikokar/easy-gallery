@@ -82,11 +82,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumRuleClause
+import com.davide.seddio.easygallery.data.placeChoiceLabel
+import com.davide.seddio.easygallery.ui.components.monthName
+import com.davide.seddio.easygallery.ui.components.monthYearText
+import com.davide.seddio.easygallery.ui.components.yearText
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 import java.text.NumberFormat
-import java.time.Month
-import java.time.format.TextStyle
 import java.util.Locale
 
 private const val TAB_PLACE = 0
@@ -426,15 +428,13 @@ private fun ChoiceChips(
     val time = ui.selection.time
     if (region == null && time == null) return
 
-    val placeLabel = region?.let { placeChoiceLabel(it, ui.content.countries) }
+    val placeLabel = region?.let { clause ->
+        placeChoiceLabel(clause, ui.content.countries.firstOrNull { it.countryCode == clause.country }?.displayName)
+    }
     val timeLabel = when (time) {
         null -> null
         is TimeSelection.Year -> yearText(time.year, locale)
-        is TimeSelection.Month -> stringResource(
-            R.string.automatic_album_month_year,
-            monthName(time.month, locale),
-            time.year
-        )
+        is TimeSelection.Month -> monthYearText(time.year, time.month, locale)
     }
 
     FlowRow(
@@ -463,14 +463,6 @@ private fun ChoiceChips(
             )
         }
     }
-}
-
-// The most specific name the clause carries; a bare country falls back to its listed display name.
-private fun placeChoiceLabel(region: AlbumRuleClause.Region, countries: List<CountryEntry>): String {
-    return region.place
-        ?: region.admin1Name
-        ?: countries.firstOrNull { it.countryCode == region.country }?.displayName
-        ?: region.country
 }
 
 @Composable
@@ -1147,10 +1139,3 @@ private fun FailedState(onRetry: () -> Unit, modifier: Modifier) {
 
 // Counts are for people, so they group thousands in the app's locale.
 private fun countText(count: Int, locale: Locale): String = NumberFormat.getIntegerInstance(locale).format(count)
-
-private fun yearText(year: Int, locale: Locale): String = String.format(locale, "%d", year)
-
-private fun monthName(month: Int, locale: Locale): String {
-    return Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, locale)
-        .replaceFirstChar { it.titlecase(locale) }
-}

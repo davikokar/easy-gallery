@@ -40,15 +40,23 @@ fun resolveShownScreen(
     else -> ShownScreen.PERMISSION_DENIED
 }
 
-/** ADR-0013 Amendment 2, point 3 and P1. The thumbnail picker is a mode of Folder Detail View, not a screen. */
-fun shouldShowMainViewBar(screen: ShownScreen, isThumbnailPickerMode: Boolean): Boolean = when (screen) {
+/**
+ * ADR-0013 Amendment 2, point 3 and P1, with Settings moved to the shown side by Amendment 3.
+ * The thumbnail picker is a mode of Folder Detail View, not a screen; the album cover picker is the same
+ * for Album Detail View (ADR-0015 Amendment 1). Favourites has no cover picker.
+ */
+fun shouldShowMainViewBar(
+    screen: ShownScreen,
+    isThumbnailPickerMode: Boolean,
+    isAlbumCoverPickerMode: Boolean
+): Boolean = when (screen) {
     ShownScreen.MAIN_VIEW,
-    ShownScreen.ALBUM_DETAIL,
-    ShownScreen.FAVOURITES -> true
+    ShownScreen.FAVOURITES,
+    ShownScreen.SETTINGS -> true
+    ShownScreen.ALBUM_DETAIL -> !isAlbumCoverPickerMode
     ShownScreen.FOLDER_DETAIL -> !isThumbnailPickerMode
     ShownScreen.FULL_SCREEN_VIEWER,
     ShownScreen.MANAGE_EXCLUDED,
-    ShownScreen.SETTINGS,
     ShownScreen.NEW_ALBUM,
     ShownScreen.NEW_AUTOMATIC_ALBUM,
     ShownScreen.PERMISSION_DENIED -> false
@@ -56,9 +64,11 @@ fun shouldShowMainViewBar(screen: ShownScreen, isThumbnailPickerMode: Boolean): 
 
 /**
  * Derived from the screen, not only [displayMode]: after process death `displayMode` resets to Folders
- * while the Favourites selection is restored (ADR-0013 Amendment 2, point 5).
+ * while the Favourites selection is restored (ADR-0013 Amendment 2, point 5). Null on the Settings screen,
+ * where the Settings item is selected instead and no tab is (Amendment 3, point 3).
  */
-fun selectedMainViewTab(screen: ShownScreen, displayMode: DisplayMode): MainViewTab = when (screen) {
+fun selectedMainViewTab(screen: ShownScreen, displayMode: DisplayMode): MainViewTab? = when (screen) {
+    ShownScreen.SETTINGS -> null
     ShownScreen.FOLDER_DETAIL -> MainViewTab.FOLDERS
     ShownScreen.ALBUM_DETAIL,
     ShownScreen.FAVOURITES -> MainViewTab.ALBUMS

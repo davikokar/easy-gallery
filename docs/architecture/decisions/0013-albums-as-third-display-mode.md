@@ -271,6 +271,10 @@ already exists, and Android's system navigation bar sits directly beneath this o
 > **Named 2026-11-11.** The UI vocabulary calls it the **Main view bar** (`MainViewBar`) and each
 > tab a **Main view tab** (`MainViewTab`). `cd_switch_view` is removed from all ten locales.
 
+> **Amended 2026-11-14 — see Amendment 3 below.** The bar carries a fourth item after the three
+> tabs, **Settings**. Since 2026-11-13 it was a button that opened the Settings screen and hid the
+> bar. It is now a destination like the tabs, although Settings is not a view.
+
 **2. The title.** On Folders View, Timeline View and Albums View the browse top bar's title is the
 app's name, `R.string.app_name` ("Easy Gallery"), and is not interactive. The selected tab now names
 the current view, and the original Context's objection to a control that states the same fact the
@@ -296,6 +300,15 @@ Hidden column is listed under *Pending confirmation* with its reasons.
 
 > **Confirmed 2026-11-11 — see P1 under *Maintainer's answers* below.** The Hidden column is now
 > the maintainer's decision, not a recommendation.
+
+> **Amended 2026-11-14 — see Amendment 3 below.** The Settings screen moves to the Shown column.
+> The Manage excluded screen stays Hidden.
+
+> **Amended 2026-11-14 — by [ADR-0015](0015-album-cover-persisted-random-member.md) Amendment 1.**
+> The **Album cover picker**, a mode of Album Detail View, joins the Hidden column beside the
+> Folder thumbnail picker, on P1's reason for that picker: it is draft-and-commit, and a tab tap
+> would have to commit or discard the draft silently. Album Detail View outside that mode, and
+> Favourites, which has no cover picker, stay Shown. No row above is rewritten.
 
 **4. Where it lives.** In `MainActivity`, not in any screen: inside the non-viewer `else` branch,
 **below and outside** `saveableStateHolder.SaveableStateProvider(screenKey)`.
@@ -337,6 +350,9 @@ disagree after process death: `displayMode` is in-memory ViewModel state and res
 while `isFavouritesSelected` is `rememberSaveable` and is restored, so Favourites can return with
 `displayMode == FOLDERS`. Nothing new is persisted.
 
+> **Amended 2026-11-14 — see Amendment 3 below.** On the Settings screen the Settings item is
+> selected and none of the three tabs is.
+
 **6. Tapping a tab cancels, then switches.** A tab tap, including a tap on the tab already
 selected, does all of the following in one handler.
 
@@ -372,11 +388,19 @@ media selection is shared by three views, carrying it through a tab switch would
 act on items that are not on screen; a preserved search has the same shape, a query typed in one
 view silently filtering another.
 
+> **Amended 2026-11-14 — see Amendment 3 below.** Tapping the Settings item does a to d as well.
+> It then sets `displayMode` to Folders and opens the Settings screen. Tapping a tab while the
+> Settings screen is shown also closes Settings.
+
 **7. Back is unchanged, and tab taps create no history.** Back exits a selection or search first, as
 today. From Timeline View or Albums View it returns to Folders View; from a detail screen, to that
 screen's main view; from Folders View it leaves the app. So Folder Detail View → Timeline tab → back
 lands on Folders View, not on Folder Detail View. A history of tab visits would be a back stack,
 which this record defers to Stage 3.
+
+> **Amended 2026-11-14 — see Amendment 3 below.** Back from the Settings screen now returns to
+> Folders View, as it does from Timeline View and Albums View. It no longer returns to the screen
+> Settings was opened from.
 
 **8. Each tab keeps its own scroll position.** Leaving a main view and coming back — by tab, through
 a detail screen, through the viewer, or across rotation — restores where it was. Detail screens
@@ -437,6 +461,10 @@ before the work begins.
     writing nothing until Create (ADR-0016). A tab tap would discard a draft without a prompt.
   - *Settings screen, Manage excluded screen.* Management screens reached from an overflow menu,
     with a back arrow, not browsing destinations. Settings also opens from Folder Detail View.
+
+    > **Amended 2026-11-14 — see Amendment 3 below.** This reason stopped being true on
+    > 2026-11-13, when Settings left the overflow menu for the bar. It is now reversed for Settings.
+    > Manage excluded is reached only from Settings.
   - *Permission denied screen.* There is no media to browse; every tab would lead to an empty view.
 - **P2 — The selected label's colour.** Recommended: keep `BrandBlue` for the selected icon and the
   pill as specified, and draw only the **selected label** in `BrandBlueLight` (8.63:1).
@@ -461,6 +489,10 @@ These are decisions, and they govern the bar's implementation.
   that tap, so no prompt is needed. The maintainer accepted this as a refinement of the original
   answer, "always show the bar". *Always* means every browsing screen — point 3's Shown column —
   and so point 6's cancel rule never has to reach a draft, the picker, or a settings flow.
+
+  > **Amended 2026-11-14 — see Amendment 3 below.** The maintainer reversed this answer for the
+  > Settings screen only. The bar is now shown there, and the cost of a stray tab tap is accepted
+  > for Settings. The rest of the answer stands, the Manage excluded screen included.
 - **P2 — Two blues, split by contrast.** The selected tab's **icon** and its **indicator pill** use
   the app blue, `BrandBlue` `#017DDF`, with the pill at about 15% alpha. The selected **label** uses
   the app's lighter blue, `BrandBlueLight` `#64B5FF`, at 8.63:1 on `#111111`. The reason is point
@@ -522,6 +554,8 @@ New consequences:
   not only the widget.
 - **Positive.** (P1) No tab tap can abandon a draft, the thumbnail picker, or a settings flow,
   because the bar is not shown there.
+  *(Amended 2026-11-14 by Amendment 3: this still holds for drafts, the picker and Manage
+  excluded. It no longer holds for the Settings screen.)*
 - **Negative.** (P2) The selected tab draws its icon and its label in two different blues. This
   inconsistency is accepted so that the label meets text contrast.
 
@@ -554,3 +588,235 @@ New consequences:
 - `docs/architecture/ARCHITECTURE.md` §1, §3, §4 and §11 — updated after the bar lands, not before
   (updated 2026-11-11, once the bar had landed)
 - WCAG 2.2 success criteria 1.4.1, 1.4.3 and 1.4.11
+
+## Amendment 3 — 2026-11-14 — Settings is a destination of the Main view bar
+
+This amendment changes how the Main view bar treats the **Settings screen**, and nothing else.
+Everything else this record and Amendment 2 decided still governs:
+
+- Albums View is a `DisplayMode`, and the `if / else if` chain is kept with no navigation library.
+  This amendment adds no branch and reorders none.
+- The bar sits outside the `SaveableStateProvider` and is never shown in the viewer (Amendment 2,
+  point 4).
+- The bar is still hidden on the Folder thumbnail picker, the two album-creation screens, the
+  Manage excluded screen and the Permission denied screen (Amendment 2, P1).
+
+  > **Amended 2026-11-14 — by [ADR-0015](0015-album-cover-persisted-random-member.md)
+  > Amendment 1.** The **Album cover picker** in Album Detail View is hidden too, for the Folder
+  > thumbnail picker's reason. It is added to point 3's Hidden column by a note there.
+- A tab tap cancels and then switches (Amendment 2, point 6). Tab taps add no history (Amendment
+  2, point 7).
+- This record is still superseded, not amended, when Stage 3 needs a real stack.
+
+The structural decision stands, and only the scope of one rule in the switching control changes.
+So this is an amendment, not a superseding ADR, as Amendments 1 and 2 were. Superseding would
+mean copying a whole decision that still holds in order to change one row of Amendment 2's point 3
+table. The earlier text is left intact, and short notes mark each passage this amendment
+overrides. The maintainer approved the change on 2026-11-14.
+
+### What had already changed without a record
+
+Amendment 2 describes a bar of three tabs. Commit `347ceaa` (2026-11-13, "move settings button to
+the bottom bar") added a fourth item to it, a **Settings button**. That commit also removed the
+Settings item from the Browse top bar's Overflow menu, which until then had offered it on Folders
+View and Folder Detail View. The Settings button:
+
+- was a button, not a tab, and never showed as selected;
+- opened the Settings screen on top of whatever screen was open, leaving that screen's state as it
+  was;
+- disappeared with the rest of the bar, because Settings was in P1's Hidden column;
+- led back, through Back or the Settings back arrow, to the screen Settings was opened from.
+
+Only the UI vocabulary recorded this, and no ADR did. The change also made P1's reason for
+Settings false. That reason said Settings was "reached from an overflow menu", and Settings was
+now reached from the bar itself. It is recorded here so that the history is complete. This
+amendment then replaces it.
+
+### Why
+
+The maintainer asked for this: "The settings button in the bottom area should not make the bottom
+bar disappear. The settings button should behave like the other bottom bar buttons." The bar was
+hiding itself because of an item inside it. A control in a persistent bar that removes the bar is
+inconsistent with every other item there.
+
+P1 hid the bar on focused flows "where a tab tap would silently abandon work in progress". **That
+cost is accepted for the Settings screen specifically.** A stray tab tap on Settings now leaves it.
+The cost is small on Settings, and that is why the reversal stops there:
+
+- Settings holds no draft. Every control commits immediately. A language choice applies and
+  recreates the Activity. Index now enqueues work. The tip jar hands off to Play Billing. Manage
+  excluded restores a folder as soon as you tap it.
+- The Settings dialogs (language, About, Place data) are modal and cover the bar behind their
+  scrim, as Amendment 2's point 6 already notes.
+- A stray tap therefore loses only your place in Settings, and point 8 below keeps that.
+
+The New album screen, the New automatic album screen and the Folder thumbnail picker do hold
+drafts. P1's reason applies to them in full, and nothing here changes it.
+
+### Decision
+
+**1. Settings is a fourth destination in the bar, and it is not a view.** It keeps its current
+position, after Folders, Albums and Timeline, with its current icon and `settings_title` label. It
+is **not** a `DisplayMode` and not a main view. This record made Albums a `DisplayMode` because
+Albums shares `FolderListScreen`'s search, sort, filter and selection machinery. Settings shares
+none of it. Settings stays its own branch (`isSettingsMode`) with its own `screenKey`,
+`"settings"`.
+
+**2. Where the bar is shown.** The **Settings screen** moves into Amendment 2's point 3 Shown
+column. The Hidden column keeps everything else it held, including the **Manage excluded
+screen**.
+
+**3. The selected item.** While the Settings screen is shown, the Settings item is selected and
+none of the three tabs is. Accessibility services report it as selected in the same way as a
+selected tab, and P2's colours apply to it. This is derived from the screen being shown, as
+Amendment 2's point 5 derives every selected tab, and is not read from `displayMode`. The rule
+that the Settings button "never shows as selected" no longer holds.
+
+**4. Tapping Settings cancels, then switches.** Tapping the Settings item does all of the
+following in one handler:
+
+1. It does Amendment 2's point 6, steps **a to d**, in full. It cancels every selection, cancels
+   search in all five scopes, clears Show excluded, and leaves any detail screen.
+2. It sets `displayMode` to **Folders**.
+3. It opens the Settings screen.
+
+Settings is reachable from all five browsing screens, so the detail screens are included.
+
+- **Opened from Folder Detail View**, it leaves that view by the same path as its back button.
+  This drops the folder's media and the Folder Detail search. The thumbnail picker cannot be open,
+  because the bar is hidden while it is.
+- **Opened from Album Detail View**, it clears the selected album id, or `isFavouritesSelected`
+  for Favourites.
+
+In both cases Back from Settings no longer returns to the detail screen. Point 6 below says where
+it goes. The detail screen's scroll position is still retained under its own `screenKey`, so
+reopening the same folder or album restores it.
+
+`displayMode` is set to Folders when Settings opens, not when it closes. Back then remains the one
+call it already is, `setSettingsMode(false)`, and lands on Folders View with no further rule. That
+is also the state the app restores after process death, because `isSettingsMode` and
+`displayMode` are both in-memory ViewModel state. The value cannot be seen while Settings is shown,
+because point 3 does not read it.
+
+Tapping Settings again while on Settings runs the same handler. There is nothing to cancel, so you
+stay on Settings, and the screen does not scroll to the top (P4).
+
+**5. Leaving Settings by the bar.** A tab tap while Settings is shown also clears
+`isSettingsMode`, then does everything Amendment 2's point 6 lists. It lands on the tapped view at
+that view's retained scroll position (Amendment 2, point 8). The bar is hidden on the Manage
+excluded screen, so no tab tap can arrive while that screen is open. The tab handler therefore
+needs no rule for `isManageExcludedMode`.
+
+**6. Back.** Back from the Settings screen returns to **Folders View**, as Back from Timeline View
+or Albums View does (Amendment 2, point 7). From Folders View, Back leaves the app as before.
+Tapping Settings adds no history.
+
+**7. The Settings top bar.** The title stays **Settings**, and the back arrow is removed. The rest
+of that top bar is unchanged: it is still its own top bar, not the Browse top bar, and it shows no
+app logo. You leave Settings with system Back or with the bar. Amendment 2's point 2 rule that
+detail screens keep their back button is untouched, because Settings is not a detail screen.
+`cd_back` is still used elsewhere, so no string is removed.
+
+**8. Scroll position.** Settings keeps its saveable-state entry, `"settings"`, inside the
+`SaveableStateProvider`. Its scroll state is kept when you leave by a tab and restored when you
+come back, as Amendment 2's point 8 does for the main views. Nothing new is persisted. Settings,
+including its position, survives rotation and the language-change `recreate()`, because
+`isSettingsMode` is ViewModel state. It does not survive process death. Afterwards the app opens on
+Folders View.
+
+**9. The Manage excluded screen is coupled to Settings but does not change.** You can reach it only
+from the **Manage excluded folders** row in Settings' General section, and nowhere else.
+
+- The bar stays hidden on it, as P1 decided.
+- Its back arrow and system Back both return to Settings. The bar reappears there, with Settings
+  selected.
+- A second Back from Settings reaches Folders View.
+
+This already works without a new rule. `isSettingsMode` stays set underneath, and the chain tests
+`isManageExcludedMode` first.
+
+The bar stays hidden on Manage excluded because the maintainer limited this change to Settings.
+Manage excluded is one level below Settings and has a back arrow to it. Showing the bar there would
+reverse P1 a second time, which nobody asked for. It would also raise a question this amendment
+need not answer: which item is selected on a page inside Settings. A later change may revisit this.
+
+**10. Insets.** Amendment 2's point 4 is unchanged. While the bar is shown, the area above it
+consumes the bottom inset. The Settings `Scaffold` therefore stops padding for that inset on
+Settings. Manage excluded has no bar and still pads for it.
+
+### Consequences
+
+**Positive**
+
+- No item in the bar removes the bar. Every item in it is a destination, and one of them is always
+  selected.
+- Leaving Settings for any main view takes one tap.
+- The Settings scroll position is kept across visits.
+- The reasoning P1 based on drafts still applies, unchanged, to the three screens that hold one.
+
+**Negative**
+
+- **The cost P1 avoided is accepted for Settings.** A tab tap while on Settings leaves it. This is
+  small, because Settings holds no draft.
+- **A stray tap on Settings is now destructive, and before this it was not.** Before this
+  amendment, opening Settings by mistake was fully undone by Back. Now it cancels selections and
+  searches, clears Show excluded, and leaves a detail screen, with no confirmation. Amendment 2
+  already accepts that cost for the tabs, and it now applies to a fourth item.
+- Back from Settings no longer returns to the Folder Detail View or Album Detail View it was opened
+  from.
+- The Settings top bar has a title and no navigation control. The bar and system Back are the
+  only ways out.
+- The bar now takes height from Settings too. It also appears and disappears as you move between
+  Settings and Manage excluded.
+- The bar now has four destinations. Amendment 2 noted that a bar conventionally carries three to
+  five, so there is room for one more item before that ceiling.
+- `MainViewBar`'s parameters must be able to name Settings as the selected item. That change
+  breaks `MainViewBarTest` by design. `shouldShowMainViewBar` and `selectedMainViewTab` in
+  `MainViewBarRules` change too, and so do their tests in `MainViewBarRulesTest`.
+- Stage 3's navigation rewrite inherits a destination that is not a view. Whichever candidate it
+  chooses, it must keep this amendment's points 3, 4 and 6.
+
+### Other ADRs checked
+
+- **ADR-0002.** No conflict. The viewer branch still renders neither the provider nor the bar, and
+  the viewer cannot be opened from Settings. Settings was already inside the holder. The language
+  change's `recreate()` keeps Settings open, its scroll position and the bar, without
+  `android:configChanges`.
+- **ADR-0007 and ADR-0016.** No conflict. The bar is still hidden on the Folder thumbnail picker
+  and on both album-creation screens, which are the drafts P1 protects.
+- **ADR-0019**, the Place data attribution row in Settings. No conflict, because the contents of
+  Settings do not change.
+- **ADR-0011 and ADR-0021.** Not affected.
+
+### Alternatives considered
+
+- **A superseding ADR.** Rejected for the reason given at the top of this amendment.
+- **Make Settings a fourth `DisplayMode`.** Rejected. Settings shares none of `FolderListScreen`'s
+  machinery, so it would hand a screen that has nothing in common with the other three to the
+  wrong host.
+- **Keep Settings as a button and show the bar without a selection.** In this option Back would
+  still return to the screen Settings was opened from. Rejected because it does not make Settings
+  "behave like the other bottom bar buttons". The bar would also mark no item, or mark the wrong
+  tab, while Settings was shown.
+- **Keep Back returning to the screen Settings was opened from.** Rejected. It needs a history,
+  which this record defers to Stage 3. It also means leaving the detail screen open under Settings,
+  which contradicts point 4 above.
+- **Show the bar on Manage excluded too.** Not adopted; see point 9.
+- **Keep the back arrow as well as the bar.** Declined by the maintainer. The main views, which
+  Settings now sits beside as a peer, have no back arrow.
+
+### References
+
+- Commit `347ceaa` (2026-11-13), which moved Settings into the bar without an ADR record
+- `app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt` — the chain, `screenKey`, the
+  Settings and Manage excluded `BackHandler`s, and the bar's handlers
+- `app/src/main/java/com/davide/seddio/easygallery/ui/components/MainViewBar.kt` — the Settings
+  item, currently a button that is never selected
+- `app/src/main/java/com/davide/seddio/easygallery/ui/components/MainViewBarRules.kt` —
+  `shouldShowMainViewBar` and `selectedMainViewTab`
+- `app/src/main/java/com/davide/seddio/easygallery/ui/SettingsScreen.kt` — the back arrow that is
+  removed, and the Manage excluded folders row
+- `app/src/main/java/com/davide/seddio/easygallery/ui/ManageExcludedScreen.kt` — its back arrow to
+  Settings
+- `docs/architecture/ARCHITECTURE.md` §1, §3 and §4 — updated after this lands, not before
+  (updated 2026-11-14, once the change had landed)

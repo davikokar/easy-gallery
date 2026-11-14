@@ -326,6 +326,22 @@ class FolderDetailContentTest {
     }
 
     @Test
+    fun overflowMenuDoesNotShowShowExcludedItem() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia))
+        }
+
+        composeTestRule.onNodeWithContentDescription(appContext.getString(R.string.cd_more_options)).performClick()
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_folder_thumbnail))
+            .assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_show_excluded))
+            .assertDoesNotExist()
+    }
+
+    @Test
     fun thumbnailPickerModeShowsPickerTopBarAndHidesSearchAndOverflow() {
         composeTestRule.setContent {
             FolderDetailContentWrapper(
@@ -524,7 +540,6 @@ class FolderDetailContentTest {
             onCommitSortPreference = onCommitSortPreference,
             onCommitGroupByPreference = { _, _, _ -> },
             onCommitViewTypePreference = { _, _ -> },
-            onSetShowExcludedTemporarily = {},
             onBackToFolders = {},
             onToggleInfo = {},
             onUpdateBrowsingPath = {},
