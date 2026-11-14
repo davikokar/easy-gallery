@@ -38,7 +38,20 @@
     - **A4a:** the hidden-device threshold, which the spike's memory and speed figures should set.
 
   The next action after the spike is a discussion of group B once its figures exist. Groups B to F
-  are still untouched.
+  are still unanswered.
+- **2026-11-13 — rebased onto main.** `feat/album-content` now sits on main's §8 decisions 28
+  (per-album display overrides, ADR-0021) and 29 (no Incomplete-album or coverage notice on an album
+  or on the New automatic album screen; the coverage figures are Settings rows only). C5, B6 and E1
+  were restated against that and stay questions; the exit criterion that said *Incomplete*, step
+  4.6's coverage bullet, A4b's notice, D2 and the binding list were corrected, and no decision was
+  taken.
+- **Spike state, 2026-11-13, from `tools/content-model-spike/`:** EmbeddingGemma 2 split and
+  exported as fp32, dyn8 and nbits4; SigLIP 2 exported as fp32; the desktop fp32 reference
+  embeddings for EmbeddingGemma 2 at vision budgets 70 and 280 over the 300-photo sample finished
+  according to `results/make_ref_gemma.log`; the Android harness project exists under
+  `android-harness/` and has a build output. **No phone measurement and no quality result exists
+  yet.** `NOTES.md` records neither the finished reference run nor the harness; it is behind the
+  folder, so read both.
 - **Owed from Stage 2:** only the Play Console declaration, before any release that ships Stage 2
   ([albums.md](albums.md) §7, *Stage 2*). The definition of done and the documentation audit were
   discharged on 2026-11-13. A new ML runtime dependency (question A2) will change the merged
@@ -56,6 +69,9 @@
     for staleness apply.
   - §8 decision 22: no app-open index pass.
   - §8 decision 23: no notification and no foreground service.
+  - §8 decision 29: an album and the New automatic album screen show no Incomplete-album notice
+    and no coverage notice; coverage figures are rows of Settings' Media index area only. What
+    that means for content is C5, B6 and E1.
   - §11: no cloud inference.
   - **Spike-only dependencies, approved by the maintainer 2026-11-13:** third-party dependencies
     that live only under `tools/content-model-spike/` — the Python environment and the separate
@@ -81,6 +97,7 @@ Already decided, and not reopened here:
 - One automatic album with mixed criteria — [albums.md](albums.md) §8 decision 30.
 - Content is free text only — decision 31.
 - Rule editing is in this stage — decision 33.
+- The model ships inside the app, and content albums are hidden on weaker devices — decision 34.
 
 ---
 
@@ -211,7 +228,7 @@ Step 4.0 is approved and in progress; steps 4.1 onward are proposals until step 
 | **4.3** | Tier B schema and store | ⬜ |
 | **4.4** | Image embedding in the indexing pipeline | ⬜ |
 | **4.5** | The `content` clause, query embedding and evaluation | ⬜ |
-| **4.6** | The Content criterion on the New automatic album screen, its notices, and Tier B progress | ⬜ |
+| **4.6** | The Content criterion on the New automatic album screen and in the editor, the hidden-device wording (A4b), and Tier B in Settings (B6, C5) | ⬜ |
 | **4.7** | Device verification and installed-app walkthrough | ⬜ |
 | **4.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ⬜ |
 
@@ -266,7 +283,9 @@ out. Step 4.6 then adds the content clause to an editor that already works.
 
 ### 4.3 — Tier B schema and store
 
-An embeddings table in the index database: version bump, `Migration(4, 5)`, committed `5.json`,
+An embeddings table in the index database: version bump, `Migration(4, 5)`, committed `5.json`
+(version 4 rechecked after the rebase onto main: `MediaIndexDatabase`'s `@Database` and
+`app/schemas/` both stop at 4),
 store interface with `Room*` and `InMemory*` implementations, and DAO tests. Each row is stamped
 with the model version (B5). The backup exclusion needs no change, because it is the same file;
 check it rather than assume it.
@@ -292,7 +311,11 @@ decide the shape.
 - The Content criterion on the New automatic album screen.
 - The live match count.
 - The Content criterion in the rule editor from 4.2.
-- Whatever content-coverage notice C5 decides.
+- A content-coverage figure only if C5 decides there is one, and only where it decides. Since
+  decision 29 no coverage figure is shown on an album or on this screen.
+- Whether the Content criterion has a Status area, and what its Index band counts (E1, B6).
+- A Content case for the New automatic album hint, which today asks for a place, a date, or both,
+  and for the choice chips, which today have a Place and a Date form.
 - Tier B figures in the Settings screen's Media index area (B6).
 - New strings in every shipped locale (the list is `LocaleHelper.supportedLanguageTags`).
 - UI vocabulary additions, in-change.
@@ -326,8 +349,11 @@ Derived from Stage 2's. **Not binding until 4.1.**
 - **Count consistency:** the count the screen shows for a typed description, combined with the
   other choices, equals the evaluator's member count for the rule it would write. Tested on the JVM
   and on a device, as at 2.7.
-- An item not yet embedded leaves the album **Incomplete**, never silently empty. An item whose
-  inference failed is neither pending work nor covered, per §6.
+- An item not yet embedded leaves the album ~~**Incomplete**, never silently empty~~ **waiting on
+  the index** (`WAITING_ON_INDEX`, ADR-0017 Amendment 2), never a settled no-match. Since decision
+  29 nothing on the album shows that state, so "never silently empty" no longer holds of any album;
+  whether content needs more is C5. An item whose inference failed is neither pending work nor
+  covered, per §6.
 - A rule whose content clause was written by another model version is not compared against the
   wrong embeddings. What it does instead is decided at 4.1 (B5, C2).
 - **Rule editing:** every rule this build can parse round-trips through the editor unchanged. An
@@ -408,8 +434,9 @@ was not spelled out, so this is the Planner's reading, **to be confirmed at 4.1*
   Nothing is computed that cannot be used, and it saves battery. *Proposed.*
 - **An album that already has a content clause** on a device below the threshold — restored from
   backup onto a weaker phone (ADR-0014), or a threshold raised later — **reuses ADR-0017's
-  unevaluatable state**, with its own notice wording, because the reason is the device and not the
-  rule. No new state. It is never rewritten, so the clause is kept if the album moves back to a
+  unevaluatable state** (`AlbumEvaluationStatus.UNEVALUATABLE`, today shown as the Newer-app
+  notice, which decision 29 kept), with its own notice wording, because the reason is the device
+  and not the rule. No new state. It is never rewritten, so the clause is kept if the album moves back to a
   capable device. *Proposed.* The only cost is one new notice string in every shipped locale.
 
 ### B. Indexing — block 4.3 and 4.4
@@ -425,8 +452,20 @@ was not spelled out, so this is the Planner's reading, **to be confirmed at 4.1*
 5. **Model change.** A new model version invalidates every stored embedding. Is the per-row model
    stamp, analogous to `PLACE_RESOLVER_VERSION`, enough, with re-embedding as ordinary indexing
    work?
-6. **Progress:** separate Tier B figures in the Settings Media index area, or folded into the
-   existing three?
+6. **Progress.** Restated 2026-11-13 against main. Settings' Media index area now shows, while a
+   pass runs, a progress bar and the rows remaining; then four counts in this order — indexed with
+   a date; "no usable date information"; "no usable location information", or the
+   location-access-off sentence; not yet indexed — then deferred items, the last successful scan,
+   and a failed or cancelled line. Two of the four counts measure progress and two are coverage
+   figures, kept apart by wording alone (decision 29). All four are computed in
+   `MediaIndexingViewModel` by intersecting the index projection with live media, not through the
+   albums' join. **The question:** separate Tier B figures, or Tier B folded into the existing
+   not-yet-indexed count? **It also decides the Index band**, on the New automatic album screen,
+   whose only figure is that same not-yet-indexed count and whose Index now appears only while that
+   count is above zero and no pass runs. If Tier B work is not in the count, the band and
+   its Index now disappear while embeddings are still pending, and the screen's "indexing may still
+   fill this list" wording (decision 27), chosen from the same state, would not apply to Content.
+   Where a failed-inference count goes, if anywhere, is C5.
 
 ### C. Matching — block 4.5
 
@@ -443,9 +482,27 @@ was not spelled out, so this is the Planner's reading, **to be confirmed at 4.1*
    either way. Decide on numbers.
 4. **Language.** Is quality checked for every shipped locale, or for a named subset? Which text
    prefix does a query use?
-5. **Settled and unsettled for content.** A not-yet-embedded item is unsettled. A failed inference
-   is a settled no-match. Does that need a **content-coverage notice**, placed as decision 25 places
-   the location and date notices?
+5. **Settled and unsettled for content, and whether a content-coverage figure exists.** Restated
+   2026-11-13 against main. A not-yet-embedded item is unsettled, so the album is waiting on the
+   index. A failed inference is a settled no-match. **Main's rule now** (decision 29; ADR-0016,
+   ADR-0017 and ADR-0019, each Amendment 3): no album shows the Incomplete-album notice or a
+   coverage notice — not the Album tile, the Album row or Album Detail View — and the New automatic
+   album screen shows no coverage notice. The two coverage figures are rows of Settings' Media index
+   area only, computed with that area's other rows, never pending and never "yet". Decision 25's
+   placement, which this question used to point to, is reversed. **Options, not decided here:**
+   - no content-coverage figure anywhere; a failed inference is simply not a member;
+   - a third coverage row in Settings in the same wording family, for example "N items have no
+     usable content information", counting failed inference — which also asks whether videos count
+     if B3 skips them, and whether the row disappears with the rest of Tier B on a device below the
+     threshold (A4b);
+   - a figure on the screen or on the album, which reopens decision 29 and is the maintainer's
+     call.
+
+   **A cost to weigh with it.** Decision 29 accepted that a waiting album says nothing about it on
+   itself, when the wait was one Tier A pass. Tier B may take several nights for a full library
+   (B4), so a new content album may stay short or empty, with nothing on it saying why, for much
+   longer. Whether decision 29's accepted cost still holds at that length is the maintainer's
+   question.
 6. **Query limits:** an empty or one-character description, and a maximum length.
 
 ### D. Rule editing — block 4.2
@@ -455,7 +512,9 @@ was not spelled out, so this is the Planner's reading, **to be confirmed at 4.1*
    differed; for editing, the inputs are identical. A new screen is another branch in
    `MainActivity`'s chain. ADR-0013 defers the chain's future to Stage 3, which now comes later.
 2. **Additions and exclusions on edit:** kept as they are, or cleared? *Leaning kept*, because §3's
-   three sets are independent of the rule, but the maintainer decides.
+   three sets are independent of the rule, but the maintainer decides. **A fact from main:** an
+   album's display overrides are keyed by its id and deleted with it (decision 28, ADR-0021), so an
+   editor that replaces the album row rather than updating it would lose them too.
 3. **A rule with an unknown clause:** refuse editing entirely, or edit the known clauses while
    preserving the unknown one untouched? *Leaning refuse*: simpler, and it cannot widen the album.
 4. **Ship editing before the ML steps?** As proposed in 4.2. *Leaning yes.*
@@ -463,11 +522,20 @@ was not spelled out, so this is the Planner's reading, **to be confirmed at 4.1*
 
 ### E. Screen — block 4.6
 
-1. **Layout for three criteria now and four later.** Tabs will crowd at large font scales and in
-   long-word locales. A summary row of the chosen criteria above per-criterion sections is one
-   option. Designer.
-2. **Live count while typing:** debounce, and what the count shows while the query is being
-   embedded.
+1. **Layout for three criteria now and four later.** Restated 2026-11-13 against main. The screen
+   today: the top bar holds the Album name field and the close or back button; below it, the
+   match-count line, sharing its slot with the New automatic album hint; one choice chip per
+   current choice; then two tabs, Place and Date, each a drill-down list whose first item is the
+   Status area — the Index status header over the Index band, drawn only while a pass runs or live
+   media is not yet indexed, and since decision 29 holding nothing else; and the Create automatic
+   album action. **Content does not fit that shape:** it is a typed field, not a list to drill.
+   Options include a third tab holding the field, a field above the tabs, or a summary row of the
+   chosen criteria over per-criterion sections. Tabs will crowd at large font scales and in
+   long-word locales, and Stage 3 adds a fourth criterion. Also open: whether the Content criterion
+   carries a Status area at all, which turns on B6. Designer.
+2. **Live count while typing:** debounce, and what the match-count line shows while the query is
+   being embedded. The line is announced as it changes, so the debounce also sets how often a
+   screen reader speaks.
 
 ### F. Policy — before release
 
@@ -479,9 +547,11 @@ was not spelled out, so this is the Planner's reading, **to be confirmed at 4.1*
 ## Related
 
 - [albums.md](albums.md): §3 membership, §4 the kinds, §6 the index, §7 progress, §8 decisions
-  (13 as amended, and 30–34), §10 questions 3 and 12.
+  (13 as amended, 27–29, and 30–34), §10 questions 3 and 12.
 - [ADR-0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md),
   [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md),
   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md),
-  [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md).
+  [ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md),
+  [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md),
+  [ADR-0021](../architecture/decisions/0021-per-album-display-preference-overrides.md).
 - [albums-stage-2.md](albums-stage-2.md): archived; its structure and traps are the template here.

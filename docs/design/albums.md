@@ -1248,8 +1248,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     split is between "pick the photos" and "describe what you want", and every criterion is part
     of describing. **Consequence:** each ML stage adds a criterion to an existing screen. It does
     not add an album type to the Album type dialog or a creation screen of its own. How the screen
-    holds three and then four criteria, beside decision 27's Status area, is a design question
-    for Stage 4's plan.
+    holds three and then four criteria, beside decision 27's Status area — since decision 29 a
+    header over the Index band alone — is a design question for Stage 4's plan.
 
 31. **The content criterion is free text only.** Decided by the maintainer on 2026-11-13. The
     user types a description and no keywords are suggested. **It is the one exception to decision
