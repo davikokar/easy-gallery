@@ -11,7 +11,7 @@
 > says why; §7 says why the numbers were kept.
 >
 > **This is a draft.** Written 2026-11-13. Already decided: [albums.md](albums.md) §8 decisions
-> 30–34, and the maintainer's 2026-11-13 approvals of spike-only dependencies and of downloading
+> 33–37, and the maintainer's 2026-11-13 approvals of spike-only dependencies and of downloading
 > about 3 GB of model weights (under *Next session starts here*). The steps, the exit criteria and
 > every recommendation below are proposals until the maintainer answers the open questions and step
 > 4.1 records the decisions. Where something was not known, it is a question, not a guess.
@@ -94,10 +94,10 @@ On the **New automatic album** screen, next to Place and Date, a **Content** cri
 Later, the user can **edit** an automatic album's rule. The Album type dialog does not change.
 
 Already decided, and not reopened here:
-- One automatic album with mixed criteria — [albums.md](albums.md) §8 decision 30.
-- Content is free text only — decision 31.
-- Rule editing is in this stage — decision 33.
-- The model ships inside the app, and content albums are hidden on weaker devices — decision 34.
+- One automatic album with mixed criteria — [albums.md](albums.md) §8 decision 33.
+- Content is free text only — decision 34.
+- Rule editing is in this stage — decision 36.
+- The model ships inside the app, and content albums are hidden on weaker devices — decision 37.
 
 ---
 
@@ -130,7 +130,7 @@ measured here.
 
 **Why it is a strong candidate:**
 - One model covers both the images and the query.
-- It is multilingual, which decision 31 needs.
+- It is multilingual, which decision 34 needs.
 - The truncatable output keeps storage small.
 
 **What is unknown and could rule it out:**
@@ -159,7 +159,7 @@ shows:
 - **Same licence and the same job**, so it is a like-for-like comparison with EmbeddingGemma 2.
 - **Contrastive models are the established design for this task**, so it is a baseline that the
   newer all-in-one model has to beat.
-- **Both are multilingual on paper**, which decision 31 needs. For SigLIP 2 that rests on its
+- **Both are multilingual on paper**, which decision 34 needs. For SigLIP 2 that rests on its
   paper's title, not on its model card.
 
 **Why not the smaller family I first expected to propose, MobileCLIP.** Its model cards list far
@@ -262,7 +262,7 @@ not about the project.
 
 The Planner writes, and the maintainer approves:
 - **The model, the runtime and how the model reaches the device.** A new ADR. The model ships
-  inside the app (decision 34), so Play's size limits (A3a) are an input to the choice. The runtime
+  inside the app (decision 37), so Play's size limits (A3a) are an input to the choice. The runtime
   is a new dependency, an `AGENTS.md` ask-before-doing item, and its merged-manifest permissions
   are a separate one. The hidden-device threshold and what hidden means (A4a, A4b) belong in the
   same ADR.
@@ -399,7 +399,7 @@ Each says what it blocks. A recommendation is given only where there is a reason
    for the model choice**, not something to discover afterwards.
 4. ~~**What is the lowest device content albums must run on?**~~ **Answered 2026-11-13 by the
    maintainer: content albums are hidden on weaker devices.** [albums.md](albums.md) §10 question 3
-   is answered in part; §8 decision 34 holds it. **What is still open, A4a:** the threshold itself
+   is answered in part; §8 decision 37 holds it. **What is still open, A4a:** the threshold itself
    (RAM, API level, or a measured capability), which the spike's memory and speed figures should
    set; and **what hidden means** — answered as A4b below.
 5. ~~**Licence and attribution.**~~ **Answered 2026-11-13 by the maintainer: read the terms and act
@@ -547,7 +547,7 @@ was not spelled out, so this is the Planner's reading, **to be confirmed at 4.1*
 ## Related
 
 - [albums.md](albums.md): §3 membership, §4 the kinds, §6 the index, §7 progress, §8 decisions
-  (13 as amended, 27–29, and 30–34), §10 questions 3 and 12.
+  (13 as amended, 27–29, and 33–37), §10 questions 3 and 12.
 - [ADR-0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md),
   [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md),
   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md),
