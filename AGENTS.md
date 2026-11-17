@@ -90,7 +90,7 @@ rather than nobody's.
 | [docs/architecture/README.md](docs/architecture/README.md) | Planner | routed | an ADR is added, or one changes status |
 | [docs/architecture/decisions/](docs/architecture/decisions/) | Planner | routed | never edited; superseded by a new ADR, or amended in place when only a detail changed |
 | [docs/design/albums.md](docs/design/albums.md) | Planner | routed | a stage changes status, a decision is taken, a question is answered |
-| [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) | Planner | routed | a step changes status, a question is answered, or a session learns something that changes the next one; archived when Stage 4 closes |
+| [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) | Planner | routed | paused; updated only when the pause is lifted or a resume trigger changes |
 | [.github/instructions/ui-vocabulary.instructions.md](.github/instructions/ui-vocabulary.instructions.md) | Designer | **in-change** | you add, rename, or remove a named screen, view, area, or control |
 | [.github/instructions/tests.instructions.md](.github/instructions/tests.instructions.md) | Planner | routed | a test convention or tool changes |
 | [.github/instructions/architecture-docs.instructions.md](.github/instructions/architecture-docs.instructions.md) | Planner | routed | the documentation process itself changes |
@@ -157,8 +157,9 @@ the audit is for the rest.
   well whenever your work is part of that stage. It is Planner-owned and routed like the epic
   itself, and it is archived when the stage closes, under the rule in the
   [architecture documentation instructions](.github/instructions/architecture-docs.instructions.md).
-  No stage is in progress now. Stage 4 (content albums and rule editing) is next and runs before
-  Stage 3; its draft plan is [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md). Stage
+  No stage is in progress. Stage 4 (content albums) is paused after its feasibility spike; its plan
+  [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) is kept to resume from. Stage 3
+  (people albums) is next and has no plan yet. Stage
   2's plan, [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md), is archived and not
   maintained.
 - For tests — unit **and** instrumented — follow

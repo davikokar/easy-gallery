@@ -1,8 +1,10 @@
 # Albums — epic design
 
-> **Status: Stages 1 and 2 complete; Stage 4 (content) is planned and runs before Stage 3
-> (people).** Current state of every stage is in [§7](#7-staging-and-progress), which is the single
-> source of truth for where this epic stands. Stage 4's plan is [albums-stage-4.md](albums-stage-4.md);
+> **Status: Stages 1 and 2 complete; ~~Stage 4 (content) is planned and runs before Stage 3
+> (people).~~ Stage 4 (content) is paused 2026-11-17 (decision 38) after its feasibility spike;
+> Stage 3 (people) is next.** Current state of every stage is in [§7](#7-staging-and-progress),
+> which is the single source of truth for where this epic stands. Stage 4's plan, paused, is
+> [albums-stage-4.md](albums-stage-4.md);
 > Stage 2's is archived at [albums-stage-2.md](albums-stage-2.md), and its exit criteria and their
 > record are in §7.
 > This document is the product narrative for the albums epic. It holds the shape of the feature,
@@ -179,7 +181,8 @@ a fixed-label classifier. ML Kit's image labelling cannot answer arbitrary words
 **Free text only** (§8 decision 34): the user types the description, and no keywords are suggested.
 It is the one criterion that is typed rather than picked. It combines with place and date, and
 later with people. Planned as Stage 4 in [albums-stage-4.md](albums-stage-4.md), which carries the
-model, runtime and matching questions.
+model, runtime and matching questions; **paused 2026-11-17 (decision 38)** after its feasibility
+spike.
 
 ### People album
 The user picks one or more people and the album collects photos of them. Requires face detection
@@ -194,8 +197,8 @@ from backup and the albums are not, is open — §10 question 12.
 The user picks an area and/or a date range. Needs no ML — only indexed EXIF location and date — but
 is still impossible without the index, for the reason in §6. **Shipped in Stage 2.** Both are picked
 from what the index actually found, never typed (§8 decision 16), and a rule may combine them. In
-Stage 2 the rule is set at creation and cannot be edited (§8 decision 26); Stage 4 adds editing
-(§8 decision 36).
+Stage 2 the rule is set at creation and cannot be edited (§8 decision 26); ~~Stage 4 adds editing~~
+editing is added (§8 decision 36) — since 2026-11-17 with Stage 3 or standalone (§8 decision 39).
 
 ---
 
@@ -371,17 +374,22 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **4** | Content albums (Tier B) and rule editing — **runs before Stage 3**; planned in [albums-stage-4.md](albums-stage-4.md) | ⬜ Not started — plan drafted 2026-11-13 | Tier B | yes |
-| **3** | People albums — after Stage 4 | ⬜ Not started | Tier C | yes |
+| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); no plan yet | ⬜ Not started | Tier C | yes |
+| **4** | Content albums (Tier B) ~~and rule editing — **runs before Stage 3**~~; planned in [albums-stage-4.md](albums-stage-4.md); rule editing moved out (§8 decision 39) | ⬜ Not started — plan drafted 2026-11-13; paused 2026-11-17, see decision 38 | Tier B | yes |
 
 Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
 In progress when a binding deliverable lands (step 4.1's ADRs or later), per *Who updates this*.
+**Amended 2026-11-17:** step 4.0 finished and the stage was paused before any binding deliverable
+landed, so it never started (§8 decision 38). Stage 3 is next; Stage 4 resumes on decision 38's
+triggers.
 
 Status is one of ⬜ Not started · 🔶 In progress · ✅ Complete. Stages 3 and 4 are each roughly the
 size of 0–2 combined. **The rows are in execution order, and the numbers were deliberately not
 swapped**: ADRs 0009, 0013, 0014, 0016, 0017, 0018 and 0020 say "Stage 3" for people and "Stage 4"
-for content, and an ADR is never edited to follow a renumbering. §8 decision 13's amendment says
-why content goes first.
+for content, and an ADR is never edited to follow a renumbering. ~~§8 decision 13's amendment says
+why content goes first.~~ **Amended 2026-11-17:** the rows are back in numeric order, because
+content was paused and people goes next (§8 decision 13, amended 2026-11-17); the numbers were
+never swapped, so nothing else changed.
 
 ### Exit criteria
 
@@ -488,12 +496,13 @@ how each was met stays in that document. Steps 2.0–2.7 are all ✅.
 > stage departs from the rule that a stage is Complete only when every line holds, and the
 > departure is stated rather than hidden.
 
-**Stage 4** — ⬜ not started. Its exit criteria are **drafted** in
+**Stage 4** — ⬜ not started; paused 2026-11-17 (decision 38). Its exit criteria are **drafted** in
 [albums-stage-4.md](albums-stage-4.md) and become binding when its step 4.1 confirms them; they move
 here when that plan is archived.
 
-**Stage 3** — ⬜ not started. Exit criteria are written when it is planned, after Stage 4; they
-depend on decisions Stage 4 will inform. Every stage carries the documentation-audit line.
+**Stage 3** — ⬜ not started. Exit criteria are written when it is planned, ~~after Stage 4; they
+depend on decisions Stage 4 will inform~~ **amended 2026-11-17:** next, before Stage 4 (decision 13,
+amended 2026-11-17). Every stage carries the documentation-audit line.
 
 ### Documentation audit
 
@@ -572,6 +581,7 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-10-08 | **Stage 2 started.** Step 2.0 landed: ADR-0017 (an automatic album's rule is a composable predicate), ADR-0018 (the media index is a second database, excluded from backup), and ADR-0019 (offline reverse geocoding for region albums) adopted, and the stage plan written at [albums-stage-2.md](albums-stage-2.md). No code; nothing user-visible. The stage's seven implementation steps and its exit criteria live in that document, and the rule for when a stage becomes In progress was clarified above to say that a binding decision counts as a deliverable. |
 | 2026-11-12 | **Stage 2 complete, with three criteria carried.** Steps 2.0–2.7 are done: the Tier A index in its own database (four schema versions, three migrations), the constrained WorkManager pipeline and Index now, delta detection, the offline gazetteer and place resolver, the evaluation engine, and region and time albums created from the **New automatic album** screen. The stage's exit criteria moved into §7 and [albums-stage-2.md](albums-stage-2.md) was archived; its open question about volume resync became §10 question 11. Declared complete by the maintainer; the definition-of-done re-run after `56126a6`, the Play Console declaration and the documentation audit are carried — see §7, *Stage 2*. |
 | 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 33–37). |
+| 2026-11-17 | **Stage 4 paused after its feasibility spike (step 4.0); Stage 3 next.** Stage 4 stays Not started: no binding deliverable landed. The spike's outcome is in [albums-stage-4.md](albums-stage-4.md#spike-outcome--2026-11-17); the pause and its resume triggers are §8 decision 38, the order §8 decision 13 as amended 2026-11-17, and rule editing continues without content under §8 decision 39. |
 
 ### Who updates this
 
@@ -695,7 +705,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     photo. Reordering to put people first would mean debugging the pipeline and the model at the
     same time, with no working example of either.
 
-    **Amended 2026-11-13 by the maintainer: content (Stage 4) now goes before people (Stage 3).**
+    **Amended 2026-11-13 by the maintainer: ~~content (Stage 4) now goes before people (Stage 3).~~**
+    *(Order reversed 2026-11-17, below; the reasoning is kept as given.)*
     The first sentence of this decision still holds. Only the order of the two ML stages changed,
     and the original text gave no reason for that order. The same rehearsal argument now applies
     one level up:
@@ -709,6 +720,22 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     - How people are named is still open (§10 question 12).
 
     The stage numbers were kept, for the reason given under the §7 table.
+
+    **Amended 2026-11-17 by the maintainer: people (Stage 3) is next.** The 2026-11-13 order,
+    content before people, is reversed by the pause of content albums (decision 38), which puts
+    the order back to the one this decision's title states.
+    - **The rehearsal argument now runs the other way.** People will build the on-device ML
+      pipeline the 2026-11-13 amendment expected content to build: the runtime, inference inside
+      the indexing worker, the Tier C table, and evaluation by vector comparison. A resumed
+      content stage would reuse it.
+    - **Face models are typically far smaller than EmbeddingGemma 2.** To be measured, not taken
+      as fact: the spike measured only content models.
+    - **Decision 9's face-data obligations come with it** — the disclosure, the deletion switch and
+      the Data Safety check — now in the first ML stage rather than the second.
+    - **§10 question 12**, how a person gets a name and where it lives given backup, becomes the
+      first thing Stage 3 must answer.
+
+    Stage 3 is not planned here.
 
 14. **An automatic album's rule is a composable predicate, not a bespoke set of columns**
     ([ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)). A rule is
@@ -971,8 +998,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     Creation alone delivers the stage's goal. **The cost:** a wrong rule is fixed by deleting the
     album and creating it again, losing its manual additions and exclusions. Adding editing later is
     a decision of its own, and any editor inherits the never-rewrite rule. **That later decision
-    is 36**, taken 2026-11-13: editing ships in Stage 4. This decision stays true of Stage 2 as
-    shipped.
+    is 36**, taken 2026-11-13: editing ships in ~~Stage 4~~ Stage 3 or standalone, since 2026-11-17
+    (decision 39). This decision stays true of Stage 2 as shipped.
 
 27. **The New automatic album screen offers Index now while media is not yet indexed, says how
     many items that is, and never starts indexing by itself.** Requested by the maintainer, and in
@@ -1135,8 +1162,9 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     a reversal: decisions 23 and 25 were amended in place, but for details only, and the one earlier
     reversal was recorded as a new decision, 29, with the decisions it reversed — 21, 22, 25 and
     27 — amended in place to point to it. This one departs from that because a new number would
-    collide with decisions 30 to 34 on `feat/album-content`, and the number other documents cite
-    should keep meaning one thing. The text above is kept as the reasoning of the first landing;
+    collide with decisions 30 to 34 on `feat/album-content` — renumbered 33 to 37 when that branch
+    was rebased onto main on 2026-11-14 — and the number other documents cite should keep meaning
+    one thing. The text above is kept as the reasoning of the first landing;
     the struck phrases are the parts it gives up.
     - **What changed.** An album the filter leaves with no item is not listed, **if it had items
       without the filter**. An album that is empty anyway — a new manual album, one whose members
@@ -1192,8 +1220,20 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     dialog lists several Place or several Date values under one label without saying "all of
     these". A rule with two dates that do not overlap, which matches nothing, therefore reads like a
     choice between them. The creation screen writes at most one clause of each kind, so only a
-    hand-made rule or one written by a future build shows it. This has not been put to the
-    maintainer.
+    hand-made rule or one written by a future build shows it. ~~This has not been put to the
+    maintainer.~~
+
+    **Amended 2026-11-15 — put to the maintainer, who accepted the dialog as it is.** It stays a
+    simple list: nothing is added to say that several values must all match, including once people
+    criteria exist (decision 35). ~~A criterion the device does not offer — content, on a device below
+    decision 37's threshold — is not displayed in Album info, and nothing else is communicated
+    there.~~ **Amended 2026-11-16 — superseded by decision 37's reversal:** below the threshold an
+    album with a content criterion is unevaluatable, so Album info shows what it shows for any
+    unevaluatable rule, but with the device notice's wording in place of the Newer-app wording,
+    which would give the wrong reason. Implemented in [albums-stage-4.md](albums-stage-4.md) step
+    4.6. The sentence above that a wrong rule is fixed only by deleting and recreating the album
+    stays until rule editing lands (decision 36); updating it is owed by that change, and
+    [albums-stage-4.md](albums-stage-4.md) step 4.2 lists it.
 
 32. **An album's cover can be chosen in Album Detail View.** Decided by the maintainer on
     2026-11-14 and recorded before the change that implements it; no stage's status changes.
@@ -1227,17 +1267,20 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     **The accepted costs.** A picked rule match is pinned: it stays in the album even if the rule
     stops matching it. If its media is deleted, the album shows the Hidden-members notice, where a
     rule match would simply have gone. Removing a picked cover from the album replaces it at random,
-    or with the display-only fallback in a rule-only album. **Settled in the implementation, not
-    by this decision:** the item is hidden when the album shows no items, where the picker would
-    have nothing to offer. Not an ADR-level choice. The caveat is that the test is the *displayed*
+    or with the display-only fallback in a rule-only album. **Amended 2026-11-15:** these costs stand
+    unchanged once rules are editable, because an edit changes only the rule (decision 36's
+    amendment). **Settled in the implementation, not by this decision:** the item is hidden when the
+    album shows no items, where the picker would have nothing to offer. Not an ADR-level choice. The caveat is that the test is the *displayed*
     list, so the item also disappears when Search or Filter media empties it; and the ViewModel
     refuses to enter the picker with no album open.
 
-    **Numbering.** 32 is this branch's next number. `feat/album-content` uses 30 to 34 (see
-    decision 30's amendment), so this decision, like 30 and 31, must be renumbered when the
-    branches merge. ADR-0015 Amendment 1 cites it by title, not number, so that renumbering does
-    not reach the ADR; the §2 note and the note on decision 11 cite it by title or number and must
-    be checked then.
+    **Numbering.** 32 was this branch's next number. `feat/album-content` used 30 to 34 (see
+    decision 30's amendment), so this decision, like 30 and 31, was to be renumbered when the
+    branches merged. **Done at the 2026-11-14 rebase instead, the other way round:**
+    `feat/album-content` was rebased onto main and its decisions became 33 to 37, so this decision,
+    30 and 31 keep their numbers. ADR-0015 Amendment 1 cites it by title, not number, so no
+    renumbering reaches the ADR; the §2 note and the note on decision 11 cite it by title or
+    number, and were checked then.
 
 33. **To the user, content, people, place and date are criteria of one automatic album, not four
     album kinds.** Decided by the maintainer on 2026-11-13. The **New automatic album** screen that
@@ -1276,13 +1319,40 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     result, delete-and-recreate becomes a bad cost, because it loses the album's manual additions
     and exclusions. **What it inherits:** the editor must round-trip every rule this build can
     parse, including combinations the creation screen never writes, and must not rewrite an
-    unevaluatable rule (ADR-0017). **Open:** the edit surface, what happens to additions and
-    exclusions on edit, and the case of a rule with an unknown clause. All three are
-    [albums-stage-4.md](albums-stage-4.md)'s questions.
+    unevaluatable rule (ADR-0017). **Open:** the edit surface, ~~what happens to additions and
+    exclusions on edit,~~ and the case of a rule with an unknown clause. ~~All three are~~ **Both
+    are** [albums-stage-4.md](albums-stage-4.md)'s questions. **Amended 2026-11-17:** this decision
+    stands, but not as part of Stage 4 — rule editing continues with Stage 3 or standalone, and
+    those questions go with it (decision 39).
+
+    **Amended 2026-11-15 — what an edit changes, answered by the maintainer (question D2 of
+    [albums-stage-4.md](albums-stage-4.md)).** An edit changes only the rule. The album's manual
+    additions, its exclusions, its cover and its display overrides (decision 28) are left alone.
+    - **The cover follows membership, not the rule.** In the maintainer's words: "if the edit leaves
+      the cover photo not matching the rule, but the cover photo stays in the album as the user's
+      own addition, then it also stays as cover". The cover stays for as long as its photo remains
+      a member of the album, whether as a rule match or as the user's own addition, so an edit that
+      stops the rule matching a pinned cover does not reset it.
+    - **When it falls back.** Only when its photo leaves the album: by a rule edit that unmatches a
+      photo that was never an addition, by removing it, or by the user removing the addition.
+      ADR-0015's existing behaviour then applies: the stored reference is nulled and re-rolled, or
+      the display-only fallback is used in a rule-only album. **Amended 2026-11-16 — confirmed by
+      the maintainer:** a rule edit that unmatches a photo that was never an addition can only reach
+      a random or display-only fallback cover, never a user's pick, because a pick is stored as an
+      addition.
+    - **No ADR change.** This is ADR-0015's existing rule applied to editing. Decision 32's accepted
+      cost — a picked rule match is pinned, and stays in the album even if the rule stops matching
+      it — therefore stands unchanged, and ADR-0015 Amendment 1 already names a rule edit among the
+      ways the pick stays.
+    - ~~**A criterion the editor does not show is kept** — a content criterion on a device below the
+      threshold (decision 37's amendment).~~ **Moot since 2026-11-16** (decision 37's reversal):
+      below the threshold an album with a content criterion is unevaluatable, and the editor does
+      not edit it on that device.
 
 37. **The content model ships inside the app, and content albums are hidden on weaker devices.**
     Decided by the maintainer on 2026-11-13, answering questions A3 and A4 of
-    [albums-stage-4.md](albums-stage-4.md). **Inside the app:** no download and no network, which is
+    [albums-stage-4.md](albums-stage-4.md). **Amended 2026-11-17:** paused with content albums
+    (decision 38); "inside the app" needs revisiting if content resumes through ML Kit. **Inside the app:** no download and no network, which is
     what §11 already requires; the tip jar stays the only feature that touches the network. **Hidden
     on weaker devices:** below a threshold, content albums are not offered, as Favourites is not
     offered below API 30 (decision 3). **Reasons on record:** the maintainer gave none; these are the
@@ -1290,10 +1360,17 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     hardware that cannot support it, and §10 question 3 expected the lowest device to decide the
     model's size. **What hidden means:** the maintainer chose "the simplest solution". The Planner's
     reading, to be confirmed by step 4.1, is that the Content criterion is not offered, Tier B
-    indexing is skipped from the same capability check, and an existing album carrying a content
+    indexing is skipped from the same capability check~~, and an existing album carrying a content
     clause on such a device is treated as unevaluatable (ADR-0017) with its own notice wording and
-    is never rewritten. **Not decided, and owed by step 4.1:** the threshold itself, which the
-    feasibility spike's memory and speed figures should set.
+    is never rewritten~~ ~~(the struck reading is replaced by the 2026-11-15 amendment below)~~ (the
+    struck reading was replaced by the 2026-11-15 amendment below, which was itself reversed on
+    2026-11-16; the rule now in force, at the end of this decision, is essentially the struck
+    reading, now decided by the maintainer). **Amended 2026-11-16 — attribution corrected:** of that
+    reading, "the Content criterion is not offered" is decided by the maintainer (A4b of
+    [albums-stage-4.md](albums-stage-4.md)); only the Tier B skip is still the Planner's proposal,
+    to be confirmed at step 4.1. **Not
+    decided, and owed by step 4.1:** the threshold itself, which the feasibility spike's memory and
+    speed figures should set.
 
     **A consequence the maintainer should know:** with the model in the app, its size adds to every
     install, including on devices where the feature is hidden, unless the delivery mechanism can be
@@ -1302,6 +1379,140 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     **Also approved by the maintainer on 2026-11-13:** third-party dependencies that live only under
     `tools/content-model-spike/`, for the feasibility spike and never the app, and the download of
     about 3 GB of model weights; adding any runtime to the app is still decided at step 4.1.
+
+    **Amended 2026-11-15 — an existing content album on such a device, decided by the maintainer,
+    replacing the Planner's struck reading above.** Such an album can exist only after a backup is
+    restored onto a different device, or if a later update raises the threshold, so it is an edge
+    case and is kept simple. **Reversed 2026-11-16 — see the amendment at the end of this decision.**
+    The rule below is struck and kept as the reasoning that was given up:
+    - ~~**A rule whose only criteria are content:** the album is hidden on that device. **Amended
+      2026-11-16 — answered by the maintainer:** a hidden content-only album is **absent everywhere**
+      on that device. It does not count anywhere: not in Albums View, not in its totals, and not in
+      Filter media's "had items without the filter" test (decision 30). **The Planner's reading, to
+      be confirmed at step 4.1:** "everywhere", the maintainer's word, includes every list of albums
+      the user can pick from — for example the Add to album list — so that nothing can be added to
+      an album the user cannot see.~~
+    - ~~**A rule with other criteria as well:** the content criterion is ignored and the rest apply.~~
+    - ~~**Nothing is communicated to the user**, in Album info included (decision 31's amendment).~~
+
+    ~~Evaluation reads the same capability check that hides the Content criterion and skips Tier B
+    indexing: the evaluator must treat a clause of a hidden kind as absent. **Consequences the
+    maintainer accepted:**~~
+    1. ~~**The stored rule is never changed**, so the full rule applies again on a capable device.
+       ADR-0017's never-rewrite rule holds: what is skipped is evaluation, not the stored clause.
+       Meanwhile the album looks wider — "castles in Italy 2024" shows all Italy 2024 photos — and
+       any exclusions or additions made meanwhile stay stored. **Amended 2026-11-16 — put to the
+       maintainer and accepted explicitly:** on a device that ignores the content criterion of a
+       mixed album, removing a photo stores an exclusion that also applies once the album is on a
+       capable device, although it was made against a wider view than the real rule.~~
+    2. ~~**A hidden content-only album's own manually added photos are unreachable** until the album
+       shows again. **Amended 2026-11-16 — confirmed by the maintainer:** a content-only album that
+       also holds manual additions is hidden entirely, and those photos are unreachable on that
+       device until the album is shown again. **A fact the Planner records, not an objection:** a
+       hidden album cannot be opened, renamed or deleted on that device, but it stays in the backup
+       and returns unchanged on a capable device.~~
+    3. ~~**The rule editor must keep a criterion it does not show:** editing the other criteria on
+       such a device must not drop the content one.~~
+
+    ~~**A deliberate, narrow departure from ADR-0017's reasoning**, which refuses to drop a clause a
+    build does not understand because removing a clause from a conjunction silently widens the
+    album (decision 14). Here the clause is known but unsupported on this device, and the stored
+    rule is untouched. If the maintainer or step 4.1 finds that this needs an ADR-0017 amendment, it
+    is routed to the Planner; [albums-stage-4.md](albums-stage-4.md) step 4.1 lists it. **Not
+    decided here:**
+    whether the same principle — an unsupported-here criterion is ignored, or hides the album —
+    applies to Stage 3's people criterion, or to an unknown clause type from a newer app, which
+    stays unevaluatable (decision 14). Both are unchanged.~~
+
+    **Amended 2026-11-16 — reversed by the maintainer: below the threshold, an album with a content
+    criterion is unevaluatable, not hidden.** Recorded as an amendment in place, as decision 30's
+    reversal was and for the same reason: the number other documents cite keeps meaning one thing.
+    On a device below the threshold, **any album whose rule contains a content criterion** — content
+    only, or content with other criteria — is treated as **unevaluatable**: ADR-0017's existing
+    state, `AlbumEvaluationStatus.UNEVALUATABLE`, not a new one.
+    - **Listed normally everywhere.** Albums View, its counts, Filter media's test (decision 30) and
+      the Add to album list treat it as any other album. It can be opened, renamed and deleted.
+    - **Its rule contributes nothing.** The album shows its manual additions minus its exclusions,
+      exactly as an album with an unknown clause does (decision 14). No criterion is ignored, so
+      the album never widens.
+    - **It says why, once.** It carries one notice with its own wording — for example "This album
+      needs content search, which this device does not support" — in place of the Newer-app
+      notice, whose wording would give the wrong reason. It appears wherever the Newer-app notice
+      does: in a short form on the Album tile and Album row, in full in Album Detail View; and
+      Album info shows the same wording for it (decision 31, amended 2026-11-16). It is one new
+      notice in every shipped locale, in the full and short forms the Newer-app notice already has
+      (`album_rule_unevaluatable_notice` and `album_rule_unevaluatable_notice_short`); its own keys
+      are chosen at [albums-stage-4.md](albums-stage-4.md) step 4.6.
+    - **The stored rule is never changed**, so the album works fully again on a capable device.
+    - **The rule editor does not edit it on that device.** That joins
+      [albums-stage-4.md](albums-stage-4.md) question D3, whether an album with an unknown clause
+      can be edited at all.
+    - **What still stands:** the threshold is open (A4a); the Content criterion is not offered below
+      it (decided by the maintainer); skipping Tier B indexing from the same capability check is the
+      Planner's proposal, to be confirmed at step 4.1. "Hidden" in this decision's title now means
+      only that the Content criterion is not offered: no album is hidden.
+
+    **Why reversed.** The maintainer judged that hidden albums were causing too many problems. He
+    first proposed deleting such albums; the Planner advised against it, and he accepted the
+    alternative above. **Reasons on record** — what the hidden rule had created, and this removes:
+    a name clash with an album the user cannot see; the "everywhere" questions — the Add to album
+    list, the counts, Filter media's test, and single-photo album views; a mixed album showing a
+    wider set than its rule, and the exclusions made against that wider set; and the narrow
+    departure from ADR-0017's never-widen reasoning. **This is not a departure from ADR-0017:** its
+    never-rewrite and never-widen reasoning holds unchanged. Whether ADR-0017 needs an amendment to
+    name the device's capability as a second cause of unevaluatable is a step 4.1 question.
+    **Why not deletion** — the Planner's advice, which the maintainer accepted, as reasons on
+    record: deletion is irreversible; it travels in the next backup from the weaker device
+    (ADR-0014) and overwrites the earlier one, so the albums are lost for good; an update that
+    raised the threshold would delete albums on the very device that created them; and their manual
+    additions and display overrides (decision 28) would go with them.
+    **The accepted cost.** On such a device the album looks nearly empty — only the photos added by
+    hand — but says why; and the new notice must be in every shipped locale.
+    **Not decided here:** whether Stage 3's people criterion follows the same rule on a device that
+    cannot run it. An unknown clause type from a newer app stays unevaluatable with the Newer-app
+    wording (decision 14), unchanged.
+
+38. **Content albums are paused after Stage 4's feasibility spike.** Decided by the maintainer on
+    2026-11-17. Stage 4's content part stops after step 4.0; nothing of it ships, and
+    [albums-stage-4.md](albums-stage-4.md) is kept as the plan to resume from. **The maintainer's
+    reason:** the cost is too high for the functionality. The figures behind it are in that plan's
+    [Spike outcome](albums-stage-4.md#spike-outcome--2026-11-17): about 0.39 GB is the realistic
+    bundled model, and a quantised EmbeddingGemma 2 takes about 1.2–1.3 s per photo in the
+    foreground on the SM-G990B, with background speed essentially unmeasured. The retrieval-quality
+    results were not judged. Decisions 33–35 and 37 are not reversed, only paused with the stage;
+    decision 36 continues without it (decision 39).
+    - **Resume triggers** — the Planner's recommendation, accepted by the maintainer as part of
+      the plan. Resume when either holds:
+      1. The ML Kit Embeddings API (`com.google.mlkit:genai-embedding`; EmbeddingGemma 2 as
+         `embedding_gemma_v2`, text and image, 768 dimensions, managed by Android AICore;
+         [documentation](https://developers.google.com/ml-kit/genai/embedding/android)) **leaves
+         developer preview** — today it requires the device's Google account to be in the AICore
+         Developer Preview program, with no SLA or deprecation policy — and **works without
+         enrolment**, **supports background (WorkManager) indexing within its quota**, and **covers
+         a meaningful share of devices**. Background use must be verified: the general ML Kit
+         GenAI page says inference runs only in the foreground (`BACKGROUND_USE_BLOCKED`), while
+         the Embeddings page recommends indexing with WorkManager while charging and idle. Today it
+         runs on AICore devices only, recent flagships, and the SM-G990B is not on the lists.
+      2. The maintainer accepts a bundled model of about 0.39 GB.
+    - **What ML Kit would change**, if the first trigger fires:
+      - No model in the app, so decision 37's "the model ships inside the app" would need
+        revisiting.
+      - The model is downloaded by the system service, not by the app. Whether that fits the
+        wording of §11 and §6's "nothing leaves the device", and the Play Data Safety answers, is a
+        wording question to settle then.
+      - Model versions carry a `deprecationDate` and a `shutdownDate`, which force re-indexing.
+        That fits the per-row model stamp planned as B5 of the stage plan.
+      - 140 image soft tokens per image.
+      - AppSearch is suggested for storing embeddings, not required.
+
+39. **Rule editing continues, independent of content.** Decided by the maintainer on 2026-11-17.
+    Decision 36 stays: an automatic album's rule becomes editable. Editing place and date rules —
+    the content of [albums-stage-4.md](albums-stage-4.md) step 4.2 — is folded into the next stage
+    the maintainer starts, Stage 3 (people albums), or done standalone. **Reasons on record:** step
+    4.2 was already proposed ahead of the ML steps because it needs no model and would not be
+    stranded if the spike ruled content out (question D4 of the stage plan); the pause is that
+    case. The stage plan's group D questions, D2's answer (decision 36's amendment) and step 4.2's
+    owed update to decision 31 go with it.
 
 ---
 
@@ -1376,7 +1587,13 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 3. **Lowest device that must run Stage 3–4 ML**, which decides model size and quantisation. —
    **Partly answered 2026-11-13 by the maintainer, for content albums:** weaker devices do not get
    the feature (§8 decision 37). The threshold is still open; the Stage 4 spike's figures should set
-   it. Stage 3's people albums have not been asked.
+   it. Stage 3's people albums have not been asked. **Amended 2026-11-16:** for content albums the
+   behaviour below the threshold is now decided (§8 decision 37's amendment), and only the threshold
+   itself is open. **Amended again 2026-11-16:** that behaviour is now the rule of decision 37's
+   reversal — an album with a content criterion is unevaluatable on such a device, not hidden. Only
+   the threshold is open. **Amended 2026-11-17:** content albums are paused (§8 decision 38), so the
+   content threshold is not being set; the spike's figures are kept in
+   [albums-stage-4.md](albums-stage-4.md). For people albums the question is Stage 3's.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
 5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
    — ✅ **Answered 2026-10-30 by the maintainer: it stays on.** The question as raised is kept below,
@@ -1614,11 +1831,12 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 
     Content criteria do not have this problem, because they store the user's own text. This is
     the hardest open design question in Stage 3, and it needs an ADR before people albums are
-    built. Nothing in Stage 4 depends on it.
+    built. Nothing in Stage 4 depends on it. **Amended 2026-11-17:** Stage 3 is next (§8 decision
+    13, amended 2026-11-17), so this is the first thing Stage 3 must answer.
 
 Questions scoped to a single stage live in that stage's plan and only arrive here if they outlive
 it. Stage 2's plan is archived; its one live question is 11 above. Stage 4's are in
-[albums-stage-4.md](albums-stage-4.md).
+[albums-stage-4.md](albums-stage-4.md), paused with it.
 
 ---
 
