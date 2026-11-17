@@ -21,3 +21,6 @@ tools/gazetteer/raw/
 /app/release/
 .kotlin/
 .artifacts/tmp/
+
+# Python bytecode
+**/__pycache__/

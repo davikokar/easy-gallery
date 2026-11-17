@@ -431,13 +431,15 @@ signature change breaks them loudly, by design.
 
 Top bars (`SearchTopBar`, `SelectionTopBar`, `MediaSelectionTopBar`, and `ThumbnailPickerTopBar`,
 shared by the Folder thumbnail picker and the Album cover picker, which passes its own title),
-dialogs (`ColumnCountDialog`, `SortOptions`, `GroupByDialog`, `FilterMediaDialog`,
+dialogs (`ColumnCountDialog`, `GroupByDialog`, `FilterMediaDialog`,
 `CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`, and the read-only
-`AlbumInfoDialog`), the `PreferenceScopeSelector`
+`AlbumInfoDialog`), the `SortOption` and `OrderOption` rows that `SortDialog` is built from, the
+`PreferenceScopeSelector`
 state holder those dialogs share for their draft-and-commit "apply only to this folder" or "this
 album" target — its `PreferenceContainer` chooses the wording only, and both commit the same
 `PreferenceApplyTarget` —
-media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `ZoomableImage`), the **Main view
+media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `FavouriteIndicator`,
+`ZoomableImage`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
 helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, plus
 `MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
