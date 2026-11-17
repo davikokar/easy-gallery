@@ -32,7 +32,8 @@ class JobParams(
 
 /** One measurement run: load a model, embed queries and photos, write results next to the models (adb pull). */
 class Job(private val ctx: Context, private val p: JobParams) {
-    private val base = ctx.getExternalFilesDir(null)!!
+    // Internal storage: files pushed by the adb shell into Android/data are owned by uid shell and unreadable to the app.
+    private val base = ctx.filesDir
     private val out = File(base, "results").also { it.mkdirs() }
 
     private val peakPss = Peak()
