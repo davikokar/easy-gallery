@@ -24,3 +24,16 @@ tools/gazetteer/raw/
 
 # Python bytecode
 **/__pycache__/
+
+# Face feasibility spike (tools/face-model-spike): nothing private or downloaded is ever tracked.
+# private/ = pulled photos, crops, embeddings, per-face records, labels, labelling page, run logs.
+tools/face-model-spike/private/
+tools/face-model-spike/models/
+tools/face-model-spike/raw/
+tools/face-model-spike/venv/
+tools/face-model-spike/.venv/
+tools/face-model-spike/harness/.gradle/
+tools/face-model-spike/harness/build/
+tools/face-model-spike/harness/app/build/
+tools/face-model-spike/harness/local.properties
+tools/face-model-spike/harness/app/libs/
