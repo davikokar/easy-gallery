@@ -4,7 +4,9 @@
 > (people).~~ Stage 4 (content) is paused 2026-11-17 (decision 38) after its feasibility spike;
 > Stage 3 (people) is next.** Current state of every stage is in [§7](#7-staging-and-progress),
 > which is the single source of truth for where this epic stands. Stage 4's plan, paused, is
-> [albums-stage-4.md](albums-stage-4.md);
+> [albums-stage-4.md](albums-stage-4.md); Stage 3's, a draft, is
+> [albums-stage-3.md](albums-stage-3.md); rule editing, which is not a stage, has its own plan,
+> [albums-rule-editing.md](albums-rule-editing.md);
 > Stage 2's is archived at [albums-stage-2.md](albums-stage-2.md), and its exit criteria and their
 > record are in §7.
 > This document is the product narrative for the albums epic. It holds the shape of the feature,
@@ -190,15 +192,21 @@ The user picks one or more people and the album collects photos of them. Require
 person. ML Kit detects but does not recognise.
 
 **Picking several people means all of them are in the photo** (§8 decision 35). "Silvia or Davide"
-is not expressible. How a person gets a name, and where that name lives when face data is excluded
-from backup and the albums are not, is open — §10 question 12.
+is not expressible. The user picks from one unlabelled thumbnail per person, chosen by the app; the
+app never names a person, and the album's own name is the only name (§8 decision 40). Only images
+are considered, never videos. Thumbnails cannot be merged or split: one person shown as two
+thumbnails is an accepted failure (decision 40, amended). After a restore or a full re-index the
+rule finds each person again through one photo it is anchored to; a face's position is not face
+data, so the anchor is backed up with the album (decisions 9, 41 and 42). Planned as Stage 3 in [albums-stage-3.md](albums-stage-3.md), a draft that starts with
+a feasibility spike.
 
 ### Region and time album
 The user picks an area and/or a date range. Needs no ML — only indexed EXIF location and date — but
 is still impossible without the index, for the reason in §6. **Shipped in Stage 2.** Both are picked
 from what the index actually found, never typed (§8 decision 16), and a rule may combine them. In
 Stage 2 the rule is set at creation and cannot be edited (§8 decision 26); ~~Stage 4 adds editing~~
-editing is added (§8 decision 36) — since 2026-11-17 with Stage 3 or standalone (§8 decision 39).
+editing is added (§8 decision 36) — since 2026-11-17 ~~with Stage 3 or standalone~~ in a plan of
+its own, [albums-rule-editing.md](albums-rule-editing.md) (§8 decision 39, amended 2026-11-17).
 
 ---
 
@@ -374,7 +382,7 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); no plan yet | ⬜ Not started | Tier C | yes |
+| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md); draft | ⬜ Not started — plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18, step 3.1 next | Tier C | yes |
 | **4** | Content albums (Tier B) ~~and rule editing — **runs before Stage 3**~~; planned in [albums-stage-4.md](albums-stage-4.md); rule editing moved out (§8 decision 39) | ⬜ Not started — plan drafted 2026-11-13; paused 2026-11-17, see decision 38 | Tier B | yes |
 
 Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
@@ -382,6 +390,10 @@ In progress when a binding deliverable lands (step 4.1's ADRs or later), per *Wh
 **Amended 2026-11-17:** step 4.0 finished and the stage was paused before any binding deliverable
 landed, so it never started (§8 decision 38). Stage 3 is next; Stage 4 resumes on decision 38's
 triggers.
+
+**Rule editing is not a stage.** It has a plan of its own,
+[albums-rule-editing.md](albums-rule-editing.md), an epic-level plan outside the staged sequence
+(§8 decision 39, amended 2026-11-17), so it takes no row in this table.
 
 Status is one of ⬜ Not started · 🔶 In progress · ✅ Complete. Stages 3 and 4 are each roughly the
 size of 0–2 combined. **The rows are in execution order, and the numbers were deliberately not
@@ -500,9 +512,13 @@ how each was met stays in that document. Steps 2.0–2.7 are all ✅.
 [albums-stage-4.md](albums-stage-4.md) and become binding when its step 4.1 confirms them; they move
 here when that plan is archived.
 
-**Stage 3** — ⬜ not started. Exit criteria are written when it is planned, ~~after Stage 4; they
+**Stage 3** — ⬜ not started. ~~Exit criteria are written when it is planned,~~ ~~after Stage 4; they
 depend on decisions Stage 4 will inform~~ **amended 2026-11-17:** next, before Stage 4 (decision 13,
-amended 2026-11-17). Every stage carries the documentation-audit line.
+amended 2026-11-17). **Amended 2026-11-17, later the same day:** its exit criteria are **drafted**
+in [albums-stage-3.md](albums-stage-3.md) and become binding when its step 3.1 confirms them; they
+move here when that plan is archived. Its first step, 3.0, is a feasibility spike, and as for
+Stage 4 a spike's figures are not a binding deliverable. Every stage carries the
+documentation-audit line.
 
 ### Documentation audit
 
@@ -656,6 +672,10 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
    Play's Data Safety form treats on-device-only inference as "collection" — it generally does not,
    but confirm it before Stage 3 rather than assuming.
 
+   **Clarified 2026-11-17 by the maintainer — what "face data" is.** For the three obligations
+   above, face data is the face embeddings, the face crops and the groups (clusters). A face's
+   position (bounding box) within a photo, stored as a people rule's anchor (decision 41), is not.
+
 10. **The album database is included in Android auto-backup** (ADR-0014). `allowBackup` is already
     true and the backup rules are still the generated samples, so inclusion was going to happen by
     default; what was missing was the reasoning. Albums are the only thing in this app that cannot
@@ -733,7 +753,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     - **Decision 9's face-data obligations come with it** — the disclosure, the deletion switch and
       the Data Safety check — now in the first ML stage rather than the second.
     - **§10 question 12**, how a person gets a name and where it lives given backup, becomes the
-      first thing Stage 3 must answer.
+      first thing Stage 3 must answer. *(Answered 2026-11-17 by the maintainer, in decisions 40–42
+      and decision 9's clarification; the question is closed.)*
 
     Stage 3 is not planned here.
 
@@ -998,8 +1019,9 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     Creation alone delivers the stage's goal. **The cost:** a wrong rule is fixed by deleting the
     album and creating it again, losing its manual additions and exclusions. Adding editing later is
     a decision of its own, and any editor inherits the never-rewrite rule. **That later decision
-    is 36**, taken 2026-11-13: editing ships in ~~Stage 4~~ Stage 3 or standalone, since 2026-11-17
-    (decision 39). This decision stays true of Stage 2 as shipped.
+    is 36**, taken 2026-11-13: editing ships in ~~Stage 4~~ ~~Stage 3 or standalone, since 2026-11-17
+    (decision 39)~~ its own plan, [albums-rule-editing.md](albums-rule-editing.md), since
+    2026-11-17 (decision 39, amended). This decision stays true of Stage 2 as shipped.
 
 27. **The New automatic album screen offers Index now while media is not yet indexed, says how
     many items that is, and never starts indexing by itself.** Requested by the maintainer, and in
@@ -1233,7 +1255,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     which would give the wrong reason. Implemented in [albums-stage-4.md](albums-stage-4.md) step
     4.6. The sentence above that a wrong rule is fixed only by deleting and recreating the album
     stays until rule editing lands (decision 36); updating it is owed by that change, and
-    [albums-stage-4.md](albums-stage-4.md) step 4.2 lists it.
+    ~~[albums-stage-4.md](albums-stage-4.md) step 4.2~~ [albums-rule-editing.md](albums-rule-editing.md)
+    lists it (moved 2026-11-17, decision 39 as amended).
 
 32. **An album's cover can be chosen in Album Detail View.** Decided by the maintainer on
     2026-11-14 and recorded before the change that implements it; no stage's status changes.
@@ -1321,9 +1344,10 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     parse, including combinations the creation screen never writes, and must not rewrite an
     unevaluatable rule (ADR-0017). **Open:** the edit surface, ~~what happens to additions and
     exclusions on edit,~~ and the case of a rule with an unknown clause. ~~All three are~~ **Both
-    are** [albums-stage-4.md](albums-stage-4.md)'s questions. **Amended 2026-11-17:** this decision
-    stands, but not as part of Stage 4 — rule editing continues with Stage 3 or standalone, and
-    those questions go with it (decision 39).
+    are** ~~[albums-stage-4.md](albums-stage-4.md)'s~~ [albums-rule-editing.md](albums-rule-editing.md)'s
+    questions (D1 and D3; moved 2026-11-17). **Amended 2026-11-17:** this decision
+    stands, but not as part of Stage 4 — rule editing continues ~~with Stage 3 or standalone~~ in
+    its own plan, and those questions go with it (decision 39, amended).
 
     **Amended 2026-11-15 — what an edit changes, answered by the maintainer (question D2 of
     [albums-stage-4.md](albums-stage-4.md)).** An edit changes only the rule. The album's manual
@@ -1507,12 +1531,168 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
 
 39. **Rule editing continues, independent of content.** Decided by the maintainer on 2026-11-17.
     Decision 36 stays: an automatic album's rule becomes editable. Editing place and date rules —
-    the content of [albums-stage-4.md](albums-stage-4.md) step 4.2 — is folded into the next stage
-    the maintainer starts, Stage 3 (people albums), or done standalone. **Reasons on record:** step
+    the content of [albums-stage-4.md](albums-stage-4.md) step 4.2 — ~~is folded into the next stage
+    the maintainer starts, Stage 3 (people albums), or done standalone~~ has its own plan (amended
+    below). **Reasons on record:** step
     4.2 was already proposed ahead of the ML steps because it needs no model and would not be
     stranded if the spike ruled content out (question D4 of the stage plan); the pause is that
     case. The stage plan's group D questions, D2's answer (decision 36's amendment) and step 4.2's
     owed update to decision 31 go with it.
+
+    **Amended 2026-11-17 by the maintainer: rule editing has its own plan,
+    [albums-rule-editing.md](albums-rule-editing.md).** That answers which stage is its home: none.
+    It is an epic-level plan outside the staged sequence, independent of Stage 3 as well as of
+    content, with no row in §7's table. Group D's open questions moved into it; D2's answer stays
+    recorded in [albums-stage-4.md](albums-stage-4.md) and is linked from there.
+
+40. **The People criterion offers unlabelled thumbnails, and the app never names a person.**
+    Decided by the maintainer on 2026-11-17. His description, as relayed: "The user, when selecting
+    the People criterion, is presented with thumbnails of people he can select. Each thumbnail
+    represents a different person, but the gallery doesn't provide any labels. Eventually the user
+    can name the album according to the people's names, which he knows. The gallery only detects
+    people, groups them, and selects a thumbnail for each person." The threshold, the merge
+    (withdrawn later the same day, below) and the thumbnail choice below are his answers, the same
+    day, to questions the Orchestrator put to him.
+    - **The app detects, groups and chooses; the user picks and names.** Each thumbnail is one
+      person, with no label. The app never names a person. The album's name, typed by the user as
+      for any album, is the only name. **Why it matters:** with no person names there is no name to
+      store beside face data, and the naming half of §10 question 12 does not arise.
+    - **A person is offered only if they appear in at least two different images.** No reason was
+      given.
+    - ~~**The user can mark two thumbnails as the same person**, merging them. **Why:** by decision
+      35, picking several people means all of them are in the photo, so a person split across two
+      thumbnails cannot be picked: one thumbnail misses the photos grouped under the other, and
+      picking both demands a face from each in the same photo.~~ **Withdrawn 2026-11-17 — see the
+      amendment below.**
+    - **The app chooses each thumbnail**, and the user cannot override it — unlike an album's cover
+      (decision 32). No reason was given.
+    - ~~**Not decided here:** splitting a thumbnail that mixes two people; where a merge is stored and
+      whether it can be undone; whether videos count towards the two images. All are questions in
+      [albums-stage-3.md](albums-stage-3.md) group C.~~ All answered later the same day, below.
+
+    **Amended 2026-11-17, later the same day, by the maintainer — no merge, and images only.**
+    - **The merge is withdrawn, the same day it was recorded.** The record above came from a
+      question he had misunderstood. In his words: "The user should not be able to merge two
+      thumbnails. We accept the fact that UI grouping can fail sometimes." So there is no merge, no
+      split of a thumbnail that mixes two people, and nothing to undo. The struck bullet is kept as
+      the reasoning that was given up.
+    - **The accepted failure.** If one person appears as two thumbnails, the user picks one of them,
+      and the album misses the photos grouped under the other. Picking both asks, by decision 35,
+      for both groups in the same photo and will find little. This is an accepted failure, not a
+      bug to fix.
+    - **Images only.** Videos are not considered for people albums: the two different images are
+      images, and face indexing for people covers images only.
+    - **The two-image threshold decides only whom the picker offers**, not what an album matches
+      (decision 42).
+
+    **Amended 2026-11-18 by the maintainer — the thumbnails are sorted by photo count.**
+    - **The two-image threshold stays.**
+    - **The thumbnails are sorted by how many photos each person appears in, most first.**
+    - **Why:** the face spike ([albums-stage-3.md](albums-stage-3.md), *Spike outcome*) showed that
+      with the threshold at two images, most of what the picker offers is people seen in only two
+      photos.
+      - At the recogniser and threshold it recommends, 79 of the 100 evaluable thumbnails were
+        people seen in fewer than three images, and 90 in fewer than five.
+      - Unsorted, the people the user cares about would be buried among them.
+      - Those figures come from one library, labelled from one recogniser's grouping.
+    - **The sort decides only the order of the picker**, like the threshold. It changes neither who
+      is offered nor what an album matches.
+    - **Not decided here:** a tie-break between people with the same count, if one is needed, and
+      whether the count is of images, as the threshold's is. Both are open details for step 3.1 or
+      3.6 of [albums-stage-3.md](albums-stage-3.md).
+
+41. **A people criterion finds its person through a photo it is anchored to.** Decided by the
+    maintainer on 2026-11-17, choosing among options the Orchestrator put to him for the restore
+    half of §10 question 12. It is a direction: its details are open, and it needs the first ADR of
+    [albums-stage-3.md](albums-stage-3.md) step 3.1 before any people clause is built. Recorded
+    separately from decision 40 because it is a storage decision with an unresolved conflict, and
+    decision 40 is not.
+    - **What is stored.** The rule stores the photo the person's thumbnail came from — a media
+      reference of the kind albums already store, with the media identity of ADR-0010 and ADR-0020
+      — and where the face is in that photo. After a restore or a full re-index, the person is
+      whichever group then contains that face.
+    - **Why.** Face groups live in the index, which is excluded from backup (decision 15,
+      ADR-0018), and albums are backed up (ADR-0014), so a rule pointing at a group would point at
+      nothing after a restore. A photo reference is backed up with the album.
+    - **The options not chosen.** Accepting that the clause is unevaluatable until the user picks
+      the person again. Storing the face's embedding in the rule, ruled out by decision 9 because
+      the album database is backed up.
+    - **In tension with decision 9, and not reconciled here.** The face's position in the photo
+      would be stored in the album database, which is backed up, and decision 9 says face data never
+      enters a backup. Whether a face's position is face data is **not decided** by this decision,
+      and decision 9 is not amended by it. The maintainer was told of the tension when he chose.
+      Step 3.1's ADR must reconcile the two. **Resolved later the same day — see the amendment
+      below.**
+    - ~~**Not decided here:** the anchor's details — one per person or several, a deleted anchor
+      photo, an anchor face that lands in another group or in none. Questions C2 of
+      [albums-stage-3.md](albums-stage-3.md).~~ Decided later the same day, below and in decision
+      42.
+
+    **Amended 2026-11-17, later the same day, by the maintainer.**
+    - **The tension is resolved.** The maintainer decided that a face's position in a photo is not
+      face data, and decision 9 now says so in its clarification. The anchor may live in the
+      backed-up album database; embeddings, crops and groups stay in the index, out of backup.
+    - **One anchor per person.** A criterion with several people stores one anchor for each.
+    - **What happens when an anchor cannot be followed** is decision 42, recorded apart so that
+      this one stays the storage choice.
+    - **Still owed:** step 3.1's first ADR records the anchor and its resolution, and no people
+      clause is built before it is adopted.
+
+42. **How a people anchor resolves, and what happens when it cannot.** Decided by the maintainer on
+    2026-11-17, accepting the Orchestrator's suggestion; it answers questions C2c and C2d of
+    [albums-stage-3.md](albums-stage-3.md). Recorded apart from decision 41 to keep that one
+    readable. Step 3.1's first ADR records both.
+    - **The face at the anchored position** is the detected face whose box overlaps the stored
+      position best, above a minimum overlap, because a re-index will not reproduce the box
+      exactly. **Open:** the minimum, measured by step 3.0's spike.
+    - **The anchor's face lands in a different group after a re-index:** not a failure. By decision
+      41 the person is whichever group holds the anchor's face, and the album follows it, mistakes
+      included.
+    - **The anchor's face lands in a group seen in only one image:** it still resolves to that
+      person. Decision 40's two-image threshold applies to whom the picker offers, not to
+      evaluation, so a person who shrinks does not make an album vanish.
+    - **The anchor photo is not yet face-indexed:** the album is **waiting on the index**, §6's
+      pending state, not unevaluatable. It is the normal state after a restore or a reinstall
+      until face indexing reaches the photo, so **after every restore every people album passes
+      through it**. By decision 29 nothing on the album says so.
+    - **The anchor photo is deleted, or no face is found at the anchored position any more** — for
+      example after a model update: the album is **unevaluatable**, the state ADR-0017 gives an
+      unknown clause. Its rule contributes nothing, so it is never widened, and it is never deleted
+      automatically. The user fixes it by picking the person again through rule editing
+      ([albums-rule-editing.md](albums-rule-editing.md) D6), or deletes the album. "Deleted" means
+      not found among live media after ADR-0010's healing; the rule is not changed, so a photo that
+      comes back makes the album evaluable again.
+    - **Rejected for now: automatic re-anchoring**, moving the anchor to another photo of the person
+      before a deletion. It works only for deletions made inside the app, and it rewrites rules.
+    - **For step 3.1, raised by the Planner:** this is a second cause of unevaluatable, at
+      evaluation rather than at parsing, and on a rule the build understands. ADR-0017's text names
+      only parse failures, and its never-rewritten rule is about rules it could not parse, so the
+      `people` clause amendment must name this cause and allow the user's re-pick. Its notice cannot
+      be the Newer-app wording, which gives the wrong reason; the wording is step 3.6's.
+    - **The Planner's reading, to be confirmed at 3.1:** a face that clustering leaves in no group
+      is a group of its own, so it resolves as above. Whether such faces exist depends on B1.
+
+43. **The training-data risk is accepted for SFace.** Decided by the maintainer on 2026-11-18,
+    answering the first item the face spike handed to step 3.1 of
+    [albums-stage-3.md](albums-stage-3.md). His answer: "accept the risk for SFace". No further
+    reason was given.
+    - **SFace** here is OpenCV Zoo's `face_recognition_sface`, whose weights are Apache-2.0 by the
+      zoo's README.
+    - **The risk.** Every recognition model the spike found was trained on face datasets whose
+      publishers state research-only terms, or no terms, while the weights' own licences are
+      permissive. What was read, and what it says for SFace, is in the plan's
+      [Licence findings](albums-stage-3.md#licence-findings-a5), not restated here.
+    - **Offered and not chosen:** getting legal advice first; pausing Stage 3.
+    - **For SFace only.** The risk is not accepted for OpenFace nn4.small2.v1, dlib ResNet v1 or any
+      other recogniser. Nor does it cover the detector: YuNet's training data carries a caveat of
+      the same kind, under the same findings, and the question put to the maintainer named
+      recognition models only.
+    - **Not a choice of SFace.** This decision does not make SFace the shipping model, and does not
+      fix its threshold, runtime or size route. Those stay step 3.1 items. The spike's
+      recommendation, SFace fp32 at cosine distance about 0.50, is an input to them, not a decision.
+    - **The weights' own licence is still owed.** If SFace ships, the app must meet Apache-2.0's
+      obligations, a copy of the licence and a statement of any change. That is A5 and the stage's
+      exit criteria in [albums-stage-3.md](albums-stage-3.md); this decision does not discharge it.
 
 ---
 
@@ -1593,7 +1773,8 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    reversal — an album with a content criterion is unevaluatable on such a device, not hidden. Only
    the threshold is open. **Amended 2026-11-17:** content albums are paused (§8 decision 38), so the
    content threshold is not being set; the spike's figures are kept in
-   [albums-stage-4.md](albums-stage-4.md). For people albums the question is Stage 3's.
+   [albums-stage-4.md](albums-stage-4.md). For people albums the question is Stage 3's — question A4
+   of [albums-stage-3.md](albums-stage-3.md), added 2026-11-17.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
 5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
    — ✅ **Answered 2026-10-30 by the maintainer: it stays on.** The question as raised is kept below,
@@ -1821,7 +2002,9 @@ Things this epic breaks or strains, which should surprise nobody when they come 
     [albums-stage-2.md](albums-stage-2.md), *Open questions*, item 3.
 
 12. **How does a person get a name, and where does it live?** — **Raised 2026-11-13; deferred by
-    the maintainer to Stage 3's planning.** "Silvia and Davide in France" needs named people, but
+    the maintainer to Stage 3's planning. ~~Partly answered 2026-11-17 — see the amendment at the
+    end.~~ ✅ Answered 2026-11-17 by the maintainer — see the two amendments at the end.** "Silvia
+    and Davide in France" needs named people, but
     face clusters are anonymous until the user names them. Where the name lives collides with
     backup:
     - Face data lives in the index, which is excluded from backup (decision 9, ADR-0018).
@@ -1832,11 +2015,34 @@ Things this epic breaks or strains, which should surprise nobody when they come 
     Content criteria do not have this problem, because they store the user's own text. This is
     the hardest open design question in Stage 3, and it needs an ADR before people albums are
     built. Nothing in Stage 4 depends on it. **Amended 2026-11-17:** Stage 3 is next (§8 decision
-    13, amended 2026-11-17), so this is the first thing Stage 3 must answer.
+    13, amended 2026-11-17), so this is the first thing Stage 3 must answer. Its ADR is the first of
+    [albums-stage-3.md](albums-stage-3.md) step 3.1; the question stays open, and owned, here.
+
+    **Amended 2026-11-17 — the naming half answered, the restore half given a direction, by the
+    maintainer.**
+    - **Naming: no person gets a name.** The People criterion shows unlabelled thumbnails, and the
+      album's own name, typed by the user, is the only name (§8 decision 40). The title above asks
+      something that no longer arises; it is kept as raised.
+    - **Restore: the person is anchored to a photo** (§8 decision 41). A chosen direction, not an
+      answer: the anchor puts a face's position into the backed-up album database, which decision 9
+      may forbid.
+    - ~~**Still open, and still owned here:** whether a face's position is face data under decision 9,
+      which step 3.1's first ADR must reconcile. The anchor's other details are
+      [albums-stage-3.md](albums-stage-3.md)'s group C2. This question closes when that ADR is
+      adopted.~~ Answered later the same day, below.
+
+    **Amended 2026-11-17, later the same day — closed.** A face's position is not face data (§8
+    decision 9, clarified 2026-11-17 by the maintainer), so the anchor of decision 41 — one per
+    person — may be stored in the backed-up album database; decision 42 says what happens when an
+    anchor cannot be followed. The question is answered. It still needs the first ADR of
+    [albums-stage-3.md](albums-stage-3.md) step 3.1 to make the storage binding: that ADR records
+    this answer rather than reopening it.
 
 Questions scoped to a single stage live in that stage's plan and only arrive here if they outlive
 it. Stage 2's plan is archived; its one live question is 11 above. Stage 4's are in
-[albums-stage-4.md](albums-stage-4.md), paused with it.
+[albums-stage-4.md](albums-stage-4.md), paused with it. Stage 3's are in
+[albums-stage-3.md](albums-stage-3.md), and rule editing's in
+[albums-rule-editing.md](albums-rule-editing.md).
 
 ---
 

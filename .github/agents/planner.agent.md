@@ -29,7 +29,8 @@ media index (ADR-0018) — alongside the `SharedPreferences` files that `AGENTS.
    the media index, or anything that owns app-side data. Check its §7 progress table first: most
    of what it describes is **not implemented**. §7 also names the stage in progress and links to
    that stage's plan — no stage is in progress; Stage 4's plan, `docs/design/albums-stage-4.md`, is
-   paused, and Stage 3 is next and has no plan yet — which holds the step
+   paused; Stage 3 is next, with a draft plan at `docs/design/albums-stage-3.md`; and rule editing,
+   not a stage, has its own plan at `docs/design/albums-rule-editing.md` — which holds the step
    breakdown, the stage's exit criteria, and the next-session handoff. You own both.
 5. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names. Use them in plans.
 6. Repository memory at `/memories/repo/easy-gallery-exploration.md` — a long log of traps

@@ -33,7 +33,10 @@ otherwise.
   Step 4.0 is ✅ done; its figures are under *Spike outcome* below. Steps 4.1 to 4.8 are paused and
   were never started. Rule editing, step 4.2, leaves this plan: it continues with Stage 3 or
   standalone, taking group D with it (decision 39). Stage 3 is next and has no plan yet (decision
-  13, amended 2026-11-17).
+  13, amended 2026-11-17). **Amended 2026-11-17, later the same day:** rule editing has its own
+  plan, [albums-rule-editing.md](albums-rule-editing.md), which now holds step 4.2's specification
+  and group D's open questions (decision 39, amended 2026-11-17). Stage 3 has a draft plan,
+  [albums-stage-3.md](albums-stage-3.md).
 - **The spike's code was removed from the tree on 2026-11-17** and is retrievable from git history:
   see `git log -- tools/content-model-spike`. Every `tools/content-model-spike/` path in this plan
   now points into that history.
@@ -45,7 +48,8 @@ otherwise.
      with it A3, A3a and F1 below.
   4. Then this block's older entries, and group B onward, which were never discussed.
 - **Still open, unchanged by the pause:** A1a, A3a, A4a, B1–B6, C1–C6, E1, E2, F1; D1 and D3–D5
-  go with rule editing (decision 39).
+  ~~go with rule editing (decision 39)~~ moved to [albums-rule-editing.md](albums-rule-editing.md)
+  on 2026-11-17.
 - **Superseded 2026-11-17, kept as the record of how the spike ran:** ~~**Step 4.0, the
   feasibility spike, is in progress — started 2026-11-13.**~~ Group A was answered on
   2026-11-13 (see *Open questions*) and its follow-ups were answered the same day, except the three
@@ -210,12 +214,15 @@ On the **New automatic album** screen, next to Place and Date, a **Content** cri
 - Create writes the album.
 
 Later, the user can **edit** an automatic album's rule. The Album type dialog does not change.
+*Amended 2026-11-17: editing is no longer delivered here; see
+[albums-rule-editing.md](albums-rule-editing.md).*
 
 Already decided, and not reopened here:
 - One automatic album with mixed criteria — [albums.md](albums.md) §8 decision 33.
 - Content is free text only — decision 34.
 - ~~Rule editing is in this stage — decision 36.~~ Rule editing is decision 36; since 2026-11-17 it
-  continues with Stage 3 or standalone, not in this stage — decision 39.
+  continues with Stage 3 or standalone, not in this stage — decision 39. **Amended 2026-11-17:** its
+  plan is [albums-rule-editing.md](albums-rule-editing.md) (decision 39, amended).
 - The model ships inside the app, and content albums are hidden on weaker devices — decision 37.
   Since 2026-11-16 "hidden" means only that the Content criterion is not offered; an existing
   content album is unevaluatable there, never hidden.
@@ -341,13 +348,14 @@ advice.
 
 ~~Step 4.0 is approved and in progress; steps 4.1 onward are proposals until step 4.1 confirms them.~~
 **Amended 2026-11-17:** step 4.0 is done; steps 4.1 onward are paused, and still proposals until
-step 4.1 confirms them. Step 4.2 leaves this plan (decision 39).
+step 4.1 confirms them. Step 4.2 leaves this plan (decision 39) for
+[albums-rule-editing.md](albums-rule-editing.md).
 
 | Step | Delivers | Status |
 |---|---|---|
 | **4.0** | Feasibility spike: model, runtime, quantisation, measured on a device. No shipped code. | ~~🔶 In progress — started 2026-11-13~~ ✅ Done 2026-11-17 — *Spike outcome* above |
 | **4.1** | The decisions: ADRs and amendments, and these exit criteria confirmed | ⬜ Paused 2026-11-17 |
-| **4.2** | Rule editing for place and date rules | ⬜ Paused 2026-11-17 — continues with Stage 3 or standalone (decision 39) |
+| **4.2** | ~~Rule editing for place and date rules~~ Moved to [albums-rule-editing.md](albums-rule-editing.md) 2026-11-17 | ~~⬜ Paused 2026-11-17 — continues with Stage 3 or standalone (decision 39)~~ Moved out (decision 39, amended 2026-11-17) |
 | **4.3** | Tier B schema and store | ⬜ Paused 2026-11-17 |
 | **4.4** | Image embedding in the indexing pipeline | ⬜ Paused 2026-11-17 |
 | **4.5** | The `content` clause, query embedding and evaluation | ⬜ Paused 2026-11-17 |
@@ -396,7 +404,8 @@ The Planner writes, and the maintainer approves:
 - **Tier B storage**, as an ADR-0018 amendment.
 - **The `content` clause format**, as an ADR-0017 amendment: what it stores, and what makes it
   unevaluatable.
-- **Rule editing**, as an ADR-0016 amendment or a new ADR, depending on D1.
+- ~~**Rule editing**, as an ADR-0016 amendment or a new ADR, depending on D1.~~ Moved to
+  [albums-rule-editing.md](albums-rule-editing.md) step R1, 2026-11-17.
 - ~~**Whether [albums.md](albums.md) §8 decision 37's 2026-11-15 amendment needs an ADR-0017
   amendment** — a content clause ignored, or a content-only album hidden, below the threshold. Routed
   to the Planner if so.~~ Moot: that amendment was reversed on 2026-11-16, and the rule now in force
@@ -414,13 +423,15 @@ This step also confirms or changes the exit criteria below.
 
 **Amended 2026-11-17:** this step leaves the paused plan and continues with Stage 3 or standalone
 ([albums.md](albums.md) §8 decision 39); what follows is kept as its specification.
+**Amended again 2026-11-17:** moved to [albums-rule-editing.md](albums-rule-editing.md), which now
+carries its specification (decision 39, amended); the text below is kept as it stood.
 
-Editing for the clauses that exist today, `time` and `region`. **Proposed before the ML steps**
+~~Editing for the clauses that exist today, `time` and `region`. **Proposed before the ML steps**
 (D4): it needs no model, it is useful now, and it would not be stranded if the spike rules content
-out. Step 4.6 then adds the content clause to an editor that already works.
+out. Step 4.6 then adds the content clause to an editor that already works.~~
 
-**Owed when it lands:** [albums.md](albums.md) §8 decision 31's sentence that a wrong rule is still
-fixed only by deleting and recreating the album is updated (decision 31, amended 2026-11-15).
+~~**Owed when it lands:** [albums.md](albums.md) §8 decision 31's sentence that a wrong rule is still
+fixed only by deleting and recreating the album is updated (decision 31, amended 2026-11-15).~~
 
 ### 4.3 — Tier B schema and store
 
@@ -526,10 +537,12 @@ Derived from Stage 2's. **Not binding until 4.1.**
   covered, per §6.
 - A rule whose content clause was written by another model version is not compared against the
   wrong embeddings. What it does instead is decided at 4.1 (B5, C2).
-- **Rule editing:** every rule this build can parse round-trips through the editor unchanged. An
-  unevaluatable rule is never rewritten. ~~Additions and exclusions behave as D2 decides.~~ An edit
+- **Rule editing:** ~~every rule this build can parse round-trips through the editor unchanged. An
+  unevaluatable rule is never rewritten.~~ ~~Additions and exclusions behave as D2 decides.~~ ~~An edit
   changes only the rule: additions, exclusions, the cover and display overrides are left alone
-  (D2). ~~Below the threshold, the editor keeps a content criterion it does not show (A4b).~~ Below
+  (D2).~~ **Amended 2026-11-17:** the rule-editing criteria moved to
+  [albums-rule-editing.md](albums-rule-editing.md); what stays here is content's own. ~~Below
+  the threshold, the editor keeps a content criterion it does not show (A4b).~~ Below
   the threshold, the editor does not edit an album with a content criterion (A4b, D3).
 - ~~Below the threshold, a content-only album is hidden and a content clause in a mixed rule is
   ignored, with the stored rule unchanged (A4b).~~ Below the threshold, an album with a content
@@ -710,14 +723,21 @@ no album is hidden, and "hidden" now means only that the Content criterion is no
    question.
 6. **Query limits:** an empty or one-character description, and a maximum length.
 
-### D. Rule editing — block 4.2
+### D. Rule editing — ~~block 4.2~~ moved to [albums-rule-editing.md](albums-rule-editing.md)
 
-1. **Edit surface:** the New automatic album screen in an edit mode, or a screen of its own?
+**Moved 2026-11-17** with step 4.2 ([albums.md](albums.md) §8 decision 39, amended 2026-11-17).
+D1 and D3–D5 are answered or kept open there, under the same numbers; D2's answer is also kept
+here, where it was recorded.
+
+1. ~~**Edit surface:** the New automatic album screen in an edit mode, or a screen of its own?
    ADR-0016 Amendment 2 argued against a mode for *manual versus automatic* because the inputs
    differed; for editing, the inputs are identical. A new screen is another branch in
-   `MainActivity`'s chain. ADR-0013 defers the chain's future to Stage 3, which now comes later.
+   `MainActivity`'s chain. ADR-0013 defers the chain's future to Stage 3, which now comes later.~~
+   Moved: [albums-rule-editing.md](albums-rule-editing.md) D1.
 2. ~~**Additions and exclusions on edit:** kept as they are, or cleared?~~ **Answered 2026-11-15 by
-   the maintainer: an edit changes only the rule.** Manual additions, exclusions, the cover and the
+   the maintainer: an edit changes only the rule.** *Pointer, 2026-11-17: this record stays here;
+   [albums-rule-editing.md](albums-rule-editing.md) D2 links to it.* Manual additions, exclusions,
+   the cover and the
    album's display overrides are left alone ([albums.md](albums.md) §8 decision 36, amended).
    ~~*Leaning kept*, because §3's three sets are independent of the rule, but the maintainer decides.~~
    Moot: answered above.
@@ -739,18 +759,20 @@ no album is hidden, and "hidden" now means only that the Content criterion is no
    applies. **Confirmed by the maintainer 2026-11-16:** the first case can only reach a random or
    display-only fallback cover, never a user's pick, because a pick is stored as an addition. That
    is ADR-0015's rule applied to editing; decision 32's accepted cost stands and no ADR changes.
-3. **A rule with an unknown clause:** refuse editing entirely, or edit the known clauses while
-   preserving the unknown one untouched? *Leaning refuse*: simpler, and it cannot widen the album.
-   **Cross-reference, 2026-11-15:** ~~the editor keeps any criterion it does not show (A4b);~~ whether
+3. ~~**A rule with an unknown clause:** refuse editing entirely, or edit the known clauses while
+   preserving the unknown one untouched? *Leaning refuse*: simpler, and it cannot widen the album.~~
+   ~~**Cross-reference, 2026-11-15:**~~ ~~the editor keeps any criterion it does not show (A4b);~~ ~~whether
    an album with an *unknown* clause type can be edited at all remains open here. **Amended
    2026-11-16:** an album with a content criterion is unevaluatable on a device below the threshold,
    and the editor does not edit it there (A4b; [albums.md](albums.md) §8 decision 37, reversed), so
-   it joins this question as a second unevaluatable case, while the unknown-clause case stays open.
-4. **Ship editing before the ML steps?** As proposed in 4.2. *Leaning yes.*
-5. **Entry point:** where the edit action lives in Album Detail View — a Designer question. **A
+   it joins this question as a second unevaluatable case, while the unknown-clause case stays open.~~
+   Moved: [albums-rule-editing.md](albums-rule-editing.md) D3.
+4. ~~**Ship editing before the ML steps?** As proposed in 4.2. *Leaning yes.*~~ Moved, and answered
+   there: [albums-rule-editing.md](albums-rule-editing.md) D4.
+5. ~~**Entry point:** where the edit action lives in Album Detail View — a Designer question. **A
    fact from main:** the Overflow menu now ends with Change album thumbnail and then Album info
    (decisions 32 and 31), the read-only view of the rule, and the edit action will sit beside
-   Album info.
+   Album info.~~ Moved: [albums-rule-editing.md](albums-rule-editing.md) D5.
 
 ### E. Screen — block 4.6
 
@@ -788,3 +810,5 @@ no album is hidden, and "hidden" now means only that the Content criterion is no
   [ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md),
   [ADR-0021](../architecture/decisions/0021-per-album-display-preference-overrides.md).
 - [albums-stage-2.md](albums-stage-2.md): archived; its structure and traps are the template here.
+- [albums-rule-editing.md](albums-rule-editing.md): rule editing's own plan since 2026-11-17, with
+  step 4.2 and group D.

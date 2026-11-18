@@ -188,8 +188,8 @@ The **Planner**, as with ADRs and the overview.
   status per stage.
 - **Exit criteria per stage**, concrete enough that "complete" is checkable rather than a feeling.
   Write them for a stage when that stage is planned; do not invent them years ahead. **A stage that
-  has a plan of its own keeps its criteria there while the plan is open**, and they return here
-  when it is archived — see *Stage plans* below. The row for such a stage says where they are.
+  has a plan of its own keeps its criteria there while the plan is open or paused**, and they return
+  here when it is archived — see *Stage plans* below. The row for such a stage says where they are.
 - **A stage log** — one line per status change. The table is the present; the log is the history.
 - **Decisions already taken**, so they are not relitigated. Anything with lasting technical weight
   also becomes an ADR; the list here is the index to them plus the product decisions that do not
@@ -228,8 +228,25 @@ document keeps the progress table, the decisions, and the open questions, and th
 restates them.
 
 - **Owner: the Planner.** Routed, exactly as the epic document is.
-- The epic document links to the stage plan from the row of the stage in progress, so there is one
-  way in and no second source of truth about where the epic stands.
+- **A stage plan is open, paused or archived.** Open while its stage is being planned or built;
+  paused and archived are defined below. *Amended 2026-11-17 by the maintainer, who added the
+  paused state.*
+- The epic document links to the stage plan from ~~the row of the stage in progress~~ its stage's
+  row, whether the plan is open or paused, so there is one way in and no second source of truth
+  about where the epic stands.
+- **Paused, when a stage stops before it closes, means this.** The stage may never have formally
+  started. The plan is kept at its path and gains a `Paused — YYYY-MM-DD` line beneath its title,
+  with the reason and the decision that paused it. It stays in [AGENTS.md](../../AGENTS.md)'s
+  documentation map, with *Update when* set to "paused; updated only when the pause is lifted or a
+  resume trigger changes". Its handoff block says what to read first on resume. Its open questions
+  stay in it unless a later decision moves them. **Resuming removes nothing:** the plan gains a
+  dated `Resumed — YYYY-MM-DD` line and is open again. A paused plan is **not** archived, and its
+  exit criteria do not move into the epic document. The first paused plan is
+  [albums-stage-4.md](../../docs/design/albums-stage-4.md).
+- **Work of an epic that is not a stage** may be given a plan of the same kind, named
+  `<epic>-<topic>.md`. Everything in this section applies to it, with "the stage closes" read as
+  "the work ships"; it takes no row in the epic's progress table. The first is
+  [albums-rule-editing.md](../../docs/design/albums-rule-editing.md).
 - **Archived, when the stage closes, means this.** Everything that outlives the stage — at minimum
   its exit criteria and the record that each was met — moves into the epic document, and the plan
   gains an `Archived — Stage N closed YYYY-MM-DD` line beneath its title and stops being
@@ -239,5 +256,6 @@ restates them.
 - **Its row in [AGENTS.md](../../AGENTS.md)'s documentation map goes at the same moment**, because
   that map registers documents somebody is keeping true and an archived plan is no longer one.
   Replace the row with the next stage's plan if one is being opened; otherwise remove it. Leaving
-  it listed makes the next reader walk a row that cannot be acted on.
+  it listed makes the next reader walk a row that cannot be acted on. A paused plan keeps its row,
+  as above.
 

@@ -36,7 +36,9 @@ yet. Read these before designing anything:
    edit it; report anything your design contradicts.
 6. The plan for the stage in progress, if your work belongs to it. §7 of `albums.md` says which
    stage is current and links to its plan — no stage is in progress; Stage 4's plan,
-   `docs/design/albums-stage-4.md`, is paused, and Stage 3 is next and has no plan yet — and that
+   `docs/design/albums-stage-4.md`, is paused; Stage 3 is next, with a draft plan at
+   `docs/design/albums-stage-3.md`; and rule editing, not a stage, has its own plan at
+   `docs/design/albums-rule-editing.md` — and that
    plan, not the epic document, holds the step you are designing for and its exit criteria. The
    **Planner owns it too**; report drift rather than editing it.
 

@@ -91,6 +91,8 @@ rather than nobody's.
 | [docs/architecture/decisions/](docs/architecture/decisions/) | Planner | routed | never edited; superseded by a new ADR, or amended in place when only a detail changed |
 | [docs/design/albums.md](docs/design/albums.md) | Planner | routed | a stage changes status, a decision is taken, a question is answered |
 | [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) | Planner | routed | paused; updated only when the pause is lifted or a resume trigger changes |
+| [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md) | Planner | routed | a step changes status, a question is answered, or a session learns something that changes the next one; archived when Stage 3 closes |
+| [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md) | Planner | routed | a step changes status or a question is answered; archived when editing ships |
 | [.github/instructions/ui-vocabulary.instructions.md](.github/instructions/ui-vocabulary.instructions.md) | Designer | **in-change** | you add, rename, or remove a named screen, view, area, or control |
 | [.github/instructions/tests.instructions.md](.github/instructions/tests.instructions.md) | Planner | routed | a test convention or tool changes |
 | [.github/instructions/architecture-docs.instructions.md](.github/instructions/architecture-docs.instructions.md) | Planner | routed | the documentation process itself changes |
@@ -155,11 +157,17 @@ the audit is for the rest.
   progress has its own shorter-lived plan beside the epic document, holding that stage's steps,
   their exit criteria, and the handoff block telling the next session where to start. Read it as
   well whenever your work is part of that stage. It is Planner-owned and routed like the epic
-  itself, and it is archived when the stage closes, under the rule in the
+  itself, and it is archived when the stage closes — or paused, if the stage stops before it
+  closes — under the rule in the
   [architecture documentation instructions](.github/instructions/architecture-docs.instructions.md).
   No stage is in progress. Stage 4 (content albums) is paused after its feasibility spike; its plan
   [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) is kept to resume from. Stage 3
-  (people albums) is next and has no plan yet. Stage
+  (people albums) is next and has a draft plan,
+  [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md), which starts with a feasibility
+  spike; the stage moves to In progress when its first binding deliverable lands, under
+  [albums.md](docs/design/albums.md) §7's rule, and a spike's figures are not one, as recorded for
+  Stage 4. Rule editing is not a stage and has a plan of its own,
+  [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md). Stage
   2's plan, [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md), is archived and not
   maintained.
 - For tests — unit **and** instrumented — follow
