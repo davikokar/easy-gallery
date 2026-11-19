@@ -215,9 +215,9 @@ project lock, and the resulting failure is indistinguishable from a real build f
   decided.
 - An implementation agent that reports the overview is now stale has done the right thing. Route
   the edit; do not ask it to fix the file itself.
-- Where an epic has a plan for the stage in progress — no stage is in progress; Stage 4's plan,
-  `docs/design/albums-stage-4.md`, is paused; Stage 3 is next, with a draft plan at
-  `docs/design/albums-stage-3.md`; and rule editing, not a stage, has its own plan at
+- Where an epic has a plan for the stage in progress — Stage 3 is in progress, with its plan at
+  `docs/design/albums-stage-3.md`; Stage 4's plan, `docs/design/albums-stage-4.md`, is paused;
+  and rule editing, not a stage, has its own plan at
   `docs/design/albums-rule-editing.md` — it is Planner-owned and routed exactly like the epic document,
   and it carries the handoff block the next session starts from. Route its update to the Planner in
   Step 5, alongside the overview, whenever a phase finished a step or learned something that

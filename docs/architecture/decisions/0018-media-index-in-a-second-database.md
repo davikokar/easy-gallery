@@ -518,3 +518,183 @@ thing: computed by a resolver that is no longer the current one.
   dataset stamp, and the rule that an unusable asset stamps nothing
 - [docs/design/albums-stage-2.md](../../design/albums-stage-2.md) step 2.6, and the review notes
   under 2.5 that name the permanent-waiting and false-complete failures
+
+## Amendment 5 — 2026-11-18 — Tier C: face data in the index, and the index reaches version 5 (adopted 2026-11-19)
+
+> **Adopted 2026-11-19, when the maintainer approved it.** Drafted by the Planner as step 3.1 of
+> [albums-stage-3.md](../../design/albums-stage-3.md), and labelled *proposed* in this record until
+> then, because the instructions' status vocabulary has no state for a draft; this record's own
+> status was `Active` throughout, for the Decision and Amendments 1–4, and now covers this
+> amendment too. Nothing below was built before adoption; step 3.2 builds it.
+>
+> **Its question was answered by the maintainer on 2026-11-19, as recommended**
+> ([albums.md](../../design/albums.md) §8 decision 47). ~~That settles the question; it does not
+> approve the amendment, which stays proposed until he does.~~ He approved it separately, the same
+> day.
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–4. It
+is an amendment rather than a new ADR for Amendment 1's reason: the Decision put Tier C in this
+database from the start, for the backup collision it names, and what follows applies Amendment 1's
+precedent — bump, migrate, commit the JSON. The figures and choices it relies on are
+[albums.md](../../design/albums.md) §8 decisions 9, 40, 45 and 46, and the face pipeline is
+[ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md).
+
+### What Tier C stores
+
+Three kinds of row, in tables of their own. Their names and columns are step 3.2's; what each holds
+is decided here.
+
+1. **A face-indexing state per image** — one row per image the Tier C pass has processed, keyed by
+   the image's index-row key. It holds the **face-pipeline version** that processed it and the
+   **outcome**: faces stored (possibly none at or above the cut-off), or **failed**.
+2. **A face** — one row per face at or above the 40 px cut-off (decision 46): its image's key, its
+   **box** in the upright frame as fractions of the photo's width and height (the same frame as an
+   anchor, [ADR-0022](0022-people-criterion-anchored-to-a-photo.md)), its **embedding** as the
+   recogniser outputs it, and its **group**, null until grouping has run.
+3. **Grouping bookkeeping** — enough to tell whether every stored face has been grouped under the
+   current grouping parameters (the threshold of decision 45), and to keep a group's id stable for
+   the picker's last tie-break (decision 46) within one grouping. Whether per-group summaries (image
+   count, most recent photo, medoid face) are stored or computed on read is step 3.4's.
+
+**Nothing else.** No crop, no thumbnail and no person name is stored anywhere. Faces under the cut-off
+are not stored at all: they are never grouped, offered or matched (decision 46), so keeping them would
+be face data with no use.
+
+### Two stamps, by the captured/derived split
+
+The Decision split captured EXIF facts from the place codes derived from them, so that the cheap half
+could be recomputed without the files. Tier C has the same two halves, and versions them separately:
+
+- **Captured: detection and embedding**, stamped with the **face-pipeline version**. It covers the
+  detector and recogniser weights, the decode and detection sizes, the detector's score threshold and
+  the 40 px cut-off ([ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) owns the constant).
+  A bump makes every image pending again — a file open and inference per image, the expensive kind of
+  re-index.
+- **Derived: grouping**, stamped with a **grouping version** covering the threshold and the
+  algorithm. A bump regroups the stored embeddings with **no file I/O and no inference**.
+
+### Per-image states, so that "waiting on the index" is decidable
+
+For a live **image** (decision 40: videos are never face-indexed; ~~GIFs — see the question below~~
+nor are GIFs — the question below, answered 2026-11-19):
+
+| State | Means | For a `people` clause |
+|---|---|---|
+| **Pending** | no state row; or its pipeline version is not the current one; or a face of it is not yet grouped under the current grouping version | unsettled — waiting on the index |
+| **Done, faces** | current state row, its faces grouped | match or settled no-match, by group |
+| **Done, none** | current state row, no face at or above the cut-off | settled no-match |
+| **Failed** | inference declined or failed on this image | settled no-match: **neither pending nor covered**, §6's third state |
+
+- **Failed is stored as absent, never as a guess**, as §6 rules for every tier. It is not retried
+  until the pipeline version changes.
+- **What counts as failed.** A failure a retry could cure — the worker stopped, cancelled, or out of
+  memory — writes nothing, so the image stays pending. But an image that fails that way on every
+  attempt would keep albums waiting for ever, the permanent-waiting failure Amendment 4 names; so
+  after a bounded number of attempts it is recorded as failed. The bound and how attempts are counted
+  are step 3.3's.
+- **A video or GIF has no state row and is never pending.** Counting it as pending would keep every
+  people album waiting for ever.
+
+### Keeping Tier C true to the image it describes
+
+These are Amendment 4's rules for its marker, applied to Tier C:
+
+- **Tier A re-extracting an image** — the file changed — **makes its Tier C state pending.** The
+  faces of a changed file may have changed too.
+- **A reconciler heal rewrites the key** on the image's Tier C rows, in the same transaction as the
+  image row, and keeps them: a heal is a move, not a change of content.
+- **Reconciliation deleting an image row deletes its Tier C rows** with it, in the same transaction.
+  They are a cache ([ADR-0020](0020-automatic-albums-resolve-against-live-media.md)), and an
+  unmounted volume keeps them, by ADR-0020 clause 4.
+- **Writes are conditional.** The periodic run and Index now can overlap (Amendment 4). A Tier C
+  result is written only if the image row is still the one it was computed from, and grouping must
+  not run twice at once. The mechanism is steps 3.3 and 3.4's; the requirement is fixed here.
+
+### The migration
+
+**`Migration(4, 5)` creates the Tier C tables, empty, and changes no existing table.** Every image
+therefore starts pending, which is true. It is registered beside the three earlier migrations with no
+destructive fallback, the index reaches version 5, and `5.json` is exported and must be committed by
+the change that produces it. The version actually reached is the `@Database` annotation's.
+
+### Backup
+
+**No rule changes.** The Tier C tables are in `media_index.db`, which `backup_rules.xml` and both
+sections of `data_extraction_rules.xml` already exclude, with its `-wal` and `-shm` files. The stage's
+exit criteria check the rules files rather than assume them, and if step 3.2's deletion (below)
+introduces any other sidecar file, that file needs the same three exclusions.
+
+### Deleting face data
+
+[ADR-0024](0024-face-data-disclosure-and-delete-switch.md) decides when face data is deleted. What a
+deletion removes, and how, is decided here:
+
+- **Every Tier C row** — faces, per-image states and grouping bookkeeping — in **one transaction**.
+  Tier A rows, the place columns and the delta watermarks are untouched.
+- **Not by deleting the database file.** The Decision's *Positive* consequences, and
+  [albums.md](../../design/albums.md) §8 decision 20, foresaw the switch deleting the whole file.
+  That would also throw away Tier A, and re-reading every file's EXIF to rebuild it buys nothing for
+  privacy. The forecast is not followed, deliberately.
+- **No deleted face data may survive in the file.** SQLite leaves deleted rows' bytes in free pages
+  and in the write-ahead log until they are reused or checkpointed. Step 3.2 chooses the mechanism —
+  for example a checkpoint and `VACUUM` after the delete, or `secure_delete` on the connection — and a
+  test proves the result.
+- **Idempotent.** Deleting when nothing is stored does nothing; a deletion interrupted by process death
+  is a rolled-back transaction, and ADR-0024 repeats it at the next start.
+- **The run-state file holds no Tier C figure.** Any Tier C figure Settings shows is computed from the
+  Tier C tables, so a deletion clears it with nothing else to touch. That keeps Amendment 2's file free
+  of anything face-derived; Amendment 2's note that the switch "should clear it for tidiness" no
+  longer applies.
+
+### Alternatives considered
+
+- **Tier C columns on the existing image row**, as Amendment 4 did for its marker. Cheaper by one
+  table. Rejected: a deletion would then be an update across every Tier A row, a face count would sit
+  beside EXIF facts that are not face data, and every Tier A writer would have one more set of fields
+  to carry or silently reset — the negative Amendment 4 already records for one field.
+- **Deleting the whole index file** for the switch. Rejected above.
+- **Storing faces under the cut-off** for a later change of cut-off. Rejected: that change is a
+  pipeline-version bump, which re-detects anyway.
+- **Storing the face crop** for the picker. Rejected: a crop is face data, and the picker can crop
+  the photo at display time from the stored box.
+
+### Consequences
+
+**Positive**
+
+- "Waiting on the index" is decidable per image, and a people album cannot wait on an item that will
+  never change.
+- A threshold change regroups without touching a file.
+- Deleting face data is a contained operation that leaves Tier A alone.
+
+**Negative**
+
+- Three more tables, one more migration, two more stamps to carry, and every Tier A writer must now
+  also make Tier C pending on re-extraction.
+- A pipeline-version bump re-detects every image — of the order of minutes per thousand photos on the
+  one phone measured, in the foreground ([albums-stage-3.md](../../design/albums-stage-3.md),
+  *Spike outcome*).
+- Embeddings make the index file larger; it stays out of backup, so only the device pays.
+
+### Question for the maintainer — answered 2026-11-19
+
+> **Answered by the maintainer on 2026-11-19**, in his words "go with the recommendations". The
+> question is left as it was put, because its reasons are the record of why.
+
+1. **GIFs.** The spike excluded GIFs and the stage plan lists them as out of scope "by decision", but
+   no recorded decision says the app's Tier C pass skips them. *Proposed: images only, no GIFs* — an
+   animated GIF's first frame is rarely a good face, and it keeps the pass to what the spike measured.
+   ~~Confirm?~~ ✅ **Answered 2026-11-19: images only, no GIFs, as recommended.** The Tier C pass
+   skips GIFs, which is now the recorded decision the question found missing. (Group E's E2 in
+   [albums-stage-3.md](../../design/albums-stage-3.md).)
+
+### References
+
+- [docs/design/albums.md](../../design/albums.md) §6 (the third state), §8 decisions 9, 20, 40, 45
+  and 46
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md) steps 3.2 to 3.4
+- [ADR-0022](0022-people-criterion-anchored-to-a-photo.md), [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md),
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md)
+- [ADR-0017](0017-composable-album-rule-representation.md) Amendment 4 — how a `people` clause reads
+  these states
+- `data/MediaIndexDatabase.kt`, `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`

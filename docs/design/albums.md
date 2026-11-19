@@ -2,9 +2,10 @@
 
 > **Status: Stages 1 and 2 complete; ~~Stage 4 (content) is planned and runs before Stage 3
 > (people).~~ Stage 4 (content) is paused 2026-11-17 (decision 38) after its feasibility spike;
-> Stage 3 (people) is next.** Current state of every stage is in [§7](#7-staging-and-progress),
+> ~~Stage 3 (people) is next.~~ Stage 3 (people) is in progress since 2026-11-19.** Current state
+> of every stage is in [§7](#7-staging-and-progress),
 > which is the single source of truth for where this epic stands. Stage 4's plan, paused, is
-> [albums-stage-4.md](albums-stage-4.md); Stage 3's, a draft, is
+> [albums-stage-4.md](albums-stage-4.md); Stage 3's, ~~a draft~~ the stage plan in use, is
 > [albums-stage-3.md](albums-stage-3.md); rule editing, which is not a stage, has its own plan,
 > [albums-rule-editing.md](albums-rule-editing.md);
 > Stage 2's is archived at [albums-stage-2.md](albums-stage-2.md), and its exit criteria and their
@@ -197,8 +198,11 @@ app never names a person, and the album's own name is the only name (§8 decisio
 are considered, never videos. Thumbnails cannot be merged or split: one person shown as two
 thumbnails is an accepted failure (decision 40, amended). After a restore or a full re-index the
 rule finds each person again through one photo it is anchored to; a face's position is not face
-data, so the anchor is backed up with the album (decisions 9, 41 and 42). Planned as Stage 3 in [albums-stage-3.md](albums-stage-3.md), a draft that starts with
-a feasibility spike.
+data, so the anchor is backed up with the album (decisions 9, 41 and 42). Faces are found by YuNet
+and grouped by SFace, on OpenCV bundled in the app, where the device can run them (decisions 43–45).
+Planned as Stage 3 in [albums-stage-3.md](albums-stage-3.md), ~~a draft whose feasibility spike
+closed on 2026-11-18~~ whose decisions were adopted on 2026-11-19 as ADRs 0022–0024 and amendments
+to ADR-0017 and ADR-0018.
 
 ### Region and time album
 The user picks an area and/or a date range. Needs no ML — only indexed EXIF location and date — but
@@ -382,14 +386,15 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md); draft | ⬜ Not started — plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18, step 3.1 next | Tier C | yes |
+| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); step 3.2 next | Tier C | yes |
 | **4** | Content albums (Tier B) ~~and rule editing — **runs before Stage 3**~~; planned in [albums-stage-4.md](albums-stage-4.md); rule editing moved out (§8 decision 39) | ⬜ Not started — plan drafted 2026-11-13; paused 2026-11-17, see decision 38 | Tier B | yes |
 
 Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
 In progress when a binding deliverable lands (step 4.1's ADRs or later), per *Who updates this*.
 **Amended 2026-11-17:** step 4.0 finished and the stage was paused before any binding deliverable
 landed, so it never started (§8 decision 38). Stage 3 is next; Stage 4 resumes on decision 38's
-triggers.
+triggers. **Amended 2026-11-19:** Stage 3 started — step 3.1's adopted ADRs are its first binding
+deliverable — and Stage 4 stays paused.
 
 **Rule editing is not a stage.** It has a plan of its own,
 [albums-rule-editing.md](albums-rule-editing.md), an epic-level plan outside the staged sequence
@@ -512,12 +517,14 @@ how each was met stays in that document. Steps 2.0–2.7 are all ✅.
 [albums-stage-4.md](albums-stage-4.md) and become binding when its step 4.1 confirms them; they move
 here when that plan is archived.
 
-**Stage 3** — ⬜ not started. ~~Exit criteria are written when it is planned,~~ ~~after Stage 4; they
+**Stage 3** — ~~⬜ not started~~ 🔶 in progress since 2026-11-19. ~~Exit criteria are written when it is planned,~~ ~~after Stage 4; they
 depend on decisions Stage 4 will inform~~ **amended 2026-11-17:** next, before Stage 4 (decision 13,
 amended 2026-11-17). **Amended 2026-11-17, later the same day:** its exit criteria are **drafted**
 in [albums-stage-3.md](albums-stage-3.md) and become binding when its step 3.1 confirms them; they
 move here when that plan is archived. Its first step, 3.0, is a feasibility spike, and as for
-Stage 4 a spike's figures are not a binding deliverable. Every stage carries the
+Stage 4 a spike's figures are not a binding deliverable. **Amended 2026-11-19:** step 3.1 confirmed
+them, so they are binding; they stay in [albums-stage-3.md](albums-stage-3.md) until it is
+archived. Every stage carries the
 documentation-audit line.
 
 ### Documentation audit
@@ -598,6 +605,7 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-11-12 | **Stage 2 complete, with three criteria carried.** Steps 2.0–2.7 are done: the Tier A index in its own database (four schema versions, three migrations), the constrained WorkManager pipeline and Index now, delta detection, the offline gazetteer and place resolver, the evaluation engine, and region and time albums created from the **New automatic album** screen. The stage's exit criteria moved into §7 and [albums-stage-2.md](albums-stage-2.md) was archived; its open question about volume resync became §10 question 11. Declared complete by the maintainer; the definition-of-done re-run after `56126a6`, the Play Console declaration and the documentation audit are carried — see §7, *Stage 2*. |
 | 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 33–37). |
 | 2026-11-17 | **Stage 4 paused after its feasibility spike (step 4.0); Stage 3 next.** Stage 4 stays Not started: no binding deliverable landed. The spike's outcome is in [albums-stage-4.md](albums-stage-4.md#spike-outcome--2026-11-17); the pause and its resume triggers are §8 decision 38, the order §8 decision 13 as amended 2026-11-17, and rule editing continues without content under §8 decision 39. |
+| 2026-11-19 | **Stage 3 started.** Step 3.1 landed: ADR-0022 (a people criterion finds its person through an anchor photo), ADR-0023 (the face pipeline, its runtime and delivery) and ADR-0024 (face data's disclosure and delete switch) adopted, with ADR-0017 Amendment 4 (the `people` clause) and ADR-0018 Amendment 5 (Tier C), after the maintainer answered their questions as recommended (§8 decision 47); the stage's exit criteria confirmed in [albums-stage-3.md](albums-stage-3.md). No code; nothing user-visible. Step 3.0's spike, closed 2026-11-18, was not a binding deliverable and took no line. `ARCHITECTURE.md`'s links to the new records are deferred to the changes that land their work, under the instructions' *Timing* rule, and carried as an exit criterion. |
 
 ### Who updates this
 
@@ -675,6 +683,13 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
    **Clarified 2026-11-17 by the maintainer — what "face data" is.** For the three obligations
    above, face data is the face embeddings, the face crops and the groups (clusters). A face's
    position (bounding box) within a photo, stored as a people rule's anchor (decision 41), is not.
+
+   **Pointer added 2026-11-18:** the disclosure, the switch and how each obligation is checked are
+   drafted in [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md),
+   and what a deletion removes in
+   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 5; both
+   ~~proposed, awaiting the maintainer's approval~~ adopted 2026-11-19 (decision 47). The Data
+   Safety question is recorded, not answered, in [albums-stage-3.md](albums-stage-3.md) step 3.1.
 
 10. **The album database is included in Android auto-backup** (ADR-0014). `allowBackup` is already
     true and the backup rules are still the generated samples, so inclusion was going to happen by
@@ -1597,9 +1612,11 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
       - Those figures come from one library, labelled from one recogniser's grouping.
     - **The sort decides only the order of the picker**, like the threshold. It changes neither who
       is offered nor what an album matches.
-    - **Not decided here:** a tie-break between people with the same count, if one is needed, and
+    - ~~**Not decided here:** a tie-break between people with the same count, if one is needed, and
       whether the count is of images, as the threshold's is. Both are open details for step 3.1 or
-      3.6 of [albums-stage-3.md](albums-stage-3.md).
+      3.6 of [albums-stage-3.md](albums-stage-3.md).~~ **Settled 2026-11-18, later, by decision 46
+      (delegated):** the count is of distinct images; ties go to the group's most recent photo
+      date, then to a stable id.
 
 41. **A people criterion finds its person through a photo it is anchored to.** Decided by the
     maintainer on 2026-11-17, choosing among options the Orchestrator put to him for the restore
@@ -1638,13 +1655,20 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     - **Still owed:** step 3.1's first ADR records the anchor and its resolution, and no people
       clause is built before it is adopted.
 
+    **Pointer added 2026-11-18:** drafted as
+    [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md), with the
+    clause in [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)
+    Amendment 4; both ~~proposed, awaiting the maintainer's approval~~ adopted 2026-11-19 (decision
+    47), which discharges the *Still owed* above.
+
 42. **How a people anchor resolves, and what happens when it cannot.** Decided by the maintainer on
     2026-11-17, accepting the Orchestrator's suggestion; it answers questions C2c and C2d of
     [albums-stage-3.md](albums-stage-3.md). Recorded apart from decision 41 to keep that one
     readable. Step 3.1's first ADR records both.
     - **The face at the anchored position** is the detected face whose box overlaps the stored
       position best, above a minimum overlap, because a re-index will not reproduce the box
-      exactly. **Open:** the minimum, measured by step 3.0's spike.
+      exactly. ~~**Open:** the minimum, measured by step 3.0's spike.~~ **Settled 2026-11-18 by
+      decision 46 (delegated): IoU ≥ 0.5.**
     - **The anchor's face lands in a different group after a re-index:** not a failure. By decision
       41 the person is whichever group holds the anchor's face, and the album follows it, mistakes
       included.
@@ -1671,6 +1695,15 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
       be the Newer-app wording, which gives the wrong reason; the wording is step 3.6's.
     - **The Planner's reading, to be confirmed at 3.1:** a face that clustering leaves in no group
       is a group of its own, so it resolves as above. Whether such faces exist depends on B1.
+      **Pointer added 2026-11-18:** B1 is answered by decision 45, average linkage, which leaves
+      every clustered face in a group, if only of itself. Faces under 40 px are not clustered at
+      all, and decision 46 makes them "no face at the anchored position".
+
+    **Pointer added 2026-11-18:** the resolution is drafted in
+    [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §3, and the
+    second cause of unevaluatable in
+    [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 4;
+    both ~~proposed, awaiting the maintainer's approval~~ adopted 2026-11-19 (decision 47).
 
 43. **The training-data risk is accepted for SFace.** Decided by the maintainer on 2026-11-18,
     answering the first item the face spike handed to step 3.1 of
@@ -1693,6 +1726,160 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     - **The weights' own licence is still owed.** If SFace ships, the app must meet Apache-2.0's
       obligations, a copy of the licence and a statement of any change. That is A5 and the stage's
       exit criteria in [albums-stage-3.md](albums-stage-3.md); this decision does not discharge it.
+
+    **Pointers added 2026-11-18, later.** The detector's risk was accepted by delegation in decision
+    44, which this decision does not cover. SFace was then chosen as the shipping model, with its
+    threshold, runtime and size route, by delegation in decision 45. This decision's text is
+    unchanged.
+
+44. **The training-data risk is also accepted for the detector, YuNet — a delegated decision.**
+    Taken on 2026-11-18 by the Orchestrator, under the maintainer's delegation below.
+    - **How decisions 44, 45 and 46 were taken.** The Orchestrator listed the open items of step 3.1
+      of [albums-stage-3.md](albums-stage-3.md) to the maintainer, and offered to put them to him as
+      questions. His answer, verbatim: "I leave them to you." The Orchestrator then took these three
+      decisions, with the reason for each recorded in it. **They are delegated decisions, not the
+      maintainer's own, and he can reverse any of them**; a reversal is recorded as an amendment in
+      place, as decision 37's was.
+    - **Unlike decision 43, the maintainer did not take this one himself.** Decision 43 accepted the
+      risk for SFace in his words and said that it did not cover the detector. This decision extends
+      the same acceptance to the detector, under his delegation.
+    - **YuNet** here is OpenCV Zoo's `face_detection_yunet`, MIT for every file in its zoo directory
+      by the zoo's README. **The risk:** it was trained on WIDER FACE, whose page states CC BY-NC-ND
+      for the dataset — the plan's
+      [Licence findings](albums-stage-3.md#licence-findings-a5), not restated here.
+    - **Why YuNet:** it is the only detector the spike measured, and it worked. The one other
+      detector that passed A5, MediaPipe BlazeFace (Apache-2.0, trained on consented images), was
+      not measured; its model card puts "any form of surveillance or identity recognition" out of
+      scope; and its short-range model needs large faces, which suits selfies, not group photos.
+    - **For YuNet only**, as decision 43 is for SFace only. Any other detector needs its own answer.
+    - **The weights' own licence is still owed:** MIT's copyright and permission notice goes with the
+      copy. That is A5 and the stage's exit criteria; this decision does not discharge it.
+
+    **Confirmed by the maintainer 2026-11-18.** He confirmed the acceptance of YuNet's training-data
+    risk that this decision took by delegation. The record of how it was taken stays as written: it
+    was a delegated decision, and is now a confirmed one.
+
+45. **Faces are found by YuNet and grouped by SFace, on OpenCV bundled in the app, and the People
+    criterion is offered only where that pipeline runs — a delegated decision.** Taken on 2026-11-18
+    by the Orchestrator, under the delegation recorded in decision 44. It answers items 2, 3 and 4
+    that the face spike handed to step 3.1 of [albums-stage-3.md](albums-stage-3.md), question B1
+    of that plan, and A4's open half. The figures behind it are in the plan's *Spike outcome*.
+    - **The recogniser: SFace fp32** (OpenCV Zoo's `face_recognition_sface`). **The grouping:**
+      average-linkage agglomerative clustering on cosine distance, threshold **0.50**. **Why:** it is
+      the spike's recommendation and its best measured operating point — the only one both pure (1
+      mixed group in 100 evaluable) and consolidating (album recall about 0.91). SFace has a plateau
+      from 0.50 to 0.55 and a cliff at 0.60; 0.50 is the strict end of the plateau. Average linkage
+      does not depend on the order faces arrive in.
+    - **Not adopted: SFace int8.** Its embedding quality was never measured, and the labels needed
+      to measure it were deleted under A7. Its 16.8 MB route stays unavailable unless it is measured
+      again from new labels. **Not adopted: OpenFace**, which mixes people at every threshold useful
+      enough to keep the two most-photographed people together, **and dlib**, about 20 times slower
+      per face. Neither is covered by decision 43's risk acceptance in any case.
+    - **Still open: incremental clustering as photos arrive** (B2), for step 3.4. The spike found the
+      order-dependent incremental method much less stable than average linkage, so step 3.4 must not
+      assume it.
+    - **The runtime: OpenCV's DNN module, bundled in the app, arm64-v8a only, built trimmed** to the
+      modules the pipeline uses. The spike used core, imgproc, dnn, objdetect and calib3d; step 3.3
+      confirms the list. **Not chosen:** ONNX Runtime, which would add a second runtime for nothing,
+      since OpenCV already runs both models; LiteRT, because no model that passed A5 is TFLite; and
+      dlib's runtime, which goes with dlib's model.
+    - **Size, against A3's 50 MB budget.** Untrimmed, SFace fp32 + YuNet + the full OpenCV library
+      was estimated at about 45.9 MB compressed, within the budget, so **trimming is margin, not a
+      precondition**. The trimmed size is measured when it lands. The runtime counts against the
+      budget, as the spike counted it: the question whether it should was never put, and counting it
+      is the stricter reading.
+    - **OpenCV is a new third-party dependency.** The maintainer's delegation is recorded as its
+      approval under `AGENTS.md`'s *What to ask before doing*. The same rule still applies when it
+      lands: the merged manifest is checked, and a permission it merges in is approved or removed.
+      **Licence notices are owed** for OpenCV and SFace (Apache-2.0) and YuNet (MIT): A5 and the
+      stage's exit criteria.
+    - **The lowest device (A4; §10 question 3, for people): no device list and no speed
+      threshold.** The People criterion is offered only where the face pipeline is **capable** —
+      the native library and both models load, and a self-test embedding succeeds. Otherwise the
+      criterion is hidden, which is A4's policy. **Why:** there is no data below the SM-G990B, since
+      the SM-G781B was never attached; indexing runs in the background under constraints, so a slow
+      device only takes longer; and a capability check cannot be wrong about a device the way a
+      guessed list can. A non-arm64 device fails the check. The SM-G781B is checked at step 3.7.
+    - **A people album on an incapable device** — reachable through a backup restore — is
+      **unevaluatable, never hidden or deleted**, as decision 37's reversal settled for content. A4
+      marked this "to be confirmed at 3.1"; it is confirmed here, by delegation.
+    - **Raised by the Planner on 2026-11-18, for the models, runtime and delivery ADR — not
+      decided here:**
+      - **"arm64-v8a only" must mean packaging OpenCV for that ABI only, not an ABI filter on the
+        app.** Google Play shows an app with native libraries only on devices whose architecture it
+        includes ([Filters on Google Play](https://developer.android.com/google/play/filters), *CPU
+        Architecture*). The release bundle already carries one AndroidX native library for four
+        ABIs, so a non-arm64 device would still install the app and fail the capability check;
+        an app-wide filter would remove the app from that device instead. To be verified with
+        bundletool, not assumed.
+      - **16 KB pages.** Play requires apps targeting API 35 or higher to support 16 KB memory pages
+        on 64-bit devices, and blocks updates that do not from 2027-02-01
+        ([Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes)). This
+        app has had no native code of its own; a trimmed OpenCV build must be 16 KB aligned.
+      - **How the trimmed build reaches the repository** — a committed prebuilt or a native build
+        step in Gradle — is not decided.
+      - **OpenCV's Android build bundles third-party components and a C++ runtime**, whose notices
+        may be owed beside OpenCV's own. Not read.
+      - **The device's capability is a further cause of unevaluatable**, beside decision 42's
+        anchor that is not found. The `people` clause amendment to ADR-0017 must name both, each
+        with its own notice wording.
+      - **The Planner's reading, to confirm in the ADR:** on an incapable device face indexing does
+        not run and the disclosure of decision 9 is not shown, from the same check, as decision 37
+        proposed for content's Tier B.
+
+    **Confirmed by the maintainer 2026-11-18 — the dependency.** He confirmed that OpenCV may be
+    added to the app as a third-party dependency: the approval `AGENTS.md` *What to ask before doing*
+    requires, which the bullet above recorded as given by delegation. The rest of this decision
+    stays delegated, and the record of how it was taken stays as written. **The confirmation covers
+    the library only** — not the permissions its merged manifest may add, which are still checked
+    when it lands, and not the Play-store packaging questions raised above.
+
+    **Pointer added 2026-11-18:** the points raised by the Planner above are drafted, for the
+    maintainer's approval, in [ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md)
+    and in [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)
+    Amendment 4. ~~Neither is adopted yet.~~ Both adopted 2026-11-19 (decision 47).
+    **2026-11-19:** ADR-0023's questions were answered as
+    recommended (decision 47); by its E3, step 3.3 uses OpenCV's published artifact untrimmed, so the
+    trimming above is deferred as margin rather than done, and E6 confirms the Planner's reading
+    above.
+
+46. **The People picker's order, the anchor's overlap, small faces and non-faces — a delegated
+    decision.** Taken on 2026-11-18 by the Orchestrator, under the delegation recorded in decision
+    44. It answers items 5 to 8 that the face spike handed to step 3.1 of
+    [albums-stage-3.md](albums-stage-3.md), and settles the details decisions 40 and 42 left open.
+    - **The anchor's minimum box overlap (decision 42): IoU ≥ 0.5, and the best overlap wins.**
+      **Why:** the same build reproduced every box exactly (IoU 1.0 for 533 of 533 faces); a
+      different build of the detector gave a median of 0.957 and a 5th percentile of 0.88. 0.5 is
+      generous against legitimate drift while still rejecting a neighbouring face.
+    - **Small faces: a face whose box is under 40 px on its shorter side, on the image scaled to a
+      1280 px long side, is not grouped, not offered, and not matched as an anchor.** It is the
+      spike's choice, to which the maintainer did not object. **A consequence:** such a face cannot
+      be matched to a person, so it never makes its photo a member of a people album; a photo where
+      the person appears only that small is found only if added by hand. An anchored face that a
+      later detection finds under 40 px is "no face at the anchored position", decision 42's
+      unevaluatable case.
+    - **The picker's order (decision 40's sort):** by **number of distinct images**, most first —
+      the same unit as the two-image threshold, which is why it was chosen; ties by the **most
+      recent photo date of the group**, newest first; then by a stable id, so that the order is
+      deterministic.
+    - **Non-faces are accepted as grouping failures, with no extra filter** — 3 of the 104
+      thumbnails at SFace 0.50 in the spike. **Why:** a detector-score cut high enough to remove
+      them would also drop 29 real faces; and it is consistent with decision 40's 2026-11-17
+      amendment, "we accept that grouping can fail".
+
+47. **Step 3.1's draft questions, E1 to E11, are answered as recommended.** Decided by the
+    maintainer on 2026-11-19, in his words "go with the recommendations". Each question, its
+    recommendation and its reason are in the record that raises it, listed in
+    [albums-stage-3.md](albums-stage-3.md) *Open questions*, group E; they are not restated here.
+    E11 is that plan's D2: ADR-0013's navigation chain stays, as §9 already assumes.
+    **Answering the questions does not approve the drafts.** ~~ADRs 0022–0024, ADR-0017 Amendment 4
+    and ADR-0018 Amendment 5 stay Proposed until the maintainer approves them, which is asked for
+    separately.~~
+
+    **Amended 2026-11-19, later — the drafts approved.** The maintainer approved ADRs 0022–0024,
+    ADR-0017 Amendment 4 and ADR-0018 Amendment 5 the same day, as asked separately. The three ADRs
+    are `Active`, and each amendment is marked adopted inside its record. Adoption is step 3.1's
+    binding deliverable, so Stage 3 moved to In progress (§7 and its stage log).
 
 ---
 
@@ -1774,7 +1961,10 @@ Things this epic breaks or strains, which should surprise nobody when they come 
    the threshold is open. **Amended 2026-11-17:** content albums are paused (§8 decision 38), so the
    content threshold is not being set; the spike's figures are kept in
    [albums-stage-4.md](albums-stage-4.md). For people albums the question is Stage 3's — question A4
-   of [albums-stage-3.md](albums-stage-3.md), added 2026-11-17.
+   of [albums-stage-3.md](albums-stage-3.md), added 2026-11-17. **Answered for people 2026-11-18,
+   by delegation (§8 decision 45):** no device list and no speed threshold; the People criterion is
+   offered only where the face pipeline passes a capability check, and the models are fixed rather
+   than sized to a device.
 4. **Can albums be reordered, nested, or shared?** Assumed no for now; flat, unordered, local.
 5. **Does album healing re-evaluation stay switched on for API 28–29, or is it switched back off?**
    — ✅ **Answered 2026-10-30 by the maintainer: it stays on.** The question as raised is kept below,
@@ -2036,7 +2226,8 @@ Things this epic breaks or strains, which should surprise nobody when they come 
     person — may be stored in the backed-up album database; decision 42 says what happens when an
     anchor cannot be followed. The question is answered. It still needs the first ADR of
     [albums-stage-3.md](albums-stage-3.md) step 3.1 to make the storage binding: that ADR records
-    this answer rather than reopening it.
+    this answer rather than reopening it. **Made binding 2026-11-19** by the adoption of
+    [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md).
 
 Questions scoped to a single stage live in that stage's plan and only arrive here if they outlive
 it. Stage 2's plan is archived; its one live question is 11 above. Stage 4's are in

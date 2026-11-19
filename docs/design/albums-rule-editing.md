@@ -169,7 +169,9 @@ Numbered as they were in [albums-stage-4.md](albums-stage-4.md) group D, from wh
    the inputs differed; for editing, the inputs are identical. A new screen is another branch in
    `MainActivity`'s chain. ADR-0013 defers the chain's future to Stage 3, which is now next
    (decision 13, amended 2026-11-17), so whether this lands before or after that revisit matters to
-   both.
+   both. **Amended 2026-11-19:** Stage 3 answered the revisit — the chain stays — and named an edit
+   screen of its own hosting the People criterion as one of the things that would reopen it
+   ([albums-stage-3.md](albums-stage-3.md) D2, answered as E11, §8 decision 47).
 2. **D2 — Additions and exclusions on edit.** ✅ **Answered 2026-11-15 by the maintainer: an edit
    changes only the rule** ([albums.md](albums.md) §8 decision 36, amended). The full record, with
    the cover and display-override facts behind it, stays in
@@ -195,10 +197,16 @@ Numbered as they were in [albums-stage-4.md](albums-stage-4.md) group D, from wh
    unevaluatable on a rule this build understands, not through an unknown clause, so D3's leaning
    to refuse editing must not reach it.
 
+   **Pointer added 2026-11-19:** these constraints are now binding, in
+   [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 4,
+   *What rule editing must do with this clause*, adopted 2026-11-19. It also proposes, for D3 to
+   confirm, that the editor does not edit an album with a `people` clause on a device where people
+   is unavailable. The order is still open.
+
 ---
 
 ## Related
 
 - [albums.md](albums.md): §3 membership, §8 decisions 26, 28, 31, 32, 36, 37 and 39.
 - [albums-stage-4.md](albums-stage-4.md): paused; where step 4.2 and group D came from.
-- [albums-stage-3.md](albums-stage-3.md): Stage 3's draft plan (D6).
+- [albums-stage-3.md](albums-stage-3.md): Stage 3's ~~draft~~ plan (D6).

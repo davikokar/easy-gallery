@@ -34,9 +34,9 @@ files that `AGENTS.md` lists under *Preference stores*. Read these before you wr
    so do not read it as a description of the current app. The **Planner owns it** — do not edit it.
    If your work contradicts it or reveals it to be wrong, name the section in your report.
 6. The plan for the stage in progress, if your task is one of its steps. The epic is specified in
-   two documents: §7 of `albums.md` says which stage is current and links to its plan — no stage is
-   in progress; Stage 4's plan, `docs/design/albums-stage-4.md`, is paused; Stage 3 is next, with a
-   draft plan at `docs/design/albums-stage-3.md`; and rule editing, not a stage, has its own plan at
+   two documents: §7 of `albums.md` says which stage is current and links to its plan — Stage 3 is
+   in progress, with its plan at `docs/design/albums-stage-3.md`; Stage 4's plan,
+   `docs/design/albums-stage-4.md`, is paused; and rule editing, not a stage, has its own plan at
    `docs/design/albums-rule-editing.md` — and that plan holds the step you are building, its exit
    criteria, and what the last session learned. The **Planner owns it too**; report drift in it
    rather than editing it, including the handoff block it expects to be rewritten each session.

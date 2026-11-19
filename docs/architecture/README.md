@@ -49,3 +49,6 @@ for the required format and status rules.
 | [ADR-0019](decisions/0019-offline-reverse-geocoding-for-region-albums.md) | Offline reverse geocoding for region albums | Active | 2026-10-08 |
 | [ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md) | An automatic album resolves against live media, and its index rows are a deletable cache | Active | 2026-10-08 |
 | [ADR-0021](decisions/0021-per-album-display-preference-overrides.md) | Per-album display preference overrides reuse the per-folder override model | Active | 2026-11-13 |
+| [ADR-0022](decisions/0022-people-criterion-anchored-to-a-photo.md) | A people criterion finds its person through an anchor photo | Active | 2026-11-18 |
+| [ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md) | The face pipeline — YuNet and SFace on a bundled OpenCV, inside the indexing worker | Active | 2026-11-18 |
+| [ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md) | Face data — the disclosure, the switch that deletes it, and what never leaves it | Active | 2026-11-18 |

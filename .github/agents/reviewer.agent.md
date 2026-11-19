@@ -29,8 +29,8 @@ index (ADR-0018) — alongside the `SharedPreferences` files that `AGENTS.md` li
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names.
 5. `docs/design/albums.md` — the albums epic, where the change belongs to it. Its §7 progress
    table and exit criteria are what "this stage is done" means. §7 also links to the plan for the
-   stage in progress — no stage is in progress; Stage 4's plan, `docs/design/albums-stage-4.md`, is
-   paused; Stage 3 is next, with a draft plan at `docs/design/albums-stage-3.md`; and rule editing,
+   stage in progress — Stage 3 is in progress, with its plan at `docs/design/albums-stage-3.md`;
+   Stage 4's plan, `docs/design/albums-stage-4.md`, is paused; and rule editing,
    not a stage, has its own plan at `docs/design/albums-rule-editing.md` — which owns that stage's step
    breakdown and exit criteria; review a stage change against both.
 6. `.github/instructions/tests.instructions.md` — test conventions.

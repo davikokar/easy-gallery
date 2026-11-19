@@ -160,13 +160,13 @@ the audit is for the rest.
   itself, and it is archived when the stage closes — or paused, if the stage stops before it
   closes — under the rule in the
   [architecture documentation instructions](.github/instructions/architecture-docs.instructions.md).
-  No stage is in progress. Stage 4 (content albums) is paused after its feasibility spike; its plan
-  [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) is kept to resume from. Stage 3
-  (people albums) is next and has a draft plan,
-  [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md), which starts with a feasibility
-  spike; the stage moves to In progress when its first binding deliverable lands, under
-  [albums.md](docs/design/albums.md) §7's rule, and a spike's figures are not one, as recorded for
-  Stage 4. Rule editing is not a stage and has a plan of its own,
+  Stage 3 (people albums) is in progress: its plan,
+  [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md), is the stage plan to read, and
+  its handoff block names the next step. Its feasibility spike closed on 2026-11-18 and its
+  decisions were adopted on 2026-11-19, which is what moved it to In progress under
+  [albums.md](docs/design/albums.md) §7's rule. Stage 4 (content albums) is paused after its
+  feasibility spike; its plan [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) is
+  kept to resume from. Rule editing is not a stage and has a plan of its own,
   [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md). Stage
   2's plan, [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md), is archived and not
   maintained.
@@ -241,6 +241,11 @@ reasoning. It is also the only preferences file carrying an `<exclude>` in the b
 deliberately holds **no** liveness flag — "is indexing running" comes from WorkManager, because a
 persisted one survives process death and disables the Index now action forever.
 
+ADR-0024 has already placed two pieces of Stage 3 state that do not exist yet. The face-data
+setting is a scalar for `app_settings`. Whether the face-data disclosure has been shown must
+**not** go there, because `app_settings` is backed up and the disclosure is per installation.
+Add their rows to the table above when they land.
+
 ### The two databases
 
 Room owns albums (ADR-0009) and the media index (ADR-0018), in **two separate database files**,
@@ -278,6 +283,11 @@ database is backed up (ADR-0014) while the index must not be.
   `AlbumMembership.kt`. An index row is the opposite case — a cache, deleted rather than retained
   when its media is gone (ADR-0020). Favourites are in **neither** database — they are a
   `MediaStore` column (ADR-0011), unavailable below API 30.
+- **Face data is decided ahead of its code** (Stage 3). ADR-0018 Amendment 5 puts it in the index
+  database as Tier C and says what deleting it removes; ADR-0024 says when it is deleted and that
+  it never enters a backup or a log. A people rule's anchor (ADR-0022) is the one face-related
+  thing in the album database, and it is not face data. Read them before adding a table to either
+  database.
 
 ### Strings and localisation
 
