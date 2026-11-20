@@ -261,6 +261,37 @@ class MediaIndexTierCStoreTest {
         }
     }
 
+    // Room only: the in-memory store's API cannot create Tier C rows for a URI that has no index row.
+    @Test
+    fun `a row write for a uri with no stored row drops the tier c rows left behind for it`() = runTest {
+        dao.upsertFaceState(MediaIndexFaceStateEntity(URI_A, 1, FaceIndexOutcome.INDEXED))
+        dao.insertFaces(
+            listOf(
+                MediaIndexFaceEntity(
+                    mediaUri = URI_A,
+                    pipelineVersion = 1,
+                    boxLeft = 0.1f,
+                    boxTop = 0.2f,
+                    boxRight = 0.4f,
+                    boxBottom = 0.6f,
+                    embedding = ByteArray(12),
+                    groupId = null,
+                    groupingVersion = null
+                )
+            )
+        )
+        val store = RoomMediaIndexStore(database)
+        assertNull(store.getByMediaUri(URI_A))
+        assertNotNull(dao.getFaceState(URI_A))
+
+        store.upsert(listOf(entry(URI_A)))
+
+        assertNotNull(store.getByMediaUri(URI_A))
+        assertNull(dao.getFaceState(URI_A))
+        assertTrue(dao.listFaces(URI_A).isEmpty())
+        assertFalse(store.hasFaceData())
+    }
+
     @Test
     fun `a row write neither clears nor restamps the pipeline version of a kept state`() = runTest {
         forEachStore { store ->

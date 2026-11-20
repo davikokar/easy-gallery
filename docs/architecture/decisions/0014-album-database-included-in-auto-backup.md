@@ -208,3 +208,17 @@ now been tested twice — once by ADR-0018's database exclusions, once here — 
 - **This does not open the door to excluding the other five.** They hold user preferences, which is
   exactly what the Context above says is worth restoring. Excluding one of those would be a
   reversal of this decision and needs a new ADR, not another amendment.
+
+> **Note 2026-11-20 — proposed with [ADR-0018](0018-media-index-in-a-second-database.md) Amendment 7,
+> and binding only when the maintainer approves that amendment.** Two additions to the exclusion
+> list, both `<exclude>` only, and both instances of the Decision's test rather than exceptions to it.
+> Nothing above is rewritten.
+> - **A fourth place.** `data_extraction_rules.xml` gains `<cross-platform-transfer platform="ios">`,
+>   holding the same exclusions as the other two sections (Amendment 7 §2, open question F1), so "the
+>   same three places" above becomes four. With no `<include>`, it changes nothing for the album
+>   database.
+> - **A second excluded preferences file, `face_device_state`** (Amendment 7 §3). The bullet above
+>   still holds: this file is not one of the five and holds no user preference. It records what
+>   happened on this installation — the face-data disclosure shown, the device's capability — which
+>   a restore onto another device would make false, so it falls on the index's side of the line, as
+>   `media_index_run_state` does.

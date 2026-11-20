@@ -4,6 +4,10 @@
 - Date: 2026-10-08
 - Decision makers: Easy Gallery project maintainer
 
+> **Amendment 7 (2026-11-20), at the end of this record, is proposed and binds nothing until the
+> maintainer approves it.** The `Active` status above covers the Decision and Amendments 1–6. Remove
+> this note when Amendment 7 is approved.
+
 ## Context
 
 Stage 2 builds the media index ([albums.md](../../design/albums.md) §6): per-item facts computed in
@@ -898,3 +902,197 @@ detail — switching that connection out of `PERSIST` for the deletion is the ob
   `secure_delete` — read 2026-11-20
 - `data/MediaIndexStore.kt`, `data/MediaIndexDatabase.kt`, `data/MediaIdentity.kt`,
   `data/MediaIndexTierAIndexer.kt`
+
+## Amendment 7 — 2026-11-20 — Step 3.3's storage: attempts in Tier C and version 6, a per-installation preferences file, a fourth backup section (proposed)
+
+> **Proposed — not binding until the maintainer approves it.** Drafted by the Planner at step 3.3's
+> refinement ([albums-stage-3.md](../../design/albums-stage-3.md), *3.3 — Face detection and
+> embedding*), and labelled *proposed* as Amendment 5 was until its approval, because the
+> instructions' status vocabulary has no state for a draft. This record's `Active` status covers
+> the Decision and Amendments 1–6, not this amendment. **Nothing below is built.** Step 3.3's Task 1
+> builds §1 to §5, and should start only after approval: §1 is a migration and §3 a new preferences
+> file, and once either has run on a device it is undone only by another change. On approval this
+> note becomes an approval line and the marker under the record's title is removed.
+>
+> **Written late.** The refinement of 2026-11-20 cited this amendment before it existed; this text
+> is what that refinement decided, with its reasons. It adds to the plan only in three places: §1
+> makes the bound precise and says which stops clear an attempt, and §2 names the malformed reading
+> as F1's residual risk. The plan was updated to match.
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–6. It
+is an amendment rather than a new ADR for Amendment 1's reason: the index is still the one database
+for Tier C, and what follows applies existing rules — Amendment 5's Tier C lifecycle, Amendment 2's
+line between the index and a preferences file, the Decision's backup exclusion — to what step 3.3
+needs. It answers what Amendment 5 left to 3.3 (the bound, and how attempts are counted), what
+[ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §3 and
+[ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §2 left to 3.3 (where per-installation
+state lives), and open question F1 (a fourth backup section). What is not here — the pass's
+parameters, its budget, its order in the worker, the Tier C lock, the capability record's details —
+is the plan's, under *Decided at 3.3*, and reversible there.
+
+### 1. Attempts are counted in a third Tier C table, and the index reaches version 6
+
+**Why attempts must be persisted.** Amendment 5 says a failure a retry could cure writes nothing,
+and an image that fails that way every time is recorded failed after a bounded number of attempts.
+The failures that need the bound are the ones that end the process — a crash in OpenCV's native code
+([ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md), *Negative*), or running out of
+memory — after which nothing can be written. So an attempt is counted **before** the work it counts,
+and only a persisted count survives to the next run.
+
+**Decision.**
+- **A table, `media_index_face_attempt`:** one row per image with an attempt under way or cut short —
+  the image's index-row key, the pipeline version, and a count. Nothing else, and no face data.
+- **Recorded before the image is decoded**, in its own transaction, and only while the index row
+  still has the identity the pass read — the same condition as a result write. Under another
+  pipeline version the count restarts at 1.
+- **Cleared** by the image's result write, in the same transaction, and by every stop the image is not
+  to blame for: cancellation, face data switched off, the pass's time budget, a missing permission, and
+  a file that cannot be opened, which reconciliation will deal with. It stays counted only when the
+  attempt ends with the process, or with an exception the pass does not handle.
+- **The bound is three.** An image is decoded at most three times under one pipeline version; a
+  candidate found with three attempts already recorded is written failed without being decoded.
+  *Why three:* a failed image is not retried until the pipeline version changes (Amendment 5), so a
+  bound of one would lose the faces of an image that only met a bad moment — memory pressure from
+  another app — for good; and because the pass resumes in URI order, an image that kills the process
+  is met again first in the next run, holding back every image after it, so each extra attempt costs
+  one more lost run. Three is the Planner's choice, not a measurement.
+- **Every Tier C rule applies to it:** dropped with the image's other Tier C rows on a changed healing
+  triple (Amendment 6), re-keyed by a heal, deleted with its row by reconciliation, emptied by the
+  face-data deletion in the same transaction, and counted by "is there face data". *Why:* an attempt
+  for a changed file is an attempt on a different file, and one kept across a deletion would carry a
+  switched-off past into the next switch-on. It is not face data — no embedding, crop or group — and
+  is kept with Tier C for its lifecycle, not its content.
+- **Why a table of its own.** Not an outcome on `media_index_face_state`: Amendment 5's table defines
+  pending as no state row or an old version, so a state row for an image in progress would make every
+  reader of states exclude it. Not a column on the image row: rejected in Amendment 5 for every Tier C
+  field. Not a preferences file: it is per image, and the index's correctness depends on it — it is
+  what separates waiting from failed — which is Amendment 2's test for the index database.
+- **`Migration(5, 6)` creates the table, empty, and changes nothing else**, registered beside the four
+  earlier migrations with no destructive fallback; its SQL is `6.json`'s, as `Migration(4, 5)`'s is
+  `5.json`'s. The index reaches version 6, and `6.json` is committed by the change that produces it.
+  The version reached is the `@Database` annotation's.
+
+### 2. A fourth backup section — open question F1
+
+**What was read**, on Android's Auto Backup page on 2026-11-19 and again on 2026-11-20: Android 16
+QPR2 (API 36.1) added `<cross-platform-transfer platform="ios">` to `data_extraction_rules.xml`; a
+transfer mode with no rules "is fully enabled for all content except for `no-backup` and `cache`
+directories"; and the section must contain `<platform-specific-params>` naming the app on the other
+platform, whose ids "guarantee that data is only transferred *to* the specified app". This app has no
+iOS counterpart and its file has no such section.
+
+**Not established:** whether a transfer to iOS happens at all for an app with no section, and how a
+36.1 device reads a section without the params — ignored, honoured, or treated as malformed.
+
+**Decision — conservatively:** the section is added, holding **the same `<exclude>` lines as the
+other two**, no `<include>` and no `<platform-specific-params>`. *Why:* [albums.md](../../design/albums.md)
+§8 decision 9's "never enters a backup" cannot rest on an unverified reading of the platform. An
+exclusion in a mode that never runs is inert; a missing one in a mode that does run sends face data
+to another device. No params, because there is no iOS app to name, and invented ids would declare one.
+`<exclude>` only, as [ADR-0014](0014-album-database-included-in-auto-backup.md) requires. "Three
+places", in this record and in ADR-0014 and ADR-0024 §6, becomes **four**: `backup_rules.xml` and the
+three sections of `data_extraction_rules.xml`. It lands in Task 1, so it ships with the change that
+first writes face data.
+
+**Residual, open:** the malformed reading is the one case in which the section would be worse than
+none, and no 36.1 device is available here — the SM-G990B runs 36.0. Removing the doubt by
+construction, by moving `media_index.db` to the no-backup directory that every mode excludes, would
+be a change of its own and a new amendment. *Recommended: not now; revisit if a 36.1 device is found
+to misread the section.* It is the maintainer's to confirm and blocks nothing
+([albums-stage-3.md](../../design/albums-stage-3.md), F1).
+
+### 3. Per-installation face state is a preferences file, `face_device_state`, excluded from backup
+
+**Decision.** A new preferences file, `face_device_state`, holds two things: whether the face-data
+disclosure has been shown ([ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §2), and the
+capability check's persisted result
+([ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §3). It is excluded from backup in all
+four places, `<exclude>` only. The face-data setting stays where ADR-0024 §1 put it: a scalar in
+`app_settings`, backed up. What the capability record holds is the plan's (*Settled before 3.3*,
+issue 2).
+
+*Why a preferences file and not this database* — Amendment 2's two tests, in order. It is not
+structured: a flag and a few scalars. And the index's correctness does not depend on it: a lost flag
+shows the disclosure again, a lost record repeats the check. Inside the database it would cost a
+migration for three scalars, and inside Tier C the face-data deletion would empty it and bring the
+disclosure back on switching on again, against ADR-0024 question 4.
+
+*Why not `app_settings`:* it is backed up, and both values belong to this installation. A restored
+"shown" would skip the disclosure on a new phone, where face indexing starts again from nothing
+(ADR-0024 question 1); a restored capability record is another device's answer. *Why not
+`media_index_run_state`:* one store per file, and that file reports on a job.
+
+*What it costs:* an `AGENTS.md` call-out, not an approval — a row in *Preference stores*, and both a
+`SharedPreferences*` and an `InMemory*` store.
+
+### 4. A Tier C result write reads the setting inside its transaction
+
+`writeFaceIndexResults` takes the face-data setting as a parameter and reads it inside its
+transaction; with the setting off it writes nothing and returns 0. *Why in the store:* ADR-0024 §3
+makes the setting a backstop "in the same transaction", and a store rule holds for every writer, not
+only the pass. It is a backstop and not the guarantee, because a `SharedPreferences` read is not part
+of the SQLite transaction; the guarantee is ordering — the switch persists *off*, then waits for the
+pass — which the plan builds as a process-wide lock and step 3.6 uses.
+
+### 5. The start-up deletion — what the caller does with its result
+
+Amendment 6 §2 said a deletion that is not scrubbed is a result, repeated at each process start while
+face data is off. **Decision**, splitting the caller between steps 3.3 and 3.6:
+- **The worker runs it first, before Tier A, whenever the setting reads off** — not only when a Tier C
+  row exists (ADR-0024 §3 as Amendment 6 annotates it). Step 3.6 adds the same call at app open.
+- **Not scrubbed:** no retry within the run, nothing persisted, nothing shown by 3.3. Whether Settings
+  presents it is 3.6's.
+- **A thrown error** — `secure_delete` not reading back, an SQLite error — is caught, never fails the
+  run or stops Tier A, and is repeated at the next start. *Why:* failing the run for a face-data
+  problem would also stop region and time albums from being indexed, and the repeat at start-up is
+  already what ADR-0024 §3 relies on.
+- **It logs at most that it ran and whether it scrubbed** — no count and no exception message
+  (ADR-0024 §6).
+
+### 6. URI spellings — not a defect, and where the invariant lives
+
+Tier C keys, and Amendment 6's test, match URIs exactly, so two spellings of one image in the index
+would give it two face results. **Checked in the code on 2026-11-20: no install holds two** — every
+production writer stores the `content://media/external/…` spelling, which the row-delta provider
+canonicalises at the source; the evidence is in the plan (*Settled before 3.3*, issue 1).
+**Decision: nothing is built.** The invariant is the provider's, not the store's: tests seed
+per-volume spellings on purpose, and enforcing one in `upsert` would break them for no production
+case. *Recorded here* so that it is not "fixed" in the store later. If a writer ever stores another
+spelling, the repair is Amendment 3's kind: a data migration to the canonical one.
+
+### Still open, and not this amendment's
+
+- **F1's residual**, §2 — the maintainer's; blocks nothing.
+- **F2, the OpenCV version** — [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md)'s;
+  blocks step 3.3's Task 2, not Task 1 and not this amendment.
+- **ADR-0023's verify items** 1, 2, 4, 5, 6 and 8 at step 3.3, and 7 at 3.7 — unchanged.
+
+### Consequences
+
+**Positive**
+
+- An image that kills the process cannot keep people albums waiting for ever, nor hold back the rest
+  of the library for more than three runs.
+- Face data is excluded from every transfer mode Android documents, whatever the answer to F1.
+- The disclosure and the capability answer are true of the device they are on.
+
+**Negative**
+
+- One more table, one more migration, and a write per image before its decode.
+- A second excluded preferences file, and a fourth place in which every exclusion must be written
+  correctly — a mistake still invisible except to a reading of the XML, or to the test the plan adds.
+- An image that fails three times through bad luck is failed until the next pipeline-version bump.
+
+### References
+
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md), *3.3 — Face detection and
+  embedding*: *Settled before 3.3* and *Decided at 3.3*; open questions F1 and F2
+- [docs/design/albums.md](../../design/albums.md) §8 decision 9
+- [ADR-0014](0014-album-database-included-in-auto-backup.md),
+  [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §3,
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §1–§3 and §6 — each with a dated note
+  pointing here
+- <https://developer.android.com/identity/data/autobackup> — *Configure Cross-Platform Transfers*,
+  read 2026-11-20
+- `data/MediaIndexStore.kt`, `data/MediaIndexDatabase.kt`, `data/MediaIndexingWork.kt`,
+  `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`

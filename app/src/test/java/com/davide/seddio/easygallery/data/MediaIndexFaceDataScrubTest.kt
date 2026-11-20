@@ -24,9 +24,12 @@ import java.io.File
 import java.io.IOException
 
 /**
- * ADR-0018 Amendment 5: no deleted face data may survive in the file. Each case drives the production `create`
- * over a real file and searches every `media_index.db*` file for a byte marker carried by every embedding.
+ * ADR-0018 Amendment 5: deleted face data must not survive in the file, and a deletion that cannot guarantee that
+ * must not report a scrub. Each case drives the production `create` over a real file and searches every
+ * `media_index.db*` file for a byte marker carried by every embedding.
  * It fails with `secure_delete` off, and without the checkpoint.
+ *
+ * `runBlocking`, not `runTest`: these are real file-backed Room transactions, and the busy-timeout wait runs in real time.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [Build.VERSION_CODES.R])
@@ -201,7 +204,7 @@ class MediaIndexFaceDataScrubTest {
     }
 
     // 40 images with two faces each; 10 are then re-extracted and one healed, so earlier deletions are covered.
-    // Returns the Tier C rows that remain: 30 states and 60 faces for the 30 untouched images, and the healed one's.
+    // Returns the Tier C rows that remain: 30 states and 60 faces for the 30 images not re-extracted, the healed one included.
     private suspend fun populateWithDeletionsAndAHeal(store: RoomMediaIndexStore): Int {
         val rows = (1..IMAGE_COUNT).map { row(it) }
         store.upsert(rows)

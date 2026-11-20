@@ -160,9 +160,57 @@
   task; then the verification phase runs the definition of done once; then the Planner makes the
   updates listed there under *After it lands*. No schema change: the index stays at version 5.~~
   Done 2026-11-20 — the entry above.
-- **Next action: step 3.3 — face detection and embedding in the indexing pipeline, behind the
+- **2026-11-20, later still — step 3.3 refined by the Planner; its pending issues settled.** The
+  brief is *3.3 — Face detection and embedding* below. The review's URI-spelling concern is not a
+  defect: every production writer stores the canonical spelling, checked in the code. The
+  capability record and the disclosure flag go in a new preferences file, `face_device_state`,
+  excluded from backup; the setting in `app_settings`. Attempts are counted in a third Tier C table,
+  three at most, through `Migration(5, 6)`, and F1 is settled conservatively with a fourth rules
+  section — both [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md)
+  Amendment 7, with dated notes in ADR-0014, ADR-0023 and ADR-0024. The deletion's caller contract
+  is split between 3.3 and 3.6. New question F2, the OpenCV pin, for the maintainer. No Gradle run
+  by the Planner. *Corrected by the entry below: Amendment 7 and the three notes were cited here but
+  not written.*
+- **2026-11-20, later again — ADR-0018 Amendment 7 written, Proposed; four defects in this plan
+  fixed.** An audit found the refinement above citing an amendment that did not exist. The Planner
+  wrote it — the attempt table and `Migration(5, 6)`, F1's fourth section, `face_device_state`, the
+  setting read inside the write, the start-up deletion's caller contract, and the URI-spelling
+  decision, each with its reason — and dated notes in ADR-0014 (the fourth place, the second excluded
+  preferences file), ADR-0023 §2 (F2, open) and §3 (the capability record), and ADR-0024 §2 (the
+  disclosure flag's home) and §6 (four places), all marked proposed. Writing it made two points of
+  the brief precise, and *3.3* now matches: the bound means at most three decodes, and which stops
+  clear an attempt. Also fixed here: a broken sentence in the handoff, F1 still listed as open, the
+  Data Safety exit criterion reading as met, and Task 1's brief checked against the code again (the
+  Android-free pass and `ImageDecoder`, the order before the permission check, the live snapshot,
+  the images-only query, the worker's generic error message). The README index is unchanged: an
+  amendment does not enter it. No Gradle run by the Planner.
+- **Next action: the maintainer approves ADR-0018 Amendment 7; then step 3.3, Task 1.** Amendment 7
+  is **Proposed**. Task 1 needs neither F2 nor a device, but it builds Amendment 7 — `Migration(5, 6)`
+  to version 6 with `6.json`, the new preferences file `face_device_state`, the fourth backup
+  section. **Recommended: Task 1 starts only after the approval**, because a migration and a
+  preferences file, once they have run on a device, are undone only by another change. Starting
+  earlier is the maintainer's call; the Coder must then be told the amendment may still change. The
+  concurrent test-only fixes to `MediaIndexTierCStoreTest.kt` and `MediaIndexFaceDataScrubTest.kt`
+  are **done** — verified 2026-11-20, 195 `MediaIndex*` tests passing — and gate nothing.
+  - **What the maintainer is asked, and nothing else:** (a) approve ADR-0018 Amendment 7, which
+    carries the notes in ADR-0014, ADR-0023 and ADR-0024, or say what to change; (b) F2, the OpenCV
+    version — 4.13.0 recommended — before Task 2. F1's residual is his too, but blocks nothing and
+    needs no answer now.
+  - **On approval, the Planner:** replaces Amendment 7's *Proposed* note with an approval line,
+    removes the marker under ADR-0018's title, turns the four notes' "proposed" into "approved", and
+    records the approval in [albums.md](albums.md) §8, as decision 47 recorded step 3.1's.
+  - Then Tasks 2 to 4, the verification phase once, and the Planner's task P.
+- **Read first, on starting 3.3 (revised 2026-11-20):** *3.3 — Face detection and embedding*
+  below, which is the brief; ADR-0018 Amendments 5 to 7, the last proposed, with the proposed notes
+  it carries in ADR-0014, ADR-0023 §2 and §3 and ADR-0024 §2 and §6; ADR-0023 §1, §3, §4, §6 and its verify
+  table; ADR-0024 §1 to §3 and §6; ADR-0022 §1; `AGENTS.md` *Preference stores*; the code as it
+  stands in `data/MediaIndexStore.kt`, `data/MediaIndexingWork.kt`,
+  `data/MediaIndexPlaceResolution.kt` — the paging precedent — and `EasyGalleryApp.kt`; and repo
+  memory's Room, migration, scrub-test and worker traps.
+- ~~**Next action: step 3.3 — face detection and embedding in the indexing pipeline, behind the
   disclosure.** Owner: the Planner refines it into a step plan, as 3.2 was, then the Coder builds
-  it. It starts from what 3.2 and its follow-up landed: the Tier C tables at index version 5, and their rules on
+  it.~~ Refined 2026-11-20 — the entry above; every point below is answered in *3.3*, *Settled
+  before 3.3*. It starts from what 3.2 and its follow-up landed: the Tier C tables at index version 5, and their rules on
   `MediaIndexStore` — `writeFaceIndexResults`, the identity-conditional write the pass will use,
   and `hasFaceData` and `deleteAllFaceData`, which ADR-0024 §3's repeat at start-up needs and which
   nothing calls yet. A schema change found during refinement would be `Migration(5, 6)`.
@@ -187,8 +235,11 @@
     B2, incremental clustering — for 3.4; the Play Data Safety check — the maintainer's, before
     the first Play release that ships the Tier C pass, with the Planner preparing its facts at 3.7;
     rule editing's D3, still to confirm ADR-0017 Amendment 4's proposal for an album with a
-    `people` clause where people is unavailable, and its D6, the order; and **F1**, new — whether
-    the rules files need a fourth section — to be settled before Tier C ships.
+    `people` clause where people is unavailable, and its D6, the order. ~~And **F1**, new — whether
+    the rules files need a fourth section — to be settled before Tier C ships.~~ **F1 decided
+    2026-11-20 at 3.3** — a fourth section, with the same exclusions (*3.3*, *Settled before 3.3*,
+    issue 3; ADR-0018 Amendment 7 §2, proposed). Only its residual stays open: the maintainer's
+    check of how an API 36.1 device reads the section, which blocks nothing.
   - *Added 2026-11-20:* a deletion that is not scrubbed is a result the caller must handle, not an
     error — the start-up repeat runs whenever face data is off, and on a `PERSIST` device every
     repeat reports not scrubbed again (ADR-0018 Amendment 6 §2). And the change that first writes
@@ -200,7 +251,8 @@
   `data/MediaIndexDatabase.kt` and `data/MediaIdentity.kt`; `MediaIndexTierCStoreTest` and
   `MediaIndexFaceDataScrubTest`; the test conventions' paragraph on the scrub test; and repo
   memory's scrub-test notes.
-- **Read first, on starting 3.3:** this block; ADR-0023, above all §3 and §4 and its verify items;
+- ~~**Read first, on starting 3.3:**~~ Superseded 2026-11-20 by the revised list above; it read:
+  this block; ADR-0023, above all §3 and §4 and its verify items;
   ADR-0024 §1 to §3 and §6; ADR-0018 Amendment 5's per-image states and its step 3.2 notes, and
   Amendment 6 with its *Built* note;
   *3.2 — Tier C schema and store* below, for the store surface the pass writes through; `AGENTS.md`
@@ -617,7 +669,7 @@ step is refined when it starts.
 | **3.0** | Feasibility spike: face detection, face embedding and clustering, measured on the phone. No shipped code. | ~~🔶 In progress — started 2026-11-17~~ ✅ Complete 2026-11-18 — *Spike outcome* above |
 | **3.1** | The decisions: ADRs and amendments, and these exit criteria confirmed | ~~🔶 In progress~~ ✅ Complete 2026-11-19 — decisions 43–46 taken 2026-11-18; ADRs 0022–0024 and amendments to ADR-0017 and ADR-0018 drafted 2026-11-18; their questions (group E) answered 2026-11-19; all five adopted 2026-11-19; exit criteria confirmed |
 | **3.2** | Tier C schema and store | ~~⬜ Not started — refined 2026-11-19, ready to build~~ ~~✅ Built and verified 2026-11-19~~ ~~🔶 Built and verified 2026-11-19 — the gate is under *3.2 — Tier C schema and store*, *Built and verified*; reopened 2026-11-20 for its follow-up (decision 48)~~ ✅ Built and verified 2026-11-19; reopened 2026-11-20 for its follow-up (decision 48), built and verified 2026-11-20 — both gates are under *3.2 — Tier C schema and store* |
-| **3.3** | Face detection and embedding in the indexing pipeline, behind the disclosure | ⬜ Not started |
+| **3.3** | Face detection and embedding in the indexing pipeline, behind the disclosure | ⬜ Not started — refined 2026-11-20 into *3.3 — Face detection and embedding*; Task 1 waits on the approval of ADR-0018 Amendment 7, Task 2 on F2 as well |
 | **3.4** | Clustering and the person record | ⬜ Not started |
 | **3.5** | The `people` clause and evaluation | ⬜ Not started |
 | **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ⬜ Not started |
@@ -1119,6 +1171,289 @@ device; `exclusive` locking at runtime, covered by the pure mapping only; and a 
 one `upsert` call, whose order can only drop Tier C, never keep it wrongly. The first two are step
 3.7's, below.
 
+### 3.3 — Face detection and embedding — refined 2026-11-20
+
+The Coder's brief. What the pass must do is
+[ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md) §1, §3, §4
+and §6, [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §1–§3
+and §6, [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendments
+5–7 and [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §1, and is
+not restated. **Amendment 7 is proposed** — written 2026-11-20, after this section first cited it —
+and binds once the maintainer approves it. What they left to 3.3 is marked **Decided at 3.3**, with its reason; each is the
+Planner's and reversible by the maintainer. Planning only: no code and no Gradle run by the Planner.
+
+#### Settled before 3.3 — the pending issues
+
+1. **URI spellings — not a defect today; nothing to build.** The review's concern was that Tier C
+   keys and `keepsTierC` match URIs exactly while Tier A might store a per-volume spelling, leaving
+   two index rows — and so two face results — for one image. **Checked in the code 2026-11-20:**
+   every production writer stores the `content://media/external/…` spelling. Tier A writes the
+   URI `AndroidMediaStoreRowDeltaProvider` hands it, which canonicalises at the source (pinned by
+   `api 30 plus canonicalizes uuid volume rows to external namespace`), and has since the commit
+   that introduced Tier A (`2bcb489`), before any worker ran it (`954973f`); a heal writes the live
+   item's URI, and `MediaStoreDataSource` queries `EXTERNAL_CONTENT_URI` only. So no install holds
+   two spellings of one image. The pass below reads its work from index rows and writes under the
+   row's own identity, never a live or observed spelling, so it can duplicate nothing the index
+   does not. *What would make it real:* a new writer storing another spelling. The invariant is the
+   provider's, not the store's — tests seed per-volume spellings on purpose, so enforcing it in
+   `upsert` would break them for no production case. If it ever becomes real, the repair is
+   Amendment 3's kind: a data migration to the canonical spelling.
+2. **Where the capability result and the disclosure flag live — Decided at 3.3: a new
+   preferences file, `face_device_state`, excluded from backup.** The face-data setting stays
+   ADR-0024 §1's scalar in `app_settings`: key `face_data_enabled`, default on, backed up.
+   - ADR-0018 Amendment 2's two tests, in order. *Structured?* No: a boolean, and a key string, an
+     outcome and a start count. *Does the index's correctness depend on it?* No: a lost flag shows
+     the disclosure again, a lost record re-runs the check. So a preferences file, not the index
+     database — which would also need a migration for three scalars and, inside Tier C, would be
+     emptied by the switch and bring the disclosure back, against E10.
+   - Not `app_settings`: it is backed up, and both are per installation — the record per device.
+     Not `media_index_run_state`: one store per file, and that file reports on a job.
+   - **The cost is an `AGENTS.md` call-out, not an approval:** a row in *Preference stores*, a
+     `SharedPreferences*` and an `InMemory*` store, and `face_device_state.xml` excluded in
+     `backup_rules.xml` and in every section of `data_extraction_rules.xml` (issue 3).
+   - **The capability record — Decided at 3.3.** Persisted, because 3.6 needs the answer at app
+     open, where loading 39 MB of weights each time is a cost and a native crash would be a crash at
+     every open. Keyed by the app's version code, `FACE_PIPELINE_VERSION` and `Build.FINGERPRINT`. A
+     start marker is written before the check runs; two starts for one key with no result — the
+     check killed the process twice — persist *incapable*. A deterministic failure is persisted —
+     the library or a model does not load, the self-test is wrong — and an `OutOfMemoryError` is
+     not. The self-test is ADR-0023 §3's synthetic input, checked for shape, finite values and a
+     non-zero embedding norm, **with no stored reference**: one phone cannot calibrate a tolerance,
+     and a false *incapable* would hide the feature silently; the weights are checksummed by the
+     build instead.
+3. **F1 — Decided at 3.3, conservatively: a fourth section with the same exclusions.**
+   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 7 §2
+   holds the facts read, the decision and its residual; F1 under *Open questions* says what is
+   still the maintainer's. It lands in Task 1, so it ships with the change that first writes face
+   data.
+4. **A deletion that is not scrubbed — the caller contract.** 3.3 builds `FaceDataStartupDeletion`
+   and calls it from the worker; 3.6 adds the call at app open with the switch.
+   - It runs **first in `doWork`, before Tier A, whenever the setting reads off** — not only when
+     `hasFaceData()` is true (ADR-0024 §3 as Amendment 6 annotates it). In today's `doWork` that is
+     after `runStateStore.markStarted` and **before `ensureMediaReadPermission`**, which throws when
+     media access is revoked and must not stop a deletion that reads no media.
+   - `scrubbed = false` is a result: no retry within the run, nothing persisted, nothing shown. The
+     next process start repeats it; under `PERSIST` every repeat reports false again, accepted by
+     Amendment 6.
+   - A thrown error — `secure_delete` not reading back, an `SQLiteException` — is caught there,
+     never fails the run or stops Tier A, and is repeated at the next start.
+   - It logs at most that it ran and whether it scrubbed: no row count, no exception message.
+   - **The Tier C lock — Decided at 3.3:** one process-wide `Mutex` on `EasyGalleryApp`, held by
+     the pass for its whole run. The worker skips the pass when it is held, since the periodic job
+     and Index now can overlap and two passes would double-count attempts. 3.6's switch takes it
+     after persisting *off*, which is ADR-0024 §3 step 2's "stop and wait"; the setting checked
+     inside the write transaction stays the backstop.
+   - **3.6's:** the app-open call, the confirmation, the order of ADR-0024 §3, dropping held
+     state, and whether and how Settings presents *not scrubbed* (Amendment 6 §2).
+5. **The verify items, the upright frame and the OpenCV pin** — how each is checked is in Task 2
+   below. The library is approved (decisions 45 and 47); no record names a version. **4.13.0 is
+   recommended — the build the spike measured — and the maintainer confirms it before Task 2**
+   (F2). Read 2026-11-20 on Maven Central: `org.opencv:opencv` offers 4.9.0 to 4.14.0, 5.0.0,
+   5.0.0.1 and 5.1.0; only 4.13.0 was measured, and 5.x is a new major version. The 4.13.0 AAR is
+   121.7 MB with all four ABIs; its library manifest in OpenCV's source is empty; it depends on
+   `kotlin-stdlib-jdk8` 1.8.20, which `app/build.gradle.kts` already forces to 2.1.0; OpenCV's own
+   build marks its `.so` files `doNotStrip`; and its Gradle metadata states a 3,570,283-byte AAR,
+   not the file listed — whether Gradle resolves it cleanly is **not verified**. On this machine
+   NDK 27.1 is installed, so AGP can strip and `llvm-readelf` can check alignment, and bundletool
+   1.18.3 is in the Gradle cache.
+6. **Not blocking 3.3:** the Play Data Safety check — the maintainer's, before the first Play
+   release that ships the pass, with the Planner preparing its facts at 3.7 and 3.3 supplying the
+   merged permission list; D1 — the Designer's, at 3.6; B2 — 3.4's; rule editing's D3 and D6 — its
+   own plan; and F1's residual.
+7. **Known debt:** Amendment 6's two accepted costs join `ARCHITECTURE.md` §11 with this change,
+   the first that writes face data — task P.
+
+#### Decided at 3.3 — the pass
+
+- **Candidates:** index rows in an images collection whose live item is `MediaType.IMAGE`, so a
+  video or a GIF never gets a state row (E2). Paged by URI cursor, as the place pass pages: no state
+  row, or a state at another pipeline version. A candidate whose live item is gone, or whose live
+  healing triple differs from the row's, is skipped this run — reconciliation or Tier A will move
+  it first. *Checked against the code 2026-11-20:* the index row has no media-type column, so the
+  query selects the images collection by the URI's `/images/media/` path; `MediaRepository` has no
+  per-URI lookup, so the live items are one `getAllMedia()` snapshot per run, as Tier A takes; and
+  `MediaType` is `IMAGE`, `VIDEO` or `GIF`, the last set from the MIME type, so requiring `IMAGE`
+  excludes both.
+- **Parameters — the spike's, all inside `FACE_PIPELINE_VERSION = 1`:** decode upright with
+  `ImageDecoder` to a long side of at most 1280 px, never upscaled; YuNet on a 640 px long-side
+  copy at score 0.7, its NMS threshold and top-K at OpenCV's defaults, named in the constant's
+  KDoc; boxes mapped back to the decoded image; a face whose detected width or height there is under
+  40 px is dropped (decision 46); SFace `alignCrop` and `feature` on the decoded image; the box
+  clamped to the image and stored as fractions (ADR-0022 §1), the embedding as the recogniser
+  outputs it. **The OpenCV version is inside the constant too**, because another build moves boxes
+  and would mix embeddings (*Spike outcome*, int8 against fp32): a plain-JVM test fails unless
+  `gradle/libs.versions.toml`'s `opencv` equals the version the constant records, as the gazetteer's
+  version test does.
+- **Models from memory.** Read from the APK's assets into buffers. **Never written to `filesDir`**
+  or any backed-up directory: 39 MB is over Auto Backup's 25 MB quota, which stops the whole cloud
+  backup, albums included (ADR-0014). If 4.13.0's Java API has no buffer overload for
+  `FaceDetectorYN` or `FaceRecognizerSF`, copy them to `noBackupFilesDir` instead, and report it.
+- **One write per image**, through `writeFaceIndexResults`, which gains the setting as a parameter
+  and reads it inside its transaction (ADR-0024 §3): off, nothing is written.
+- **Failures — Amendment 5's bound, Decided at 3.3 as three attempts**, counted as Amendment 7 §1
+  says: recorded before the decode, so a process death leaves it counted. A readable file that does
+  not decode or an OpenCV error on the image is written `FAILED` at once. A file that cannot be
+  opened (`FileNotFoundException` or another `IOException`) skips the image; `SecurityException`
+  stops the pass; both clear the attempt, as cancellation, the setting and the budget do. Anything
+  else propagates, fails the run and leaves the attempt counted. A candidate found with three
+  attempts already recorded is written `FAILED` without decoding. *Corrected 2026-11-20:* the pass
+  is Android-free, so it never names `ImageDecoder.DecodeException` — which is itself an
+  `IOException` and would otherwise read as a skip. The `FacePipeline` reports a decode failure and
+  an inference failure as a type of the pass's own: Task 1's fakes throw it, and Task 2's
+  `OpenCvFacePipeline` maps `DecodeException` and OpenCV's errors to it before any `IOException`
+  is treated as unopenable.
+- **Order in `doWork`:** the start-up deletion first (issue 4); Tier A; places; then, with the
+  setting on: the capability record, or the check now; the disclosure flag; the Tier C lock; the
+  pass. The pass checks cancellation and the setting between images, and **starts no image 7
+  minutes after `doWork` began** — Decided at 3.3, against WorkManager's stop at about ten;
+  injectable clock. What it processed is no longer pending, so the next run resumes.
+- **Reporting.** The run-state store receives nothing from the pass (Amendment 5). The pass logs
+  through an injected `FaceIndexLog`, from a fixed set of lines carrying counts of images only. A
+  pass-level failure fails the run with a fixed message in the output data and no throwable
+  logged: no exception message from the face path leaves it (ADR-0024 §6). *Checked 2026-11-20:*
+  `doWork`'s generic catch writes `error.message` to `KEY_ERROR_MESSAGE`, and the place pass logs
+  its error's message and throwable, so the pass's failure is caught before that catch, never routed
+  through it.
+- **Dormant until 3.6.** Nothing in 3.3 sets the disclosure flag, so on an installed app the pass
+  never runs before 3.6's disclosure lands — the gate ADR-0024 §2 asks for. Tests and the device
+  measurement set the flag through the store.
+
+#### Tasks — four, sequential
+
+**The concurrent test-only fixes are done.** The changes to `MediaIndexTierCStoreTest.kt` and
+`MediaIndexFaceDataScrubTest.kt` were completed and verified on 2026-11-20 — 195 `MediaIndex*` tests
+passing — so they no longer gate Task 1, which edits both files further. **Task 1 waits only on the
+maintainer's approval of ADR-0018 Amendment 7**, which it builds; that wait is recommended, not
+forced (the handoff says why).
+
+**Task 1 — Coder: attempts, the two stores, the pass and its wiring, on a stand-in pipeline.** No
+dependency and no device. Under `app/src/main/java/com/davide/seddio/easygallery/`:
+`data/MediaIndexEntities.kt`, `data/MediaIndexDao.kt`, `data/MediaIndexDatabase.kt` (the attempt
+table, the pending-images query, `MIGRATION_5_6` with each `createSql` copied from the generated
+`6.json`, version 6); `data/MediaIndexStore.kt` (interface and both stores: recording and clearing
+an attempt — `clearFaceIndexAttempt` below is a new method, its name the Coder's — the pending-images
+read, and `writeFaceIndexResults` gaining the setting); `data/MediaIndexTierC.kt`
+(the pending-image model, redacted); new `data/FaceDataSettingStore.kt`, `data/FaceDeviceStateStore.kt`,
+`data/FaceIndexPass.kt` — Android-free: the `FacePipeline` interface, `FACE_PIPELINE_VERSION`, the
+bound, the budget, the pass, the box geometry, `FaceIndexLog` and its lines,
+`FaceDataStartupDeletion` — and `data/FaceCapability.kt`, Android-free: the key, the record, the
+checker over a pipeline loader; `data/MediaIndexingWork.kt` (new seams on `MediaIndexingWorker`'s
+`@JvmOverloads` constructor, defaulting to `EasyGalleryApp`'s wiring as its three seams do);
+`EasyGalleryApp.kt`, whose loader
+reports *incapable* until Task 2. `app/src/main/res/xml/backup_rules.xml` and
+`data_extraction_rules.xml`. `app/schemas/…MediaIndexDatabase/6.json`, generated and committed.
+Tests under `app/src/test/…/data/`: `MediaIndexDatabaseMigrationTest.kt`, `MediaIndexDaoTest.kt`,
+`MediaIndexTierCStoreTest.kt`, `MediaIndexFaceDataScrubTest.kt`, `MediaIndexingWorkerTest.kt`, and new
+`FaceIndexPassTest.kt` and `FaceCapabilityTest.kt` (plain JVM), `FaceDeviceStateStoreTest.kt` and
+`FaceDataSettingStoreTest.kt` (Robolectric, for the `SharedPreferences*` halves), and
+`BackupRulesParityTest.kt` (plain JVM, reading the XML as files). Exit criteria, each with a test:
+1. 5 → 6 creates `media_index_face_attempt` empty and changes nothing else; the chain runs 1 → 6;
+   a migrated file reopens with the production builder; every new test file is named
+   `media_index.db` (repo memory).
+2. Both stores: an attempt is recorded only while the row has the identity it names, increments,
+   restarts at 1 under another pipeline version, and is cleared by a result write and by
+   `clearFaceIndexAttempt`; it is dropped, re-keyed and deleted by every Tier C rule, emptied by
+   `deleteAllFaceData` and counted by `hasFaceData`.
+3. Both stores: `writeFaceIndexResults` with the setting off writes nothing and returns 0.
+4. The pending query returns images-collection rows only, by URI path, with no state or a state at
+   another version, after the cursor, up to the limit.
+5. The pass, on the in-memory store and a fake pipeline: no state for a video or a GIF; gone and
+   stale candidates skipped; `FAILED` at once for the two deterministic failures; `FAILED` without
+   decoding after three recorded attempts; an unopenable file and a `SecurityException` clear the
+   attempt; a cancellation leaves no attempt and no write for its image; the
+   setting turning off mid-pass stops it; the budget stops it, and a second run resumes; boxes are
+   clamped fractions; faces under 40 px are dropped.
+6. **The logger test (ADR-0024 §6):** fixtures carry distinctive URIs, names, boxes and embedding
+   values, and a fake pipeline throws messages containing a URI; every emitted line matches the
+   fixed set and contains none of them, and neither does the run's output data.
+7. The capability checker: reuse for the same key, a re-check for a new one, *incapable* after two
+   unfinished starts, a deterministic failure persisted, an `OutOfMemoryError` not.
+8. The start-up deletion: runs while off whatever `hasFaceData()` says; *not scrubbed* and a thrown
+   error neither throw nor retry; nothing while on.
+9. The worker (Robolectric, `work-testing`): off — the deletion before Tier A and before the
+   permission check, and no pass; incapable, disclosure not shown, or the lock held — no pass; a
+   pass failure — the run fails with the fixed message; the run state's counters are Tier A's alone.
+10. The rules: `backup_rules.xml` and each of the three sections exclude the same set — the index
+    file and its three sidecars, `media_index_run_state.xml`, `face_device_state.xml` — and there is
+    no `<include>` anywhere.
+11. The two `SharedPreferences*` stores write `app_settings` and `face_device_state`, default to on,
+    not shown and no record, and survive a new instance.
+
+**Task 2 — Coder: OpenCV, the models and the real pipeline.** Needs F2 answered and the SM-G990B.
+`gradle/libs.versions.toml`; `app/build.gradle.kts` — the dependency, `packaging.jniLibs` excludes
+for OpenCV's libraries under the three other ABIs (**no `abiFilters`**), and a checksum task run
+before the assets merge that fails the build on a mismatch; `app/src/main/assets/face/` — the two
+OpenCV Zoo ONNX files as measured, OpenCV's and SFace's Apache-2.0 texts, YuNet's MIT notice, and a
+statement that nothing was changed; new `data/OpenCvFacePipeline.kt`; `EasyGalleryApp.kt`; a
+keep-rules file only if the release check below needs one. Tests: new plain
+`data/FacePipelineVersionTest.kt`, and under `app/src/androidTest/…/data/`
+`FaceCapabilityDeviceTest.kt`, `FaceDecodeOrientationDeviceTest.kt` and
+`FaceIndexPassMeasurementDeviceTest.kt`, the last opt-in by an instrumentation argument and skipped
+otherwise. Checks, each reported with its figure:
+- **Verify item 4, before anything else:** the debug and release merged manifests diffed before
+  and after the dependency. Any new `<uses-permission>`, `<uses-feature>` — Play filters on it —
+  `<queries>`, component or `minSdk` change: **stop and ask the maintainer**. Do not remove it with
+  `tools:node="remove"` on your own; decision 24 is the precedent, and he decides.
+- **Item 1:** bundletool `build-apks --device-spec` for arm64-v8a, armeabi-v7a, x86 and x86_64,
+  against the release bundle before and after: every spec still gets APKs; OpenCV's library is in
+  arm64 only.
+- **Item 2:** every `.so` in the arm64 split has LOAD segments aligned to at least 16 KB
+  (`llvm-readelf -l`) and is 16 KB zip-aligned (`zipalign -c -P 16`). A failure is reported, not
+  worked around.
+- **Item 5:** `bundletool get-size total` for arm64, before and after: the added download size
+  against 50 MB. If it is over, check first that AGP stripped OpenCV's libraries.
+- **The release build:** its arm64 APKs installed through bundletool and the capability log line
+  read. If debug is capable and release is not, add an OpenCV keep rule through the release
+  `optimization` block and check again.
+- **ADR-0022's upright frame:** a JPEG written to the test's cache with an asymmetric mark, under
+  EXIF orientations 3, 6 and 8, decodes through the production decoder with the mark where the
+  upright image has it. With Task 1's plain geometry tests, that puts a stored box in the upright
+  frame. On a device, because `ImageDecoder`'s orientation handling is the platform's, not the JVM's.
+- **The capability check on a device:** capable on an arm64 device, and the test asserts the
+  opposite on one without arm64-v8a, so it is never vacuous. Emulators fail it (ADR-0023).
+- **Item 6, measured in the worker on the SM-G990B:** through Index now with the screen off — images
+  processed, wall time, mean time per image, the process's peak RSS, the thermal status before and
+  after, and whether it was charging. Then a run with a short budget twice: the second processes
+  only images the first did not. Aggregates only, nothing per image; the face data it writes stays
+  on the phone (decision 9).
+- **Item 8's input:** the third-party section of `Core.getBuildInformation()`, read on the device,
+  copied into the report.
+
+**Task 3 — Planner: OpenCV's bundled components.** From Task 2's capture, each component's licence
+read and recorded under *Licence findings*, with the notice files owed. Verify item 8.
+
+**Task 4 — Coder: those notice files**, under `app/src/main/assets/face/`. Text only.
+
+**Why four, and sequential.** Task 2 builds on Task 1's interfaces and both edit `EasyGalleryApp.kt`.
+They are split because Task 2 waits on F2, needs the phone and may stop at the manifest gate, and
+Task 1 needs none of that; one Coder may take both in turn. Nothing runs in parallel.
+
+**Verification** is its own phase, once, over the integrated change, owned by whoever the brief
+names: the definition of done with `adb devices` stated — `connectedDebugAndroidTest` on the
+SM-G990B if attached, the opt-in measurement skipped — and `git ls-files` listing `6.json` and the
+two model files. Task 2's device and bundle checks are not repeated there.
+
+**After it lands — Planner, task P.** `ARCHITECTURE.md` §3 (the new `data/` files; the store, DAO,
+database, entities and worker rows; app entry points), §6 (version 6, five tables, the new
+preferences file, four rules sections), §10 (OpenCV), §11 (Amendment 6's two costs), linking
+ADR-0023 and ADR-0024 where they now govern; `AGENTS.md` *Tech stack*, *Preference stores*, *The two
+databases* and its paragraph on ADR-0024's placed state; ADR-0018 Amendment 7 and ADR-0023's verify
+table, each a dated *Built* note with the figures; the test conventions, for the opt-in device test;
+this section, the steps row, the handoff, and [albums.md](albums.md) §7.
+
+**Not 3.3's:** grouping and the memory budget (3.4); the `people` clause, and a video or GIF never
+pending in evaluation (3.5); the disclosure, the switch and its confirmation, the app-open deletion
+and capability check, presenting *not scrubbed*, the People criterion's visibility, the licence
+row, and every string (3.6); the SM-G781B, the phones' journal modes and the favourite toggle
+(3.7); a trimmed OpenCV; any Tier C `Flow` or Settings figure. No `ui/` file, no `*Content`
+signature, no string.
+
+**Needs the maintainer:** before Task 1, his approval of ADR-0018 Amendment 7 (recommended, as the
+handoff says); before Task 2, F2, the OpenCV pin. During Task 2: his answer on anything
+the merged manifest adds. **Call-outs, not approvals:** the new preferences file; `Migration(5, 6)`;
+F1's fourth section, which he can reverse — all three inside Amendment 7 — and the measurement run, which processes his phone's
+library on the phone.
+
 ### 3.2 to 3.8
 
 At the level of detail Stage 4's plan used for its later steps; each is refined when 3.1 has
@@ -1132,8 +1467,9 @@ settled what it depends on.
   inference is stored as absent, §6's third state. Not one line of face data in a log. YuNet and
   SFace fp32 on ~~a trimmed OpenCV~~ OpenCV's published artifact, untrimmed (E3), with the
   capability check (decision 45); ~~confirms OpenCV's module list and measures the trimmed size~~
-  measures the size it actually adds. **Refining it settles**, besides, where the capability
-  result and the disclosure-shown flag are kept, and F1 — both in the handoff above.
+  measures the size it actually adds. ~~**Refining it settles**, besides, where the capability
+  result and the disclosure-shown flag are kept, and F1 — both in the handoff above.~~ Refined
+  2026-11-20 into its own section above, which settles both.
 - **3.4 — Clustering and the person record.** Per B1 (decision 45: average linkage, cosine 0.50)
   and B2, and decisions 42 and 46 for an anchor. Average linkage's memory and time in the app are
   unmeasured — about 800 MB for the distance matrix at 10,000 faces — so 3.4 measures them before
@@ -1218,12 +1554,17 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
     at 3.1 — proposed in~~ checked as [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md)
     §6 decides, adopted 2026-11-19). The anchor in the album database is not face data (decision 9's 2026-11-17
     clarification), and nothing else face-related is written there.
-- The Play Data Safety question of decision 9 is answered and recorded.
+- The Play Data Safety question of decision 9 is answered and recorded. *Status 2026-11-20:* **not
+  answered.** This line is what closing the stage requires, not a statement that it is met. The
+  question is recorded under *3.1*, *The Play Data Safety check*, and is the maintainer's, before the
+  first Play release that ships the Tier C pass.
 - The index database reaches its new version through a real migration, every schema JSON is
   committed, and the index is still excluded from backup, checked against the rules files.
   *2026-11-19, step 3.2: version 5 through `Migration(4, 5)`; the rules files exclude the file and
   its `-wal`, `-shm` and `-journal` sidecars in all three sections, checked against them. Open:
-  `5.json` tracked, checked by `git ls-files`; and F1.*
+  `5.json` tracked, checked by `git ls-files`; and F1.* *2026-11-20, step 3.3's refinement: F1
+  decided — a fourth section, ADR-0018 Amendment 7, proposed — and the index goes to version 6 with step
+  3.3; F1's 36.1 residual stays open.*
 - The merged manifest is checked after the runtime dependency — OpenCV (decision 45) — lands, and
   any permission it adds is approved or removed.
 - The licence obligations of any shipped weights are met (A5): the Apache-2.0 licence and a
@@ -1626,6 +1967,23 @@ own questions answered and its text settled. **Answering them did not approve th
    say "three places"; that claim is to be checked, and any rule change recorded in ADR-0018 and
    applied with `<exclude>` only (ADR-0014). Owner: the Planner, with the decision 9 exit
    criterion "never enters a backup" depending on the answer.
+
+   ✅ **Decided 2026-11-20 at step 3.3's refinement, conservatively** —
+   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 7 §2,
+   proposed until the maintainer approves the amendment:
+   a fourth section, `<cross-platform-transfer platform="ios">`, holding the same `<exclude>`
+   lines as the other two and no `<platform-specific-params>`, landing in step 3.3's Task 1.
+   **Still open, the maintainer's, blocking nothing:** how an API 36.1 device reads a section
+   without the params is not verified — ignored, honoured, or the file treated as malformed, the last
+   being the one case in which the section is worse than none — no such device is here, the SM-G990B being 36.0 — and if
+   he wants the doubt removed by construction rather than by rules, moving `media_index.db` to
+   `noBackupFilesDir`, which Android excludes from every backup mode, is a change of its own and
+   a new amendment. Recommended: not now; revisit if a 36.1 device shows the section misread.
+2. **F2 — Which OpenCV version is pinned?** Raised by the Planner at step 3.3's refinement,
+   2026-11-20. The maintainer approved the library, not a version (decisions 45 and 47).
+   **Recommended: 4.13.0**, the build the spike measured; 4.14.0 and 5.x are on Maven Central and
+   were not measured, and 5.x is a new major version. **Blocks step 3.3's Task 2**, not Task 1.
+   The facts read are under *3.3*, *Settled before 3.3*, issue 5.
 
 ---
 

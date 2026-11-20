@@ -79,6 +79,13 @@ owes. The constraints already binding are:
 - Its version is pinned where every version is, in `gradle/libs.versions.toml` and
   `app/build.gradle.kts`, and is not restated here.
 
+  > **Note 2026-11-20 — open, F2.** No record names the version: the maintainer approved the library
+  > (decisions 45 and 47), not a release. Step 3.3's refinement recommends 4.13.0, the build the spike
+  > measured, and asks him to confirm it. **It blocks step 3.3's Task 2**, the change that adds the
+  > dependency, and nothing before it. The facts read are in
+  > [albums-stage-3.md](../../design/albums-stage-3.md), *3.3*, *Settled before 3.3*, issue 5, and the
+  > question is F2 there.
+
 ### 3. The capability check
 
 **A device is capable when the native library loads, both models load, and a self-test runs
@@ -100,6 +107,17 @@ detection and an embedding to a valid result.**
 - **Never run on the main thread.** Its result may be held for the life of the process. Whether it
   is also persisted, keyed by app version, is step 3.3's, under `AGENTS.md`'s preference-store
   rules.
+
+> **Note 2026-11-20 — proposed with [ADR-0018](0018-media-index-in-a-second-database.md) Amendment 7,
+> binding only when the maintainer approves it.** Step 3.3 decides both points this section left to
+> it. **Persisted**, in a new preferences file, `face_device_state`, excluded from backup (Amendment 7
+> §3): step 3.6 needs the answer at every app open, where loading the weights each time is a cost and
+> a native crash would be a crash at every open. Keyed by the app's version code, the face-pipeline
+> version and the build fingerprint, with a start marker so that a check that kills the process twice
+> is recorded incapable. **No stored reference** in the self-test: one phone cannot calibrate a
+> tolerance, and a false *incapable* would hide the feature silently; the build's checksums guard the
+> weights instead. The detail is [albums-stage-3.md](../../design/albums-stage-3.md), *3.3*, *Settled
+> before 3.3*, issue 2.
 
 ### 4. Where the pipeline runs
 
