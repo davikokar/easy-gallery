@@ -56,9 +56,10 @@ internal fun deletionIsScrubbed(journalMode: String, lockingMode: String, logWas
         MediaIndexEntity::class,
         MediaIndexWatermarkEntity::class,
         MediaIndexFaceStateEntity::class,
-        MediaIndexFaceEntity::class
+        MediaIndexFaceEntity::class,
+        MediaIndexFaceAttemptEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(FaceIndexOutcomeConverters::class)
@@ -74,7 +75,7 @@ abstract class MediaIndexDatabase : RoomDatabase() {
                 MediaIndexDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(SecureDeleteOnOpen)
                 .build()
         }
@@ -144,6 +145,16 @@ abstract class MediaIndexDatabase : RoomDatabase() {
                         "`embedding` BLOB NOT NULL, `groupId` INTEGER, `groupingVersion` INTEGER)"
                 )
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_media_index_face_mediaUri` ON `media_index_face` (`mediaUri`)")
+            }
+        }
+
+        // The attempt table, empty; no existing table changes. The SQL is 6.json's createSql (ADR-0018 Amendment 7 §1).
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `media_index_face_attempt` (`mediaUri` TEXT NOT NULL, " +
+                        "`pipelineVersion` INTEGER NOT NULL, `attempts` INTEGER NOT NULL, PRIMARY KEY(`mediaUri`))"
+                )
             }
         }
     }

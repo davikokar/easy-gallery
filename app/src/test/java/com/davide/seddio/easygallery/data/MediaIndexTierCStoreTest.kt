@@ -585,6 +585,331 @@ class MediaIndexTierCStoreTest {
         assertEquals(listOf(watermark), dao.listWatermarks())
     }
 
+    @Test
+    fun `an attempt is recorded only while the row has the identity it names`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A, name = "now.jpg", size = 10L, dateModified = 20L)
+            assertNull(store.recordAttempt(row.toMediaIdentity(), 1))
+            store.upsert(listOf(row))
+
+            val stale = listOf(
+                row.copy(displayName = "before.jpg"),
+                row.copy(size = 9L),
+                row.copy(dateModified = 19L),
+                row.copy(mediaUri = URI_B)
+            )
+            stale.forEach { assertNull(store.recordAttempt(it.toMediaIdentity(), 1)) }
+
+            assertFalse(store.hasFaceData())
+            assertEquals(1, store.recordAttempt(row.toMediaIdentity(), 1))
+            assertTrue(store.hasFaceData())
+        }
+    }
+
+    @Test
+    fun `an attempt increments, and restarts at 1 under another pipeline version`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A)
+            store.upsert(listOf(row))
+
+            assertEquals(1, store.recordAttempt(row.toMediaIdentity(), 1))
+            assertEquals(2, store.recordAttempt(row.toMediaIdentity(), 1))
+            assertEquals(3, store.recordAttempt(row.toMediaIdentity(), 1))
+            assertEquals(3, store.attemptsOf(URI_A, version = 1))
+            assertEquals(0, store.attemptsOf(URI_A, version = 2))
+
+            assertEquals(1, store.recordAttempt(row.toMediaIdentity(), 2))
+            assertEquals(2, store.recordAttempt(row.toMediaIdentity(), 2))
+            assertEquals(2, store.attemptsOf(URI_A, version = 2))
+        }
+    }
+
+    @Test
+    fun `a result write clears the attempt and so does clearing it`() = runTest {
+        forEachStore { store ->
+            val written = entry(URI_A)
+            val cleared = entry(URI_B)
+            store.upsert(listOf(written, cleared))
+            store.recordAttempt(written.toMediaIdentity(), 1)
+            store.recordAttempt(cleared.toMediaIdentity(), 1)
+
+            store.writeFaceIndexResults(listOf(write(written, 1, listOf(detection(1)))))
+            store.clearFaceIndexAttempt(URI_B)
+            store.clearFaceIndexAttempt(URI_C)
+
+            assertEquals(0, store.attemptsOf(URI_B, version = 1))
+            // The written image's attempt left with the write: the state and the face are all that a deletion finds.
+            assertEquals(2, store.deleteAllFaceData().rowsDeleted)
+        }
+    }
+
+    @Test
+    fun `a failed result write also clears the attempt`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A)
+            store.upsert(listOf(row))
+            store.recordAttempt(row.toMediaIdentity(), 1)
+
+            store.writeFaceIndexResults(listOf(write(row, 1, emptyList(), FaceIndexOutcome.FAILED)))
+
+            assertEquals(1, store.deleteAllFaceData().rowsDeleted)
+        }
+    }
+
+    @Test
+    fun `a row write keeps the attempt while the healing triple is unchanged and drops it when it changes`() = runTest {
+        forEachStore { store ->
+            val kept = entry(URI_A)
+            val changed = entry(URI_B)
+            store.upsert(listOf(kept, changed))
+            store.recordAttempt(kept.toMediaIdentity(), 1)
+            store.recordAttempt(changed.toMediaIdentity(), 1)
+            store.recordAttempt(changed.toMediaIdentity(), 1)
+
+            store.upsert(listOf(kept.copy(generationModified = 50L), changed.copy(size = changed.size + 1)))
+
+            assertEquals(1, store.attemptsOf(URI_A, version = 1))
+            assertEquals(0, store.attemptsOf(URI_B, version = 1))
+        }
+    }
+
+    @Test
+    fun `a heal re-keys the attempt with the tier c rows and a heal that changes the triple drops it`() = runTest {
+        forEachStore { store ->
+            val moved = entry(URI_A)
+            val renamed = entry(URI_B)
+            store.upsert(listOf(moved, renamed))
+            store.recordAttempt(moved.toMediaIdentity(), 1)
+            store.recordAttempt(moved.toMediaIdentity(), 1)
+            store.recordAttempt(renamed.toMediaIdentity(), 1)
+
+            store.healMediaUri(URI_A, moved.copy(mediaUri = URI_C))
+            store.healMediaUri(URI_B, renamed.copy(displayName = "renamed.jpg"))
+
+            assertEquals(0, store.attemptsOf(URI_A, version = 1))
+            assertEquals(2, store.attemptsOf(URI_C, version = 1))
+            assertEquals(0, store.attemptsOf(URI_B, version = 1))
+        }
+    }
+
+    @Test
+    fun `a heal onto a row that had an attempt of its own leaves it only the moved one`() = runTest {
+        forEachStore { store ->
+            val from = entry(URI_A)
+            val target = entry(URI_B)
+            store.upsert(listOf(from, target))
+            store.recordAttempt(from.toMediaIdentity(), 1)
+            store.recordAttempt(target.toMediaIdentity(), 1)
+            store.recordAttempt(target.toMediaIdentity(), 1)
+            store.recordAttempt(target.toMediaIdentity(), 1)
+
+            store.healMediaUri(URI_A, from.copy(mediaUri = URI_B))
+
+            assertEquals(1, store.attemptsOf(URI_B, version = 1))
+        }
+    }
+
+    // The attempts are read through deleteAllFaceData's count and hasFaceData, which see every attempt row, not only
+    // those that still join an index row: an orphan left by a delete would be invisible to attemptsOf.
+    @Test
+    fun `deleting an image row takes its attempt and no other image's`() = runTest {
+        forEachStore { store ->
+            val gone = entry(URI_A)
+            val kept = entry(URI_C)
+            store.upsert(listOf(gone, kept))
+            store.recordAttempt(gone.toMediaIdentity(), 1)
+            store.recordAttempt(kept.toMediaIdentity(), 1)
+
+            store.deleteByMediaUri(URI_A)
+
+            assertEquals(1, store.attemptsOf(URI_C, version = 1))
+            assertEquals(1, store.deleteAllFaceData().rowsDeleted)
+        }
+    }
+
+    @Test
+    fun `deleting a volume takes the attempts of that volume only`() = runTest {
+        forEachStore { store ->
+            val onCard = entry(URI_A, volume = "0123-4567")
+            val kept = entry(URI_C)
+            store.upsert(listOf(onCard, kept))
+            store.recordAttempt(onCard.toMediaIdentity(), 1)
+            store.recordAttempt(kept.toMediaIdentity(), 1)
+
+            store.deleteByVolume("0123-4567")
+
+            assertEquals(1, store.attemptsOf(URI_C, version = 1))
+            assertEquals(1, store.deleteAllFaceData().rowsDeleted)
+        }
+    }
+
+    @Test
+    fun `deleting every row takes every attempt`() = runTest {
+        forEachStore { store ->
+            val first = entry(URI_A)
+            val second = entry(URI_B, volume = "0123-4567")
+            store.upsert(listOf(first, second))
+            store.recordAttempt(first.toMediaIdentity(), 1)
+            store.recordAttempt(second.toMediaIdentity(), 1)
+            assertTrue(store.hasFaceData())
+
+            store.deleteAll()
+
+            assertFalse(store.hasFaceData())
+            assertEquals(0, store.deleteAllFaceData().rowsDeleted)
+        }
+    }
+
+    @Test
+    fun `deleting face data empties the attempts, counts them and leaves the index rows`() = runTest {
+        forEachStore { store ->
+            val first = entry(URI_A)
+            val second = entry(URI_B)
+            store.upsert(listOf(first, second))
+            store.recordAttempt(first.toMediaIdentity(), 1)
+            store.recordAttempt(second.toMediaIdentity(), 1)
+            assertTrue(store.hasFaceData())
+
+            val deletion = store.deleteAllFaceData()
+
+            assertEquals(FaceDataDeletion(rowsDeleted = 2, scrubbed = true), deletion)
+            assertFalse(store.hasFaceData())
+            assertEquals(0, store.attemptsOf(URI_A, version = 1))
+            assertEquals(first, store.getByMediaUri(URI_A))
+            assertEquals(second, store.getByMediaUri(URI_B))
+        }
+    }
+
+    @Test
+    fun `a result write with the setting off writes nothing and returns 0`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A)
+            store.upsert(listOf(row))
+
+            val applied = store.writeFaceIndexResults(listOf(write(row, 1, listOf(detection(1)))), faceDataEnabled = { false })
+
+            assertEquals(0, applied)
+            assertNull(store.getFaceIndexState(URI_A))
+            assertTrue(store.listFaces(URI_A).isEmpty())
+            assertFalse(store.hasFaceData())
+        }
+    }
+
+    @Test
+    fun `a result write with the setting off leaves an earlier state, faces and attempt as they were`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A)
+            store.upsert(listOf(row))
+            store.writeFaceIndexResults(listOf(write(row, 1, listOf(detection(1)))))
+            store.recordAttempt(row.toMediaIdentity(), 2)
+            val state = store.getFaceIndexState(URI_A)
+            val faces = store.listFaces(URI_A)
+
+            val applied = store.writeFaceIndexResults(listOf(write(row, 2, listOf(detection(2)))), faceDataEnabled = { false })
+
+            assertEquals(0, applied)
+            assertEquals(state, store.getFaceIndexState(URI_A))
+            assertEquals(faces, store.listFaces(URI_A))
+            assertEquals(1, store.attemptsOf(URI_A, version = 2))
+        }
+    }
+
+    @Test
+    fun `recording an attempt with the setting off writes nothing and returns null`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A)
+            store.upsert(listOf(row))
+
+            val number = store.recordFaceIndexAttempt(row.toMediaIdentity(), 1, faceDataEnabled = { false })
+
+            assertNull(number)
+            assertFalse(store.hasFaceData())
+        }
+    }
+
+    @Test
+    fun `the setting is read once per call and inside the write transaction of the room store`() = runTest {
+        val row = entry(URI_A)
+        val store = RoomMediaIndexStore(database)
+        store.upsert(listOf(row))
+        val inTransaction = mutableListOf<Boolean>()
+        val setting = {
+            inTransaction += database.openHelper.writableDatabase.inTransaction()
+            true
+        }
+
+        store.writeFaceIndexResults(listOf(write(row, 1, listOf(detection(1)))), setting)
+        store.recordFaceIndexAttempt(row.toMediaIdentity(), 1, setting)
+
+        assertEquals(listOf(true, true), inTransaction)
+    }
+
+    @Test
+    fun `pending images are the images collection rows with no state at the version, in uri order`() = runTest {
+        forEachStore { store ->
+            val image = entry("content://media/external/images/media/20")
+            val perVolumeImage = entry("content://media/0123-4567/images/media/10", volume = "0123-4567")
+            val video = entry("content://media/external/video/media/5")
+            val done = entry("content://media/external/images/media/30")
+            val doneOther = entry("content://media/external/images/media/40")
+            store.upsert(listOf(image, perVolumeImage, video, done, doneOther))
+            store.writeFaceIndexResults(listOf(write(done, 1, emptyList()), write(doneOther, 2, emptyList())))
+
+            val pending = store.listPendingFaceImages(pipelineVersion = 1, afterMediaUri = null, limit = 100)
+
+            assertEquals(
+                listOf(perVolumeImage.mediaUri, image.mediaUri, doneOther.mediaUri),
+                pending.map { it.identity.mediaUri }
+            )
+            assertEquals(image.toMediaIdentity(), pending[1].identity)
+            assertEquals(listOf(0, 0, 0), pending.map { it.attempts })
+        }
+    }
+
+    @Test
+    fun `pending images start strictly after the cursor and stop at the limit`() = runTest {
+        forEachStore { store ->
+            val uris = (1..5).map { "content://media/external/images/media/$it" }
+            store.upsert(uris.map { entry(it) })
+
+            val first = store.listPendingFaceImages(1, null, limit = 2)
+            val second = store.listPendingFaceImages(1, first.last().identity.mediaUri, limit = 2)
+            val third = store.listPendingFaceImages(1, second.last().identity.mediaUri, limit = 2)
+            val beyond = store.listPendingFaceImages(1, uris.last(), limit = 2)
+
+            assertEquals(uris.take(2), first.map { it.identity.mediaUri })
+            assertEquals(uris.slice(2..3), second.map { it.identity.mediaUri })
+            assertEquals(uris.takeLast(1), third.map { it.identity.mediaUri })
+            assertTrue(beyond.isEmpty())
+        }
+    }
+
+    @Test
+    fun `a pending image carries the attempts recorded under that version only`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A)
+            store.upsert(listOf(row))
+            store.recordAttempt(row.toMediaIdentity(), 1)
+            store.recordAttempt(row.toMediaIdentity(), 1)
+
+            assertEquals(2, store.listPendingFaceImages(1, null, 10).single().attempts)
+            assertEquals(0, store.listPendingFaceImages(2, null, 10).single().attempts)
+        }
+    }
+
+    @Test
+    fun `a pending image keeps its state at another version out of the way and the limit must be positive`() = runTest {
+        forEachStore { store ->
+            val row = entry(URI_A)
+            store.upsert(listOf(row))
+            store.writeFaceIndexResults(listOf(write(row, 1, emptyList(), FaceIndexOutcome.FAILED)))
+
+            assertTrue(store.listPendingFaceImages(1, null, 10).isEmpty())
+            assertEquals(1, store.listPendingFaceImages(2, null, 10).size)
+            assertTrue(runCatching { store.listPendingFaceImages(1, null, 0) }.exceptionOrNull() is IllegalArgumentException)
+        }
+    }
+
     private suspend fun forEachStore(block: suspend (MediaIndexStore) -> Unit) {
         listOf(
             "in-memory" to InMemoryMediaIndexStore(),
@@ -597,6 +922,17 @@ class MediaIndexTierCStoreTest {
             }
         }
     }
+
+    // The older tests write with the setting on; the setting-off rule has its own tests.
+    private suspend fun MediaIndexStore.writeFaceIndexResults(writes: List<FaceIndexWrite>): Int =
+        writeFaceIndexResults(writes, faceDataEnabled = { true })
+
+    private suspend fun MediaIndexStore.recordAttempt(identity: MediaIdentity, pipelineVersion: Int): Int? =
+        recordFaceIndexAttempt(identity, pipelineVersion, faceDataEnabled = { true })
+
+    // Attempts are observed through the pending list, where they are reported for the version asked.
+    private suspend fun MediaIndexStore.attemptsOf(mediaUri: String, version: Int): Int =
+        listPendingFaceImages(version, null, 1_000).firstOrNull { it.identity.mediaUri == mediaUri }?.attempts ?: 0
 
     private fun entry(
         mediaUri: String,

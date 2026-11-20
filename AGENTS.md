@@ -39,6 +39,12 @@ short commit messages.
   the **merged** manifest that the source manifest does not declare, one of which the source
   manifest removes again; see *What to ask before doing*.
 - **Async:** Kotlin Coroutines + Flow
+- **Face pipeline:** OpenCV's published Android library (`org.opencv:opencv`), used only by the
+  media index's face pass, with two ONNX models bundled under `app/src/main/assets/face/`
+  (ADR-0023). Its version is fingerprinted by `FACE_PIPELINE_VERSION`, so an upgrade is a pipeline
+  change, not a bump. It ships for arm64-v8a only, by `packaging.jniLibs` excludes and never by
+  `abiFilters`; the build wiring — the model checksum task and `app/proguard-face.pro`, the
+  release keep rule R8 needs — is in [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §10.
 - **Build:** Gradle (Kotlin DSL, `.gradle.kts`). **Every version lives in
   `gradle/libs.versions.toml` and `app/build.gradle.kts` — read them rather than restating one
   here.**
@@ -216,13 +222,14 @@ file-wide, so folder and album overrides sharing a file would reset each other (
 
 | File | Holds | Store |
 |---|---|---|
-| `app_settings` | language override; the `MediaStore.getVersion()` watermark | `LocaleHelper`, `MediaStoreVersionStore` |
+| `app_settings` | language override; the `MediaStore.getVersion()` watermark; the face-data setting `face_data_enabled` | `LocaleHelper`, `MediaStoreVersionStore`, `FaceDataSettingStore` |
 | `display_preferences` | per-view `ViewPreferences` | `DisplayPreferencesStore` |
 | `folder_preferences` | pinned and excluded folder paths | `FolderPreferencesStore` |
 | `folder_display_preferences` | per-folder preference overrides | `FolderViewPreferencesStore` |
 | `album_display_preferences` | per-album and Favourites preference overrides | `FolderViewPreferencesStore`, owned by `AlbumsViewModel` |
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
 | `media_index_run_state` | last indexing run's outcome, timestamps, counters | `MediaIndexRunStateStore` |
+| `face_device_state` | whether the face-data disclosure was shown; the capability record | `FaceDeviceStateStore` |
 
 Every store is an interface with a `SharedPreferences*` production implementation and an
 `InMemory*` implementation for tests. Add both when you add a store.
@@ -237,14 +244,17 @@ index database (ADR-0018 Amendment 1).
 was challenged on the same test that moved the watermark and **kept in `SharedPreferences`**: it is
 a fixed set of flat scalars, and unlike the watermark it is not bookkeeping the index's correctness
 depends on — losing it costs a blank label, not a wrong index. ADR-0018 Amendment 2 records the
-reasoning. It is also the only preferences file carrying an `<exclude>` in the backup rules, and it
+reasoning. It is also excluded from backup, and it
 deliberately holds **no** liveness flag — "is indexing running" comes from WorkManager, because a
 persisted one survives process death and disables the Index now action forever.
 
-ADR-0024 has already placed two pieces of Stage 3 state that do not exist yet. The face-data
-setting is a scalar for `app_settings`. Whether the face-data disclosure has been shown must
-**not** go there, because `app_settings` is backed up and the disclosure is per installation.
-Add their rows to the table above when they land.
+ADR-0024 placed two pieces of Stage 3 state, and step 3.3 built both, with a `SharedPreferences*`
+and an `InMemory*` store each. The face-data setting is a scalar in `app_settings`, on by default
+and backed up. Whether the face-data disclosure has been shown is **not** there, because
+`app_settings` is backed up and the disclosure is per installation: it lives in `face_device_state`
+beside the capability record, and that file is excluded from backup in all four rules sections —
+the second preferences file with an `<exclude>`, after `media_index_run_state` (ADR-0018
+Amendment 7 §3). Nothing in `ui/` reads or writes either yet; step 3.6 does.
 
 ### The two databases
 
@@ -262,8 +272,9 @@ database is backed up (ADR-0014) while the index must not be.
   because its rows change in the same transaction as the image row they describe
   ([albums-stage-3.md](docs/design/albums-stage-3.md), step 3.2).
 - **One database does not mean one table.** The album database holds two tables; the index
-  database holds four, having gained the per-volume delta watermark table through a real
-  `Migration(1, 2)` and the two Tier C tables through `Migration(4, 5)`. A watermark is index
+  database holds five, having gained the per-volume delta watermark table through a real
+  `Migration(1, 2)`, the two Tier C tables through `Migration(4, 5)`, and the Tier C attempt table
+  through `Migration(5, 6)` (ADR-0018 Amendment 7). A watermark is index
   metadata — recomputable, worthless without the index,
   already excluded from backup — so it belongs with the data it describes rather than in
   `app_settings`. ADR-0018 Amendment 1 records that.
@@ -274,7 +285,8 @@ database is backed up (ADR-0014) while the index must not be.
   ADR-0018 Amendment 3 records why. A third, `Migration(3, 4)`, adds the place resolver's version
   marker (ADR-0018 Amendment 4); a bump of `PLACE_RESOLVER_VERSION` re-resolves rows without
   another migration. A fourth, `Migration(4, 5)`, creates the Tier C tables empty (ADR-0018
-  Amendment 5). Each database's current version is its `@Database` annotation;
+  Amendment 5), and a fifth, `Migration(5, 6)`, the attempt table (Amendment 7). Each database's
+  current version is its `@Database` annotation;
   read it there rather than from a document.
 - Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
   committed — and so does a data migration, which bumps the version even when the schema is
@@ -289,8 +301,12 @@ database is backed up (ADR-0014) while the index must not be.
   `MediaStore` column (ADR-0011), unavailable below API 30.
 - **Face data is decided ahead of most of its code** (Stage 3). ADR-0018 Amendment 5 puts it in the
   index database as Tier C and says what deleting it removes; ADR-0024 says when it is deleted and
-  that it never enters a backup or a log. Step 3.2 built the tables, the store rules and the
-  deletion; nothing writes face data yet, and nothing calls the deletion.
+  that it never enters a backup or a log; Amendment 7 adds the attempt table, the setting read
+  inside the write's transaction, `face_device_state` and the fourth backup section. Step 3.2 built
+  the tables, the store rules and the deletion; step 3.3 built the face pass and its gates in
+  `MediaIndexingWorker`, and the repeat of the deletion at the start of every worker run while the
+  setting is off. The pass is dormant until step 3.6 records the disclosure as shown, and nothing
+  in `ui/` calls the deletion yet.
   A people rule's anchor (ADR-0022) is the one face-related
   thing in the album database, and it is not face data. Read them before adding a table to either
   database.
@@ -394,7 +410,9 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   to the merged manifest at Stage 2 step 2.4, unexamined, until
   [docs/design/albums.md](docs/design/albums.md) §10 question 6 settled them after the fact — one
   removed, three kept. Check the merged manifest, not
-  `app/src/main/AndroidManifest.xml`, when a dependency lands.
+  `app/src/main/AndroidManifest.xml`, when a dependency lands. OpenCV was checked that way before
+  anything else at step 3.3, and its merged manifests came out byte-identical (ADR-0023, verify
+  item 4).
 - Introducing a new architectural pattern not described above, or contradicting an active ADR.
 - Adding `android:configChanges` to `MainActivity` — ADR-0002 forbids it.
 

@@ -111,8 +111,47 @@ interface MediaIndexDao {
     @Query("SELECT * FROM media_index_face WHERE mediaUri = :mediaUri ORDER BY id ASC")
     suspend fun listFaces(mediaUri: String): List<MediaIndexFaceEntity>
 
-    @Query("SELECT EXISTS(SELECT 1 FROM media_index_face_state) OR EXISTS(SELECT 1 FROM media_index_face)")
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM media_index_face_state) OR EXISTS(SELECT 1 FROM media_index_face) " +
+            "OR EXISTS(SELECT 1 FROM media_index_face_attempt)"
+    )
     suspend fun hasFaceData(): Boolean
+
+    @Query("SELECT * FROM media_index_face_attempt WHERE mediaUri = :mediaUri LIMIT 1")
+    suspend fun getFaceAttempt(mediaUri: String): MediaIndexFaceAttemptEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFaceAttempt(attempt: MediaIndexFaceAttemptEntity)
+
+    @Query("DELETE FROM media_index_face_attempt WHERE mediaUri = :mediaUri")
+    suspend fun deleteFaceAttempt(mediaUri: String)
+
+    @Query("UPDATE media_index_face_attempt SET mediaUri = :toMediaUri WHERE mediaUri = :fromMediaUri")
+    suspend fun rekeyFaceAttempt(fromMediaUri: String, toMediaUri: String)
+
+    @Query("DELETE FROM media_index_face_attempt WHERE mediaUri IN (SELECT mediaUri FROM media_index WHERE volumeName = :volumeName)")
+    suspend fun deleteFaceAttemptsByVolume(volumeName: String)
+
+    @Query("DELETE FROM media_index_face_attempt")
+    suspend fun deleteAllFaceAttempts(): Int
+
+    // Images by URI path, case-sensitively (instr, not LIKE); no state at [pipelineVersion]. A null cursor starts at the first row.
+    @Query(
+        "SELECT m.mediaUri AS mediaUri, m.displayName AS displayName, m.size AS size, m.dateModified AS dateModified, " +
+            "COALESCE((SELECT a.attempts FROM media_index_face_attempt a " +
+            "WHERE a.mediaUri = m.mediaUri AND a.pipelineVersion = :pipelineVersion), 0) AS attempts " +
+            "FROM media_index m " +
+            "WHERE instr(m.mediaUri, '/images/media/') > 0 " +
+            "AND NOT EXISTS (SELECT 1 FROM media_index_face_state s " +
+            "WHERE s.mediaUri = m.mediaUri AND s.pipelineVersion = :pipelineVersion) " +
+            "AND (:afterMediaUri IS NULL OR m.mediaUri > :afterMediaUri) " +
+            "ORDER BY m.mediaUri ASC LIMIT :limit"
+    )
+    suspend fun listPendingFaceImages(
+        pipelineVersion: Int,
+        afterMediaUri: String?,
+        limit: Int
+    ): List<MediaIndexPendingFaceImageEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertFaceState(state: MediaIndexFaceStateEntity)

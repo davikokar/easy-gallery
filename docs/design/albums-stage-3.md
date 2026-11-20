@@ -11,7 +11,8 @@
 > (clarified 2026-11-17), 13 (as amended 2026-11-17), 14, 15, 33, 35, 40 (as amended 2026-11-17
 > and 2026-11-18), 41, 42 and 43 (2026-11-18), and 44, 45 and 46 (2026-11-18, delegated by the
 > maintainer; 44, and 45's OpenCV dependency, confirmed by him the same day), and 47 (2026-11-19,
-> the answers to group E), and 48 (2026-11-20, two findings of step 3.2's review). The steps, the
+> the answers to group E), and 48 (2026-11-20, two findings of step 3.2's review), and 49 (2026-11-20,
+> ADR-0018 Amendment 7 approved and OpenCV pinned at 4.13.0). The steps, the
 > exit criteria and every recommendation below are proposals until the maintainer answers the open
 > questions and step 3.1 records the decisions. Group A was answered on 2026-11-17. Where something
 > was not known, it is a question, not a guess. ~~Nothing here names a face model, a licence or an
@@ -183,25 +184,169 @@
   Data Safety exit criterion reading as met, and Task 1's brief checked against the code again (the
   Android-free pass and `ImageDecoder`, the order before the permission check, the live snapshot,
   the images-only query, the worker's generic error message). The README index is unchanged: an
-  amendment does not enter it. No Gradle run by the Planner.
-- **Next action: the maintainer approves ADR-0018 Amendment 7; then step 3.3, Task 1.** Amendment 7
+  amendment does not enter it. No Gradle run by the Planner. *Adopted 2026-11-20 — the entry below.*
+- **2026-11-20, last — ADR-0018 Amendment 7 adopted; F2 answered: OpenCV 4.13.0.** The maintainer
+  approved Amendment 7 together with its dated notes in ADR-0014, ADR-0023 §3 and ADR-0024 §2 and
+  §6, and pinned OpenCV at 4.13.0, the build the spike measured — [albums.md](albums.md) §8
+  decision 49. The Planner adopted them: the marker under ADR-0018's title removed; Amendment 7's
+  *Proposed* note replaced by an adoption line, its *Written late* admission kept as history; the
+  notes marked adopted; ADR-0023 §2's F2 note answered. **The pin confirms the version only:**
+  ADR-0023's verify item 4 still runs when the dependency lands, and any new permission, feature,
+  `<queries>` entry or component goes to the maintainer before it ships (decision 24's precedent).
+  Still open and blocking nothing: F1's residual, and ADR-0023's verify items at their steps. The
+  README index is unchanged, an amendment not entering it; `ARCHITECTURE.md` is unchanged, the
+  amendment being adopted ahead of the work it governs — its links are task P's. No Gradle run by
+  the Planner.
+- **2026-11-20, later — step 3.3 Tasks 1 and 2 built and verified; Task 3 read; Task 4 briefed.**
+  The verification phase over Tasks 1 and 2 integrated passed: unit suite 1072 tests *(the figure
+  at that gate; the final gate, after Task 4, is 73 files, 1077 tests, 0 failures, and
+  `connectedDebugAndroidTest` 264 passed, 1 skipped, 0 failures — the entry below)*;
+  `connectedDebugAndroidTest` on the SM-G990B, 264 passed and 1 skipped (the opt-in measurement).
+  Task 3's licence reading is *OpenCV 4.13.0 bundled components* under *Licence findings*, with
+  ADR-0023's verify row 8 and §6 settled; Task 4's brief is under *3.3*, *Tasks*. Two plan texts
+  were amended in *Decided at 3.3 — the pass*: the order in `doWork`, and the `SOURCE_EXCEPTION`
+  skip. **Facts task P must record**, each where its list below names:
+  - (a) **Verify item 4: the merged manifests are unchanged** against the build before the
+    dependency — debug md5 `8856dbd4b4257bd665c4593a325ba624`, release
+    `043a521e4d0a25724364c8b8b6ea6f8d`. Nothing went to the maintainer, nothing being added.
+  - (b) **Items 1, 2 and 5:** the release bundle's arm64 total is 49,613,983 B, +46,063,982 B
+    against the 50 MB budget; OpenCV's library is in `lib/arm64-v8a` only and the other three ABIs
+    still install, carrying the +36.1 MB of models in the base; 16 KB alignment passes.
+  - (c) **The release build:** R8 removed `org.opencv.core.CvException`, which native code looks up
+    by name; `app/proguard-face.pro` keeps it. The release build, installed through bundletool on
+    the SM-G990B, logs `face capability checked capable=true`.
+  - (d) **ADR-0022's upright frame holds on the device:** EXIF orientations 3, 6 and 8, four device
+    tests.
+  - (e) **Item 6 was measured in-process, not through the worker,** by
+    `FaceIndexPassMeasurementDeviceTest` on a throwaway in-memory index, screen off, USB charging,
+    thermal status 1 before and after. The worker's pass cannot run until 3.6 builds the disclosure
+    (*Dormant until 3.6*), which is why. 1133 live items; 1002 images with a state (27 + 46 + 929),
+    0 failed; 422 faces; mean 150.7 ms per image in the remainder run; peak RSS 619,804 kB, an upper
+    bound for the test process, which loads the pipeline three times. The second budgeted run took
+    only what the first left. The 90 GIFs are skipped and stay pending on every pass, by design (E2);
+    3.5 handles pending at evaluation. At that rate the production 7-minute budget fits about 2,800
+    images per run.
+  - (f) **An OpenCV AAR anomaly:** Gradle's `.module` gives the AAR as 3,570,283 B; the real AAR is
+    121,695,690 B. Maven Central's own `.module` carries the same stale figures, and its `.sha1` and
+    `.sha256` match the cached AAR (sha256
+    `a8c9b0929d8d6367bb476320a1f36587db2b57ea18d8f7521ce509514903ca04`). Recommended: no
+    `verification-metadata.xml`, a project-wide mechanism out of proportion to one stale field.
+  - (g) **Task 2's review, judgement calls to record or route:** the self-test's detector stage now
+    runs at threshold 0 and requires a non-empty 15-column table (fixed); `SOURCE_EXCEPTION` is
+    rethrown as `IOException` (recorded in *Decided at 3.3 — the pass*); native OpenCV errors may
+    print under the logcat tag `cv::error()` — code-level text only, and `Core.setErrorVerbosity(false)`
+    the likely switch, open for 3.7's logger check; the `libc++_shared.so` exclude applies app-wide;
+    the checksum task is wired by task-name pattern, at risk if AGP renames its merge tasks; the
+    capture of `Core.getBuildInformation()`'s third-party section was `/tmp/buildinfo.txt`, Task 3's
+    input, not committed. Task 1's review P3: the Tier C lock is now taken before the capability
+    check (*Order in `doWork`*, amended).
+- **2026-11-20, last of the day — step 3.3 built and verified: Tasks 1, 2, 3, 4 and P done.** Task 4
+  landed `assets/face/THIRD_PARTY_NOTICES.txt`, `NOTICE.txt`'s one line and `ThirdPartyNoticesTest`.
+  **The final gate:** unit suite, 73 files, 1077 tests, 0 failures; `connectedDebugAndroidTest` on
+  the SM-G990B, 264 passed and 1 skipped (the opt-in measurement), 0 failures; the merged manifests
+  unchanged. Task P landed `ARCHITECTURE.md` §3, §6, §10 and §11, `AGENTS.md`, the dated notes in
+  ADR-0018 Amendment 7, ADR-0022 and ADR-0023, and the test conventions; then this plan's step row,
+  this handoff, *3.3 — Built and verified 2026-11-20* and [albums.md](albums.md) §7's Stage 3 row.
+  Stage 3 stays In progress. No Gradle run by the Planner.
+- **2026-11-20, later still — the maintainer answered 3.4's question; step 3.4 refined by the
+  Planner.** His answer, verbatim: "I don't see the risk. The app is not getting installed on any
+  device apart from the test device connected to the dev environment." The only install is the dev
+  phone, the SM-G990B, so the gap before 3.6's disclosure exposes no user: **the opt-in dev-device
+  route is accepted for 3.4's measurements and tests**, and is neither a blocker nor a risk. It is
+  recorded, with the one design constraint it carries, in *3.4 — Clustering and the person record*,
+  *The dev-device route — answered 2026-11-20*, which is also the brief: measurement first, **no
+  schema change** (the index stays at version 6; no ADR-0018 Amendment 8), a pure grouping class,
+  grouping in the worker under the Tier C lock, the person record computed on read. B2 is settled
+  there, subject to the budget. One correction found on the way: 3.3's measurement did not set the
+  disclosure flag, as the question below says — it ran the pass outside the worker. No Gradle run by
+  the Planner.
+- **Next action: step 3.4, Task 1 — Coder, with the SM-G990B attached:** the pure grouping class,
+  its plain-JVM test and the opt-in measurement — *3.4*, *Tasks*, Task 1 is the brief. **It waits on
+  nothing.** Then **the maintainer accepts the budget** proposed in *3.4*, *The budget* — now, or
+  once Task 1's figures are in; Task 2 waits on it. If the figures fail it, he chooses among the
+  options listed there, which is a new decision, and nothing after Task 1 is built until he has.
+  Then Tasks 2 and 3 (store, grouping pass, worker), Task 4 (the worker measurement on the phone),
+  the verification phase once, and task P.
+- ~~**Next action: step 3.4 — clustering and the person record.** Owner: the Planner refines it into
+  a step plan, as 3.2 and 3.3 were; then the Coder builds it.~~ Refined 2026-11-20 — the two entries
+  above. It starts from what 3.3 landed: Tier C
+  faces, their per-image states and the attempt table in the index database at version 6
+  ([ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendments 5 to
+  7, Amendment 5 carrying the grouping version); the anchor of
+  [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md); and
+  [ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md) §4
+  (grouping in the worker or as its own step, resumable, never twice at once) and §5 (the memory
+  requirement). 3.4's own text, under *3.2 to 3.8*, says only: "Per B1 (decision 45: average
+  linkage, cosine 0.50) and B2, and decisions 42 and 46 for an anchor. Average linkage's memory and
+  time in the app are unmeasured — about 800 MB for the distance matrix at 10,000 faces — so 3.4
+  measures them before relying on them; a different algorithm is a new decision, not a detail."
+  - **The memory budget is measured first**, before anything is built on average linkage: ADR-0023
+    §5 asks for peak memory and time on the device at the largest real library and at a synthetic
+    set of at least 10,000 faces, against a budget 3.4 proposes and the maintainer accepts, the
+    models' own footprint counted. If average linkage cannot meet it, replacing it is a new
+    decision in [albums.md](albums.md) §8 and an amendment to ADR-0023.
+  - **B2, incremental clustering, is open for 3.4** (*Open questions* B2): the spike found the
+    order-dependent method much less stable than average linkage, so 3.4 must not assume it.
+  - ~~**Question for the maintainer, for 3.4's plan — not settled by the text above.**~~ ✅
+    **Answered 2026-11-20 by the maintainer: the opt-in dev-device route is accepted** — the entry
+    above, and *3.4*, *The dev-device route*. The face pass
+    cannot run in the worker until 3.6 records the disclosure as shown (*Dormant until 3.6*), so no
+    installed app holds a single face before 3.6, and ADR-0023 §5's "in the background" cannot be
+    met through the worker before then. 3.3's precedent is an opt-in device test that sets the flag
+    through the store on a throwaway in-memory index; 3.4's refinement proposes the same or another
+    route for exercising and measuring clustering, and the maintainer confirms it. *Corrected
+    2026-11-20:* 3.3's test sets no flag; it runs `FaceIndexPass` directly, outside the worker, with
+    an in-memory setting store and index, so the disclosure gate is never consulted.
+  - **Read first, on starting 3.4:** *3.3 — Built and verified 2026-11-20* below; ADR-0023 §4 and
+    §5; ADR-0022; ADR-0018 Amendments 5 to 7; [albums.md](albums.md) §8 decisions 42, 45 and 46;
+    *Spike outcome*'s clustering and anchor-stability findings; *Open questions* B.
+- ~~**Next action: step 3.3, Task 4 — Coder**, text and one test: *3.3*, *Tasks*, Task 4 is the brief,
+  with its scope and verification (unit suite and `assembleDebug`, no device).~~ Done 2026-11-20 —
+  the entry above.
+  - ~~**Then task P — Planner:** `ARCHITECTURE.md` §3, §6, §10 and §11; `AGENTS.md` *Tech stack*,
+    *Preference stores*, *The two databases* and the call-outs (version 6, `face_device_state`,
+    `proguard-face.pro`); ADR-0018 Amendment 7's *Built* note; ADR-0023's verify table with the
+    measurements above; the test conventions, for the opt-in device test; this plan — step row,
+    *Licence findings* if Task 4 changes anything, the handoff — and [albums.md](albums.md) §7. The
+    facts are the entry above; the full list is *After it lands — Planner, task P*.~~ Done
+    2026-11-20 — the entry above.
+- ~~**Next action: step 3.3, Task 1 — Coder**~~ Done 2026-11-20 — the entry above; Tasks 1 to 3
+  likewise. ~~, from *3.3 — Face detection and embedding*, *Tasks*,
+  which is the brief.~~ **It waits on nothing:** Amendment 7 is adopted, and Task 1 needs no
+  dependency and no device. The concurrent test-only fixes to `MediaIndexTierCStoreTest.kt` and
+  `MediaIndexFaceDataScrubTest.kt` are done — verified 2026-11-20, 195 `MediaIndex*` tests passing.
+  - **Call-outs, not approvals** (`AGENTS.md`), which the Coder names in Task 1's report: the index
+    reaches **version 6 through `Migration(5, 6)`**, with `6.json` generated and committed; and a
+    **new preferences file, `face_device_state`**, with both a `SharedPreferences*` and an
+    `InMemory*` store. Its row in `AGENTS.md` *Preference stores* is task P's, `AGENTS.md` being
+    routed. The fourth backup-rules section lands with them.
+  - **Then Task 2 — Coder, with the SM-G990B attached** and `adb devices` stated: OpenCV 4.13.0,
+    the models, the real pipeline, and its device and bundle checks. It **may stop at the manifest
+    gate** — verify item 4 runs first, and anything the merged manifest adds goes to the maintainer
+    before the work continues.
+  - **Then one verification phase**, over Tasks 1 and 2 integrated, owned by whoever the brief
+    names; then Tasks 3 and 4; then the Planner's task P.
+- ~~**Next action: the maintainer approves ADR-0018 Amendment 7; then step 3.3, Task 1.**~~ Done
+  2026-11-20 — the entry above. ~~Amendment 7
   is **Proposed**. Task 1 needs neither F2 nor a device, but it builds Amendment 7 — `Migration(5, 6)`
   to version 6 with `6.json`, the new preferences file `face_device_state`, the fourth backup
   section. **Recommended: Task 1 starts only after the approval**, because a migration and a
   preferences file, once they have run on a device, are undone only by another change. Starting
-  earlier is the maintainer's call; the Coder must then be told the amendment may still change. The
-  concurrent test-only fixes to `MediaIndexTierCStoreTest.kt` and `MediaIndexFaceDataScrubTest.kt`
-  are **done** — verified 2026-11-20, 195 `MediaIndex*` tests passing — and gate nothing.
-  - **What the maintainer is asked, and nothing else:** (a) approve ADR-0018 Amendment 7, which
+  earlier is the maintainer's call; the Coder must then be told the amendment may still change.~~
+  The approval came before Task 1 started, so the recommended wait cost nothing.
+  - ~~**What the maintainer is asked, and nothing else:** (a) approve ADR-0018 Amendment 7, which
     carries the notes in ADR-0014, ADR-0023 and ADR-0024, or say what to change; (b) F2, the OpenCV
     version — 4.13.0 recommended — before Task 2. F1's residual is his too, but blocks nothing and
-    needs no answer now.
-  - **On approval, the Planner:** replaces Amendment 7's *Proposed* note with an approval line,
+    needs no answer now.~~ Both answered 2026-11-20.
+  - ~~**On approval, the Planner:** replaces Amendment 7's *Proposed* note with an approval line,
     removes the marker under ADR-0018's title, turns the four notes' "proposed" into "approved", and
-    records the approval in [albums.md](albums.md) §8, as decision 47 recorded step 3.1's.
-  - Then Tasks 2 to 4, the verification phase once, and the Planner's task P.
+    records the approval in [albums.md](albums.md) §8, as decision 47 recorded step 3.1's.~~ Done
+    2026-11-20, as decision 49.
+  - ~~Then Tasks 2 to 4, the verification phase once, and the Planner's task P.~~ Reordered in the
+    *Next action* above: verification after Task 2.
 - **Read first, on starting 3.3 (revised 2026-11-20):** *3.3 — Face detection and embedding*
-  below, which is the brief; ADR-0018 Amendments 5 to 7, the last proposed, with the proposed notes
+  below, which is the brief; ADR-0018 Amendments 5 to 7, ~~the last proposed, with the proposed notes~~
+  all adopted, the last on 2026-11-20, with the notes
   it carries in ADR-0014, ADR-0023 §2 and §3 and ADR-0024 §2 and §6; ADR-0023 §1, §3, §4, §6 and its verify
   table; ADR-0024 §1 to §3 and §6; ADR-0022 §1; `AGENTS.md` *Preference stores*; the code as it
   stands in `data/MediaIndexStore.kt`, `data/MediaIndexingWork.kt`,
@@ -238,7 +383,7 @@
     `people` clause where people is unavailable, and its D6, the order. ~~And **F1**, new — whether
     the rules files need a fourth section — to be settled before Tier C ships.~~ **F1 decided
     2026-11-20 at 3.3** — a fourth section, with the same exclusions (*3.3*, *Settled before 3.3*,
-    issue 3; ADR-0018 Amendment 7 §2, proposed). Only its residual stays open: the maintainer's
+    issue 3; ADR-0018 Amendment 7 §2, ~~proposed~~ adopted 2026-11-20). Only its residual stays open: the maintainer's
     check of how an API 36.1 device reads the section, which blocks nothing.
   - *Added 2026-11-20:* a deletion that is not scrubbed is a result the caller must handle, not an
     error — the start-up repeat runs whenever face data is off, and on a `PERSIST` device every
@@ -669,8 +814,8 @@ step is refined when it starts.
 | **3.0** | Feasibility spike: face detection, face embedding and clustering, measured on the phone. No shipped code. | ~~🔶 In progress — started 2026-11-17~~ ✅ Complete 2026-11-18 — *Spike outcome* above |
 | **3.1** | The decisions: ADRs and amendments, and these exit criteria confirmed | ~~🔶 In progress~~ ✅ Complete 2026-11-19 — decisions 43–46 taken 2026-11-18; ADRs 0022–0024 and amendments to ADR-0017 and ADR-0018 drafted 2026-11-18; their questions (group E) answered 2026-11-19; all five adopted 2026-11-19; exit criteria confirmed |
 | **3.2** | Tier C schema and store | ~~⬜ Not started — refined 2026-11-19, ready to build~~ ~~✅ Built and verified 2026-11-19~~ ~~🔶 Built and verified 2026-11-19 — the gate is under *3.2 — Tier C schema and store*, *Built and verified*; reopened 2026-11-20 for its follow-up (decision 48)~~ ✅ Built and verified 2026-11-19; reopened 2026-11-20 for its follow-up (decision 48), built and verified 2026-11-20 — both gates are under *3.2 — Tier C schema and store* |
-| **3.3** | Face detection and embedding in the indexing pipeline, behind the disclosure | ⬜ Not started — refined 2026-11-20 into *3.3 — Face detection and embedding*; Task 1 waits on the approval of ADR-0018 Amendment 7, Task 2 on F2 as well |
-| **3.4** | Clustering and the person record | ⬜ Not started |
+| **3.3** | Face detection and embedding in the indexing pipeline, behind the disclosure | ~~⬜ Not started — refined 2026-11-20 into *3.3 — Face detection and embedding*;~~ ~~Task 1 waits on the approval of ADR-0018 Amendment 7, Task 2 on F2 as well~~ ~~ADR-0018 Amendment 7 adopted and F2 answered (OpenCV 4.13.0) 2026-11-20, decision 49; Task 1 ready to build~~ ✅ Built and verified 2026-11-20 — refined, its storage adopted as ADR-0018 Amendment 7 and OpenCV pinned at 4.13.0 the same day (decision 49); Tasks 1 to 4 and task P done; the gate and the device results are under *3.3 — Built and verified 2026-11-20* |
+| **3.4** | Clustering and the person record | ⬜ Not started — refined 2026-11-20 into *3.4 — Clustering and the person record*, ready to build: no schema change, so no amendment to approve; Task 1 waits on nothing, Task 2 on the maintainer's acceptance of the budget |
 | **3.5** | The `people` clause and evaluation | ⬜ Not started |
 | **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ⬜ Not started |
 | **3.7** | Device verification and installed-app walkthrough | ⬜ Not started |
@@ -1178,8 +1323,9 @@ The Coder's brief. What the pass must do is
 and §6, [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §1–§3
 and §6, [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendments
 5–7 and [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §1, and is
-not restated. **Amendment 7 is proposed** — written 2026-11-20, after this section first cited it —
-and binds once the maintainer approves it. What they left to 3.3 is marked **Decided at 3.3**, with its reason; each is the
+not restated. ~~**Amendment 7 is proposed** — written 2026-11-20, after this section first cited it —
+and binds once the maintainer approves it.~~ **Amendment 7 is adopted** — written 2026-11-20, after
+this section first cited it, and approved by the maintainer the same day (decision 49). What they left to 3.3 is marked **Decided at 3.3**, with its reason; each is the
 Planner's and reversible by the maintainer. Planning only: no code and no Gradle run by the Planner.
 
 #### Settled before 3.3 — the pending issues
@@ -1246,9 +1392,11 @@ Planner's and reversible by the maintainer. Planning only: no code and no Gradle
    - **3.6's:** the app-open call, the confirmation, the order of ADR-0024 §3, dropping held
      state, and whether and how Settings presents *not scrubbed* (Amendment 6 §2).
 5. **The verify items, the upright frame and the OpenCV pin** — how each is checked is in Task 2
-   below. The library is approved (decisions 45 and 47); no record names a version. **4.13.0 is
+   below. The library is approved (decisions 45 and 47); ~~no record names a version. **4.13.0 is
    recommended — the build the spike measured — and the maintainer confirms it before Task 2**
-   (F2). Read 2026-11-20 on Maven Central: `org.opencv:opencv` offers 4.9.0 to 4.14.0, 5.0.0,
+   (F2).~~ **4.13.0 — the build the spike measured — confirmed by the maintainer 2026-11-20** (F2,
+   answered; decision 49). The confirmation is of the version only: verify item 4 still gates the
+   dependency in Task 2. Read 2026-11-20 on Maven Central: `org.opencv:opencv` offers 4.9.0 to 4.14.0, 5.0.0,
    5.0.0.1 and 5.1.0; only 4.13.0 was measured, and 5.x is a new major version. The 4.13.0 AAR is
    121.7 MB with all four ABIs; its library manifest in OpenCV's source is empty; it depends on
    `kotlin-stdlib-jdk8` 1.8.20, which `app/build.gradle.kts` already forces to 2.1.0; OpenCV's own
@@ -1301,10 +1449,15 @@ Planner's and reversible by the maintainer. Planning only: no code and no Gradle
   `IOException` and would otherwise read as a skip. The `FacePipeline` reports a decode failure and
   an inference failure as a type of the pass's own: Task 1's fakes throw it, and Task 2's
   `OpenCvFacePipeline` maps `DecodeException` and OpenCV's errors to it before any `IOException`
-  is treated as unopenable.
+  is treated as unopenable. *Decided 2026-11-20, Task 2's review — a gap in this brief closed:* a
+  `DecodeException` whose cause is `SOURCE_EXCEPTION` is the source failing to read, not the image
+  failing to decode, so it is rethrown as an `IOException`: the pass skips the image and clears the
+  attempt rather than storing `FAILED`.
 - **Order in `doWork`:** the start-up deletion first (issue 4); Tier A; places; then, with the
-  setting on: the capability record, or the check now; the disclosure flag; the Tier C lock; the
-  pass. The pass checks cancellation and the setting between images, and **starts no image 7
+  setting on: ~~the capability record, or the check now; the disclosure flag; the Tier C lock; the
+  pass.~~ the Tier C lock; the capability record, or the check now; the disclosure flag; the pass.
+  *Amended 2026-11-20, Task 1's review (P3):* the lock is taken before the capability check, so two
+  overlapping runs can never check concurrently. The pass checks cancellation and the setting between images, and **starts no image 7
   minutes after `doWork` began** — Decided at 3.3, against WorkManager's stop at about ten;
   injectable clock. What it processed is no longer pending, so the next run resumes.
 - **Reporting.** The run-state store receives nothing from the pass (Amendment 5). The pass logs
@@ -1322,11 +1475,13 @@ Planner's and reversible by the maintainer. Planning only: no code and no Gradle
 
 **The concurrent test-only fixes are done.** The changes to `MediaIndexTierCStoreTest.kt` and
 `MediaIndexFaceDataScrubTest.kt` were completed and verified on 2026-11-20 — 195 `MediaIndex*` tests
-passing — so they no longer gate Task 1, which edits both files further. **Task 1 waits only on the
+passing — so they no longer gate Task 1, which edits both files further. ~~**Task 1 waits only on the
 maintainer's approval of ADR-0018 Amendment 7**, which it builds; that wait is recommended, not
-forced (the handoff says why).
+forced (the handoff says why).~~ **Amendment 7 was approved on 2026-11-20 (decision 49), so Task 1
+waits on nothing.**
 
-**Task 1 — Coder: attempts, the two stores, the pass and its wiring, on a stand-in pipeline.** No
+**Task 1 — Coder: attempts, the two stores, the pass and its wiring, on a stand-in pipeline.** ✅
+**Done 2026-11-20** — *3.3 — Built and verified 2026-11-20* below. No
 dependency and no device. Under `app/src/main/java/com/davide/seddio/easygallery/`:
 `data/MediaIndexEntities.kt`, `data/MediaIndexDao.kt`, `data/MediaIndexDatabase.kt` (the attempt
 table, the pending-images query, `MIGRATION_5_6` with each `createSql` copied from the generated
@@ -1379,7 +1534,16 @@ Tests under `app/src/test/…/data/`: `MediaIndexDatabaseMigrationTest.kt`, `Med
 11. The two `SharedPreferences*` stores write `app_settings` and `face_device_state`, default to on,
     not shown and no record, and survive a new instance.
 
-**Task 2 — Coder: OpenCV, the models and the real pipeline.** Needs F2 answered and the SM-G990B.
+**Task 1's report calls out**, as `AGENTS.md` requires of changes that need no approval but reach
+wider than their diff: the index's **version 6 through `Migration(5, 6)`**, with `6.json` committed
+under `app/schemas/`; and the **new preferences file `face_device_state`**, with both its stores and
+its exclusion in all four places. Its *Preference stores* row in `AGENTS.md` is added at task P.
+
+**Task 2 — Coder: OpenCV, the models and the real pipeline.** ✅ **Done 2026-11-20** — *3.3 — Built
+and verified 2026-11-20* below. ~~Needs F2 answered and the SM-G990B.~~
+Needs the SM-G990B. F2 is answered (decision 49): Task 2 pins `opencv` at **4.13.0** in
+`gradle/libs.versions.toml`. The pin approves the version, not what it merges in — the verify item 4
+stop below stands.
 `gradle/libs.versions.toml`; `app/build.gradle.kts` — the dependency, `packaging.jniLibs` excludes
 for OpenCV's libraries under the three other ABIs (**no `abiFilters`**), and a checksum task run
 before the assets merge that fails the build on a mismatch; `app/src/main/assets/face/` — the two
@@ -1419,21 +1583,117 @@ otherwise. Checks, each reported with its figure:
 - **Item 8's input:** the third-party section of `Core.getBuildInformation()`, read on the device,
   copied into the report.
 
-**Task 3 — Planner: OpenCV's bundled components.** From Task 2's capture, each component's licence
-read and recorded under *Licence findings*, with the notice files owed. Verify item 8.
+**Task 3 — Planner: OpenCV's bundled components.** ~~From Task 2's capture, each component's licence
+read and recorded under *Licence findings*, with the notice files owed. Verify item 8.~~ ✅ **Done
+2026-11-20:** *OpenCV 4.13.0 bundled components — read 2026-11-20* under *Licence findings*, sixteen
+rows verified, none blocks shipping; its *What is owed, by group* is Task 4's input. ADR-0023's verify
+table row 8 and §6 are settled to match.
 
-**Task 4 — Coder: those notice files**, under `app/src/main/assets/face/`. Text only.
+**Task 4 — Coder: ~~those notice files~~ one notice file and its test** — ✅ **Done 2026-11-20**:
+`THIRD_PARTY_NOTICES.txt`, `NOTICE.txt`'s line and `ThirdPartyNoticesTest`, inside the final gate of
+*3.3 — Built and verified 2026-11-20* below. ~~under
+`app/src/main/assets/face/`. Text only.~~ *Briefed 2026-11-20 from Task 3's subsection, its* What is
+owed, by group *the input.*
+
+- **Scope, and nothing else:** create `app/src/main/assets/face/THIRD_PARTY_NOTICES.txt`; add one
+  line to `app/src/main/assets/face/NOTICE.txt`; create
+  `app/src/test/java/com/davide/seddio/easygallery/data/ThirdPartyNoticesTest.kt`. No Kotlin under
+  `src/main`, no Gradle file, no string, no change to `SHA256SUMS`.
+- **One combined file, not one per component.** Step 3.6's Settings row (E5) needs a fixed, small
+  set of asset names to open; sixteen files would be a list that changes whenever an OpenCV upgrade
+  changes what it bundles. With one file, an upgrade changes the file's content and never its name.
+  The licence texts already shipped for OpenCV and the models stay where they are.
+- **The header** names the file's scope — the third-party components bundled in OpenCV 4.13.0's
+  published Android library (`org.opencv:opencv`), as `Core.getBuildInformation()` prints them, and
+  the C++ runtime shipped beside it; OpenCV itself and the two models are in `NOTICE.txt` — then
+  lists every component with its version, one per line, as the subsection's table prints them:
+  libcpufeatures (AOSP, 2016), libprotobuf 3.19.1, ADE 0.1.2e, oneTBB 2022.1.0, ittnotify 3.25.4,
+  libjpeg-turbo 3.1.2-70, libwebp (decoder 0x0210), libpng 1.6.53, libtiff 4.7.1, OpenJPEG 2.5.3,
+  OpenEXR (IlmImf) 2.3.0, Carotene (tegra_hal) 0.0.1, KleidiCV 0.7.0, Flatbuffers 25.9.23, LLVM
+  libc++ (`libc++_shared.so`, NDK 27.2.12479018), and zlib 1.3.0.1 marked *not shipped — the device's
+  own library*. Then one line: none has been modified; all are used as OpenCV publishes them.
+- **Then one section per group, the licence text copied verbatim** — not summarised, not
+  re-wrapped, not re-indented, comment markers kept where the source has them — from exactly these
+  files, every one fetched over normal TLS and never with `curl -k`. `O` is
+  `https://raw.githubusercontent.com/opencv/opencv/4.13.0/`.
+  1. **Apache-2.0** — one copyright line per component, then the text once, from `O` + `LICENSE`
+     (byte-identical to the shipped `LICENSE-OpenCV-Apache-2.0.txt`, and to ADE's and Flatbuffers'
+     own). libcpufeatures: the whole of `O` + `3rdparty/cpufeatures/LICENSE`, which is its
+     copyright line and the Apache notice. ADE: `Copyright (C) 2018 Intel Corporation`, as its
+     sources at `v0.1.2e` carry it. oneTBB: Intel Corporation. Flatbuffers: Google. KleidiCV:
+     `2023 - 2025 Arm Limited and/or its affiliates`, as its SPDX headers at `0.7.0` carry it. None
+     has a `NOTICE` file, so Apache-2.0 §4(d) adds nothing; a holder line suffices where the
+     sources' years vary (§4(c) binds source form).
+  2. **BSD-3-Clause** — each text names its holder, so each is copied whole: protobuf,
+     `O` + `3rdparty/protobuf/LICENSE`; libwebp, `O` + `3rdparty/libwebp/COPYING`; OpenEXR,
+     `O` + `3rdparty/openexr/LICENSE`; ittnotify, preceded by the line *ittnotify is licensed
+     GPL-2.0-only OR BSD-3-Clause; Easy Gallery uses it under BSD-3-Clause.*, then
+     `O` + `3rdparty/ittnotify/src/ittnotify/BSD-3-Clause.txt`; Carotene, the licence comment block
+     at the top of `O` + `hal/carotene/src/add.cpp`, from its first line to the end of its
+     disclaimer.
+  3. **libjpeg-turbo** — first this line, on its own: `This software is based in part on the work of
+     the Independent JPEG Group.` — README.ijg's LEGAL ISSUES (2) requires that statement word for
+     word, and upstream wraps it across two lines, so it is written out once unbroken. Then
+     `O` + `3rdparty/libjpeg-turbo/LICENSE.md` whole, then the LEGAL ISSUES section of
+     `O` + `3rdparty/libjpeg-turbo/README.ijg`, from its `LEGAL ISSUES` heading up to, not including,
+     `REFERENCES`.
+  4. **BSD-2-Clause** — OpenJPEG, `O` + `3rdparty/openjpeg/LICENSE` whole.
+  5. **libtiff** — `O` + `3rdparty/libtiff/LICENSE.md` whole, the Berkeley LZW paragraph included.
+  6. **libpng-2.0** — `O` + `3rdparty/libpng/LICENSE` whole.
+  7. **LLVM** — the whole of `libcxx/LICENSE.TXT` from
+     `https://raw.githubusercontent.com/llvm/llvm-project/3c92011b600bdf70424e2547594dd461fe411a41/libcxx/LICENSE.TXT`.
+  8. **zlib** — one line: listed by `getBuildInformation()`, linked against the device's
+     `libz.so`, not shipped, so nothing is owed.
+- **`NOTICE.txt` gains one line, yes**, because it already is the index of the face notices — it
+  names OpenCV and both models and points to each licence file. After its numbered list:
+  `The third-party components bundled in OpenCV, and their licences, are in THIRD_PARTY_NOTICES.txt.`
+  Nothing else in it changes.
+- **`SHA256SUMS` stays as it is: the notice is not pinned.** `verifyFaceModelChecksums` requires a
+  line only for `*.onnx` files and hashes only what `SHA256SUMS` lists, so an extra `.txt` passes;
+  the task re-runs because its input directory changed, which is harmless. Pinning it would fail
+  `FacePipelineVersionTest`'s *the model checksums list both models and nothing else*, and the
+  checksums are the models' identity, which `FACE_PIPELINE_VERSION` fingerprints — a notice is not.
+- **Line endings:** the asset keeps the upstream texts' LF, as fetched, UTF-8 without a BOM
+  (`LICENSE.md` of libjpeg-turbo and libtiff contain non-ASCII). The test must not depend on CR or
+  LF.
+- **The test, plain JVM,** modelled on `FacePipelineVersionTest` and `GazetteerAssetTest`, which
+  read `File("src/main/assets/…")` from the module directory (there is no
+  `GazetteerAssetPackagingTest`). It reads `src/main/assets/face/THIRD_PARTY_NOTICES.txt` as UTF-8,
+  splits on `\r?\n` and compares lines trimmed, and asserts: the file exists and is not blank; each
+  component name above appears with its version; and each of these lines is present —
+  `Apache License` and `Version 2.0, January 2004`; `Copyright (C) 2016 The Android Open Source
+  Project`; `Copyright 2008 Google Inc.  All rights reserved.` (two spaces, as upstream);
+  `Copyright (c) 2010, Google Inc. All rights reserved.`; `Copyright (c) 2006, Industrial Light &
+  Magic, a division of Lucasfilm`; `Copyright (c) 2019 Intel Corporation. All rights reserved.`;
+  the ittnotify election line; for Carotene, a line containing `(3-clause BSD License)` and one
+  containing `NVIDIA Corporation` (its first line was not read here, so the test does not pin it);
+  `This software is based in part on the work of the Independent JPEG Group.`; `libjpeg-turbo
+  Licenses`; `LEGAL ISSUES`; `* The copyright in this software is being made available under the
+  2-clauses` (OpenJPEG; upstream has a trailing space, which trimming removes); `# LibTIFF license`;
+  `COPYRIGHT NOTICE, DISCLAIMER, and LICENSE`; `The LLVM Project is under the Apache License v2.0
+  with LLVM Exceptions:`. A second test asserts `NOTICE.txt` names `THIRD_PARTY_NOTICES.txt`.
+- **Verification,** by the Coder, no device: `testDebugUnitTest` (the full unit suite) and
+  `assembleDebug`, whose asset merge runs `verifyFaceModelChecksums` over the changed directory.
+  This is the "gate runs again" the *Verification* paragraph below asks for when Task 4 touches more
+  than text: it adds one unit test and no main or instrumented code, so those two cover it. The
+  verification phase over Tasks 1 and 2 is not repeated; Task P checks the three files are tracked.
 
 **Why four, and sequential.** Task 2 builds on Task 1's interfaces and both edit `EasyGalleryApp.kt`.
-They are split because Task 2 waits on F2, needs the phone and may stop at the manifest gate, and
+They are split because Task 2 ~~waits on F2,~~ needs the phone and may stop at the manifest gate, and
 Task 1 needs none of that; one Coder may take both in turn. Nothing runs in parallel.
 
 **Verification** is its own phase, once, over the integrated change, owned by whoever the brief
 names: the definition of done with `adb devices` stated — `connectedDebugAndroidTest` on the
 SM-G990B if attached, the opt-in measurement skipped — and `git ls-files` listing `6.json` and the
-two model files. Task 2's device and bundle checks are not repeated there.
+two model files. Task 2's device and bundle checks are not repeated there. *Ordered 2026-11-20:*
+it runs after Task 2, over Tasks 1 and 2 integrated, and before Tasks 3 and 4, which add a licence
+record and text files only and do not re-run it — unless Task 4 has to touch anything but text under
+`assets/face/`, the build's checksum task included, in which case the gate runs again for it. Task P
+checks with `git ls-files` that Task 4's files are tracked.
 
-**After it lands — Planner, task P.** `ARCHITECTURE.md` §3 (the new `data/` files; the store, DAO,
+**After it lands — Planner, task P.** ✅ **Done 2026-11-20:** landed in `ARCHITECTURE.md` §3, §6,
+§10 and §11, `AGENTS.md`, the dated notes in ADR-0018 Amendment 7, ADR-0022 and ADR-0023, and the
+test conventions; this plan and [albums.md](albums.md) §7 last. The brief was: `ARCHITECTURE.md` §3 (the new `data/` files; the store, DAO,
 database, entities and worker rows; app entry points), §6 (version 6, five tables, the new
 preferences file, four rules sections), §10 (OpenCV), §11 (Amendment 6's two costs), linking
 ADR-0023 and ADR-0024 where they now govern; `AGENTS.md` *Tech stack*, *Preference stores*, *The two
@@ -1448,11 +1708,408 @@ row, and every string (3.6); the SM-G781B, the phones' journal modes and the fav
 (3.7); a trimmed OpenCV; any Tier C `Flow` or Settings figure. No `ui/` file, no `*Content`
 signature, no string.
 
-**Needs the maintainer:** before Task 1, his approval of ADR-0018 Amendment 7 (recommended, as the
-handoff says); before Task 2, F2, the OpenCV pin. During Task 2: his answer on anything
-the merged manifest adds. **Call-outs, not approvals:** the new preferences file; `Migration(5, 6)`;
-F1's fourth section, which he can reverse — all three inside Amendment 7 — and the measurement run, which processes his phone's
-library on the phone.
+**Needs the maintainer:** ~~before Task 1, his approval of ADR-0018 Amendment 7 (recommended, as the
+handoff says); before Task 2, F2, the OpenCV pin.~~ Both given 2026-11-20 (decision 49). **Now
+only, during Task 2:** his answer on anything the merged manifest adds, and his phone, the
+SM-G990B, for the measurements, which process its library on the phone. **Call-outs, not
+approvals:** the new preferences file `face_device_state`; index version 6 through
+`Migration(5, 6)`; F1's fourth section, which he can reverse — all three inside Amendment 7.
+
+### 3.3 — Built and verified 2026-11-20
+
+Built as the four tasks above, then task P. What landed is not restated here: it is
+[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 7's *Built*
+note — the attempt table, `Migration(5, 6)` to version 6, `face_device_state`, the fourth rules
+section — and [ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md)'s
+*Built* note and verify table — the models, OpenCV 4.13.0, the capability check, the packaging, the
+notices — with `ARCHITECTURE.md` §3, §6, §10 and §11 for where each piece sits.
+
+**The gate — the definition of done, once, over the integrated change:** the unit suite, 73 files,
+1077 tests, 0 failures; a device was attached, the SM-G990B, so `connectedDebugAndroidTest` ran, 264
+passed and 1 skipped — the opt-in measurement — with 0 failures; the debug and release merged
+manifests unchanged against the build before OpenCV (ADR-0023 verify item 4). 1072, in the handoff,
+was the unit count at the earlier gate over Tasks 1 and 2. This document does not record tracking
+state.
+
+**On the device:**
+- `FaceCapabilityDeviceTest`, 2 of 2: capable on the arm64 phone.
+- `FaceDecodeOrientationDeviceTest`, 4 of 4: ADR-0022's upright frame holds under EXIF orientations
+  3, 6 and 8.
+- **Item 6, `FaceIndexPassMeasurementDeviceTest` (opt-in):** 1,133 live items; 1,002 images reached
+  a state (27 + 46 + 929 over the runs), 0 failed; 422 faces; 150.7 ms per image, the remainder
+  run's mean; peak RSS 619,804 kB, an upper bound, the test process loading the pipeline three
+  times. Of two budgeted runs the second processed only what the first left, so the resume
+  arithmetic holds. The 90 GIFs are skipped and stay pending by design (E2), for 3.5. **Its limits:**
+  in the process, on a throwaway in-memory index, screen off, USB charging, thermal status 1 before
+  and after — **not through the worker**, whose pass the disclosure gate keeps dormant until 3.6.
+  The 2,800 images per 7-minute run that follow from the mean are arithmetic, not a measurement.
+- **The release build**, its arm64 APKs installed through bundletool on the phone, logs
+  `face capability checked capable=true`, once `app/proguard-face.pro` keeps
+  `org.opencv.core.CvException`, which R8 had removed.
+
+**Review outcomes.** Task 1: S1 to S6 and P3 fixed, P3 being the Tier C lock now taken before the
+capability check (*Order in `doWork`*, amended). Task 2: no hard violations; the self-test's
+detector stage now runs at threshold 0 and requires a non-empty 15-column detection table; a
+`SOURCE_EXCEPTION` is rethrown as `IOException` (*Decided at 3.3 — the pass*). Its other judgement
+calls are (g) of the handoff's entry for Tasks 1 and 2.
+
+**Not proven by it** — each one step 3.7's, items 5 to 10 under *3.2 to 3.8*:
+- the pass through the real worker, with Index now, the screen off and the production budget;
+- whether OpenCV's native errors print under `cv::error()` in logcat, read in code only;
+- the release build's capability and a face pass on any phone but the SM-G990B;
+- the capability test's non-arm64 branch, never run on a device without arm64-v8a;
+- the download budget after any later model or OpenCV change — 46,063,982 B of 50 MB today;
+- ADR-0023 verify item 7, the capability check on another phone.
+
+### 3.4 — Clustering and the person record — refined 2026-11-20
+
+The Coder's brief. What grouping is and what it must meet is [albums.md](albums.md) §8 decisions 9,
+40, 42, 45 and 46,
+[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendments 5–7,
+[ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §1 and §3, and
+[ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md) §1, §4 and §5,
+and is not restated. What they left to 3.4 is marked **Decided at 3.4**, with its reason; each is the
+Planner's and reversible by the maintainer. Read against the code as it stands on 2026-11-20:
+`data/MediaIndexTierC.kt`, `MediaIndexEntities.kt`, `MediaIndexDao.kt`, `MediaIndexStore.kt`,
+`FaceIndexPass.kt`, `OpenCvFacePipeline.kt` (128-float SFace embeddings), `MediaIndexingWork.kt` and
+`EasyGalleryApp.kt` (`faceIndexLock`). Planning only: no code and no Gradle run by the Planner.
+
+#### The dev-device route — answered 2026-11-20
+
+The handoff asked how 3.4 could exercise and measure grouping before 3.6, when no installed app holds
+a face until 3.6 shows the disclosure. **The maintainer answered on 2026-11-20:** "I don't see the
+risk. The app is not getting installed on any device apart from the test device connected to the dev
+environment." **The opt-in dev-device route is accepted for 3.4's measurements and tests** — the
+SM-G990B, the only install — and is neither a blocker nor a risk. What it means for 3.4's tasks:
+- **A design constraint, not a risk:** whatever sets the disclosure flag, or runs the pass or
+  grouping outside the worker, lives in `src/androidTest` or `src/test` only — never in `src/main`,
+  never in a debug-only or release path. Step 3.6's disclosure stays the only way a shipped build
+  ever enables face data. Task 4's test calls the existing `markDisclosureShown()` on the production
+  store, which 3.6 will call too; nothing in `src/main` gains a way to set, clear or skip the flag.
+- **ADR-0024 §1–§3 still bind every real build:** the disclosure before the first pass, the switch
+  that deletes, nothing leaving the device. On the dev phone, face data the measurements write stays
+  on the phone (decision 9): aggregates only leave it, through logcat and the test report — never a
+  box, an embedding, a group id or a URI — and Task 4 deletes what it wrote.
+
+#### Measurement first, and the budget
+
+**What is known, by arithmetic only.** The real library is 422 faces in 1,002 images (*3.3 — Built
+and verified*), 0.42 faces per image; at that density 2,000 faces is about 4,700 images, 5,000 about
+11,900 and 10,000 about 23,700. Average linkage needs every pairwise distance. Stored as a condensed
+float32 triangle, n(n−1)/2 × 4 bytes: **0.36 MB at 422, 8 MB at 2,000, 50 MB at 5,000, 200 MB at
+10,000**. The spike's "about 800 MB" was a full n × n float64 matrix. Computing the distances is
+n²/2 dot products of 128 floats — about 6.4 × 10⁹ multiply-adds at 10,000. None of this is measured,
+and whether 200 MB can be allocated at all depends on the Java heap limit of the phone, which Task 1
+records.
+
+**The budget — proposed by the Planner, for the maintainer to accept** (ADR-0023 §5):
+1. **Memory: at most 256 MB at 10,000 synthetic faces** — the rise of the process's peak RSS
+   (`VmHWM`) over its level just before grouping, every phase included — with no
+   `OutOfMemoryError`, in the app's default heap. `android:largeHeap` is not an option here: it is a
+   manifest change. *Why 256 MB:* it lets grouping cost what the pass already costs — the spike's
+   harness peaked at 299 MB with SFace loaded — so the worker's peak is not raised beyond the order
+   3.3 measured (619,804 kB, an upper bound). Grouping runs after the pass has closed its pipeline, so
+   the two do not hold memory at once, though native memory freed need not return to the system.
+2. **Time: at most 90 s at 10,000 synthetic faces**, on the SM-G990B, screen off — reading the faces,
+   the distances, the clustering, the representatives and the write. *Why:* grouping starts at most
+   8 minutes after `doWork` began (*Where it runs*, below) and WorkManager stops a worker at about 10.
+3. **At the real library**, 422 faces, both are expected to hold by orders of magnitude; Task 1 shows
+   it rather than assuming it.
+
+**If Task 1's figures fail the budget**, nothing after Task 1 is built, and the maintainer chooses.
+**The options, for him — none is decided here:**
+- (a) **Same groups, less memory — components first.** Split the faces into the connected components
+  of the graph whose edges are pairs at distance ≤ 0.50, and run average linkage inside each. Average
+  linkage at this cut never joins two components, because an average of at most 0.50 needs at least
+  one pair at most 0.50, so the groups are identical; memory is the largest component's triangle plus
+  the edge list. Its worst case, one giant component, is the full triangle again: Task 1 records the
+  largest component so that this can be judged.
+- (b) **Same groups, the triangle outside the Java heap** — a direct buffer. It escapes the heap
+  limit, not the process's RSS or the low-memory killer.
+- (c) **A half-precision triangle** — half the memory; changes rounding at the threshold.
+- (d) **A cap on the faces grouped** — faces beyond it need a state Amendment 5 does not have, or they
+  are pending for ever.
+- (e) **B2: assigning new faces to existing groups incrementally**, with a full regrouping now and
+  then — order-dependent, and the spike found it much less stable.
+- (f) **Approximate clustering** — a nearest-neighbour graph, or sampling.
+
+(a) and (b) keep decision 45's groups exactly and change only how they are computed; (c) to (f)
+change the groups. Under the rule in *3.2 to 3.8* each is a new decision, not a detail: a decision in
+[albums.md](albums.md) §8 and an amendment to ADR-0023 §5 — and, for (d), to ADR-0018 — before
+anything is built on it.
+
+**B2 — Decided at 3.4, subject to the budget: not adopted.** Every run that finds grouping needed
+(below) regroups every face from scratch with decision 45's average linkage. *Why:* the result is
+then a function of the stored faces alone, independent of the order they arrived in, which is
+decision 45's reason for average linkage, and what the spike measured; and the budget above is what
+makes a full regrouping affordable. B2 comes back only as option (e).
+
+#### Decided at 3.4 — the grouping
+
+- **The algorithm — decision 45, made exact.** Agglomerative clustering with average linkage
+  (UPGMA) on cosine distance, `1 − a·b / (|a||b|)`, over every stored face at
+  `FACE_PIPELINE_VERSION`, cut at **0.50 inclusive**: two clusters merge while the mean distance over
+  all their cross pairs is at most 0.50. It is what the spike measured — SciPy's average linkage with a
+  distance cut, whose cut keeps merges at or below the threshold. Faces at another pipeline version
+  are not grouped: their images are pending, and embeddings of two builds do not mix (*Decided at
+  3.3*). Distances are computed in double from embeddings normalised once, and stored as a float32
+  condensed triangle.
+  - **The core takes a distance triangle, not embeddings**, so tests can state exact distances; a
+    thin function computes the triangle from embeddings. Nearest-neighbour chain or a priority queue
+    is the Coder's choice; the test holds either to a naive reference.
+  - **Deterministic, and independent of input order:** the input is sorted by face id first, and a
+    tie between two candidate merges goes to the pair whose lower face ids are lower. So the result
+    is a function of the set of (id, embedding), whatever order the store returns.
+  - **A zero-norm embedding** — which `FaceEmbedding` allows — is at distance 1.0 from every face,
+    so it is a group of its own; no NaN reaches the triangle. Embeddings of unequal length are a
+    bug, and fail the grouping with a fixed message that names no value.
+- **`FACE_GROUPING_VERSION = 1`**, beside `FACE_PIPELINE_VERSION`: it names the algorithm, the
+  metric, the 0.50 cut and its inclusiveness, the float32 triangle, the tie-break and the two rules
+  below. Changing any of them bumps it, which regroups with no file I/O and no inference
+  (Amendment 5).
+- **What a group stores — Decided at 3.4: no table and no column; the index stays at version 6.**
+  Amendment 5 left per-group summaries — image count, most recent photo, medoid face — to 3.4, stored
+  or computed on read. Each face's `groupId` and `groupingVersion`, which `Migration(4, 5)` already
+  created, are all that is written:
+  - **`groupId` is the id of the group's representative face** (next bullet). Face ids are
+    auto-generated and never reused, and groups are disjoint, so it is unique within a grouping —
+    the stable id decision 46's last tie-break needs — and it records the representative without a
+    column.
+  - **The image count and the most recent photo are computed on read**, by a query over the faces
+    and their index rows. *Why not stored:* they change with every Tier A write that touches a date,
+    so storing them would add a second thing to keep true; a query over at most tens of thousands of
+    rows costs no migration (Amendment 4's precedent: an index or a table is added when a measured
+    query needs it).
+  - So there is **no `Migration(6, 7)` and no ADR-0018 Amendment 8**. Task 2 checks that `6.json`
+    is unchanged and that no `7.json` appears.
+- **The representative — Decided at 3.4: the group's medoid, ties to the lowest face id.** The member
+  whose summed cosine distance to the other members is smallest; a group of one is its own face.
+  Computed after clustering from the embeddings, streaming per group, since clustering overwrites the
+  triangle. **Deliberately not the spike's rule** — the medoid among members at least 60 px across:
+  a stored box is in fractions (ADR-0022 §1), the decoded size is not stored, and Tier A's EXIF width
+  and height are often absent and not upright. Restoring the 60 px rule would need the decoded size
+  stored, a migration and an ADR-0018 amendment. The 40 px cut-off already removes the smallest
+  faces, and the medoid favours a group's most typical face. **Measured, not assumed:** Task 1
+  reports how many offered representatives are under 60 px, decoding each on the phone; if it is
+  more than a few, the Planner puts the stored-size amendment to the maintainer.
+- **When grouping is needed.** Some face at `FACE_PIPELINE_VERSION` has a null `groupingVersion`
+  or another one; or its `groupId` names a face that no longer exists — its representative was
+  deleted with its image, or dropped by a changed healing triple (Amendment 6). Otherwise nothing
+  runs. **A deleted face that was not a representative does not regroup:** what is left of its group
+  is still a group, and the next new face regroups everything. *Why:* detecting it would need
+  bookkeeping the columns do not hold, for a change that rarely moves a group.
+- **The write — one transaction at the end, conditional, by face id.** The setting is read inside it
+  as the backstop (Amendment 7 §4): off, nothing is written. Each group's faces get `groupId` and
+  `groupingVersion` through `UPDATE … WHERE id IN (…)`, chunked under API 28's 999 variables. An id
+  deleted or re-keyed since the read is skipped or followed, by construction; a face added since the
+  read keeps its null version, so grouping is needed again next run. Nothing else is touched: states,
+  attempts, Tier A. *Why it is safe without comparing more:* only the Tier C pass inserts faces, and
+  it holds the same lock; a heal re-keys a face but keeps its id; any other change deletes the face.
+- **The read is paged by face id**, ids and embeddings only, outside a transaction; at 10,000 faces
+  the embeddings are 5 MB.
+- **Where it runs — Decided at 3.4: in the worker, after the pass, under the same hold of the Tier C
+  lock** (ADR-0023 §4: "in the same worker or as its own step"). `runFaceIndexPass` already holds
+  `faceIndexLock` across the capability check, the disclosure check and the pass; grouping runs before
+  the lock is released, so it never runs twice at once (Amendment 5), and never beside a pass.
+  - **After the pass stops for `COMPLETED`, `BUDGET` or `PERMISSION`**; not after `SETTING_OFF`, and
+    not when the pass threw.
+  - **Only if it starts within 8 minutes of `doWork`'s start** (`FACE_GROUPING_START_DEADLINE_MILLIS`,
+    injectable clock); with the 90 s budget that ends before WorkManager's stop at about 10.
+  - **It is not resumable, and need not be.** Cut short — the deadline, cancellation, the setting — it
+    writes nothing and the next run repeats it. While the pass has a backlog, a grouping may be cut;
+    once the backlog is done the pass ends early and grouping has the run's window, so nothing waits
+    for ever. Grouping after a `BUDGET` stop still runs, so that groups appear while a large library
+    is still being indexed.
+  - **The gates are the pass's:** setting on, capable, disclosure shown. Grouping loads no model, but
+    it processes face data, which ADR-0024 §2 keeps behind the disclosure.
+  - **Checks between phases:** the setting and cancellation after the read, during the distances
+    (every row), during clustering (every few hundred merges) and before the write. On a stop it
+    returns, holding nothing — ADR-0024 §3 step 4's "grouping state" is never kept beyond the call.
+- **Reporting.** The run state receives nothing (Amendment 5). Lines come from `FaceIndexLogLines`,
+  carrying a fixed stop name only — grouped, not needed, setting off, past the deadline — and **no
+  count of faces or groups, no id and no time**: ADR-0024 §6 allows counts of images only. A
+  grouping failure is the pass's: caught under the same `catch (Throwable)`, it fails the run with
+  `FACE_INDEX_FAILURE_MESSAGE` and logs no throwable. An `OutOfMemoryError` is such a failure, and
+  repeated at every run it would be the budget failing — which Task 1's measurement exists to
+  prevent.
+
+#### What 3.4 produces, and what it leaves
+
+**3.4 produces:** grouped faces in Tier C (`groupId`, `groupingVersion`); the grouping pass in the
+worker; and **the person record, computed on read** — a store method returning, for the People
+picker, every group at the current pipeline and grouping versions whose representative exists and
+which has at least a given number of **distinct images** (decision 40's two), sorted by distinct
+images descending, then the newest `capturedDateTakenEpochMillis` among its images descending with no
+date last, then `groupId` ascending (decision 46). Each carries its `groupId`, its distinct-image
+count, that date, and its **representative candidate**: the representative's image identity —
+URI and healing triple, read from its index row — its `FaceBox` and its pipeline version. Those three
+are exactly an anchor's fields under ADR-0022 §1, so the face the user sees is the face the rule will
+store (decision 41). The per-group face list is not stored: it is the faces sharing a `groupId`. Every
+new type has a redacted `toString`; no `Flow` (3.2's rule: 3.5 and 3.6 shape what they observe).
+
+**Left to 3.5:** the `people` clause, building an anchor from the representative candidate, and
+evaluation — resolving an anchor by IoU to a face and its group (ADR-0022 §3), and the per-image
+projection evaluation needs. **Left to 3.6:** the picker; the thumbnail, **cropped from the
+representative's image and box at display time and never stored** — no crop anywhere in Tier C or
+the album database (Amendment 5, ADR-0022 §1), and none in an image loader's disk cache (ADR-0024
+§6); the disclosure that wakes the pass and grouping on a real install; dropping held state on
+switch-off.
+
+#### Tasks — four, sequential, with the maintainer between Task 1 and Task 2
+
+Paths are under `app/src/main/java/com/davide/seddio/easygallery/`, and tests under
+`app/src/test/…/data/` or `app/src/androidTest/…/data/`. Method names are the Coder's; what each
+does is not. The Kotlin files are CRLF, and new ones should be too.
+
+**Task 1 — Coder, with the SM-G990B attached: the grouping and its measurement.** Waits on nothing.
+- New `data/FaceGrouping.kt`, Android-free: `FACE_GROUPING_VERSION`, the 0.50 cut, the triangle
+  core, the embedding front, the representatives, a probe for the setting, cancellation checks, and
+  redacted input and output types — a face id with its embedding in, a group id per face id out.
+  **Not wired:** nothing in `src/main` calls it yet.
+- New `FaceGroupingTest.kt`, plain JVM. Exit criteria, each a test:
+  1. equal to a naive reference average linkage written in the test, on at least 50 seeded sets of
+     2 to 60 faces whose distances crowd around 0.50;
+  2. a pair at exactly 0.50 merges — (1, 0, 0, 0) and (0.5, 0.5, 0.5, 0.5), exactly 0.5 in double —
+     and a pair just above does not;
+  3. a chain that single linkage would join and average linkage does not;
+  4. on a stated triangle with d(A,B) = d(B,C) = 0.40 and d(A,C) = 0.70, and A < B < C by id, the
+     groups are {A, B} and {C} whatever the input order; and 100 shuffles of a random set give one
+     output;
+  5. `groupId` is the medoid's id, a medoid tie goes to the lowest id, and a group of one is its
+     face; empty input, one face, identical embeddings, a zero-norm embedding; unequal lengths fail
+     with a message carrying no value;
+  6. cancellation propagates, and the setting probe reading off stops it with no result;
+  7. every new type's `toString` is redacted.
+- New `FaceGroupingMeasurementDeviceTest.kt`, **opt-in** like 3.3's (an instrumentation argument,
+  `faceGroupingMeasurement=true`; skipped otherwise), screen off, aggregates only:
+  1. **The real library, in the process**, as 3.3's measurement does it: an in-memory index, Tier A,
+     `FaceIndexPass` run directly with an in-memory setting store — never the app's own index, and no
+     disclosure flag — then the grouping over its faces. Figures: faces, groups, groups with at least
+     two distinct images, the largest connected component at ≤ 0.50, time per phase, the `VmHWM`
+     rise, and **how many offered representatives are under 60 px** on their shorter side, decoding
+     each representative's image with `decodeUprightForFaces` on the phone.
+  2. **Synthetic sets of 2,000, 5,000 and 10,000 embeddings**, seeded, in ascending order so each
+     `VmHWM` rise is attributable: 128-float identities with heavy-tailed sizes like the real
+     library's — most seen twice, a few dozens of times — each a random unit centre plus noise
+     calibrated to a mean within-identity distance of about 0.35 and between of about 1.0, the
+     calibration reported. Per size: time per phase, the `VmHWM` rise, the Java heap used,
+     `Runtime.maxMemory()`, `ActivityManager.memoryClass` and `largeMemoryClass`, the largest
+     component. **An `OutOfMemoryError` is caught and reported as that size's result**, not as a
+     test failure.
+  3. Thermal status before and after, and whether the phone was charging, as 3.3 reported them.
+
+  Helpers may be moved out of `FaceIndexPassMeasurementDeviceTest.kt` into a shared androidTest
+  file, by moving code only.
+- **Verification by the Coder:** `FaceGroupingTest`, `compileDebugAndroidTestKotlin`, the opt-in run
+  with every figure in the report beside the budget, and mutations 1 to 5 below. Not the full gate.
+
+**Then the maintainer — the budget.** He accepts the budget under *Measurement first*, as proposed or
+changed, now or with Task 1's figures in front of him. If the figures fail it, he chooses among
+options (a) to (f), and the Planner records the choice as a decision in [albums.md](albums.md) §8
+and an amendment to ADR-0023 §5 before Task 2 is briefed again. The Planner records an acceptance
+too: a decision in §8 and a dated note in ADR-0023 §5.
+
+**Task 2 — Coder: the store and the grouping pass.** Needs the budget accepted.
+- `data/MediaIndexDao.kt` and `data/MediaIndexStore.kt` — the interface, `RoomMediaIndexStore` and
+  `InMemoryMediaIndexStore`: the faces for grouping, current pipeline version only, ids and
+  embeddings, paged by id; whether grouping is needed (*When grouping is needed*); the conditional
+  write by id with the setting read inside it (*The write*); and the person record (*What 3.4
+  produces*). All `suspend`; no `Flow`.
+- `data/MediaIndexTierC.kt` — the models those return, redacted.
+- New `data/FaceGroupingPass.kt`, Android-free: needed or not, read, group, write; the setting, the
+  deadline and cancellation; its log line. Its caller holds the Tier C lock and has checked the gates.
+- `data/FaceIndexPass.kt` — `FaceIndexLogLines` gains the grouping line and its fixed stop names,
+  so the logger test still holds one set.
+- Tests: `MediaIndexTierCStoreTest.kt` through `forEachStore`, so both stores meet each rule;
+  `MediaIndexDaoTest.kt` for the queries on `inMemoryDatabaseBuilder`, with an update of more than
+  999 ids; new `FaceGroupingPassTest.kt`, plain JVM on the in-memory store. Exit criteria:
+  1. the faces for grouping are the current pipeline version's only, in id order, paged;
+  2. grouping is needed for a null version, another version and a missing representative, and not
+     with none or all current; faces at another pipeline version are ignored;
+  3. the write applies by id, skips a missing id, leaves faces outside it, states, attempts and
+     Tier A untouched, and with the setting off writes nothing and returns 0;
+  4. the person record counts distinct images — two faces in one image count once — applies the
+     minimum, sorts by count, then newest date with no date last, then `groupId`; returns the
+     representative's current identity, its box and pipeline version — after a heal, the healed URI;
+     and leaves out a stale grouping version, a missing representative and another pipeline version;
+  5. after grouping, `deleteAllFaceData` leaves no face and `hasFaceData` reads false; a heal keeps
+     `groupId`; a changed triple drops the faces, and makes grouping needed if one was a
+     representative;
+  6. the pass: not needed — nothing written; needed — written with the version; the setting off
+     before the write, the deadline past, or a cancellation — nothing written;
+  7. **the logger test (ADR-0024 §6):** every line is one of the fixed set and carries no digit;
+     fixtures with distinctive ids, URIs and embedding values appear in no line.
+- **No schema change:** `git status app/schemas` shows nothing new, and `6.json` is unchanged.
+
+**Task 3 — Coder: the worker.** After Task 2; the same Coder may take both in turn.
+- `data/MediaIndexingWork.kt` — a `createFaceGroupingPass` seam on the `@JvmOverloads` constructor,
+  defaulting to `EasyGalleryApp`'s wiring as the other seams do; `runFaceIndexPass` runs it after
+  the pass, inside the same lock hold and `try`, on the stops and deadline in *Where it runs*.
+- `EasyGalleryApp.kt` — `createFaceGroupingPass()`.
+- `MediaIndexingWorkerTest.kt` (Robolectric, `work-testing`), exit criteria: grouping runs after the
+  pass, with the lock held — the fake asserts it; not with the setting off, incapable, the disclosure
+  not shown, the lock held elsewhere, after a `SETTING_OFF` stop or after the pass threw; it runs
+  after `BUDGET` and `PERMISSION`; not past the deadline; a grouping failure fails the run with the
+  fixed message and nothing else in the output data, no throwable logged; the run state's counters
+  are Tier A's alone.
+
+**Task 4 — Coder, with the SM-G990B attached: grouping through the worker.** After Task 3.
+- New `FaceGroupingWorkerMeasurementDeviceTest.kt`, **opt-in**
+  (`faceGroupingWorkerMeasurement=true`), and androidTest only by the constraint in *The dev-device
+  route*. On the app's own index, on the dev phone: the setting on through
+  `SharedPreferencesFaceDataSettingStore`; the disclosure marked shown through
+  `SharedPreferencesFaceDeviceStateStore.markDisclosureShown()`; Index now through
+  `WorkManagerMediaIndexingWorkScheduler`; the unique work awaited, and repeated until no image is
+  pending, three runs at most. Figures: runs, wall time per run, the `VmHWM` rise, thermal status,
+  charging, faces, groups, groups offered, and that grouping is no longer needed. **In `finally`:**
+  `deleteAllFaceData()` on the app's store, and the `face_device_state` file cleared through
+  `Context.getSharedPreferences` in the test — no new method in `src/main`. The face data stays on
+  the phone (decision 9), and the run leaves none behind.
+- It discharges the worker half of ADR-0023 verify item 6 for 3.3's pass and 3.4's grouping alike,
+  with the disclosure set by a test rather than by 3.6's screen; 3.7's item 5 keeps the run through
+  the real disclosure.
+
+**Mutation checks — required.** Each applied, its test seen to fail, and the source restored and
+checked by checksum, as 3.2 did; the report lists each with its failing test. 1 to 5 in Task 1, 6 to
+8 in Task 2, 9 and 10 in Task 3:
+1. single linkage in place of average; 2. `<` in place of `≤` at the cut; 3. a cut of 0.55;
+4. the tie-break removed, input order kept; 5. the representative as the lowest id, not the medoid;
+6. the write ignoring the setting; 7. "needed" ignoring a missing representative; 8. the person
+record counting faces, not distinct images; 9. grouping called outside the lock, or without the
+disclosure; 10. a grouping log line carrying a count.
+
+**Verification** is its own phase, once, over Tasks 1 to 4 integrated, owned by whoever the brief
+names — not by Task 4's Coder: the definition of done with `adb devices` stated,
+`connectedDebugAndroidTest` on the SM-G990B if attached with every opt-in measurement skipped, and
+`git status app/schemas` showing nothing new. Tasks 1 and 4's device measurements are not repeated
+there.
+
+**After it lands — Planner, task P.** What 3.4 makes stale:
+- `ARCHITECTURE.md` §3 — the two new `data/` files, in the pure, Android-free list as well; the store,
+  DAO, Tier C, worker and `EasyGalleryApp` rows; §6 — what `groupId` means, summaries computed on
+  read, the version still 6; §11 — if the 60 px figure or a budget option leaves debt.
+- `AGENTS.md` *The two databases* — the paragraph on face data, which says what each step built.
+- ADR-0018 Amendment 5 — dated notes under *What Tier C stores* (no third kind of row; `groupId` is
+  the representative; summaries on read) and *Keeping Tier C true* (the conditional write; the lock).
+- ADR-0023 §4 (where grouping runs), §5 (the figures and the budget accepted) and verify row 6
+  (Task 4's worker run).
+- [albums.md](albums.md) §7's Stage 3 row, and decision 45's B2 pointer (added 2026-11-20) if the
+  budget's answer changes it. The budget's decision is written when the maintainer answers, not at P.
+- This plan: the step row, the handoff, a *3.4 — Built and verified* section, *Open questions* B2,
+  and 3.7's list with whatever Task 4 did not prove.
+- The test conventions, for the two new opt-in measurements and the rule that only test sources set
+  the disclosure flag; and `.github/agents/*.agent.md`, checked for a sentence about grouping.
+
+**Needs the maintainer.** **Before Task 1: nothing.** **Before Task 2:** his acceptance of the budget —
+or, if Task 1's figures fail it, his choice among (a) to (f), a new decision. **Not needed:** no schema
+change, so no amendment to approve and no call-out; no dependency, permission, preferences file,
+`*Content` signature or string. The representative rule (*Decided at 3.4*) is the Planner's and he can
+reverse it.
+
+**Not 3.4's:** the `people` clause, anchors and evaluation (3.5); the picker, the crop, the disclosure,
+the switch and its confirmation, every string (3.6); grouping on the SM-G781B, and the worker through
+the real disclosure (3.7); B2, unless the budget fails; any Tier C `Flow`. No `ui/` file, no
+`*Content` signature, no string.
 
 ### 3.2 to 3.8
 
@@ -1473,7 +2130,8 @@ settled what it depends on.
 - **3.4 — Clustering and the person record.** Per B1 (decision 45: average linkage, cosine 0.50)
   and B2, and decisions 42 and 46 for an anchor. Average linkage's memory and time in the app are
   unmeasured — about 800 MB for the distance matrix at 10,000 faces — so 3.4 measures them before
-  relying on them; a different algorithm is a new decision, not a detail.
+  relying on them; a different algorithm is a new decision, not a detail. Refined 2026-11-20 into
+  its own section above.
 - **3.5 — The `people` clause and evaluation.** Parse, encode and evaluate, with strictness tests
   like Stage 2's; combined people + region + time, with tests.
 - **3.6 — The UI.** The People criterion with its thumbnails, with no merge and no split (decision
@@ -1503,6 +2161,21 @@ settled what it depends on.
        `generationModified` advances — ADR-0018 Amendment 6 §1 rests on that and it is still only
        expected. If the generation does not advance, the toggle never reselected the row and the
        amendment's motive weakens without its rule becoming wrong.
+  - **Added 2026-11-20 from 3.3** — what *3.3 — Built and verified 2026-11-20* could not prove:
+    5. ADR-0023 verify item 6 again, **through the real worker**, once 3.6 shows the disclosure:
+       Index now with the screen off, under the production budget — images processed, wall time,
+       mean per image, peak RSS, thermal status before and after, charging or not. 3.3 measured it
+       only in the process, on a throwaway in-memory index;
+    6. whether OpenCV's native errors print under logcat's `cv::error()` tag while one occurs —
+       outside the pass's fixed lines, so ADR-0024 §6's logger rule decides it.
+       `Core.setErrorVerbosity(false)` is the likely switch; read in code only, never observed;
+    7. the release build's capability, and a face pass, on at least one non-Samsung arm64 phone if
+       one is available, as well as on the SM-G781B (A4);
+    8. the download budget, re-checked with bundletool after any model or OpenCV change: 3.3 measured
+       +46,063,982 B against 50 MB, little headroom (ADR-0023 verify item 5);
+    9. ADR-0023 verify item 7 — the capability check on another phone; see its row;
+    10. the non-arm64 branch of `FaceCapabilityDeviceTest`, which asserts *incapable* and has never
+        run on a device without arm64-v8a.
 - **3.8 — Close-out.** `ARCHITECTURE.md`, exit criteria checked against the repository,
   `/docs-audit`, archive.
 
@@ -1563,7 +2236,7 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
   *2026-11-19, step 3.2: version 5 through `Migration(4, 5)`; the rules files exclude the file and
   its `-wal`, `-shm` and `-journal` sidecars in all three sections, checked against them. Open:
   `5.json` tracked, checked by `git ls-files`; and F1.* *2026-11-20, step 3.3's refinement: F1
-  decided — a fourth section, ADR-0018 Amendment 7, proposed — and the index goes to version 6 with step
+  decided — a fourth section, ADR-0018 Amendment 7, ~~proposed~~ adopted 2026-11-20 — and the index goes to version 6 with step
   3.3; F1's 36.1 residual stays open.*
 - The merged manifest is checked after the runtime dependency — OpenCV (decision 45) — lands, and
   any permission it adds is approved or removed.
@@ -1710,7 +2383,71 @@ ships with, which the models, runtime and delivery ADR reads. **2026-11-18:**
 [ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md) defers that
 reading until the way the build is produced is decided (its question 1 and verify item 8), because
 which components are bundled depends on it. **2026-11-19:** decided — OpenCV's published artifact
-(E3) — so the reading is step 3.3's, from that artifact.
+(E3) — so the reading is step 3.3's, from that artifact. **2026-11-20:** read — the subsection
+below.
+
+### OpenCV 4.13.0 bundled components — read 2026-11-20
+
+Step 3.3 Task 3. The component list is the *3rdparty dependencies*, *Media I/O* and *Other
+third-party libraries* lines of `Core.getBuildInformation()`, read on the SM-G990B from the
+published `org.opencv:opencv:4.13.0` AAR (Task 2). It names OpenCV's CI as the build host, as
+expected for the published artifact. `libc++_shared.so` is not in that list; it ships beside
+`libopencv_java4.so` in the AAR (NDK 27.2.12479018). Every source below was fetched over normal TLS
+on 2026-11-20 — `raw.githubusercontent.com/opencv/opencv/4.13.0/…` for what OpenCV vendors, and
+for what OpenCV downloads at build time, the upstream file at the tag OpenCV's CMake pins and, where
+it was cheap, the very archive OpenCV downloads, its MD5 checked against the pin.
+
+| Component | Version (as printed) | Licence (SPDX) | What must ship with the binary | Commercial redistribution in an app | Source read | Status |
+|---|---|---|---|---|---|---|
+| libcpufeatures | — (AOSP, 2016) | Apache-2.0 | Apache-2.0 text (already in `assets/face/` for OpenCV) + its copyright line; no NOTICE file in the vendored copy | yes | `3rdparty/cpufeatures/LICENSE` @ opencv 4.13.0 | verified |
+| libprotobuf | 3.19.1 | BSD-3-Clause | copyright notice + conditions + disclaimer (the whole `LICENSE`), in documentation with the binary | yes | `3rdparty/protobuf/LICENSE` @ opencv 4.13.0 | verified |
+| ade | 0.1.2e (not printed; pinned by OpenCV's G-API build) | Apache-2.0 | Apache-2.0 text (byte-identical to OpenCV's `LICENSE`) + "Copyright (C) Intel Corporation"; no `NOTICE` file | yes | `modules/gapi/cmake/DownloadADE.cmake` @ opencv 4.13.0 (pins `v0.1.2e`, MD5 `962ce79e…`); `LICENSE` and all 69 source headers (`SPDX-License-Identifier: Apache-2.0`) in the zip OpenCV downloads from `github.com/opencv/ade`, MD5 matched | verified |
+| tbb (oneTBB) | 2022.1 (tag `v2022.1.0`) | Apache-2.0 | Apache-2.0 text + Intel's copyright; oneTBB has no `NOTICE` file at the tag. Its `third-party-programs.txt` was read: hwloc is excluded by OpenCV's build (`tbbbind` filtered out); the GCC bug-62258 workaround in `exception.cpp` compiles only under `__GLIBCXX__`, and the NDK uses libc++; gperftools, Tachyon, the Python pool and doctest are not under `src/tbb` (grep of the tag's sources); its ITT copy is the ittnotify row | yes | `3rdparty/tbb/CMakeLists.txt` @ opencv 4.13.0 (pins `v2022.1.0`, MD5 `cce28e6c…`); `LICENSE.txt` and `third-party-programs.txt` @ `uxlfoundation/oneTBB` (formerly `oneapi-src`) `v2022.1.0`; the tarball OpenCV downloads, MD5 matched | verified |
+| ittnotify (Intel ITT) | 3.25.4 | GPL-2.0-only OR BSD-3-Clause — **dual; the app takes BSD-3-Clause** | the BSD-3-Clause text (Intel, 2019) from `BSD-3-Clause.txt`, and a line in the notice saying it is used under BSD-3-Clause. GPL-2.0 is not elected, so its terms do not apply | yes, under the BSD-3-Clause option | `3rdparty/ittnotify/src/ittnotify/BSD-3-Clause.txt`, `ittnotify_static.c` (SPDX line), `ittnotify_config.h` (`API_VERSION_NUM 3.25.4`) @ opencv 4.13.0 | verified |
+| libjpeg-turbo | 3.1.2-70 | IJG AND BSD-3-Clause (SIMD code Zlib, subsumed by IJG per its `LICENSE.md`) | **an obligation the notice must carry word for word:** for executable-only distribution the documentation "must state that 'this software is based in part on the work of the Independent JPEG Group'" (`README.ijg`, LEGAL ISSUES (2)). The BSD-3-Clause text is owed only if the TurboJPEG API is in the binary; OpenCV's `CMakeLists.txt` builds only `JPEG_SOURCES` ("WITH_TURBOJPEG is not used"), but ship it anyway — cheaper than proving absence. Ship `LICENSE.md` and `README.ijg`'s LEGAL ISSUES section | yes — IJG: "We specifically permit and encourage the use of this software as the basis of commercial products" | `3rdparty/libjpeg-turbo/LICENSE.md`, `README.ijg`, `CMakeLists.txt` @ opencv 4.13.0 | verified |
+| libwebp | decoder 0x0210 | BSD-3-Clause | the whole `COPYING` (Google, 2010) | yes | `3rdparty/libwebp/COPYING` @ opencv 4.13.0. Upstream's separate `PATENTS` grant is not vendored and not read | verified |
+| libpng | 1.6.53 | libpng-2.0 (PNG Reference Library License v2; v1 text also in the file for 0.5–1.6.35 code) | nothing strictly for a binary (acknowledgement "appreciated, but is not required"; the notice binds source distributions); ship the whole `LICENSE` | yes | `3rdparty/libpng/LICENSE` @ opencv 4.13.0 | verified |
+| libtiff | 4.7.1 | libtiff, plus a Berkeley notice for `tif_lzw.c` (no SPDX id asserted for it) | the whole `LICENSE.md`: the Leffler/SGI notice must "appear in all copies … and related documentation"; the Berkeley paragraph asks that "any documentation … related to such distribution … acknowledge that the software was developed by the University of California, Berkeley" — met by shipping the text | yes | `3rdparty/libtiff/LICENSE.md` @ opencv 4.13.0 | verified |
+| libopenjp2 (OpenJPEG) | 2.5.3 | BSD-2-Clause | the whole `LICENSE` (copyright list + conditions + disclaimer). It notes patent rights are not granted — informational, no obligation | yes | `3rdparty/openjpeg/LICENSE` @ opencv 4.13.0 | verified |
+| IlmImf (OpenEXR) | 2.3.0 | BSD-3-Clause | the whole `LICENSE` (ILM, 2006) | yes | `3rdparty/openexr/LICENSE` @ opencv 4.13.0 | verified |
+| tegra_hal (Carotene) | 0.0.1 | BSD-3-Clause | copyright notice ("Copyright (C) 2014, NVIDIA Corporation", 2015 on some files) + conditions + disclaimer. Carotene has no separate licence file; the text is the header every source carries | yes | `hal/carotene/README.md` and the first lines of all 57 files in `hal/carotene/src/` @ opencv 4.13.0: 56 carry the NVIDIA "(3-clause BSD License)" header, the 57th (`dummy.cpp`) is two comment lines. It moved from `3rdparty/carotene` to `hal/carotene` | verified |
+| KleidiCV (+ kleidicv_hal, kleidicv_thread) | 0.7.0 | Apache-2.0 | Apache-2.0 text + "Arm Limited and/or its affiliates" copyright; no `NOTICE` file at the tag. `kleidicv_hal` is OpenCV's own glue under `hal/kleidicv` (OpenCV's Apache-2.0) | yes | `hal/kleidicv/kleidicv.cmake` @ opencv 4.13.0 (pins `0.7.0`, MD5 `e8f94e42…`); `README.md` and `LICENSES/Apache-2.0.txt` @ `gitlab.arm.com/kleidi/kleidicv` tag `0.7.0`; the tarball OpenCV downloads, MD5 matched: all 287 SPDX headers under `kleidicv/`, `kleidicv_thread/`, `adapters/` say `Apache-2.0` | verified |
+| Flatbuffers | 25.9.23 | Apache-2.0 | Apache-2.0 text (byte-identical to OpenCV's `LICENSE`, checked with `cmp`); no NOTICE file vendored. Header-only | yes | `3rdparty/flatbuffers/LICENSE.txt` and `README.md` ("Origin: google/flatbuffers v25.9.23") @ opencv 4.13.0 | verified |
+| zlib | 1.3.0.1 | Zlib | **nothing — it is not in the APK.** The capture prints `z`, not `build`, and `llvm-readelf -d` on the AAR's arm64 `libopencv_java4.so` shows `NEEDED libz.so` with `inflate`/`deflate` undefined: OpenCV links the device's own zlib. Even if bundled, Zlib asks nothing of a binary ("including commercial applications"; acknowledgement "appreciated but not required"). Listed in the notice as used, not shipped | yes | `3rdparty/zlib/LICENSE` @ opencv 4.13.0; the `.so`'s dynamic section | verified |
+| LLVM libc++ (`libc++_shared.so`) | NDK 27.2.12479018; `.comment` reads clang 18.0.3 "based on r522817c", source `toolchain/llvm-project d8003a45…` | Apache-2.0 WITH LLVM-exception (legacy code also NCSA OR MIT) | strictly nothing: the LLVM exception lets portions "embedded into an Object form" be redistributed "without complying with the conditions of Sections 4(a), 4(b) and 4(d)". Ship the whole `libcxx/LICENSE.TXT` anyway — it costs nothing and covers the legacy NCSA/MIT portions | yes | `libcxx/LICENSE.TXT` @ `llvm/llvm-project` `3c92011b600bdf70424e2547594dd461fe411a41` (the r522817 base revision named in NDK 27.1's `clang_source_info.md`), and the locally installed NDK 27.1's toolchain `NOTICE`; the AAR's `libc++_shared.so` and NDK 27.1's carry the same `llvm-project` commit in `.comment`. NDK 27.2's own `NOTICE` was not read (not installed here) | verified (licence); 27.2's `NOTICE` not read |
+
+**Blocks shipping? None found.** Every component is permissive and allows commercial
+redistribution in an app. The one copyleft text in the list, ittnotify's GPL-2.0-only, is the
+alternative of a dual licence; the app takes BSD-3-Clause and owes nothing under the GPL. Every
+obligation is met by shipping text: the notices and licence texts in the table, and one sentence
+that must appear verbatim — libjpeg-turbo's IJG clause, "this software is based in part on the work
+of the Independent JPEG Group". **Not verified:** NDK 27.2's own `NOTICE` (the libc++ licence was
+read at the source revision its binary names, through NDK 27.1); libwebp's upstream `PATENTS` grant
+(not vendored, and a grant rather than an obligation); and code OpenCV carries inside its own
+modules rather than as a listed third-party dependency, which falls under OpenCV's Apache-2.0 by
+OpenCV's own statement (`COPYRIGHT`: "Third party copyrights are property of their respective
+owners") and was not audited file by file.
+
+**Also read.** OpenCV's root has a `COPYRIGHT` (a list of holders) but no `NOTICE` file, so Apache-2.0
+§4(d) owes nothing extra for OpenCV; and the shipped `LICENSE-OpenCV-Apache-2.0.txt` is
+byte-identical to OpenCV 4.13.0's `LICENSE` (`cmp`). Flatbuffers' and ADE's `LICENSE` files are
+byte-identical to it too. OpenCV's `3rdparty/readme.txt` calls libjpeg-turbo's licences "three"; its
+own `LICENSE.md` says two plus zlib-licensed SIMD code subsumed by IJG — the table follows
+`LICENSE.md`.
+
+**What is owed, by group** — the input to Task 4:
+- **Apache-2.0**, one text for all of them: libcpufeatures (The Android Open Source Project), oneTBB
+  and ADE (Intel Corporation), Flatbuffers (Google), KleidiCV (Arm Limited and/or its affiliates).
+  None has a `NOTICE` file, so a copyright line each and the licence text, already shipped for
+  OpenCV and SFace, is everything.
+- **BSD-3-Clause**, whose text names the holder in clause 3, so one verbatim copy each: protobuf,
+  libwebp, OpenEXR, ittnotify (with a line saying BSD-3-Clause is the licence taken), Carotene
+  (its source header), and libjpeg-turbo's `LICENSE.md`.
+- **BSD-2-Clause:** OpenJPEG. **libtiff:** its `LICENSE.md`, with the Berkeley LZW paragraph.
+  **libpng-2.0:** its `LICENSE`. **IJG:** the LEGAL ISSUES section of `README.ijg` and the
+  sentence above. **LLVM:** `libcxx/LICENSE.TXT`.
+- **zlib:** nothing; it is the device's library. Named in the notice so a reader who sees zlib in
+  `getBuildInformation()` finds why it is absent.
 
 ---
 
@@ -1832,7 +2569,10 @@ The spike's inputs to both are under *Spike outcome*, clustering and anchor stab
    average-linkage agglomerative clustering on cosine distance, threshold 0.50, over SFace fp32
    embeddings — [albums.md](albums.md) §8 decision 45. Its memory and time in the app are 3.4's to
    measure.
-2. **B2 — Incremental clustering** as new photos arrive. **Still open, for 3.4.** The spike found
+2. **B2 — Incremental clustering** as new photos arrive. ~~**Still open, for 3.4.**~~ **Settled at
+   3.4's refinement, 2026-11-20, subject to the budget: not adopted** — every run that needs grouping
+   regroups every face with average linkage; *3.4*, *Measurement first, and the budget*. It returns
+   only as option (e) there, if Task 1's figures fail the budget. The spike found
    the order-dependent incremental method much less stable than average linkage, so 3.4 must not
    assume it (decision 45).
 
@@ -1970,7 +2710,7 @@ own questions answered and its text settled. **Answering them did not approve th
 
    ✅ **Decided 2026-11-20 at step 3.3's refinement, conservatively** —
    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 7 §2,
-   proposed until the maintainer approves the amendment:
+   ~~proposed until the maintainer approves the amendment~~ adopted 2026-11-20 (decision 49):
    a fourth section, `<cross-platform-transfer platform="ios">`, holding the same `<exclude>`
    lines as the other two and no `<platform-specific-params>`, landing in step 3.3's Task 1.
    **Still open, the maintainer's, blocking nothing:** how an API 36.1 device reads a section
@@ -1982,15 +2722,21 @@ own questions answered and its text settled. **Answering them did not approve th
 2. **F2 — Which OpenCV version is pinned?** Raised by the Planner at step 3.3's refinement,
    2026-11-20. The maintainer approved the library, not a version (decisions 45 and 47).
    **Recommended: 4.13.0**, the build the spike measured; 4.14.0 and 5.x are on Maven Central and
-   were not measured, and 5.x is a new major version. **Blocks step 3.3's Task 2**, not Task 1.
+   were not measured, and 5.x is a new major version. ~~**Blocks step 3.3's Task 2**, not Task 1.~~
    The facts read are under *3.3*, *Settled before 3.3*, issue 5.
+
+   ✅ **Answered 2026-11-20 by the maintainer: 4.13.0**, as recommended —
+   [albums.md](albums.md) §8 decision 49, and ADR-0023 §2's note. It confirms the version and
+   nothing else: ADR-0023's verify item 4 still diffs the merged manifests when the dependency lands
+   in Task 2, and any new permission, feature, `<queries>` entry or component goes to him before it
+   ships, as decision 24's did.
 
 ---
 
 ## Related
 
 - [albums.md](albums.md): §3 membership, §4 *People album*, §6 the index, §7 progress, §8 decisions
-  9, 13 as amended, 14, 15, 33, 35, 40, 41, 42, 43, 44, 45, 46 and 47, §10 questions 3 and 12.
+  9, 13 as amended, 14, 15, 33, 35, 40, 41, 42, 43, 44, 45, 46, 47, 48 and 49, §10 questions 3 and 12.
 - [albums-stage-4.md](albums-stage-4.md): paused; the precedent for a spike.
 - [albums-rule-editing.md](albums-rule-editing.md): rule editing's own plan; its D6 is the order
   between the two.

@@ -79,7 +79,8 @@ class MediaIndexDatabaseMigrationTest {
                 MediaIndexDatabase.MIGRATION_1_2,
                 MediaIndexDatabase.MIGRATION_2_3,
                 MediaIndexDatabase.MIGRATION_3_4,
-                MediaIndexDatabase.MIGRATION_4_5
+                MediaIndexDatabase.MIGRATION_4_5,
+                MediaIndexDatabase.MIGRATION_5_6
             )
             .build()
 
@@ -111,12 +112,13 @@ class MediaIndexDatabaseMigrationTest {
             .addMigrations(
                 MediaIndexDatabase.MIGRATION_2_3,
                 MediaIndexDatabase.MIGRATION_3_4,
-                MediaIndexDatabase.MIGRATION_4_5
+                MediaIndexDatabase.MIGRATION_4_5,
+                MediaIndexDatabase.MIGRATION_5_6
             )
             .build()
         val db = roomDb.openHelper.writableDatabase
 
-        assertEquals(5, db.version)
+        assertEquals(6, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         assertEquals(
@@ -141,7 +143,7 @@ class MediaIndexDatabaseMigrationTest {
 
         val reopened = MediaIndexDatabase.create(context)
         val db = reopened.openHelper.writableDatabase
-        assertEquals(5, db.version)
+        assertEquals(6, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         runBlocking {
@@ -162,11 +164,11 @@ class MediaIndexDatabaseMigrationTest {
         val seeded = createSeededDatabase(context, databaseName, version = 3)
 
         val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
-            .addMigrations(MediaIndexDatabase.MIGRATION_3_4, MediaIndexDatabase.MIGRATION_4_5)
+            .addMigrations(MediaIndexDatabase.MIGRATION_3_4, MediaIndexDatabase.MIGRATION_4_5, MediaIndexDatabase.MIGRATION_5_6)
             .build()
         val db = roomDb.openHelper.writableDatabase
 
-        assertEquals(5, db.version)
+        assertEquals(6, db.version)
         assertEquals(seeded.allColumns, db.query(ALL_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         assertEquals(listOf<Long?>(null, null, null, null), db.query(MARKER_SQL).use(::dates))
@@ -205,7 +207,7 @@ class MediaIndexDatabaseMigrationTest {
     }
 
     @Test
-    fun `the full chain from version 1 to 5 opens with the production builder`() {
+    fun `the full chain from version 1 to 6 opens with the production builder`() {
         val context: Context = ApplicationProvider.getApplicationContext()
         val databaseName = "media_index.db"
         context.deleteDatabase(databaseName)
@@ -214,7 +216,7 @@ class MediaIndexDatabaseMigrationTest {
         val migrated = MediaIndexDatabase.create(context)
         val db = migrated.openHelper.writableDatabase
 
-        assertEquals(5, db.version)
+        assertEquals(6, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(
             listOf(null, REAL_1950_DATE, null, ONE_SECOND_AFTER_SENTINEL),
@@ -224,6 +226,7 @@ class MediaIndexDatabaseMigrationTest {
         assertEquals(emptyList<List<String?>>(), db.query(WATERMARK_SQL).use(::snapshot))
         assertEquals(emptyList<List<String?>>(), db.query(FACE_ROWS_SQL).use(::snapshot))
         assertEquals(emptyList<List<String?>>(), db.query(FACE_STATE_ROWS_SQL).use(::snapshot))
+        assertEquals(emptyList<List<String?>>(), db.query(FACE_ATTEMPT_ROWS_SQL).use(::snapshot))
         runBlocking {
             assertEquals(4, migrated.mediaIndexDao().observeAll().first().size)
         }
@@ -240,11 +243,11 @@ class MediaIndexDatabaseMigrationTest {
         val seeded = createSeededDatabase(context, databaseName, version = 4)
 
         val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
-            .addMigrations(MediaIndexDatabase.MIGRATION_4_5)
+            .addMigrations(MediaIndexDatabase.MIGRATION_4_5, MediaIndexDatabase.MIGRATION_5_6)
             .build()
         val db = roomDb.openHelper.writableDatabase
 
-        assertEquals(5, db.version)
+        assertEquals(6, db.version)
         assertEquals(seeded.allColumns, db.query(ALL_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.markers, db.query(MARKER_SQL).use(::dates))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
@@ -280,12 +283,70 @@ class MediaIndexDatabaseMigrationTest {
             val detection = FaceDetection(FaceBox(0.1f, 0.2f, 0.3f, 0.4f), FaceEmbedding(floatArrayOf(0.5f, -0.25f)))
 
             val applied = store.writeFaceIndexResults(
-                listOf(FaceIndexWrite(identity, pipelineVersion = 1, outcome = FaceIndexOutcome.INDEXED, faces = listOf(detection)))
+                listOf(FaceIndexWrite(identity, pipelineVersion = 1, outcome = FaceIndexOutcome.INDEXED, faces = listOf(detection))),
+                faceDataEnabled = { true }
             )
 
             assertEquals(1, applied)
             assertEquals(FaceIndexState(uri, 1, FaceIndexOutcome.INDEXED), store.getFaceIndexState(uri))
             assertEquals(listOf(detection), store.listFaces(uri).map { FaceDetection(it.box, it.embedding) })
+            assertEquals(4, reopened.mediaIndexDao().observeAll().first().size)
+        }
+
+        reopened.close()
+        context.deleteDatabase(databaseName)
+    }
+
+    @Test
+    fun `migration 5 to 6 creates the empty attempt table and changes nothing else`() {
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val databaseName = "media_index.db"
+        context.deleteDatabase(databaseName)
+        val seeded = createSeededDatabase(context, databaseName, version = 5)
+
+        val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
+            .addMigrations(MediaIndexDatabase.MIGRATION_5_6)
+            .build()
+        val db = roomDb.openHelper.writableDatabase
+
+        assertEquals(6, db.version)
+        assertEquals(seeded.allColumns, db.query(ALL_COLUMNS_SQL).use(::snapshot))
+        assertEquals(seeded.markers, db.query(MARKER_SQL).use(::dates))
+        assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
+        assertEquals(seeded.existingSchema, db.query(EXISTING_SCHEMA_SQL).use(::snapshot))
+        assertEquals(seeded.tierCRows, db.query(TIER_C_ROWS_SQL).use(::snapshot))
+        assertEquals(seeded.tierCSchema, db.query(TIER_C_SCHEMA_SQL).use(::snapshot))
+        assertEquals(emptyList<List<String?>>(), db.query(FACE_ATTEMPT_ROWS_SQL).use(::snapshot))
+        assertEquals(
+            listOf(listOf("mediaUri", "TEXT", "1", "1"), listOf("pipelineVersion", "INTEGER", "1", "0"), listOf("attempts", "INTEGER", "1", "0")),
+            // PRAGMA table_info returns cid, name, type, notnull, dflt_value, pk; the table-valued form is not in Robolectric's SQLite.
+            db.query("PRAGMA table_info(`media_index_face_attempt`)").use(::snapshot).map { listOf(it[1], it[2], it[3], it[5]) }
+        )
+
+        roomDb.close()
+        context.deleteDatabase(databaseName)
+    }
+
+    @Test
+    fun `a migrated 5 to 6 database reopens with the production builder and takes an attempt`() {
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val databaseName = "media_index.db"
+        context.deleteDatabase(databaseName)
+        createSeededDatabase(context, databaseName, version = 5)
+
+        val migrated = MediaIndexDatabase.create(context)
+        migrated.openHelper.writableDatabase
+        migrated.close()
+
+        val reopened = MediaIndexDatabase.create(context)
+        val store = RoomMediaIndexStore(reopened)
+        runBlocking {
+            val uri = "content://media/external/video/media/2"
+            val identity = mediaIdentityOf(uri, displayName = "clip2.mp4", size = 101L, dateModified = 201L)
+
+            assertEquals(1, store.recordFaceIndexAttempt(identity, pipelineVersion = 1, faceDataEnabled = { true }))
+            assertEquals(2, store.recordFaceIndexAttempt(identity, pipelineVersion = 1, faceDataEnabled = { true }))
+            assertEquals(6, reopened.openHelper.writableDatabase.version)
             assertEquals(4, reopened.mediaIndexDao().observeAll().first().size)
         }
 
@@ -303,10 +364,12 @@ class MediaIndexDatabaseMigrationTest {
         val allColumns: List<List<String?>>,
         val watermarks: List<List<String?>>,
         val markers: List<Long?>,
-        val existingSchema: List<List<String?>>
+        val existingSchema: List<List<String?>>,
+        val tierCRows: List<List<String?>>,
+        val tierCSchema: List<List<String?>>
     )
 
-    // Builds a file at the given version (1 to 4) with rows at the sentinel, a real 1950 date, null, and sentinel + 1 second.
+    // Builds a file at the given version (1 to 5) with rows at the sentinel, a real 1950 date, null, and sentinel + 1 second.
     // From version 4 the rows carry a resolver marker: 3, null, 5, null.
     private fun createSeededDatabase(context: Context, databaseName: String, version: Int): Seeded {
         val dbFile = context.getDatabasePath(databaseName)
@@ -367,12 +430,32 @@ class MediaIndexDatabaseMigrationTest {
         if (version >= 2) {
             sqlite.execSQL("INSERT INTO `media_index_watermark` VALUES('external_primary', '1234', 77, 1700000000)")
         }
+        if (version >= 5) {
+            sqlite.execSQL(
+                "CREATE TABLE IF NOT EXISTS `media_index_face_state` (`mediaUri` TEXT NOT NULL, " +
+                    "`pipelineVersion` INTEGER NOT NULL, `outcome` TEXT NOT NULL, PRIMARY KEY(`mediaUri`))"
+            )
+            sqlite.execSQL(
+                "CREATE TABLE IF NOT EXISTS `media_index_face` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`mediaUri` TEXT NOT NULL, `pipelineVersion` INTEGER NOT NULL, `boxLeft` REAL NOT NULL, " +
+                    "`boxTop` REAL NOT NULL, `boxRight` REAL NOT NULL, `boxBottom` REAL NOT NULL, " +
+                    "`embedding` BLOB NOT NULL, `groupId` INTEGER, `groupingVersion` INTEGER)"
+            )
+            sqlite.execSQL("CREATE INDEX IF NOT EXISTS `index_media_index_face_mediaUri` ON `media_index_face` (`mediaUri`)")
+            sqlite.execSQL("INSERT INTO `media_index_face_state` VALUES('content://media/external/video/media/1', 1, 'INDEXED')")
+            sqlite.execSQL(
+                "INSERT INTO `media_index_face`(`mediaUri`, `pipelineVersion`, `boxLeft`, `boxTop`, `boxRight`, `boxBottom`, `embedding`) " +
+                    "VALUES('content://media/external/video/media/1', 1, 0.1, 0.2, 0.3, 0.4, x'00000000')"
+            )
+        }
         val seeded = Seeded(
             otherColumns = sqlite.rawQuery(OTHER_COLUMNS_SQL, null).use(::snapshot),
             allColumns = sqlite.rawQuery(ALL_COLUMNS_SQL, null).use(::snapshot),
             watermarks = if (version >= 2) sqlite.rawQuery(WATERMARK_SQL, null).use(::snapshot) else emptyList(),
             markers = if (version >= 4) sqlite.rawQuery(MARKER_SQL, null).use(::dates) else emptyList(),
-            existingSchema = sqlite.rawQuery(EXISTING_SCHEMA_SQL, null).use(::snapshot)
+            existingSchema = sqlite.rawQuery(EXISTING_SCHEMA_SQL, null).use(::snapshot),
+            tierCRows = if (version >= 5) sqlite.rawQuery(TIER_C_ROWS_SQL, null).use(::snapshot) else emptyList(),
+            tierCSchema = if (version >= 5) sqlite.rawQuery(TIER_C_SCHEMA_SQL, null).use(::snapshot) else emptyList()
         )
         sqlite.version = version
         sqlite.close()
@@ -403,6 +486,12 @@ class MediaIndexDatabaseMigrationTest {
         const val MARKER_SQL = "SELECT `derivedPlaceResolverVersion` FROM `media_index` ORDER BY `mediaUri`"
         const val FACE_ROWS_SQL = "SELECT * FROM `media_index_face`"
         const val FACE_STATE_ROWS_SQL = "SELECT * FROM `media_index_face_state`"
+        const val FACE_ATTEMPT_ROWS_SQL = "SELECT * FROM `media_index_face_attempt`"
+        const val TIER_C_ROWS_SQL =
+            "SELECT 'state', `mediaUri`, `pipelineVersion`, `outcome` FROM `media_index_face_state` " +
+                "UNION ALL SELECT 'face', `mediaUri`, `pipelineVersion`, hex(`embedding`) FROM `media_index_face` ORDER BY 1, 2"
+        const val TIER_C_SCHEMA_SQL =
+            "SELECT `name`, `sql` FROM `sqlite_master` WHERE `tbl_name` IN ('media_index_face_state', 'media_index_face') ORDER BY `name`"
         const val EXISTING_SCHEMA_SQL =
             "SELECT `name`, `sql` FROM `sqlite_master` WHERE `tbl_name` IN ('media_index', 'media_index_watermark') ORDER BY `name`"
         const val ALL_COLUMNS_SQL =

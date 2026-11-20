@@ -72,6 +72,29 @@ data class MediaIndexFaceStateEntity(
     override fun toString(): String = "MediaIndexFaceStateEntity(redacted)"
 }
 
+// A try at one image under one pipeline version, counted before the work it counts (ADR-0018 Amendment 7 §1).
+// Not face data, but it follows every Tier C rule.
+@Entity(tableName = "media_index_face_attempt")
+data class MediaIndexFaceAttemptEntity(
+    @PrimaryKey
+    val mediaUri: String,
+    val pipelineVersion: Int,
+    val attempts: Int
+) {
+    override fun toString(): String = "MediaIndexFaceAttemptEntity(redacted)"
+}
+
+// What the pending-images query returns; attempts counts only those under the pipeline version asked for.
+class MediaIndexPendingFaceImageEntity(
+    val mediaUri: String,
+    val displayName: String,
+    val size: Long,
+    val dateModified: Long,
+    val attempts: Int
+) {
+    override fun toString(): String = "MediaIndexPendingFaceImageEntity(redacted)"
+}
+
 @Entity(
     tableName = "media_index_face",
     indices = [Index(value = ["mediaUri"])]

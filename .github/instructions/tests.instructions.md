@@ -46,7 +46,11 @@ The module does **not** set `isReturnDefaultValues`, so in a plain JUnit test **
 - Resource files are checked here too, as files: `LocaleResourceParityTest` parses
   `src/main/res/values*/strings.xml` relative to the module directory, Gradle's working directory
   for unit tests, with no `Context` or Robolectric. Extend it, rather than adding a second
-  per-locale check, when a localisation rule changes.
+  per-locale check, when a localisation rule changes. The same pattern covers other files the
+  build ships or reads: `BackupRulesParityTest` parses `src/main/res/xml/` with the JDK's XML
+  parser, `ThirdPartyNoticesTest` and `FacePipelineVersionTest` read `src/main/assets/face/`, and
+  the latter reads `../gradle/libs.versions.toml`. Compare text files line by line after splitting
+  on `\r?\n`, so a test does not depend on the file's line endings.
 
 ### Robolectric tests (the Android boundary)
 
@@ -135,6 +139,16 @@ otherwise run plain.
 - A device test that measures or depends on device content must **fail** with a message starting
   `ENVIRONMENT:` when the device lacks what it needs — no live media, no item with a date or
   coordinates, a batch that indexed nothing — rather than passing vacuously.
+- A device **measurement** that is slow or reads the phone's whole library is **opt-in**: it reads
+  an instrumentation argument and skips through `Assume.assumeTrue` unless it is `true`, so
+  `connectedDebugAndroidTest` reports it skipped rather than running it.
+  `FaceIndexPassMeasurementDeviceTest` is the example, enabled with
+  `-Pandroid.testInstrumentationRunnerArguments.faceIndexMeasurement=true`. It logs aggregates
+  only, and works on a throwaway in-memory store, never the app's real one. The `ENVIRONMENT:`
+  rule above still applies once it is opted in.
+- A test of the face pipeline needs an arm64 device; on another ABI it must assert the opposite
+  answer rather than pass vacuously, as `FaceCapabilityDeviceTest` does. Emulators fail the
+  capability check (ADR-0023).
 - `androidTest` is in the same module, so it may use the app's `internal` members — the
   gazetteer's linear-scan oracle is the example. Acceptable for oracles and test seams.
 - A device's real screen size matters: an item below the fold is not in the semantics tree in a

@@ -116,6 +116,17 @@ data class StoredFace(
 }
 
 /**
+ * An index row of an image that has no state at the current pipeline version. [attempts] is how many times it was
+ * already tried under that version (ADR-0018 Amendment 7 §1); 0 when none, or when the count is for another version.
+ */
+data class PendingFaceImage(
+    val identity: MediaIdentity,
+    val attempts: Int
+) {
+    override fun toString(): String = "PendingFaceImage(redacted)"
+}
+
+/**
  * [scrubbed] is false when no deleted byte can be shown to be gone from the files: a reader held the old snapshot of
  * a write-ahead log past the busy timeout, or the journal mode keeps page copies (`PERSIST`, `DELETE` or `TRUNCATE`
  * under `exclusive` locking, or a mode not recognised; ADR-0018 Amendment 6). The rows are deleted either way. The

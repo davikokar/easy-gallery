@@ -208,7 +208,7 @@ class MediaIndexFaceDataScrubTest {
     private suspend fun populateWithDeletionsAndAHeal(store: RoomMediaIndexStore): Int {
         val rows = (1..IMAGE_COUNT).map { row(it) }
         store.upsert(rows)
-        store.writeFaceIndexResults(rows.map { faceWrite(it) })
+        store.writeFaceIndexResults(rows.map { faceWrite(it) }, faceDataEnabled = { true })
 
         store.upsert(rows.take(REEXTRACTED_COUNT).map { it.copy(size = it.size + 1) })
         val healed = rows[REEXTRACTED_COUNT]

@@ -52,9 +52,30 @@ interface MediaIndexStore {
 
     /**
      * One transaction. Each write applies only while the index row still has the URI and healing triple it was
-     * computed from, replacing that image's state and faces; returns how many applied.
+     * computed from, replacing that image's state, faces and attempt; returns how many applied. [faceDataEnabled] is
+     * read inside the transaction (ADR-0018 Amendment 7 §4): off, nothing is written and 0 is returned. Required, never
+     * defaulted, so no writer can skip the backstop.
      */
-    suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>): Int
+    suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>, faceDataEnabled: () -> Boolean): Int
+
+    /**
+     * Images the pass has to do, ordered by URI strictly after [afterMediaUri] (null starts at the beginning): index
+     * rows of the images collection, picked by the URI's `/images/media/` path, with no state at [pipelineVersion].
+     * A video's row never appears; telling a GIF from an image is the caller's, against live media. Page by passing the
+     * last URI back.
+     */
+    suspend fun listPendingFaceImages(pipelineVersion: Int, afterMediaUri: String?, limit: Int): List<PendingFaceImage>
+
+    /**
+     * Counts one try of [identity]'s image under [pipelineVersion] and returns its number, in its own transaction:
+     * 1 when none was recorded or the recorded one is for another version. Null, and nothing written, when the index
+     * row is gone or no longer has [identity], or when [faceDataEnabled] reads off (ADR-0018 Amendment 7 §1, §4).
+     */
+    suspend fun recordFaceIndexAttempt(identity: MediaIdentity, pipelineVersion: Int, faceDataEnabled: () -> Boolean): Int?
+
+    /** Forgets the recorded tries of one image, for a stop the image is not to blame for. Nothing recorded: nothing happens. */
+    suspend fun clearFaceIndexAttempt(mediaUri: String)
+
     suspend fun getFaceIndexState(mediaUri: String): FaceIndexState?
     suspend fun listFaces(mediaUri: String): List<StoredFace>
     suspend fun hasFaceData(): Boolean
@@ -68,7 +89,7 @@ interface MediaIndexStore {
     suspend fun healMediaUri(fromMediaUri: String, healed: MediaIndexEntry)
 
     /**
-     * Deletes every Tier C row and nothing else (ADR-0018 Amendment 5). The rows are deleted and [FaceDataDeletion.rowsDeleted]
+     * Deletes every Tier C row, attempts included, and nothing else (ADR-0018 Amendment 5). The rows are deleted and [FaceDataDeletion.rowsDeleted]
      * reported whatever the database's journal mode; [FaceDataDeletion.scrubbed] says whether no deleted bytes remain in
      * its files (Amendment 6). It is false when a reader held the old snapshot of a write-ahead log, or when the journal
      * mode keeps page copies: `PERSIST`, `DELETE` or `TRUNCATE` under `exclusive` locking, or a mode not recognised.
@@ -259,6 +280,7 @@ class RoomMediaIndexStore(
         database.withTransaction {
             dao.deleteFaceStatesByVolume(volumeName)
             dao.deleteFacesByVolume(volumeName)
+            dao.deleteFaceAttemptsByVolume(volumeName)
             dao.deleteByVolume(volumeName)
         }
     }
@@ -267,13 +289,15 @@ class RoomMediaIndexStore(
         database.withTransaction {
             dao.deleteAllFaceStates()
             dao.deleteAllFaces()
+            dao.deleteAllFaceAttempts()
             dao.deleteAll()
         }
     }
 
-    override suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>): Int {
+    override suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>, faceDataEnabled: () -> Boolean): Int {
         if (writes.isEmpty()) return 0
         return database.withTransaction {
+            if (!faceDataEnabled()) return@withTransaction 0
             var applied = 0
             writes.forEach { write ->
                 val row = dao.getByMediaUri(write.identity.mediaUri) ?: return@forEach
@@ -288,6 +312,41 @@ class RoomMediaIndexStore(
             }
             applied
         }
+    }
+
+    override suspend fun listPendingFaceImages(
+        pipelineVersion: Int,
+        afterMediaUri: String?,
+        limit: Int
+    ): List<PendingFaceImage> {
+        require(limit > 0) { "limit must be positive, was $limit" }
+        return dao.listPendingFaceImages(pipelineVersion, afterMediaUri, limit).map {
+            PendingFaceImage(
+                identity = mediaIdentityOf(it.mediaUri, it.displayName, it.size, it.dateModified),
+                attempts = it.attempts
+            )
+        }
+    }
+
+    override suspend fun recordFaceIndexAttempt(
+        identity: MediaIdentity,
+        pipelineVersion: Int,
+        faceDataEnabled: () -> Boolean
+    ): Int? {
+        return database.withTransaction {
+            if (!faceDataEnabled()) return@withTransaction null
+            val row = dao.getByMediaUri(identity.mediaUri) ?: return@withTransaction null
+            if (row.toMediaIdentity() != identity) return@withTransaction null
+
+            val recorded = dao.getFaceAttempt(row.mediaUri)
+            val number = if (recorded != null && recorded.pipelineVersion == pipelineVersion) recorded.attempts + 1 else 1
+            dao.upsertFaceAttempt(MediaIndexFaceAttemptEntity(row.mediaUri, pipelineVersion, number))
+            number
+        }
+    }
+
+    override suspend fun clearFaceIndexAttempt(mediaUri: String) {
+        dao.deleteFaceAttempt(mediaUri)
     }
 
     override suspend fun getFaceIndexState(mediaUri: String): FaceIndexState? {
@@ -308,6 +367,7 @@ class RoomMediaIndexStore(
                 if (keeps) {
                     dao.rekeyFaceState(fromMediaUri, healed.mediaUri)
                     dao.rekeyFaces(fromMediaUri, healed.mediaUri)
+                    dao.rekeyFaceAttempt(fromMediaUri, healed.mediaUri)
                 } else {
                     dropFaceData(fromMediaUri)
                 }
@@ -326,7 +386,7 @@ class RoomMediaIndexStore(
             check(writable.enableSecureDelete()) {
                 "secure_delete could not be enabled, so face data was not deleted"
             }
-            val deleted = dao.deleteAllFaces() + dao.deleteAllFaceStates()
+            val deleted = dao.deleteAllFaces() + dao.deleteAllFaceStates() + dao.deleteAllFaceAttempts()
             // The modes of the connection that deleted: what the commit did with the deleted pages depends on them.
             deleted to JournalModes(writable.journalMode(), writable.lockingMode())
         }
@@ -344,6 +404,7 @@ class RoomMediaIndexStore(
     private suspend fun dropFaceData(mediaUri: String) {
         dao.deleteFaces(mediaUri)
         dao.deleteFaceState(mediaUri)
+        dao.deleteFaceAttempt(mediaUri)
     }
 
     private fun FaceDetection.toEntity(mediaUri: String, pipelineVersion: Int): MediaIndexFaceEntity {
@@ -423,7 +484,10 @@ class InMemoryMediaIndexStore : MediaIndexStore {
     // Tier C, kept by URI; the models are immutable, so nothing stored can be changed through a reference.
     private val faceStates = HashMap<String, FaceIndexState>()
     private val faces = HashMap<String, List<StoredFace>>()
+    private val attempts = HashMap<String, RecordedAttempt>()
     private var nextFaceId = 1L
+
+    private class RecordedAttempt(val pipelineVersion: Int, val attempts: Int)
 
     override fun observeAll(): Flow<List<MediaIndexEntry>> = rowsFlow
 
@@ -556,15 +620,17 @@ class InMemoryMediaIndexStore : MediaIndexStore {
         lock.withLock {
             faceStates.clear()
             faces.clear()
+            attempts.clear()
             if (rows.isEmpty()) return@withLock
             rows.clear()
             publishLocked()
         }
     }
 
-    override suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>): Int {
+    override suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>, faceDataEnabled: () -> Boolean): Int {
         if (writes.isEmpty()) return 0
         return lock.withLock {
+            if (!faceDataEnabled()) return@withLock 0
             var applied = 0
             writes.forEach { write ->
                 val row = rows[write.identity.mediaUri] ?: return@forEach
@@ -595,12 +661,58 @@ class InMemoryMediaIndexStore : MediaIndexStore {
         return lock.withLock { faceStates[mediaUri] }
     }
 
+    override suspend fun listPendingFaceImages(
+        pipelineVersion: Int,
+        afterMediaUri: String?,
+        limit: Int
+    ): List<PendingFaceImage> {
+        require(limit > 0) { "limit must be positive, was $limit" }
+        return lock.withLock {
+            rows.values
+                .asSequence()
+                .filter { it.mediaUri.contains("/images/media/") }
+                .filter { faceStates[it.mediaUri]?.pipelineVersion != pipelineVersion }
+                .filter { afterMediaUri == null || it.mediaUri > afterMediaUri }
+                .sortedBy { it.mediaUri }
+                .take(limit)
+                .map { row ->
+                    val recorded = attempts[row.mediaUri]
+                    PendingFaceImage(
+                        identity = row.toMediaIdentity(),
+                        attempts = if (recorded?.pipelineVersion == pipelineVersion) recorded.attempts else 0
+                    )
+                }
+                .toList()
+        }
+    }
+
+    override suspend fun recordFaceIndexAttempt(
+        identity: MediaIdentity,
+        pipelineVersion: Int,
+        faceDataEnabled: () -> Boolean
+    ): Int? {
+        return lock.withLock {
+            if (!faceDataEnabled()) return@withLock null
+            val row = rows[identity.mediaUri] ?: return@withLock null
+            if (row.toMediaIdentity() != identity) return@withLock null
+
+            val recorded = attempts[row.mediaUri]
+            val number = if (recorded != null && recorded.pipelineVersion == pipelineVersion) recorded.attempts + 1 else 1
+            attempts[row.mediaUri] = RecordedAttempt(pipelineVersion, number)
+            number
+        }
+    }
+
+    override suspend fun clearFaceIndexAttempt(mediaUri: String) {
+        lock.withLock { attempts.remove(mediaUri) }
+    }
+
     override suspend fun listFaces(mediaUri: String): List<StoredFace> {
         return lock.withLock { faces[mediaUri].orEmpty() }
     }
 
     override suspend fun hasFaceData(): Boolean {
-        return lock.withLock { faceStates.isNotEmpty() || faces.isNotEmpty() }
+        return lock.withLock { faceStates.isNotEmpty() || faces.isNotEmpty() || attempts.isNotEmpty() }
     }
 
     override suspend fun healMediaUri(fromMediaUri: String, healed: MediaIndexEntry) {
@@ -615,6 +727,7 @@ class InMemoryMediaIndexStore : MediaIndexStore {
                     faces.remove(fromMediaUri)?.let { moved ->
                         faces[healed.mediaUri] = moved.map { it.copy(mediaUri = healed.mediaUri) }
                     }
+                    attempts.remove(fromMediaUri)?.let { attempts[healed.mediaUri] = it }
                 } else {
                     dropFaceDataLocked(fromMediaUri)
                 }
@@ -629,9 +742,10 @@ class InMemoryMediaIndexStore : MediaIndexStore {
 
     override suspend fun deleteAllFaceData(): FaceDataDeletion {
         return lock.withLock {
-            val rowsDeleted = faces.values.sumOf { it.size } + faceStates.size
+            val rowsDeleted = faces.values.sumOf { it.size } + faceStates.size + attempts.size
             faces.clear()
             faceStates.clear()
+            attempts.clear()
             // No file, so nothing for a journal to keep.
             FaceDataDeletion(rowsDeleted = rowsDeleted, scrubbed = true)
         }
@@ -640,6 +754,7 @@ class InMemoryMediaIndexStore : MediaIndexStore {
     private fun dropFaceDataLocked(mediaUri: String) {
         faces.remove(mediaUri)
         faceStates.remove(mediaUri)
+        attempts.remove(mediaUri)
     }
 
     private fun publishLocked() {

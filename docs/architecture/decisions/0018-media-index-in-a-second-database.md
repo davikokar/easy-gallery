@@ -4,10 +4,6 @@
 - Date: 2026-10-08
 - Decision makers: Easy Gallery project maintainer
 
-> **Amendment 7 (2026-11-20), at the end of this record, is proposed and binds nothing until the
-> maintainer approves it.** The `Active` status above covers the Decision and Amendments 1–6. Remove
-> this note when Amendment 7 is approved.
-
 ## Context
 
 Stage 2 builds the media index ([albums.md](../../design/albums.md) §6): per-item facts computed in
@@ -903,21 +899,37 @@ detail — switching that connection out of `PERSIST` for the deletion is the ob
 - `data/MediaIndexStore.kt`, `data/MediaIndexDatabase.kt`, `data/MediaIdentity.kt`,
   `data/MediaIndexTierAIndexer.kt`
 
-## Amendment 7 — 2026-11-20 — Step 3.3's storage: attempts in Tier C and version 6, a per-installation preferences file, a fourth backup section (proposed)
+## Amendment 7 — 2026-11-20 — Step 3.3's storage: attempts in Tier C and version 6, a per-installation preferences file, a fourth backup section (adopted 2026-11-20)
 
-> **Proposed — not binding until the maintainer approves it.** Drafted by the Planner at step 3.3's
+> **Adopted 2026-11-20, when the maintainer approved it**, together with the dated notes it carries
+> in [ADR-0014](0014-album-database-included-in-auto-backup.md),
+> [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) and
+> [ADR-0024](0024-face-data-disclosure-and-delete-switch.md). Drafted by the Planner at step 3.3's
 > refinement ([albums-stage-3.md](../../design/albums-stage-3.md), *3.3 — Face detection and
-> embedding*), and labelled *proposed* as Amendment 5 was until its approval, because the
-> instructions' status vocabulary has no state for a draft. This record's `Active` status covers
-> the Decision and Amendments 1–6, not this amendment. **Nothing below is built.** Step 3.3's Task 1
-> builds §1 to §5, and should start only after approval: §1 is a migration and §3 a new preferences
-> file, and once either has run on a device it is undone only by another change. On approval this
-> note becomes an approval line and the marker under the record's title is removed.
+> embedding*), and labelled *proposed* in this record until then, as Amendment 5 was, because the
+> instructions' status vocabulary has no state for a draft; this record's `Active` status covered
+> the Decision and Amendments 1–6 throughout, and now covers this amendment too. **Nothing below was
+> built before adoption.** Step 3.3's Task 1 builds §1 to §5; it waited for approval because §1 is a
+> migration and §3 a new preferences file, and once either has run on a device it is undone only by
+> another change. The marker that stood under the record's title while this was proposed was removed
+> on adoption.
 >
-> **Written late.** The refinement of 2026-11-20 cited this amendment before it existed; this text
+> **Written late** — kept on adoption as the record of how this amendment came to be. The refinement of 2026-11-20 cited this amendment before it existed; this text
 > is what that refinement decided, with its reasons. It adds to the plan only in three places: §1
 > makes the bound precise and says which stops clear an attempt, and §2 names the malformed reading
 > as F1's residual risk. The plan was updated to match.
+>
+> **Built 2026-11-20**, as step 3.3's Task 1 briefed it, and verified with the rest of step 3.3 by
+> the definition of done — the gate is in [albums-stage-3.md](../../design/albums-stage-3.md),
+> *3.3*, *Built and verified*. §1: `media_index_face_attempt`, `MIGRATION_5_6` and `6.json`, the
+> bound as `FACE_ATTEMPT_BOUND`, in `data/MediaIndexEntities.kt`, `data/MediaIndexDatabase.kt` and
+> `data/FaceIndexPass.kt`. §2 and §3: the fourth section and `face_device_state.xml` in
+> `res/xml/backup_rules.xml` and `data_extraction_rules.xml`, held to one set by
+> `BackupRulesParityTest`; the store is `data/FaceDeviceStateStore.kt`. §4: `writeFaceIndexResults`
+> and `recordFaceIndexAttempt` in `data/MediaIndexStore.kt`, both reading the setting inside their
+> transaction. §5: `FaceDataStartupDeletion` in `data/FaceIndexPass.kt`, run first by
+> `MediaIndexingWorker`. The pass these serve is dormant until step 3.6 records the disclosure as
+> shown. F1's residual is unchanged.
 
 This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–6. It
 is an amendment rather than a new ADR for Amendment 1's reason: the index is still the one database
@@ -1063,8 +1075,9 @@ spelling, the repair is Amendment 3's kind: a data migration to the canonical on
 ### Still open, and not this amendment's
 
 - **F1's residual**, §2 — the maintainer's; blocks nothing.
-- **F2, the OpenCV version** — [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md)'s;
-  blocks step 3.3's Task 2, not Task 1 and not this amendment.
+- ~~**F2, the OpenCV version** — [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md)'s;
+  blocks step 3.3's Task 2, not Task 1 and not this amendment.~~ **Answered 2026-11-20 by the
+  maintainer: 4.13.0**, the build the spike measured — recorded in ADR-0023 §2.
 - **ADR-0023's verify items** 1, 2, 4, 5, 6 and 8 at step 3.3, and 7 at 3.7 — unchanged.
 
 ### Consequences

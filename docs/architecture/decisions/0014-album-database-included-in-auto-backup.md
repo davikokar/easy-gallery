@@ -209,8 +209,9 @@ now been tested twice — once by ADR-0018's database exclusions, once here — 
   exactly what the Context above says is worth restoring. Excluding one of those would be a
   reversal of this decision and needs a new ADR, not another amendment.
 
-> **Note 2026-11-20 — proposed with [ADR-0018](0018-media-index-in-a-second-database.md) Amendment 7,
-> and binding only when the maintainer approves that amendment.** Two additions to the exclusion
+> **Note 2026-11-20 — adopted 2026-11-20 with [ADR-0018](0018-media-index-in-a-second-database.md)
+> Amendment 7, which the maintainer approved that day; written while the amendment was proposed.**
+> Two additions to the exclusion
 > list, both `<exclude>` only, and both instances of the Decision's test rather than exceptions to it.
 > Nothing above is rewritten.
 > - **A fourth place.** `data_extraction_rules.xml` gains `<cross-platform-transfer platform="ios">`,

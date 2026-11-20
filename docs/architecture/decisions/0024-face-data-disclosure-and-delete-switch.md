@@ -67,12 +67,13 @@ data that is not face data and is expensive to rebuild.
   where a backup cannot carry it; which store holds it is step 3.3's choice, under `AGENTS.md`'s
   preference-store rules.
 
-  > **Note 2026-11-20 — proposed with [ADR-0018](0018-media-index-in-a-second-database.md)
-  > Amendment 7, binding only when the maintainer approves it.** Step 3.3 chooses a new preferences
+  > **Note 2026-11-20 — adopted 2026-11-20 with [ADR-0018](0018-media-index-in-a-second-database.md)
+  > Amendment 7, which the maintainer approved that day; written while the amendment was
+  > proposed.** Step 3.3 chooses a new preferences
   > file, `face_device_state`, excluded from backup, shared with the capability record (Amendment 7
   > §3). Not `app_settings`, which is backed up; not Tier C, whose deletion would bring the disclosure
-  > back on switching on again, against question 4. The setting of §1 stays in `app_settings`. Once
-  > the amendment is approved, this file is the new preferences file the *Negative* bullet below
+  > back on switching on again, against question 4. The setting of §1 stays in `app_settings`. With
+  > the amendment approved, this file is the new preferences file the *Negative* bullet below
   > allows for. Nothing in step 3.3 sets the flag: the disclosure itself is step 3.6's.
 - **Not shown on an incapable device**, where no face processing happens (ADR-0023 question 4,
   answered 2026-11-19).
@@ -130,7 +131,7 @@ In this order:
   of the face path's code, not an absent permission.
 - **Never backed up.** Tier C is in `media_index.db`, excluded with its sidecars in all three places;
   the stage's exit criteria check the rules files. **Anchors are backed up and are not face data.**
-  *Note 2026-11-20, proposed with ADR-0018 Amendment 7 §2: four places, a
+  *Note 2026-11-20, ~~proposed~~ adopted 2026-11-20 with ADR-0018 Amendment 7 §2: four places, a
   `<cross-platform-transfer platform="ios">` section being added with the same exclusions (F1).*
 - **Never logged.** The Tier C pass logs through an injected logger, and a unit test asserts that
   every line it emits carries only counts of images processed — never a box, an embedding, a group

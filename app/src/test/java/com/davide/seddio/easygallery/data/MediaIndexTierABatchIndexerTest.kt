@@ -326,7 +326,8 @@ class MediaIndexTierABatchIndexerTest {
             writeFaceIndexResults(
                 listOf(unchangedRow, changedRow).map {
                     FaceIndexWrite(it.toMediaIdentity(), 1, FaceIndexOutcome.INDEXED, listOf(faceDetection()))
-                }
+                },
+                faceDataEnabled = { true }
             )
         }
         val indexer = MediaIndexTierABatchIndexer(

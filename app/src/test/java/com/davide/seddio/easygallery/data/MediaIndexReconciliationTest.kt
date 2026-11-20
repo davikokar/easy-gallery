@@ -468,7 +468,7 @@ class MediaIndexReconciliationTest {
         val movedUri = "content://media/0123-4567/images/media/171"
         val row = entry(originalUri, "external_primary", "moved.jpg", size = 5L, dateModified = 6L)
         store.upsert(listOf(row))
-        store.writeFaceIndexResults(listOf(faceWrite(row)))
+        store.writeFaceIndexResults(listOf(faceWrite(row)), faceDataEnabled = { true })
         val faceIds = store.listFaces(originalUri).map { it.id }
 
         MediaIndexReconciler(store).reconcileVolume(
@@ -491,7 +491,7 @@ class MediaIndexReconciliationTest {
         val gone = entry(goneUri, "external_primary", "gone.jpg", size = 1L, dateModified = 2L)
         val live = entry(liveUri, "external_primary", "live.jpg", size = 3L, dateModified = 4L)
         store.upsert(listOf(gone, live))
-        store.writeFaceIndexResults(listOf(faceWrite(gone), faceWrite(live)))
+        store.writeFaceIndexResults(listOf(faceWrite(gone), faceWrite(live)), faceDataEnabled = { true })
 
         MediaIndexReconciler(store).reconcileVolume(
             volumeName = "external_primary",
@@ -511,7 +511,7 @@ class MediaIndexReconciliationTest {
         val uri = "content://media/0123-4567/images/media/74"
         val row = entry(uri, "0123-4567", "card.jpg", size = 1L, dateModified = 2L)
         store.upsert(listOf(row))
-        store.writeFaceIndexResults(listOf(faceWrite(row)))
+        store.writeFaceIndexResults(listOf(faceWrite(row)), faceDataEnabled = { true })
 
         val result = MediaIndexReconciler(store).reconcileVolume(
             volumeName = "0123-4567",

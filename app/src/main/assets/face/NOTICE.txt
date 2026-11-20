@@ -1,0 +1,27 @@
+Easy Gallery - notices for the face models and the OpenCV runtime
+
+Easy Gallery groups faces on the device. It uses two model files from the OpenCV Zoo and the OpenCV
+library, all unmodified.
+
+1. OpenCV 4.13.0 (org.opencv:opencv, the published Android library)
+   Licence: Apache License 2.0. The text is in LICENSE-OpenCV-Apache-2.0.txt.
+   Source: https://github.com/opencv/opencv (tag 4.13.0)
+
+2. SFace face recognition model, file face_recognition_sface_2021dec.onnx (OpenCV Zoo)
+   Licence: Apache License 2.0, as stated by the OpenCV Zoo for every file in its
+   face_recognition_sface directory. The text is in LICENSE-SFace-Apache-2.0.txt.
+   Source: https://github.com/opencv/opencv_zoo/tree/main/models/face_recognition_sface
+   SHA-256: 0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79
+
+3. YuNet face detection model, file face_detection_yunet_2023mar.onnx (OpenCV Zoo)
+   Licence: MIT License, as stated by the OpenCV Zoo for every file in its face_detection_yunet
+   directory. The copyright and permission notice is in LICENSE-YuNet-MIT.txt.
+   Source: https://github.com/opencv/opencv_zoo/tree/main/models/face_detection_yunet
+   SHA-256: 8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4
+
+The third-party components bundled in OpenCV, and their licences, are in THIRD_PARTY_NOTICES.txt.
+
+Statement of changes: no change has been made to OpenCV, to the SFace model or to the YuNet model.
+The two model files in this directory are byte-identical to the files published at the sources
+above, and the build refuses to package them if their SHA-256 differs from SHA256SUMS. OpenCV is
+used as published, with no source change.

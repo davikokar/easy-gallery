@@ -15,6 +15,18 @@
 > **Its four questions were answered by the maintainer on 2026-11-19, as recommended**
 > ([albums.md](../../design/albums.md) §8 decision 47). ~~That settles them; it does not approve the
 > record, which stays `Proposed` until he does.~~ He approved the record separately, the same day.
+>
+> **Built 2026-11-20** by step 3.3, and verified by the definition of done — the gate is in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.3*, *Built and verified*. §1: the two
+> ONNX files under `app/src/main/assets/face/`, pinned by `SHA256SUMS` and the build's
+> `verifyFaceModelChecksums`, and `FACE_PIPELINE_VERSION` in `data/FaceIndexPass.kt`. §2:
+> `org.opencv:opencv` 4.13.0 in the version catalogue, arm64-v8a only by `packaging.jniLibs`
+> excludes, with `app/proguard-face.pro` for the release build (*Built — what the verify table
+> found*, below). §3: `data/FaceCapability.kt` and `data/FaceDeviceStateStore.kt`. §4:
+> `FaceIndexPass`, run by `MediaIndexingWorker` after Tier A and places — dormant until step 3.6
+> records the disclosure as shown. §6: the notices are `NOTICE.txt`, the three licence files and
+> `THIRD_PARTY_NOTICES.txt` in the same directory; the Settings row is step 3.6's. §5 is step
+> 3.4's.
 
 ## Context
 
@@ -79,12 +91,17 @@ owes. The constraints already binding are:
 - Its version is pinned where every version is, in `gradle/libs.versions.toml` and
   `app/build.gradle.kts`, and is not restated here.
 
-  > **Note 2026-11-20 — open, F2.** No record names the version: the maintainer approved the library
-  > (decisions 45 and 47), not a release. Step 3.3's refinement recommends 4.13.0, the build the spike
-  > measured, and asks him to confirm it. **It blocks step 3.3's Task 2**, the change that adds the
-  > dependency, and nothing before it. The facts read are in
-  > [albums-stage-3.md](../../design/albums-stage-3.md), *3.3*, *Settled before 3.3*, issue 5, and the
-  > question is F2 there.
+  > **Note 2026-11-20 — ~~open, F2~~ F2 answered 2026-11-20: 4.13.0.** No record named the version:
+  > the maintainer approved the library (decisions 45 and 47), not a release. Step 3.3's refinement
+  > recommended 4.13.0, the build the spike measured, and asked him to confirm it; **he confirmed
+  > 4.13.0 on 2026-11-20.** ~~It blocks step 3.3's Task 2, the change that adds the dependency, and
+  > nothing before it.~~ It no longer blocks Task 2. The pin is still written only in
+  > `gradle/libs.versions.toml` and `app/build.gradle.kts`, by Task 2, as the bullet above says.
+  > **The confirmation covers the version and nothing else:** verify item 4 below still applies when
+  > the dependency lands — the merged manifests are diffed, and any new permission, feature,
+  > `<queries>` entry or component goes to the maintainer before it ships, as with WorkManager
+  > (decision 24). The facts read are in [albums-stage-3.md](../../design/albums-stage-3.md), *3.3*,
+  > *Settled before 3.3*, issue 5, and the question is F2 there.
 
 ### 3. The capability check
 
@@ -108,8 +125,9 @@ detection and an embedding to a valid result.**
   is also persisted, keyed by app version, is step 3.3's, under `AGENTS.md`'s preference-store
   rules.
 
-> **Note 2026-11-20 — proposed with [ADR-0018](0018-media-index-in-a-second-database.md) Amendment 7,
-> binding only when the maintainer approves it.** Step 3.3 decides both points this section left to
+> **Note 2026-11-20 — adopted 2026-11-20 with [ADR-0018](0018-media-index-in-a-second-database.md)
+> Amendment 7, which the maintainer approved that day; written while the amendment was proposed.**
+> Step 3.3 decides both points this section left to
 > it. **Persisted**, in a new preferences file, `face_device_state`, excluded from backup (Amendment 7
 > §3): step 3.6 needs the answer at every app open, where loading the weights each time is a cost and
 > a native crash would be a crash at every open. Keyed by the app's version code, the face-pipeline
@@ -162,30 +180,57 @@ the choice is made:
   published artifact is used as published (question 1), so step 3.3 makes no trimmed build; whether
   one counts as a change is read if a trimmed build is ever made, not assumed.
 - **YuNet: MIT** — its copyright and permission notice with the copy.
-- **OpenCV's bundled third-party components and the C++ runtime it ships with: not yet read.**
+- **OpenCV's bundled third-party components and the C++ runtime it ships with:** ~~**not yet read.**~~
   ~~Which components are bundled depends on how the build is produced (verify item 3 below), so they
   are read once that is known.~~ With the published artifact chosen (question 1), what it bundles is
-  known, and step 3.3 reads it (verify item 8).
+  known, and step 3.3 reads it (verify item 8). **Read 2026-11-20** (verify item 8): all permissive
+  (Apache-2.0, BSD-2/3-Clause, libtiff, libpng-2.0, IJG, Apache-2.0 WITH LLVM-exception; ittnotify's
+  GPL-2.0-only OR BSD-3-Clause taken as BSD-3-Clause). Owed: their notices and licence texts in one
+  file in the APK, and libjpeg-turbo's IJG sentence verbatim. zlib is the device's own and is not
+  shipped. The table and the groups are in
+  [albums-stage-3.md](../../design/albums-stage-3.md) *OpenCV 4.13.0 bundled components*.
 - **Where:** as files in the APK, **and a row in Settings that shows them**, as the Place data row
   does for GeoNames (question 3, answered 2026-11-19). The row is a Designer task at step 3.6, with
   its strings in every shipped locale.
+
+### Built — what the verify table found, besides its rows (2026-11-20)
+
+- **R8 removed a class OpenCV's native code needs.** `libopencv_java4.so` raises
+  `org.opencv.core.CvException` by looking it up by name, which R8 cannot see, so the release build
+  stripped it and a native error would have reached Kotlin as a plain `Exception`.
+  `app/proguard-face.pro` keeps the class, through the release `optimization` block. With it, the
+  release build installed through bundletool on the SM-G990B logs `face capability checked
+  capable=true`.
+- **OpenCV's published Gradle metadata is stale.** The `.module` file gives the AAR as 3,570,283 B;
+  the AAR is 121,695,690 B. Maven Central's own `.module` carries the same figure, and its `.sha1` and
+  `.sha256` match the AAR Gradle cached (sha256
+  `a8c9b0929d8d6367bb476320a1f36587db2b57ea18d8f7521ce509514903ca04`), so the artifact is the one
+  published and only the size field is wrong upstream. **Recommended: no
+  `gradle/verification-metadata.xml` for this.** Dependency verification is project-wide — every
+  artifact would need an entry, and every upgrade a regenerated file — which is out of proportion to
+  one stale field. A change of its own if the project ever wants it.
+- **Native OpenCV errors may print under OpenCV's own logcat tag, `cv::error()`**, outside the
+  pass's fixed lines. Read in code only, not observed; `Core.setErrorVerbosity(false)` is the likely
+  switch. Step 3.7's logger check settles it against ADR-0024 §6.
 
 ## To verify, and who verifies
 
 *Headed "Verify before adopting" while this record was a draft.* Adoption on 2026-11-19 settled
 only item 3, through question 1; every other item is still open. None is to be settled by
-assertion; each is settled by the check named, by whom and when the table says.
+assertion; each is settled by the check named, by whom and when the table says. *2026-11-20:* step
+3.3 settled items 1, 2, 4 and 8 and the first half of 5, and measured item 6 in the process rather
+than in the worker — each marked in its row; items 5's re-check, 6's worker run and 7 remain.
 
 | # | What | How it is settled | Who, when |
 |---|---|---|---|
-| 1 | **arm64-only packaging must not filter the app on Play.** Play shows an app with native libraries only to devices whose ABI it includes ([Filters on Google Play](https://developer.android.com/google/play/filters), *CPU Architecture*). The release bundle already ships an AndroidX native library for four ABIs, so packaging OpenCV for arm64 alone should keep the app on every device; an app-wide ABI filter would remove it from the others. | bundletool device specs for each ABI the app is offered to today, before and after: same set of devices, OpenCV present only on arm64 | Coder at 3.3; Reviewer checks; exit criterion |
-| 2 | **16 KB pages.** Play requires apps targeting API 35 or higher to support 16 KB memory pages on 64-bit devices and blocks updates that do not from 2027-02-01 ([Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes)). | every `.so` in the release bundle checked for 16 KB ELF alignment and packaging — OpenCV's, the C++ runtime, and the AndroidX one already shipped | Coder at 3.3; exit criterion |
+| 1 | **arm64-only packaging must not filter the app on Play.** Play shows an app with native libraries only to devices whose ABI it includes ([Filters on Google Play](https://developer.android.com/google/play/filters), *CPU Architecture*). The release bundle already ships an AndroidX native library for four ABIs, so packaging OpenCV for arm64 alone should keep the app on every device; an app-wide ABI filter would remove it from the others. | bundletool device specs for each ABI the app is offered to today, before and after: same set of devices, OpenCV present only on arm64. ✅ **Settled 2026-11-20:** all four ABIs — arm64-v8a, armeabi-v7a, x86, x86_64 — still get APKs; `libopencv_java4.so` is in `lib/arm64-v8a` only | Coder at 3.3; Reviewer checks; exit criterion |
+| 2 | **16 KB pages.** Play requires apps targeting API 35 or higher to support 16 KB memory pages on 64-bit devices and blocks updates that do not from 2027-02-01 ([Support 16 KB page sizes](https://developer.android.com/guide/practices/page-sizes)). | every `.so` in the release bundle checked for 16 KB ELF alignment and packaging — OpenCV's, the C++ runtime, and the AndroidX one already shipped. ✅ **Settled 2026-11-20:** every `.so` in the arm64 split has LOAD segments aligned at `0x4000`, and passes `zipalign -c -P 16` | Coder at 3.3; exit criterion |
 | 3 | **How the ~~trimmed~~ OpenCV build is produced** — OpenCV's published Android artifact, a build made by a script under `tools/` and committed as a prebuilt, or a native build inside Gradle. Each has different reproducibility, build-time and licence-reading costs. | question 1 below. ✅ **Settled 2026-11-19:** the published artifact, untrimmed | ~~the maintainer, before 3.3~~ the maintainer, 2026-11-19 |
-| 4 | **The merged manifest.** The confirmation covers the library, not what it merges in. | merged debug and release manifests diffed before and after; any new permission, `<queries>` entry or component goes to the maintainer before it ships | Coder at 3.3, the change that adds OpenCV |
-| 5 | **The download-size budget** | measured on the release bundle's arm64-v8a delivery with bundletool, not estimated | Coder at 3.3; again at 3.7 |
-| 6 | **Background speed, memory and heat** — every spike figure was taken in the foreground, on USB power | measured in the worker, on the device | Coder at 3.3 and 3.4 |
+| 4 | **The merged manifest.** The confirmation covers the library, not what it merges in. | merged debug and release manifests diffed before and after; any new permission, `<queries>` entry or component goes to the maintainer before it ships. ✅ **Settled 2026-11-20:** both byte-identical to the build before the dependency — debug md5 `8856dbd4b4257bd665c4593a325ba624`, release `043a521e4d0a25724364c8b8b6ea6f8d`; nothing went to the maintainer, nothing being added | Coder at 3.3, the change that adds OpenCV |
+| 5 | **The download-size budget** | measured on the release bundle's arm64-v8a delivery with bundletool, not estimated. ✅ **Measured 2026-11-20:** `get-size total` for arm64 is 49,613,983 B, **+46,063,982 B** against the 50 MB budget — within it, with little headroom. The models' 36.1 MB are in the base, so every ABI downloads them | Coder at 3.3; again at 3.7 |
+| 6 | **Background speed, memory and heat** — every spike figure was taken in the foreground, on USB power | measured in the worker, on the device. 🔶 **Measured 2026-11-20 in the process, not in the worker** — the worker's pass cannot run until step 3.6 records the disclosure as shown. `FaceIndexPassMeasurementDeviceTest` (opt-in) on the SM-G990B, on a throwaway in-memory index, screen off, USB charging, thermal status 1 before and after: 1,133 live items; 1,002 images reached a state (27 + 46 + 929 over the runs), 0 failed; 422 faces; 150.7 ms per image, the remainder run's mean; peak RSS 619,804 kB, an upper bound, the test process loading the pipeline three times. Of two budgeted runs, the second processed only what the first left. 90 GIFs skipped by design. At that rate the 7-minute budget fits about 2,800 images per run. Still owed: the run through the worker, with Index now and the screen off | Coder at 3.3 and 3.4; the worker run at 3.7 |
 | 7 | **The capability check on another phone** | the SM-G781B, if it can be attached | 3.7 |
-| 8 | **The licences of the bundled components** | read ~~once item 3 is decided~~ from the published artifact, item 3 being settled | Planner at 3.3 |
+| 8 | **The licences of the bundled components** | read ~~once item 3 is decided~~ from the published artifact, item 3 being settled. ✅ **Settled 2026-11-20:** every component `getBuildInformation()` lists, and `libc++_shared.so`, read at the version OpenCV 4.13.0 pins — all permissive, none blocks commercial redistribution; what is owed is in [albums-stage-3.md](../../design/albums-stage-3.md) *OpenCV 4.13.0 bundled components* | Planner at 3.3, 2026-11-20 |
 
 ## Alternatives Considered
 

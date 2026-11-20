@@ -170,7 +170,11 @@ pipeline parameter that may change.
 ### To verify
 
 - **The upright frame.** Step 3.3 must store detected boxes in the same frame as anchors, proved by
-  a test on a photo with a non-zero EXIF orientation.
+  a test on a photo with a non-zero EXIF orientation. ✅ **Verified 2026-11-20 on the SM-G990B:**
+  `FaceDecodeOrientationDeviceTest` (four tests: orientation 1 as the control, then 3, 6 and 8)
+  decodes a JPEG with an asymmetric mark through the pipeline's production decoder, `decodeUprightForFaces`, and
+  finds the mark where the upright image has it; `FaceIndexPassTest` covers the box geometry on the
+  plain JVM. Together they put a stored box in the upright frame.
 - **Anchor survival across pipeline changes.** The spike measured IoU 1.0 on one build and a median
   of 0.957 between the int8 and fp32 detector on one phone
   ([albums-stage-3.md](../../design/albums-stage-3.md), *Spike outcome*). ~~**Proposed as binding**~~

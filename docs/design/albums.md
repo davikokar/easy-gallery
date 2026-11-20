@@ -386,7 +386,7 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); ~~step 3.2 next~~ step 3.2 built and verified 2026-11-19; ~~step 3.3 next~~ ~~a 3.2 follow-up next (decision 48, 2026-11-20), then step 3.3~~ its follow-up (decision 48) built and verified 2026-11-20; step 3.3 next | Tier C | yes |
+| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); ~~step 3.2 next~~ step 3.2 built and verified 2026-11-19; ~~step 3.3 next~~ ~~a 3.2 follow-up next (decision 48, 2026-11-20), then step 3.3~~ its follow-up (decision 48) built and verified 2026-11-20; ~~step 3.3 next, refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49)~~ step 3.3 refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49), and built and verified 2026-11-20 (decisions 43–49 stand); step 3.4 next. The stage's status is unchanged: a step landing takes no stage-log line (*Stage log*) | Tier C | yes |
 | **4** | Content albums (Tier B) ~~and rule editing — **runs before Stage 3**~~; planned in [albums-stage-4.md](albums-stage-4.md); rule editing moved out (§8 decision 39) | ⬜ Not started — plan drafted 2026-11-13; paused 2026-11-17, see decision 38 | Tier B | yes |
 
 Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
@@ -1777,7 +1777,10 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
       per face. Neither is covered by decision 43's risk acceptance in any case.
     - **Still open: incremental clustering as photos arrive** (B2), for step 3.4. The spike found the
       order-dependent incremental method much less stable than average linkage, so step 3.4 must not
-      assume it.
+      assume it. **Pointer added 2026-11-20:** settled at step 3.4's refinement, subject to the
+      memory and time budget the maintainer is asked to accept — not adopted; each grouping regroups
+      every face with average linkage ([albums-stage-3.md](albums-stage-3.md), *3.4*). It returns as
+      an option only if that budget fails.
     - **The runtime: OpenCV's DNN module, bundled in the app, arm64-v8a only, built trimmed** to the
       modules the pipeline uses. The spike used core, imgproc, dnn, objdetect and calib3d; step 3.3
       confirms the list. **Not chosen:** ONNX Runtime, which would add a second runtime for nothing,
@@ -1894,6 +1897,20 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     maintainer's, and he can reverse it: a heal keeps face data under the same triple test. The
     work is [albums-stage-3.md](albums-stage-3.md)'s *3.2 follow-up*, before step 3.3 — built and
     verified 2026-11-20.
+
+49. **Step 3.3's storage is adopted, and OpenCV is pinned at 4.13.0.** Decided by the maintainer on
+    2026-11-20, as asked at step 3.3's refinement. He approved
+    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 7 — a
+    third Tier C table counting attempts, at most three, through `Migration(5, 6)` to index version
+    6; a per-installation preferences file, `face_device_state`, excluded from backup; and a fourth
+    backup-rules section, which settles [albums-stage-3.md](albums-stage-3.md) F1 conservatively —
+    together with the dated notes it carries in ADR-0014, ADR-0023 and ADR-0024. The reasons are in
+    the amendment and are not restated here. He also answered that plan's F2: **OpenCV 4.13.0**, the
+    build the spike measured, rather than 4.14.0 or 5.x, which were not measured. **The pin confirms
+    the version and nothing else:** the merged manifest is still checked when the dependency lands
+    (ADR-0023 verify item 4), and anything it adds goes to him before it ships, as decision 24's
+    WorkManager permissions did. Still open: F1's residual — how an API 36.1 device reads the
+    fourth section — which blocks nothing.
 
 ---
 

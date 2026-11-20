@@ -11,4 +11,5 @@
    <exclude domain="database" path="media_index.db-shm"/>
    <exclude domain="database" path="media_index.db-journal"/>
    <exclude domain="sharedpref" path="media_index_run_state.xml"/>
+   <exclude domain="sharedpref" path="face_device_state.xml"/>
 </full-backup-content>

@@ -2,10 +2,22 @@ package com.davide.seddio.easygallery
 
 import android.app.Application
 import android.content.Context
+import android.os.Build
+import androidx.core.content.pm.PackageInfoCompat
 import com.davide.seddio.easygallery.data.EasyGalleryDatabase
+import com.davide.seddio.easygallery.data.AndroidFaceIndexLog
 import com.davide.seddio.easygallery.data.AndroidMediaIndexTierAExtractor
 import com.davide.seddio.easygallery.data.AndroidMediaStoreRowDeltaProvider
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVolumeSnapshotProvider
+import com.davide.seddio.easygallery.data.FACE_PIPELINE_VERSION
+import com.davide.seddio.easygallery.data.FaceCapabilityChecker
+import com.davide.seddio.easygallery.data.FaceCapabilityKey
+import com.davide.seddio.easygallery.data.FaceDataSettingStore
+import com.davide.seddio.easygallery.data.FaceDataStartupDeletion
+import com.davide.seddio.easygallery.data.FaceDeviceStateStore
+import com.davide.seddio.easygallery.data.FaceIndexLog
+import com.davide.seddio.easygallery.data.FaceIndexPass
+import com.davide.seddio.easygallery.data.FacePipeline
 import com.davide.seddio.easygallery.data.MediaIndexDatabase
 import com.davide.seddio.easygallery.data.GazetteerAssets
 import com.davide.seddio.easygallery.data.MediaIndexDeltaDetector
@@ -16,8 +28,11 @@ import com.davide.seddio.easygallery.data.MediaIndexStore
 import com.davide.seddio.easygallery.data.MediaIndexTierABatchIndexer
 import com.davide.seddio.easygallery.data.MediaIndexWatermarkStore
 import com.davide.seddio.easygallery.data.MediaStoreDataSource
+import com.davide.seddio.easygallery.data.OpenCvFacePipeline
 import com.davide.seddio.easygallery.data.RoomMediaIndexStore
 import com.davide.seddio.easygallery.data.RoomMediaIndexWatermarkStore
+import com.davide.seddio.easygallery.data.SharedPreferencesFaceDataSettingStore
+import com.davide.seddio.easygallery.data.SharedPreferencesFaceDeviceStateStore
 import com.davide.seddio.easygallery.data.SharedPreferencesMediaIndexRunStateStore
 import com.davide.seddio.easygallery.data.WorkManagerMediaIndexingWorkScheduler
 import com.davide.seddio.easygallery.data.MediaIndexingWorkScheduler
@@ -25,6 +40,7 @@ import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.video.VideoFrameDecoder
+import kotlinx.coroutines.sync.Mutex
 
 class EasyGalleryApp : Application(), SingletonImageLoader.Factory {
     val database: EasyGalleryDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -51,6 +67,19 @@ class EasyGalleryApp : Application(), SingletonImageLoader.Factory {
         WorkManagerMediaIndexingWorkScheduler(this)
     }
 
+    val faceDataSettingStore: FaceDataSettingStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        SharedPreferencesFaceDataSettingStore(this)
+    }
+
+    val faceDeviceStateStore: FaceDeviceStateStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        SharedPreferencesFaceDeviceStateStore(this)
+    }
+
+    // Held by the Tier C pass for its whole run; the face-data switch takes it after persisting off (ADR-0024 §3).
+    val faceIndexLock: Mutex = Mutex()
+
+    val faceIndexLog: FaceIndexLog = AndroidFaceIndexLog
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(LocaleHelper.wrap(base))
     }
@@ -70,6 +99,31 @@ class EasyGalleryApp : Application(), SingletonImageLoader.Factory {
             gazetteerLoader = { GazetteerAssets.load(this) }
         )
     }
+
+    fun createFaceDataStartupDeletion(): FaceDataStartupDeletion {
+        return FaceDataStartupDeletion(mediaIndexStore, faceDataSettingStore, faceIndexLog)
+    }
+
+    fun createFaceCapabilityChecker(): FaceCapabilityChecker {
+        val versionCode = PackageInfoCompat.getLongVersionCode(packageManager.getPackageInfo(packageName, 0))
+        return FaceCapabilityChecker(
+            store = faceDeviceStateStore,
+            key = FaceCapabilityKey(versionCode, FACE_PIPELINE_VERSION, Build.FINGERPRINT),
+            pipelineLoader = ::loadFacePipeline
+        )
+    }
+
+    fun createFaceIndexPass(): FaceIndexPass {
+        return FaceIndexPass(
+            store = mediaIndexStore,
+            mediaRepository = MediaStoreDataSource(this),
+            settingStore = faceDataSettingStore,
+            pipelineLoader = ::loadFacePipeline,
+            log = faceIndexLog
+        )
+    }
+
+    private fun loadFacePipeline(): FacePipeline = OpenCvFacePipeline.load(this)
 
     fun createMediaIndexTierABatchIndexer(): MediaIndexTierABatchIndexer {
         val mediaRepository = MediaStoreDataSource(this)

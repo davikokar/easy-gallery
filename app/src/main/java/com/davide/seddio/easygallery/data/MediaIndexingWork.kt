@@ -24,6 +24,7 @@ import android.util.Log
 import com.davide.seddio.easygallery.EasyGalleryApp
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
 
 data class MediaIndexTierAProgress(
     val selectedRows: Int,
@@ -31,6 +32,17 @@ data class MediaIndexTierAProgress(
     val indexedRows: Int,
     val skippedRows: Int
 )
+
+/** Raised for any face-path failure, so that nothing the path threw, its message included, reaches the output data. */
+private class FaceIndexPassFailure : Exception(FACE_INDEX_FAILURE_MESSAGE)
+
+object AndroidFaceIndexLog : FaceIndexLog {
+    private const val TAG = "FaceIndexPass"
+
+    override fun line(text: String) {
+        Log.i(TAG, text)
+    }
+}
 
 // The seams default to the app's own wiring; WorkManager's reflective factory only sees the two-argument constructor.
 class MediaIndexingWorker @JvmOverloads constructor(
@@ -40,7 +52,17 @@ class MediaIndexingWorker @JvmOverloads constructor(
     private val createBatchIndexer: () -> MediaIndexTierABatchIndexer =
         { (appContext as EasyGalleryApp).createMediaIndexTierABatchIndexer() },
     private val createPlaceResolver: () -> MediaIndexPlaceResolver =
-        { (appContext as EasyGalleryApp).createMediaIndexPlaceResolver() }
+        { (appContext as EasyGalleryApp).createMediaIndexPlaceResolver() },
+    private val faceDataSettingStore: FaceDataSettingStore = (appContext as EasyGalleryApp).faceDataSettingStore,
+    private val faceDeviceStateStore: FaceDeviceStateStore = (appContext as EasyGalleryApp).faceDeviceStateStore,
+    private val createFaceDataStartupDeletion: () -> FaceDataStartupDeletion =
+        { (appContext as EasyGalleryApp).createFaceDataStartupDeletion() },
+    private val createFaceCapabilityChecker: () -> FaceCapabilityChecker =
+        { (appContext as EasyGalleryApp).createFaceCapabilityChecker() },
+    private val createFaceIndexPass: () -> FaceIndexPass =
+        { (appContext as EasyGalleryApp).createFaceIndexPass() },
+    private val faceIndexLock: Mutex = (appContext as EasyGalleryApp).faceIndexLock,
+    private val faceIndexLog: FaceIndexLog = (appContext as EasyGalleryApp).faceIndexLog
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
@@ -50,6 +72,9 @@ class MediaIndexingWorker @JvmOverloads constructor(
         setProgress(progressData(MediaIndexTierAProgress(0, 0, 0, 0)))
 
         return try {
+            // First, and before the permission check: a deletion reads no media and must not wait on one (ADR-0024 §3).
+            createFaceDataStartupDeletion().run()
+
             ensureMediaReadPermission(applicationContext)
 
             val result = createBatchIndexer().indexDelta(
@@ -68,6 +93,9 @@ class MediaIndexingWorker @JvmOverloads constructor(
             // Every run, even when Tier A selected nothing, so rows indexed before the resolver existed get resolved.
             resolvePendingPlaces()
 
+            // After Tier A and places, so a face failure cannot stop them; the run state still reports Tier A alone.
+            runFaceIndexPass(startedAt)
+
             runStateStore.markSucceeded(System.currentTimeMillis(), result)
             Result.success(
                 workDataOf(
@@ -81,6 +109,9 @@ class MediaIndexingWorker @JvmOverloads constructor(
         } catch (cancelled: CancellationException) {
             runStateStore.markCancelled(System.currentTimeMillis())
             throw cancelled
+        } catch (_: FaceIndexPassFailure) {
+            runStateStore.markFailed(System.currentTimeMillis())
+            Result.failure(workDataOf(KEY_ERROR_MESSAGE to FACE_INDEX_FAILURE_MESSAGE))
         } catch (error: Exception) {
             runStateStore.markFailed(System.currentTimeMillis())
             Result.failure(workDataOf(KEY_ERROR_MESSAGE to (error.message ?: "unknown")))
@@ -106,6 +137,40 @@ class MediaIndexingWorker @JvmOverloads constructor(
         KEY_INDEXED_ROWS to progress.indexedRows,
         KEY_SKIPPED_ROWS to progress.skippedRows
     )
+
+    // Anything the face path throws, an Error included, becomes FaceIndexPassFailure so no message or throwable escapes.
+    private suspend fun runFaceIndexPass(workStartedAtMillis: Long) {
+        if (!faceDataSettingStore.isEnabled()) {
+            faceIndexLog.line(FaceIndexLogLines.passNotRun(FaceIndexNotRunReason.SETTING_OFF))
+            return
+        }
+        // The lock comes before the capability check: the periodic job and Index now can overlap, and two checks at once
+        // would load the models twice and count one run's start as the other's unfinished one.
+        if (!faceIndexLock.tryLock()) {
+            faceIndexLog.line(FaceIndexLogLines.passNotRun(FaceIndexNotRunReason.BUSY))
+            return
+        }
+        try {
+            val capable = createFaceCapabilityChecker().isCapable()
+            faceIndexLog.line(FaceIndexLogLines.capabilityChecked(capable))
+            if (!capable) {
+                faceIndexLog.line(FaceIndexLogLines.passNotRun(FaceIndexNotRunReason.INCAPABLE))
+                return
+            }
+            if (!faceDeviceStateStore.isDisclosureShown()) {
+                faceIndexLog.line(FaceIndexLogLines.passNotRun(FaceIndexNotRunReason.DISCLOSURE_NOT_SHOWN))
+                return
+            }
+            createFaceIndexPass().run(workStartedAtMillis)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Throwable) {
+            faceIndexLog.line(FaceIndexLogLines.PASS_FAILED)
+            throw FaceIndexPassFailure()
+        } finally {
+            faceIndexLock.unlock()
+        }
+    }
 
     private fun ensureMediaReadPermission(context: Context) {
         val requiredPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
