@@ -11,7 +11,7 @@
 > (clarified 2026-11-17), 13 (as amended 2026-11-17), 14, 15, 33, 35, 40 (as amended 2026-11-17
 > and 2026-11-18), 41, 42 and 43 (2026-11-18), and 44, 45 and 46 (2026-11-18, delegated by the
 > maintainer; 44, and 45's OpenCV dependency, confirmed by him the same day), and 47 (2026-11-19,
-> the answers to group E). The steps, the
+> the answers to group E), and 48 (2026-11-20, two findings of step 3.2's review). The steps, the
 > exit criteria and every recommendation below are proposals until the maintainer answers the open
 > questions and step 3.1 records the decisions. Group A was answered on 2026-11-17. Where something
 > was not known, it is a question, not a guess. ~~Nothing here names a face model, a licence or an
@@ -124,29 +124,103 @@
   changed:** the records were adopted ahead of the work they govern, so their links are added by
   the changes that land that work — deferred under the instructions' *Timing* rule and carried as
   an exit criterion below.
-- **Next action: step 3.2 — Tier C schema and store.** Owner: the Planner refines it into a
-  step plan, then the Coder builds it. Governed by
-  [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 5, which
-  fixes what each Tier C row holds and leaves table names and columns to 3.2. What 3.2 must settle
-  or prove, by that amendment: `Migration(4, 5)`, with `5.json` committed; `Room*` and `InMemory*`
-  stores and DAO tests; the face-data deletion in one transaction, with the mechanism that leaves
-  no deleted bytes in free pages or the write-ahead log chosen and proved by a test; which of
-  *Keeping Tier C true* — heal, delete, pending on re-extraction — lands in 3.2 rather than 3.3;
-  and the backup rules re-checked, including any new sidecar file.
-  - **Not 3.2's:** the capability check and its persistence, the disclosure's per-installation
-    store, the upright-frame test and the bounded retry count are 3.3's (ADR-0022 *To verify*,
-    ADR-0023 §3, ADR-0024 §2, ADR-0018 Amendment 5).
+- **2026-11-19, later still — step 3.2 refined into a step plan by the Planner.** It is
+  *3.2 — Tier C schema and store* below: two tables and why not three, `Migration(4, 5)`, the store
+  surface, the deletion mechanism — `secure_delete` and a `TRUNCATE` checkpoint, `VACUUM` rejected —
+  what of *Keeping Tier C true* lands now, one added backup exclusion, the tests and the files.
+  Every choice ADR-0018 Amendment 5 left to 3.2 is marked **Decided at 3.2** there, with its reason.
+  None needs the maintainer's approval under `AGENTS.md`. Planning only: no code, no Gradle run.
+- **2026-11-19, later again — step 3.2 built by the Coder and verified; documents updated by the
+  Planner.** The gate, what the scrub test learned about Robolectric's SQLite, and the three
+  properties it could not prove on the JVM are under *3.2 — Tier C schema and store*, *Built and
+  verified*; those three are now step 3.7's. The Planner updated `ARCHITECTURE.md` §3 and §6,
+  `AGENTS.md` *The two databases*, ADR-0018 Amendment 5 (dated notes, nothing rewritten) and the
+  test conventions, and found one new open item, F1 below. No Gradle run by the Planner.
+- **2026-11-20 — step 3.2 reviewed; two of its findings resolved by the maintainer.** The Reviewer
+  found that Tier C is dropped on every Tier A re-extraction, which metadata-only changes and a
+  volume resync also cause, and that the deletion reports scrubbed under any rollback journal mode.
+  The maintainer accepted the resolution he suggested for both: [albums.md](albums.md) §8 decision
+  48, recorded as ADR-0018 Amendment 6, which reverses one bullet of Amendment 5 and annotates
+  ADR-0024 §3. A third finding, on a heal test, the maintainer did not rule on; the Planner decided
+  it, reversibly. All three are under *3.2 — Tier C schema and store*, *Reviewed*, with the Coder's
+  brief after it; step 3.2 is reopened until that lands. `ARCHITECTURE.md` §6's rollback-journal
+  sentence was corrected now, because it stated a journal behaviour only one mode has; its §3 row
+  changes after the follow-up lands. No Gradle run by the Planner.
+- **2026-11-20, later — the 3.2 follow-up built by the Coder and verified; documents updated by
+  the Planner.** Tier C is now dropped only on a changed healing triple, by `upsert` and
+  `healMediaUri` alike, and a deletion reports scrubbed only under a journal mode that keeps no page
+  copies — ADR-0018 Amendment 6, as briefed, with no schema change. The gate, and what it did not
+  prove, are under *3.2 follow-up*, *Built and verified*; step 3.2 is ✅ again. The Planner checked
+  the code against the Coder's report, then updated `ARCHITECTURE.md` §3 and §6, the test
+  conventions' scrub-test paragraph, ADR-0018 Amendment 6 (a dated *Built* note), the Stage 3 row of
+  [albums.md](albums.md) §7 and decision 48, step 3.7's device checks below (one added, one
+  sharpened), and `designer.agent.md`'s stale sentence about the index. No Gradle run by the Planner.
+- ~~**Next action: the 3.2 follow-up** — Tier C invalidation by the healing triple, the journal-mode
+  check, and the heal test; *3.2 follow-up* below is the brief. Owner: the Coder, as one sequential
+  task; then the verification phase runs the definition of done once; then the Planner makes the
+  updates listed there under *After it lands*. No schema change: the index stays at version 5.~~
+  Done 2026-11-20 — the entry above.
+- **Next action: step 3.3 — face detection and embedding in the indexing pipeline, behind the
+  disclosure.** Owner: the Planner refines it into a step plan, as 3.2 was, then the Coder builds
+  it. It starts from what 3.2 and its follow-up landed: the Tier C tables at index version 5, and their rules on
+  `MediaIndexStore` — `writeFaceIndexResults`, the identity-conditional write the pass will use,
+  and `hasFaceData` and `deleteAllFaceData`, which ADR-0024 §3's repeat at start-up needs and which
+  nothing calls yet. A schema change found during refinement would be `Migration(5, 6)`.
+  - **3.3's, by its records:** the capability check (ADR-0023 §3); the disclosure and the record
+    that it was shown (ADR-0024 §2); the face-data setting, a scalar for `app_settings`, checked
+    inside the write transaction (ADR-0024 §1 and §3); the bounded retry count (ADR-0018
+    Amendment 5); the pass itself, resumable and stopping cleanly (ADR-0023 §4); and the logger
+    test (ADR-0024 §6). *Added 2026-11-20:* the start-up deletion, which runs whenever face data
+    is off, not only while a Tier C row exists (ADR-0024 §3 as annotated by ADR-0018 Amendment 6)
+    — 3.3's or 3.6's, whichever wires the setting.
+  - **3.3 needs a persistence home for two things, and refinement chooses it:** the capability
+    check's result, and whether the disclosure has been shown. The second is per installation, so
+    it must **not** go in `app_settings`, which is backed up (ADR-0024 §2). Either may need a new
+    preferences file: that is an `AGENTS.md` call-out, with a row in its *Preference stores* table
+    and both a `SharedPreferences*` and an `InMemory*` store, and ADR-0018 Amendment 2's two tests
+    are answered explicitly. A file that a backup must not carry also needs its `<exclude>` in every
+    section of the rules files — which is where F1 bites.
   - **Verify items still open**, each at its named step: ADR-0023's items 1, 2, 4, 5 and 8 at 3.3;
     6 at 3.3 and 3.4; 7 at 3.7. ADR-0022's upright frame at 3.3, the SM-G781B at 3.7, and its
     anchor-survival measurement on every future pipeline-version bump.
   - **Open questions still open:** D1, the People criterion's layout — the Designer's, for 3.6;
-    B2, incremental clustering — for 3.4; and the Play Data Safety check — the maintainer's, before
-    the first Play release that ships the Tier C pass, with the Planner preparing its facts at 3.7.
-    Rule editing's D3 is still to confirm ADR-0017 Amendment 4's proposal for an album with a
-    `people` clause where people is unavailable, and its D6, the order, is still open.
-- **Read first, on starting 3.2:** ADR-0018 Amendment 5, then the Decision and Amendments 1–4 of
-  the same record for the migration discipline it extends; ADR-0024 §3 for when a deletion runs;
-  `data/MediaIndexDatabase.kt` and its three migrations; and *3.2 to 3.8* below.
+    B2, incremental clustering — for 3.4; the Play Data Safety check — the maintainer's, before
+    the first Play release that ships the Tier C pass, with the Planner preparing its facts at 3.7;
+    rule editing's D3, still to confirm ADR-0017 Amendment 4's proposal for an album with a
+    `people` clause where people is unavailable, and its D6, the order; and **F1**, new — whether
+    the rules files need a fourth section — to be settled before Tier C ships.
+  - *Added 2026-11-20:* a deletion that is not scrubbed is a result the caller must handle, not an
+    error — the start-up repeat runs whenever face data is off, and on a `PERSIST` device every
+    repeat reports not scrubbed again (ADR-0018 Amendment 6 §2). And the change that first writes
+    face data adds Amendment 6's two accepted costs to `ARCHITECTURE.md` §11 — stale faces after an
+    edit that keeps the healing triple, and page copies left under `PERSIST` — which stay out of it
+    while nothing writes Tier C.
+- ~~**Read first, on starting the 3.2 follow-up:**~~ Done 2026-11-20. ADR-0018 Amendment 6; *3.2 — Tier C schema and
+  store*, from *Built and verified* to the end of *3.2 follow-up*; `data/MediaIndexStore.kt`,
+  `data/MediaIndexDatabase.kt` and `data/MediaIdentity.kt`; `MediaIndexTierCStoreTest` and
+  `MediaIndexFaceDataScrubTest`; the test conventions' paragraph on the scrub test; and repo
+  memory's scrub-test notes.
+- **Read first, on starting 3.3:** this block; ADR-0023, above all §3 and §4 and its verify items;
+  ADR-0024 §1 to §3 and §6; ADR-0018 Amendment 5's per-image states and its step 3.2 notes, and
+  Amendment 6 with its *Built* note;
+  *3.2 — Tier C schema and store* below, for the store surface the pass writes through; `AGENTS.md`
+  *Preference stores*; and F1.
+- ~~**Next action: build step 3.2.**~~ Done 2026-11-19 — the entry above. ~~Owner: the Coder, as one
+  sequential task, from *3.2 — Tier C schema and store* below. Then the verification phase runs the
+  definition of done, once; then the Planner makes the document updates listed there under *After
+  it lands*.~~ ~~Owner: the Planner
+  refines it into a step plan, then the Coder builds it. Governed by ADR-0018 Amendment 5 … the
+  backup rules re-checked, including any new sidecar file.~~ Refined 2026-11-19 — the entry above;
+  what the amendment asked of 3.2 is answered point by point in that section.
+  - ~~**Not 3.2's:** the capability check and its persistence, the disclosure's per-installation
+    store, the upright-frame test and the bounded retry count are 3.3's (ADR-0022 *To verify*,
+    ADR-0023 §3, ADR-0024 §2, ADR-0018 Amendment 5).~~ Carried into *Next action: step 3.3* above.
+- ~~**Read first, on starting 3.2:**~~ Superseded 2026-11-19 by *Read first, on starting 3.3*
+  above. *3.2 — Tier C schema and store* below, which is the brief; then
+  ADR-0018 Amendment 5, and the Decision and Amendments 1–4 of the same record for the migration
+  discipline it extends; ADR-0024 §3 and §6; `data/MediaIndexDatabase.kt` and its three migrations,
+  and `MediaIndexDatabaseMigrationTest`; and repo memory's Room, migration and backup traps — above
+  all that a migration test opening a seeded file must name it `media_index.db`.
 - ~~**Next action: the maintainer approves the five drafts**~~ Done 2026-11-19 — the entry above.
   ~~and answers their questions — listed
   under *Open questions*, group E, each linking to the question in its ADR~~ (questions answered
@@ -527,6 +601,9 @@ Linked, not restated:
   day: ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 are adopted.
 - **§10 question 12 is closed** (2026-11-17), by decisions 40–42 and decision 9's clarification.
   Step 3.1's first ADR records the answer — ADR-0022, adopted 2026-11-19.
+- Tier C survives a re-extraction of an unchanged file, and a deletion is scrubbed only on a journal
+  mode that keeps no page copies — decision 48 (2026-11-20), accepted by the maintainer from step
+  3.2's review; ADR-0018 Amendment 6.
 
 ---
 
@@ -539,7 +616,7 @@ step is refined when it starts.
 |---|---|---|
 | **3.0** | Feasibility spike: face detection, face embedding and clustering, measured on the phone. No shipped code. | ~~🔶 In progress — started 2026-11-17~~ ✅ Complete 2026-11-18 — *Spike outcome* above |
 | **3.1** | The decisions: ADRs and amendments, and these exit criteria confirmed | ~~🔶 In progress~~ ✅ Complete 2026-11-19 — decisions 43–46 taken 2026-11-18; ADRs 0022–0024 and amendments to ADR-0017 and ADR-0018 drafted 2026-11-18; their questions (group E) answered 2026-11-19; all five adopted 2026-11-19; exit criteria confirmed |
-| **3.2** | Tier C schema and store | ⬜ Not started |
+| **3.2** | Tier C schema and store | ~~⬜ Not started — refined 2026-11-19, ready to build~~ ~~✅ Built and verified 2026-11-19~~ ~~🔶 Built and verified 2026-11-19 — the gate is under *3.2 — Tier C schema and store*, *Built and verified*; reopened 2026-11-20 for its follow-up (decision 48)~~ ✅ Built and verified 2026-11-19; reopened 2026-11-20 for its follow-up (decision 48), built and verified 2026-11-20 — both gates are under *3.2 — Tier C schema and store* |
 | **3.3** | Face detection and embedding in the indexing pipeline, behind the disclosure | ⬜ Not started |
 | **3.4** | Clustering and the person record | ⬜ Not started |
 | **3.5** | The `people` clause and evaluation | ⬜ Not started |
@@ -698,19 +775,365 @@ belief to check, not a finding.
 
 This step also confirms or changes the exit criteria below.
 
+### 3.2 — Tier C schema and store — refined 2026-11-19
+
+The Coder's brief. What each Tier C row holds, the two stamps, the per-image states and what a
+deletion removes are [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md)
+Amendment 5's, and are not restated; one identity, and index rows deleted rather than retained, are
+[ADR-0020](../architecture/decisions/0020-automatic-albums-resolve-against-live-media.md)'s. What the
+amendment left to 3.2 is marked **Decided at 3.2**, with its reason.
+
+**Schema — Decided at 3.2.** Two tables, named after `media_index_watermark`:
+- `media_index_face_state`, one row per image the pass has processed: `mediaUri` TEXT primary key,
+  the index row's key; `pipelineVersion` INTEGER NOT NULL; `outcome` TEXT NOT NULL, `INDEXED` or
+  `FAILED`, stored by name through a type converter as `AlbumMembershipKind` is. *Done, faces* and
+  *done, none* are told apart by the face rows, not stored twice.
+- `media_index_face`, one row per stored face: `id` INTEGER primary key, auto-generated, so an id is
+  never reused; `mediaUri` TEXT NOT NULL, indexed; `pipelineVersion` INTEGER NOT NULL, because
+  ADR-0023 §1 stamps every Tier C row; `boxLeft`, `boxTop`, `boxRight`, `boxBottom` REAL NOT NULL,
+  in ADR-0022 §1's frame and form; `embedding` BLOB NOT NULL, float32 little-endian, its length not
+  fixed by the schema; `groupId` and `groupingVersion`, INTEGER, both null until grouped.
+- **No third table.** Amendment 5's grouping bookkeeping is `groupingVersion` on each face: a face is
+  grouped when it equals the current grouping version, which also says how far a grouping cut short
+  got. Whether per-group summaries are stored stays 3.4's; if they are, that is `Migration(5, 6)`.
+- **No foreign keys.** The store's `upsert` is `INSERT OR REPLACE`, and an `ON DELETE CASCADE` would
+  fire on every Tier A replace and on a heal's delete, removing Tier C rows Amendment 5 says to keep;
+  and the `InMemory*` store has no cascade to mirror. Every rule is written in the store instead.
+- No other database index, by Amendment 4's precedent: one is added when a measured query needs it.
+
+**Migration.** `MIGRATION_4_5` creates both tables and the face table's index, empty, and changes
+no existing table; it is registered beside the other three, with no destructive fallback, and the
+version becomes 5. Copy each `createSql` from the generated `5.json`, so the migration cannot differ
+from the schema. `5.json` is outside `app/src/`: `git ls-files app/schemas` must list it.
+
+**Store — Decided at 3.2: on `MediaIndexStore`, not a fourth store interface.** Amendment 5 puts
+every Tier C change in the transaction that changes the image row, and only the store that owns
+that row can do it, in Room and in memory alike; the watermark store stands apart because nothing
+ties it to a row. Every test double of `MediaIndexStore` delegates with `by`, so none breaks. All
+new methods are `suspend`. **No new `Flow`:** 3.4 and 3.5 shape what they observe, and a query
+costs no migration.
+- **New:** `writeFaceIndexResults(writes)` — one transaction; each write carries the
+  `MediaIdentity` it was computed from and applies only while the index row still has that URI and
+  healing triple, replacing the image's state and faces; returns how many applied. A `FAILED` write
+  carries no face. `getFaceIndexState(mediaUri)`, `listFaces(mediaUri)`, `hasFaceData()`.
+  `healMediaUri(fromMediaUri, healed)` — one transaction: the row moves, its Tier C rows are
+  re-keyed and kept, and a target that had Tier C rows of its own loses them to the moved ones;
+  `MediaIndexReconciler` uses it instead of its non-atomic delete-then-upsert.
+  `deleteAllFaceData()` — below.
+- **Changed:** `upsert` deletes each written URI's Tier C rows in its transaction, so a re-extracted
+  image is pending — Tier A writes a row only by extracting the file, and for a stored row that is a
+  re-extraction; the heal no longer goes through it. *Reversed 2026-11-20 (decision 48, ADR-0018
+  Amendment 6): only when the stored row's healing triple differs — a re-extraction is not a changed
+  file; see 3.2 follow-up.* Per URI, not one `IN` list, which
+  API 28's SQLite caps at 999 variables. `deleteByMediaUri`, `deleteByVolume` and `deleteAll` take
+  the matching Tier C rows with them. `writeResolvedPlaces` does not touch Tier C.
+- Models and a pure embedding codec go in a new `data/MediaIndexTierC.kt`. Face classes compare
+  embeddings by content, and neither their `toString` nor any exception message carries a box, an
+  embedding or a URI (ADR-0024 §6). The `InMemory*` store copies embeddings in and out.
+
+**Deleting face data — Decided at 3.2: `secure_delete`, then a `TRUNCATE` checkpoint.**
+- `PRAGMA secure_delete = 1` from a `RoomDatabase.Callback.onOpen` in `create`, so every Tier C
+  delete or update — re-extraction, heal, reconciliation, the switch — zeroes the old bytes; and again
+  as the first statement of the deletion's transaction, read back and required to be 1, before both
+  tables are emptied. SQLite's documentation names it, or `VACUUM`, for leaving no forensic trace;
+  `FAST` leaves traces in free pages, so `1`. AOSP's current build compiles it on by default; an
+  OEM's, an older one's and the JVM's need not, so it is set rather than assumed. A failed read-back in `onOpen` must not stop
+  the index opening; in the deletion it fails the deletion.
+- After the commit, `PRAGMA wal_checkpoint(TRUNCATE)`; a first column of 0 means the write-ahead log
+  was emptied. With a rollback journal — Room's choice on a low-RAM device — it is a no-op returning
+  0, and the journal is truncated at commit *— in `TRUNCATE` mode only, which is the platform's
+  default rather than a setting; amended 2026-11-20, decision 48: the deletion now reads the mode,
+  and `PERSIST` reports not scrubbed*. The method returns the rows deleted and whether the
+  scrub completed; a reader holding the old snapshot past the busy timeout makes it incomplete, and
+  the caller repeats it. With nothing stored it only checkpoints, so ADR-0024 §3's start-up rule can
+  call it whenever face data is off — that wiring is 3.3's or 3.6's.
+- **`VACUUM` rejected:** it rewrites all of Tier A on every switch-off, builds the copy in RAM on
+  Android (`SQLITE_TEMP_STORE=3`), and one cut short by process death is only recovered by another
+  full vacuum, where an interrupted checkpoint is recovered by a checkpoint.
+
+**Keeping Tier C true — all of its store rules land here**, because they are invariants of the rows
+3.2 creates and need no pipeline: ~~pending on re-extraction~~ pending on a changed healing triple
+(amended 2026-11-20, decision 48), the atomic heal, deletion with the image
+row, and the identity-conditional write. An absent volume keeps its rows because reconciliation never
+reaches it (ADR-0020 clause 4): tested, not coded. Later, as their records say: the face-data setting
+checked inside the write transaction (ADR-0024 §3), with the setting, at 3.3; the bounded retry count,
+3.3; grouping writes and "never twice at once", 3.4.
+
+**Backup — Decided at 3.2: exclude `media_index.db-journal` as well.** The deletion adds no file.
+But Room's automatic journal mode is a rollback journal on a low-RAM device, which leaves a
+`media_index.db-journal`; one left hot by a crash holds pages as they were before the transaction —
+face data, once Tier C exists — and rules take no wildcards. One `<exclude domain="database"
+path="media_index.db-journal"/>` in `backup_rules.xml` and in both sections of
+`data_extraction_rules.xml`. `<exclude>` only, never `<include>` (ADR-0014).
+
+**Tests.** Unit only.
+- `MediaIndexDatabaseMigrationTest`: the seeding helper gains version 4; a 4 → 5 test — tables
+  present and empty, every existing column and watermark unchanged; a migrated 4 → 5 file reopened
+  with the production builder takes a face write; the existing tests register `MIGRATION_4_5`, expect
+  version 5, and the full chain runs 1 → 5. **Every new test names its file `media_index.db`** (repo
+  memory: a seeded file opens under Robolectric only with the production name).
+- `MediaIndexDaoTest`: the Tier C queries, on `inMemoryDatabaseBuilder`.
+- New `MediaIndexTierCStoreTest`, Robolectric: every rule above against both `RoomMediaIndexStore`
+  and `InMemoryMediaIndexStore` — the conditional write applied, skipped for a gone URI and for a
+  changed triple, replacing; `FAILED` with faces rejected; re-extraction pending *(a changed
+  triple only, since 2026-11-20 — 3.2 follow-up)*; heal re-keys and
+  keeps, and the collision; each delete path; `writeResolvedPlaces` leaving Tier C alone;
+  `deleteAllFaceData` removing every Tier C row and nothing of Tier A, the place columns or the
+  watermarks, and doing nothing a second time.
+- New `MediaIndexFaceDataScrubTest`, Robolectric, a file through the production `create`: the file
+  pre-created with `auto_vacuum = NONE`, the worst case; journal mode asserted to be WAL and
+  `secure_delete` to be 1; every embedding carrying a fixed byte marker; some images re-extracted
+  and one healed first, so earlier deletions are covered; the marker found in the files before, as a
+  control; after the deletion it is in no `media_index.db*` file, open or closed. A second case on a
+  low-RAM device, journal mode `truncate`. A third with a reader holding the old snapshot: not
+  scrubbed; after release, repeated, scrubbed. The report states that the test fails with
+  `secure_delete = 0` and without the checkpoint. **If the JVM reports any journal mode but the
+  expected one, stop and report:** do not weaken the assertion.
+- New `MediaIndexTierCTest`, plain JVM: codec round trip and byte order; box and embedding checks;
+  `toString` carrying no value.
+- `MediaIndexReconciliationTest`: a heal keeps re-keyed Tier C rows, a deleted image loses them, an
+  absent volume keeps them.
+- **No instrumented test.** The property is SQLite's; Robolectric runs the framework's
+  `SQLiteDatabase` over a real file, and both pragmas are set, not assumed. The on-device check is
+  3.7's delete-switch walkthrough, **run on the phone — never by pulling the file off it**
+  (decision 9).
+
+**Not 3.2's:** the capability check and its persistence, the disclosure's store, the upright-frame
+test, the retry count, the face-data setting, the pass and its logger test — 3.3; grouping — 3.4.
+
+**Files — one sequential Coder task.** The entities, the converter, the DAO and the store models
+depend on one another, and `5.json` and `MIGRATION_4_5` must come from the final entities. Under
+`app/src/main/java/com/davide/seddio/easygallery/data/`: `MediaIndexTierC.kt` (new),
+`MediaIndexEntities.kt`, `MediaIndexDao.kt`, `MediaIndexDatabase.kt`, `MediaIndexStore.kt`,
+`MediaIndexReconciliation.kt`. `app/src/main/res/xml/backup_rules.xml` and
+`data_extraction_rules.xml` — disjoint, so they may be split off. `app/schemas/…MediaIndexDatabase/5.json`
+(generated, committed). Under `app/src/test/…/data/`: `MediaIndexTierCTest.kt`,
+`MediaIndexTierCStoreTest.kt`, `MediaIndexFaceDataScrubTest.kt` (new), and
+`MediaIndexDatabaseMigrationTest.kt`, `MediaIndexDaoTest.kt`, `MediaIndexReconciliationTest.kt`.
+Nothing in `ui/`, no `*Content` signature, no string, no manifest. The Kotlin files are CRLF and new
+ones should be too; the two XML files are LF.
+
+**Verification** is its own phase, once, owned by whoever the brief names: the definition of done,
+`adb devices` stated, and `git ls-files app/schemas` listing `5.json`.
+
+**After it lands — the Planner.** `ARCHITECTURE.md` §3 (the new file and five changed rows) and §6
+(four tables, version 5, the deletion, the fourth exclusion), with ADR-0018 Amendment 5 linked from
+both, per the exit criterion; `AGENTS.md` *The two databases*; a dated pointer in Amendment 5's
+*Backup* and *Deleting face data* to what 3.2 chose; this step's row and the handoff. ✅ **Done
+2026-11-19**, with the test conventions' Robolectric SQLite note besides.
+
+**No approval is needed:** no dependency, permission, preferences file or `*Content` signature.
+
+#### Built and verified — 2026-11-19
+
+The Coder built it as one task from the brief above. **The verification phase ran the definition of
+done once, over the integrated change:** the unit suite, 935 tests, 0 failures;
+`compileDebugAndroidTestKotlin` compiled; a device was attached, the SM-G990B, so
+`connectedDebugAndroidTest` ran, 257 of 257 passed. That run is device-verified only for what the
+suite exercises: it holds no Tier C test, as the brief planned, and the 4 → 5 migration was **not**
+checked by hand against the phone's existing index. The brief's last check, `git ls-files
+app/schemas` listing `5.json`, belongs to the change being staged; this document does not record
+tracking state. Whether the Coder showed the scrub test failing with `secure_delete = 0` and
+without the checkpoint, as the brief asked, is not among the facts the Planner was given.
+
+**What the scrub test learned about Robolectric's SQLite**, now also in the
+[test conventions](../../.github/instructions/tests.instructions.md):
+- A new file starts with `auto_vacuum = 1`, and the header is already written when the file opens,
+  so the brief's worst case, `auto_vacuum = NONE`, takes `PRAGMA auto_vacuum = 0` followed by
+  `VACUUM`.
+- A non-WAL file reports `journal_mode = memory`, where a device uses `TRUNCATE`. The brief's
+  *stop and report* fired here, and was resolved without weakening the assertion: the low-RAM case
+  sets `TRUNCATE` on the store's write connection, so the `-journal` file exists as on a device,
+  and then asserts it. The WAL case asserts WAL, as briefed. What this leaves unproven is below.
+- A test's reader must hold a read snapshot only. `beginTransactionNonExclusive` is
+  `BEGIN IMMEDIATE`: it takes the write lock and fails the deletion's own transaction with
+  `SQLITE_BUSY`, which reads as a production bug and is not one.
+- On Windows the open `-shm` cannot be read; the test treats it as empty, since it holds page
+  numbers and hashes, never page content.
+
+**Not proven on the JVM, and moved to step 3.7's walkthrough:** that a device which uses a rollback
+journal really uses `TRUNCATE` and leaves no `-journal` behind; the platform's real SQLite defaults,
+rather than Robolectric's; and a checkpoint blocked by a real concurrent reader. The models redact
+`toString`, as the brief asked.
+
+#### Reviewed — 2026-11-20
+
+The Reviewer reviewed step 3.2 as built. Three of his findings reached the Planner, and they are the
+only ones recorded here; the numbering is his.
+- **Spec 2 — when Tier C is dropped.** `upsert` drops a URI's Tier C rows on every write, as ADR-0018
+  Amendment 5 said, but Tier A rewrites rows whose file did not change: it reselects on a
+  `MediaStore` generation change, which a metadata-only update causes — probably a favourite toggle
+  (ADR-0011), **not verified on a device** — and reselects a whole volume when its version changes.
+  Each favourite toggle would cost a face pass for that image, and a resync would delete every face
+  on the volume. ✅ **Resolved 2026-11-20, as he suggested, by the maintainer's acceptance** —
+  [albums.md](albums.md) §8 decision 48, ADR-0018 Amendment 6 §1: Tier C is dropped only when the
+  stored row's healing triple differs from the incoming row's; an unchanged triple keeps its state
+  and faces, and the pipeline-version rule is unchanged.
+- **Spec 3 — the rollback journal's mode.** 3.2 set `secure_delete` rather than assuming it, but left
+  the non-WAL journal mode to the platform, and outside WAL the checkpoint reads as success. Under
+  `PERSIST` the journal keeps the deleted rows' pages after commit while the deletion reports
+  scrubbed. ✅ **Resolved 2026-11-20, as he suggested, by the maintainer's acceptance** — decision 48,
+  ADR-0018 Amendment 6 §2: the deletion reads the journal and locking modes and reports not scrubbed,
+  without throwing, on a mode that keeps page copies or that it does not recognise. The Planner chose
+  the check over setting a mode at open; the amendment gives the reasons.
+- **Judgement 3 — the test `a heal that keeps the uri keeps the tier c rows`** heals with a changed
+  `displayName` and expects the faces kept, which contradicts Spec 2's resolution. The maintainer did
+  not rule on it. **Planner decision, 2026-11-20, which he can reverse: `healMediaUri` applies the
+  same triple test, and the test is rewritten to match**, rather than leaving the method unconditional
+  and only changing the test's data. Three reasons:
+  - Amendment 6 states one rule — face data belongs to the triple it was computed from — and 3.2 put
+    every Tier C rule in the store rather than in its callers. To the store, a "heal" that changes
+    the triple is a changed file under a new key.
+  - It costs nothing on the path that exists: the reconciler heals only through `LiveMediaLookup`'s
+    healing-key match, so its healed row's triple always equals the source's, and
+    `MediaIndexReconciliationTest` should pass unchanged — which the follow-up checks.
+  - Fixing only the test would leave a public store method that carries faces across a changed file
+    for any later caller, and the old test, kept green, would read as the intent.
+
+  Reversing it later is the guard's removal and one test.
+
+#### 3.2 follow-up — the Coder's brief — built and verified 2026-11-20, below
+
+What changes and why is ADR-0018 Amendment 6, not restated. **One sequential Coder task**: (a) and
+(c) change the two store write paths in both implementations and the same test file, and (b) the
+same store file.
+
+**(a) A row write keeps Tier C while the file is unchanged.** Exit criteria:
+- In `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, `upsert` drops a URI's Tier C rows, in its
+  transaction, only when the stored row at that URI has a different healing triple from the incoming
+  row, or there is no stored row. Otherwise the state and faces are untouched: same face ids, same
+  pipeline and grouping versions. The Tier A columns are written as before.
+- The comparison is `MediaIdentity`'s healing key, through `toMediaIdentity()` — never a second,
+  field-by-field copy of it (ADR-0020).
+- Still per URI inside the transaction, never one `IN` list (API 28's 999-variable cap).
+  `MediaIndexDao.getByMediaUri` already exists, so no DAO change is expected; if one is made,
+  `MediaIndexDaoTest` covers it.
+- `upsert`'s KDoc on the interface states the rule.
+- Tests in `MediaIndexTierCStoreTest`, through `forEachStore` so both stores answer the same
+  assertions:
+  1. **the favourite-toggle shape** — same URI and triple, a different `generationModified` and a
+     changed Tier A column: state and faces unchanged, ids equal, the Tier A column updated;
+  2. a changed `size` drops them;
+  3. a changed `dateModified` drops them;
+  4. a changed `displayName` drops them;
+  5. **the pipeline version is unaffected** — a state written at version 1 is still version 1 after
+     an unchanged-triple write, neither cleared nor restamped; after a changed-triple write there is
+     no state;
+  6. one `upsert` call holding an unchanged row and a changed row drops only the changed row's.
+
+  The existing `re-extracting an image makes it pending…` changes the size, so it still holds; its
+  name may say "a changed file" instead.
+- `MediaIndexTierABatchIndexerTest`: **one** test that a row reselected with an unchanged triple keeps
+  its Tier C and one whose size changed loses it, through the real indexer and the in-memory store —
+  if the existing fixtures can express a reselection. If they cannot, say so in the report rather than
+  building new fixtures. `MediaIndexTierAIndexer.kt` itself does not change.
+
+**(b) The deletion reports scrubbed only on a mode that keeps no page copies.** Exit criteria:
+- `RoomMediaIndexStore.deleteAllFaceData` reads `journal_mode` and `locking_mode` on the connection
+  its transaction ran on — pinned as `enableSecureDelete` is — and sets `scrubbed` by Amendment 6's
+  table: `wal` by the checkpoint as now; `delete` and `truncate` only with `normal` locking; `memory`
+  and `off` true; `persist` and any unrecognised value false. SQLite answers in lower case; compare
+  without depending on case.
+- The mapping is a pure function, tested without Robolectric for every row of the table, for
+  `exclusive` locking under `delete` and `truncate`, and for an unknown value.
+- It does not throw for a mode: the rows are deleted and `rowsDeleted` reported either way. A
+  `secure_delete` that does not read back still throws and deletes nothing, unchanged.
+- The KDoc of `FaceDataDeletion.scrubbed` and of `MediaIndexStore.deleteAllFaceData` say when it is
+  false — a reader on the old snapshot, or a journal mode that keeps page copies — and that the
+  caller repeats it at each start while face data is off, knowing that under `PERSIST` a repeat
+  reports false again. `checkpointTruncate`'s comment no longer reads as the scrub's whole evidence.
+- `InMemoryMediaIndexStore` keeps `scrubbed = true`: it has no file.
+- `MediaIndexFaceDataScrubTest`, a new case: production `create` on a low-RAM device, as the
+  `TRUNCATE` case opens it, then `PRAGMA journal_mode = PERSIST` on the store's write connection
+  **outside any transaction**, since SQLite refuses a mode change inside one; Robolectric otherwise
+  reports `memory`. Assert it reads `persist`; populate as the other cases do; delete. Expect the
+  rows deleted, `hasFaceData()` false and **`scrubbed = false`**. As the control that shows why, the
+  byte marker is found in `media_index.db-journal` after the deletion. If the control finds no marker,
+  stop and report rather than drop it: `scrubbed = false` must hold either way, but the test would no
+  longer show the reason.
+- The three existing scrub cases pass unchanged. The report states that the `PERSIST` case fails
+  when the journal-mode check is removed.
+
+**(c) The heal applies the same test.** Exit criteria:
+- In both stores, `healMediaUri` re-keys and keeps the source's Tier C rows only when `healed`'s
+  triple equals the stored source row's. Otherwise neither the source's nor the target's survive, for
+  a heal that keeps the URI and for one that moves it. Its KDoc says so.
+- `a heal that keeps the uri keeps the tier c rows` heals with an unchanged triple, changing only a
+  column outside it — the volume name, or a captured field — and still expects the rows kept.
+- A new test: a heal whose triple differs, with the URI kept and with it moved, leaves no Tier C row
+  at the source or the target.
+- `MediaIndexReconciliationTest` passes **unchanged** — the evidence that no heal the reconciler
+  makes is affected. If it needs a change, stop and report: that would mean the reconciler heals on
+  a changed triple, which contradicts its lookup.
+
+**Files.** Under `app/src/main/java/com/davide/seddio/easygallery/data/`: `MediaIndexStore.kt` (both
+stores and the interface KDoc), `MediaIndexDatabase.kt` (the journal- and locking-mode read beside
+the two pragma helpers, and `checkpointTruncate`'s comment), `MediaIndexTierC.kt`
+(`FaceDataDeletion`'s KDoc only). Under `app/src/test/…/data/`: `MediaIndexTierCStoreTest.kt`,
+`MediaIndexFaceDataScrubTest.kt`, `MediaIndexTierABatchIndexerTest.kt` (the one test above), the
+pure mapping's test — in `MediaIndexTierCTest.kt` or a new file — and `MediaIndexDaoTest.kt` only if
+the DAO changes. **Not expected to change:** `MediaIndexTierAIndexer.kt`,
+`MediaIndexReconciliation.kt`, the entities, the schema and its JSON — no migration, version 5
+stays. The Kotlin files are CRLF; check any new one after writing it.
+
+**Not the follow-up's:** wiring the start-up deletion (3.3 or 3.6); how Settings shows a deletion
+that is not scrubbed (3.6); the phones' actual journal modes (3.7, item 1 below).
+
+**Verification** is its own phase, once: the definition of done, with `adb devices` checked and the
+result stated. No instrumented test is added.
+
+**After it lands — the Planner.** `ARCHITECTURE.md` §3, the `MediaIndexStore.kt` row's account of
+`upsert` and `healMediaUri`, and the `MediaIndexDatabase.kt` row if a helper was added; §6's deletion
+paragraph, for what it reports under each journal mode, linking Amendment 6. The test conventions'
+scrub-test paragraph, which says a rollback-journal test sets `TRUNCATE`. A dated "built" note in
+ADR-0018 Amendment 6. This section, step 3.2's row — ✅ again when the gate passes — and the
+handoff. ✅ **Done 2026-11-20**, with `designer.agent.md`'s stale sentence about the index besides;
+the `MediaIndexDatabase.kt` row changed too, for the two mode reads and `deletionIsScrubbed`.
+
+**No approval is needed:** no dependency, permission, preferences file, migration or `*Content`
+signature.
+
+#### 3.2 follow-up — built and verified 2026-11-20
+
+The Coder built it as one task from the brief above, with no schema change: the index stays at
+version 5. **The verification phase ran the definition of done once, over the integrated change:**
+`compileDebugKotlin` compiled; the unit suite, 954 tests, 0 failures; `compileDebugAndroidTestKotlin`
+compiled; a device was attached, the SM-G990B, so `connectedDebugAndroidTest` ran, 257 of 257
+passed — device-verified only for what that suite exercises, which holds no Tier C test.
+
+**Checked by the Planner in the code**, not only in the report: one private `keepsTierC` in
+`MediaIndexStore.kt` compares `MediaIdentity`'s healing key, and both stores' `upsert` and
+`healMediaUri` decide through it as (a) and (c) required; `deleteAllFaceData` reads both modes inside
+its transaction on the connection that deleted, and asks the checkpoint only under `wal`; the
+in-memory store reports `scrubbed = true`. The tests the brief asked for exist: `MediaIndexScrubModeTest`,
+plain JVM, for every row of the table, `exclusive` locking, unknown values and case; the six row-write
+tests and the three heal tests in `MediaIndexTierCStoreTest`; the one indexer test in
+`MediaIndexTierABatchIndexerTest`, so the fixtures could express a reselection; and the `PERSIST`
+case in `MediaIndexFaceDataScrubTest`, whose control finds the marker in `media_index.db-journal`.
+The Coder reports
+that each guard's removal fails the tests it should; the Planner did not re-run that.
+
+**Not proven by it:** each phone's real journal and locking modes; that a favourite toggle advances
+`generationModified` and leaves Tier C intact — the claim Amendment 6 §1 rests on, not checked on a
+device; `exclusive` locking at runtime, covered by the pure mapping only; and a URI written twice in
+one `upsert` call, whose order can only drop Tier C, never keep it wrongly. The first two are step
+3.7's, below.
+
 ### 3.2 to 3.8
 
 At the level of detail Stage 4's plan used for its later steps; each is refined when 3.1 has
 settled what it depends on.
-- **3.2 — Tier C schema and store.** Tables in the index database: version bump, a real migration,
+- **3.2 — Tier C schema and store.** ~~Tables in the index database: version bump, a real migration,
   committed JSON, `Room*` and `InMemory*` store implementations, DAO tests; each row stamped with
-  the model version. The backup exclusion is the same file; check it rather than assume it.
+  the model version. The backup exclusion is the same file; check it rather than assume it.~~
+  Refined 2026-11-19 into its own section above.
 - **3.3 — The pipeline.** Detection and embedding inside indexing, over images only (decision 40), under the existing constraints,
   honouring cancellation and the permission checks, starting only after the disclosure. A failed
   inference is stored as absent, §6's third state. Not one line of face data in a log. YuNet and
   SFace fp32 on ~~a trimmed OpenCV~~ OpenCV's published artifact, untrimmed (E3), with the
   capability check (decision 45); ~~confirms OpenCV's module list and measures the trimmed size~~
-  measures the size it actually adds.
+  measures the size it actually adds. **Refining it settles**, besides, where the capability
+  result and the disclosure-shown flag are kept, and F1 — both in the handoff above.
 - **3.4 — Clustering and the person record.** Per B1 (decision 45: average linkage, cosine 0.50)
   and B2, and decisions 42 and 46 for an anchor. Average linkage's memory and time in the app are
   unmeasured — about 800 MB for the distance matrix at 10,000 faces — so 3.4 measures them before
@@ -724,6 +1147,26 @@ settled what it depends on.
 - **3.7 — Verification.** The definition of done, once, with `adb devices` checked and stated;
   then an installed-app walkthrough including the delete switch, and the capability check on the
   SM-G781B if it can be attached (decision 45).
+  - **Added 2026-11-19 from 3.2** — what its scrub test could not prove on the JVM, checked on the
+    phone and without the database leaving it (decision 9); how each is observed is 3.7's to settle:
+    1. ~~a device that uses a rollback journal really uses `TRUNCATE`, and a deletion leaves no
+       `media_index.db-journal` holding face data.~~ *Amended 2026-11-20, decision 48:* the journal
+       mode and locking mode each phone's index actually uses, recorded — `PERSIST` or `exclusive`
+       on either phone is the trigger ADR-0018 Amendment 6 names for revisiting it — and, wherever a
+       rollback journal can be reached, that a deletion reporting scrubbed leaves no
+       `media_index.db-journal` holding face data. Room chooses it on a low-RAM device, which
+       neither phone may be, so how to reach that mode is part of the question. *Sharpened
+       2026-11-20, after the follow-up:* the modes are read after a real deletion, since the
+       deletion's result depends on the modes it committed under;
+    2. the platform's real SQLite defaults — `auto_vacuum`, the journal mode, and `secure_delete`
+       reading back as on — rather than Robolectric's;
+    3. a checkpoint blocked by a real concurrent reader is reported incomplete, and a repeat
+       finishes it.
+  - **Added 2026-11-20 from the 3.2 follow-up:**
+    4. a favourite toggle leaves the image's Tier C rows intact through the next index run, and its
+       `generationModified` advances — ADR-0018 Amendment 6 §1 rests on that and it is still only
+       expected. If the generation does not advance, the toggle never reselected the row and the
+       amendment's motive weakens without its rule becoming wrong.
 - **3.8 — Close-out.** `ARCHITECTURE.md`, exit criteria checked against the repository,
   `/docs-audit`, archive.
 
@@ -778,6 +1221,9 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
 - The Play Data Safety question of decision 9 is answered and recorded.
 - The index database reaches its new version through a real migration, every schema JSON is
   committed, and the index is still excluded from backup, checked against the rules files.
+  *2026-11-19, step 3.2: version 5 through `Migration(4, 5)`; the rules files exclude the file and
+  its `-wal`, `-shm` and `-journal` sidecars in all three sections, checked against them. Open:
+  `5.json` tracked, checked by `git ls-files`; and F1.*
 - The merged manifest is checked after the runtime dependency — OpenCV (decision 45) — lands, and
   any permission it adds is approved or removed.
 - The licence obligations of any shipped weights are met (A5): the Apache-2.0 licence and a
@@ -804,7 +1250,9 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
   3.1's records, binding since their adoption on 2026-11-19:**
   - switching face data off leaves no Tier C row and no deleted face data in the database's free
     pages or write-ahead log, proved by a test; a deletion cut short is repeated at the next start
-    (ADR-0018 Amendment 5, ADR-0024);
+    (ADR-0018 Amendment 5, ADR-0024); *2026-11-19: the deletion and its test,
+    `MediaIndexFaceDataScrubTest`, landed at 3.2; the switch that calls it and the repeat at start-up
+    have not, and three device-only properties are 3.7's;*
   - a video or GIF never leaves a people album waiting (ADR-0017 Amendment 4);
   - stored face boxes and anchors share the upright frame, proved on a photo with an EXIF rotation
     (ADR-0022);
@@ -832,7 +1280,10 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
 - **`ARCHITECTURE.md` links ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5** from the
   sections they govern. *Deferred 2026-11-18 under the instructions' Timing rule:* they are adopted
   ahead of the work they govern, so each link is added by the change that lands that work, not by
-  the change that adopts the record.
+  the change that adopts the record. *2026-11-19, step 3.2:* ADR-0018 Amendment 5 is linked from §3
+  and §6; ADR-0024 from §3 and §6, for the redaction, the backup exclusion and the deletion;
+  ADR-0022 from §3, for the box frame. Still to come as their work lands: ADR-0023, ADR-0017
+  Amendment 4, and ADR-0022 and ADR-0024 from the sections their later steps change.
 
 ---
 
@@ -1157,6 +1608,24 @@ own questions answered and its text settled. **Answering them did not approve th
     question 4. ✅ **Answered 2026-11-19: no.**
 11. **E11 — D2:** ~~keep the chain, as recommended above?~~ ✅ **Answered 2026-11-19: the chain
     stays**, as recommended under D2; ADR-0013 is neither superseded nor amended.
+
+### F. Found while building — raised 2026-11-19
+
+1. **F1 — Do the rules files need a fourth section?** Raised by the Planner at step 3.2; an open
+   item, **not a decision**, for 3.3 to settle before the Tier C pass ships. Android 16 QPR2 (API
+   36.1) added `<cross-platform-transfer platform="ios">` to `data_extraction_rules.xml`, and the
+   app's file has no such section. Android's Auto Backup page, read 2026-11-19, says that when a
+   mode has no rules — its example is a missing `<device-transfer>` — that mode is fully enabled
+   for all content but the no-backup and cache directories. It also says the section requires a
+   `<platform-specific-params>` naming the iOS app, which this app does not have. **Not
+   established:** whether a transfer to iOS happens at all for an app with no such section and no
+   iOS counterpart, and so whether `media_index.db` and its sidecars could leave the device that
+   way. [ADR-0014](../architecture/decisions/0014-album-database-included-in-auto-backup.md),
+   [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) and
+   [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §6 all
+   say "three places"; that claim is to be checked, and any rule change recorded in ADR-0018 and
+   applied with `<exclude>` only (ADR-0014). Owner: the Planner, with the decision 9 exit
+   criterion "never enters a backup" depending on the answer.
 
 ---
 

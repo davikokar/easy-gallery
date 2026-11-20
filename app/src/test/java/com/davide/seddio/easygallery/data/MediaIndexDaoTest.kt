@@ -7,7 +7,9 @@ import app.cash.turbine.test
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -386,6 +388,187 @@ class MediaIndexDaoTest {
         dao.deleteWatermark("external")
         assertNull(dao.getWatermark("external"))
         assertNotNull(dao.getWatermark("external_primary"))
+    }
+
+    @Test
+    fun `face state upsert replaces by media uri and stores the outcome by name`() = runTest {
+        val uri = "content://media/external/images/media/301"
+
+        dao.upsertFaceState(MediaIndexFaceStateEntity(uri, pipelineVersion = 1, outcome = FaceIndexOutcome.FAILED))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(uri, pipelineVersion = 2, outcome = FaceIndexOutcome.INDEXED))
+
+        assertEquals(
+            MediaIndexFaceStateEntity(uri, 2, FaceIndexOutcome.INDEXED),
+            dao.getFaceState(uri)
+        )
+        val stored = database.openHelper.readableDatabase
+            .query("SELECT outcome FROM media_index_face_state").use { cursor ->
+                cursor.moveToFirst()
+                cursor.getString(0)
+            }
+        assertEquals("INDEXED", stored)
+        assertNull(dao.getFaceState("$uri-other"))
+    }
+
+    @Test
+    fun `faces get ascending ids and list by uri with every column unshuffled`() = runTest {
+        val uri = "content://media/external/images/media/311"
+        dao.insertFaces(
+            listOf(
+                faceEntity(uri, boxLeft = 0.1f, embedding = byteArrayOf(1, 2, 3, 4), groupId = 7L, groupingVersion = 3),
+                faceEntity(uri, boxLeft = 0.2f),
+                faceEntity("$uri-other")
+            )
+        )
+
+        val listed = dao.listFaces(uri)
+
+        assertEquals(2, listed.size)
+        assertTrue(listed[0].id < listed[1].id)
+        assertEquals(listOf(0.1f, 0.2f), listed.map { it.boxLeft })
+        assertEquals(listOf(0.2f, 0.2f), listed.map { it.boxTop })
+        assertEquals(listOf(0.5f, 0.5f), listed.map { it.boxRight })
+        assertEquals(listOf(0.6f, 0.6f), listed.map { it.boxBottom })
+        assertEquals(listOf(5, 5), listed.map { it.pipelineVersion })
+        assertArrayEquals(byteArrayOf(1, 2, 3, 4), listed[0].embedding)
+        assertEquals(7L, listed[0].groupId)
+        assertEquals(3, listed[0].groupingVersion)
+        assertNull(listed[1].groupId)
+        assertNull(listed[1].groupingVersion)
+    }
+
+    @Test
+    fun `a face id is not reused after the highest row is deleted`() = runTest {
+        val uri = "content://media/external/images/media/321"
+        dao.insertFaces(listOf(faceEntity(uri)))
+        val firstId = dao.listFaces(uri).single().id
+        dao.deleteFaces(uri)
+
+        dao.insertFaces(listOf(faceEntity(uri)))
+
+        assertTrue(dao.listFaces(uri).single().id > firstId)
+    }
+
+    @Test
+    fun `has face data is true for a state alone or a face alone and false for neither`() = runTest {
+        val uri = "content://media/external/images/media/331"
+        assertFalse(dao.hasFaceData())
+
+        dao.upsertFaceState(MediaIndexFaceStateEntity(uri, 1, FaceIndexOutcome.INDEXED))
+        assertTrue(dao.hasFaceData())
+        dao.deleteFaceState(uri)
+        assertFalse(dao.hasFaceData())
+
+        dao.insertFaces(listOf(faceEntity(uri)))
+        assertTrue(dao.hasFaceData())
+        dao.deleteFaces(uri)
+        assertFalse(dao.hasFaceData())
+    }
+
+    @Test
+    fun `delete by uri removes that image's face rows only`() = runTest {
+        val kept = "content://media/external/images/media/341"
+        val removed = "content://media/external/images/media/342"
+        dao.insertFaces(listOf(faceEntity(kept), faceEntity(removed), faceEntity(removed)))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(kept, 1, FaceIndexOutcome.INDEXED))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(removed, 1, FaceIndexOutcome.INDEXED))
+
+        dao.deleteFaces(removed)
+        dao.deleteFaceState(removed)
+
+        assertEquals(1, dao.listFaces(kept).size)
+        assertTrue(dao.listFaces(removed).isEmpty())
+        assertNotNull(dao.getFaceState(kept))
+        assertNull(dao.getFaceState(removed))
+    }
+
+    @Test
+    fun `re-keying moves one image's face rows and state and keeps their ids`() = runTest {
+        val from = "content://media/external/images/media/351"
+        val to = "content://media/0123-4567/images/media/9"
+        val other = "content://media/external/images/media/352"
+        dao.insertFaces(listOf(faceEntity(from), faceEntity(from), faceEntity(other)))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(from, 4, FaceIndexOutcome.INDEXED))
+        val idsBefore = dao.listFaces(from).map { it.id }
+
+        dao.rekeyFaces(from, to)
+        dao.rekeyFaceState(from, to)
+
+        assertTrue(dao.listFaces(from).isEmpty())
+        assertNull(dao.getFaceState(from))
+        assertEquals(idsBefore, dao.listFaces(to).map { it.id })
+        assertEquals(4, dao.getFaceState(to)?.pipelineVersion)
+        assertEquals(1, dao.listFaces(other).size)
+    }
+
+    @Test
+    fun `delete by volume removes the tier c rows of that volume's index rows only`() = runTest {
+        val onCard = "content://media/0123-4567/images/media/361"
+        val onPhone = "content://media/external_primary/images/media/362"
+        dao.upsert(
+            listOf(
+                sampleEntity(onCard, volumeName = "0123-4567"),
+                sampleEntity(onPhone, volumeName = "external_primary")
+            )
+        )
+        dao.insertFaces(listOf(faceEntity(onCard), faceEntity(onPhone)))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(onCard, 1, FaceIndexOutcome.INDEXED))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(onPhone, 1, FaceIndexOutcome.INDEXED))
+
+        dao.deleteFacesByVolume("0123-4567")
+        dao.deleteFaceStatesByVolume("0123-4567")
+
+        assertTrue(dao.listFaces(onCard).isEmpty())
+        assertNull(dao.getFaceState(onCard))
+        assertEquals(1, dao.listFaces(onPhone).size)
+        assertNotNull(dao.getFaceState(onPhone))
+        assertNotNull(dao.getByMediaUri(onCard))
+    }
+
+    @Test
+    fun `delete all reports how many rows each tier c table lost`() = runTest {
+        val uri = "content://media/external/images/media/371"
+        dao.insertFaces(listOf(faceEntity(uri), faceEntity(uri), faceEntity(uri)))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(uri, 1, FaceIndexOutcome.INDEXED))
+
+        assertEquals(3, dao.deleteAllFaces())
+        assertEquals(1, dao.deleteAllFaceStates())
+        assertEquals(0, dao.deleteAllFaces())
+        assertEquals(0, dao.deleteAllFaceStates())
+    }
+
+    @Test
+    fun `replacing an index row leaves its tier c rows because nothing cascades`() = runTest {
+        val uri = "content://media/external/images/media/381"
+        dao.upsert(listOf(sampleEntity(uri)))
+        dao.insertFaces(listOf(faceEntity(uri)))
+        dao.upsertFaceState(MediaIndexFaceStateEntity(uri, 1, FaceIndexOutcome.INDEXED))
+
+        dao.upsert(listOf(sampleEntity(uri, displayName = "replaced.jpg")))
+        dao.deleteByMediaUri(uri)
+
+        assertEquals(1, dao.listFaces(uri).size)
+        assertNotNull(dao.getFaceState(uri))
+    }
+
+    private fun faceEntity(
+        mediaUri: String,
+        boxLeft: Float = 0.1f,
+        embedding: ByteArray = byteArrayOf(9, 8, 7, 6),
+        groupId: Long? = null,
+        groupingVersion: Int? = null
+    ): MediaIndexFaceEntity {
+        return MediaIndexFaceEntity(
+            mediaUri = mediaUri,
+            pipelineVersion = 5,
+            boxLeft = boxLeft,
+            boxTop = 0.2f,
+            boxRight = 0.5f,
+            boxBottom = 0.6f,
+            embedding = embedding,
+            groupId = groupId,
+            groupingVersion = groupingVersion
+        )
     }
 
     private fun sampleEntity(

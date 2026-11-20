@@ -5,6 +5,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -461,6 +462,70 @@ class MediaIndexReconciliationTest {
     }
 
     @Test
+    fun `a heal keeps the image's tier c rows under the healed uri`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val originalUri = "content://media/external_primary/images/media/71"
+        val movedUri = "content://media/0123-4567/images/media/171"
+        val row = entry(originalUri, "external_primary", "moved.jpg", size = 5L, dateModified = 6L)
+        store.upsert(listOf(row))
+        store.writeFaceIndexResults(listOf(faceWrite(row)))
+        val faceIds = store.listFaces(originalUri).map { it.id }
+
+        MediaIndexReconciler(store).reconcileVolume(
+            volumeName = "external_primary",
+            liveMedia = listOf(mediaItem(movedUri, "moved.jpg", size = 5L, dateModified = 6L)),
+            presentVolumes = setOf("external_primary", "0123-4567")
+        )
+
+        assertNull(store.getFaceIndexState(originalUri))
+        assertTrue(store.listFaces(originalUri).isEmpty())
+        assertEquals(FaceIndexOutcome.INDEXED, store.getFaceIndexState(movedUri)?.outcome)
+        assertEquals(faceIds, store.listFaces(movedUri).map { it.id })
+    }
+
+    @Test
+    fun `a deleted image loses its tier c rows and a kept one does not`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val goneUri = "content://media/external_primary/images/media/72"
+        val liveUri = "content://media/external_primary/images/media/73"
+        val gone = entry(goneUri, "external_primary", "gone.jpg", size = 1L, dateModified = 2L)
+        val live = entry(liveUri, "external_primary", "live.jpg", size = 3L, dateModified = 4L)
+        store.upsert(listOf(gone, live))
+        store.writeFaceIndexResults(listOf(faceWrite(gone), faceWrite(live)))
+
+        MediaIndexReconciler(store).reconcileVolume(
+            volumeName = "external_primary",
+            liveMedia = listOf(mediaItem(liveUri, "live.jpg", size = 3L, dateModified = 4L)),
+            presentVolumes = setOf("external_primary")
+        )
+
+        assertNull(store.getFaceIndexState(goneUri))
+        assertTrue(store.listFaces(goneUri).isEmpty())
+        assertEquals(1, store.listFaces(liveUri).size)
+        assertEquals(FaceIndexOutcome.INDEXED, store.getFaceIndexState(liveUri)?.outcome)
+    }
+
+    @Test
+    fun `an absent volume keeps its tier c rows because reconciliation never reaches it`() = runTest {
+        val store = InMemoryMediaIndexStore()
+        val uri = "content://media/0123-4567/images/media/74"
+        val row = entry(uri, "0123-4567", "card.jpg", size = 1L, dateModified = 2L)
+        store.upsert(listOf(row))
+        store.writeFaceIndexResults(listOf(faceWrite(row)))
+
+        val result = MediaIndexReconciler(store).reconcileVolume(
+            volumeName = "0123-4567",
+            liveMedia = emptyList(),
+            presentVolumes = setOf("external_primary")
+        )
+
+        assertTrue(result.deletedMediaUris.isEmpty())
+        assertEquals(row, store.getByMediaUri(uri))
+        assertEquals(1, store.listFaces(uri).size)
+        assertNotNull(store.getFaceIndexState(uri))
+    }
+
+    @Test
     fun `mediaStoreVolumeNameFromUri parses standard media uris without Uri parse`() {
         assertEquals(
             "external_primary",
@@ -471,6 +536,11 @@ class MediaIndexReconciliationTest {
             mediaStoreVolumeNameFromUri("content://media/external/video/media/456")
         )
         assertNull(mediaStoreVolumeNameFromUri("not-a-media-uri"))
+    }
+
+    private fun faceWrite(row: MediaIndexEntry): FaceIndexWrite {
+        val detection = FaceDetection(FaceBox(0.1f, 0.2f, 0.5f, 0.6f), FaceEmbedding(floatArrayOf(0.5f, 1.5f)))
+        return FaceIndexWrite(row.toMediaIdentity(), 1, FaceIndexOutcome.INDEXED, listOf(detection))
     }
 
     private fun sampleEntry(mediaUri: String, volumeName: String): MediaIndexEntry {

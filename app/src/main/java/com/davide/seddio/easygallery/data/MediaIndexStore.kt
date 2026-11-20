@@ -1,11 +1,13 @@
 package com.davide.seddio.easygallery.data
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 interface MediaIndexStore {
     fun observeAll(): Flow<List<MediaIndexEntry>>
@@ -21,6 +23,13 @@ interface MediaIndexStore {
 
     suspend fun listByVolume(volumeName: String): List<MediaIndexEntry>
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry?
+
+    /**
+     * One transaction. A written URI keeps its Tier C state and faces, stamps and ids included, while the stored row
+     * has the same healing triple (ADR-0018 Amendment 6): a re-extraction that only rewrote Tier A columns, a favourite
+     * toggle for one, is not a changed file. A different triple, or no stored row, drops them and the image is pending
+     * again. Tier A columns are written either way.
+     */
     suspend fun upsert(entries: List<MediaIndexEntry>)
 
     /**
@@ -40,6 +49,33 @@ interface MediaIndexStore {
     suspend fun deleteByMediaUri(mediaUri: String)
     suspend fun deleteByVolume(volumeName: String)
     suspend fun deleteAll()
+
+    /**
+     * One transaction. Each write applies only while the index row still has the URI and healing triple it was
+     * computed from, replacing that image's state and faces; returns how many applied.
+     */
+    suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>): Int
+    suspend fun getFaceIndexState(mediaUri: String): FaceIndexState?
+    suspend fun listFaces(mediaUri: String): List<StoredFace>
+    suspend fun hasFaceData(): Boolean
+
+    /**
+     * One transaction: the row at [fromMediaUri] becomes [healed]. Its Tier C rows are re-keyed and kept, and a row
+     * already at the target loses its own to them, only while [healed]'s healing triple equals the stored source
+     * row's: a heal is a move, not a change of content. Otherwise neither the source's nor the target's Tier C rows
+     * survive, whether the URI is kept or moved (ADR-0018 Amendment 6).
+     */
+    suspend fun healMediaUri(fromMediaUri: String, healed: MediaIndexEntry)
+
+    /**
+     * Deletes every Tier C row and nothing else (ADR-0018 Amendment 5). The rows are deleted and [FaceDataDeletion.rowsDeleted]
+     * reported whatever the database's journal mode; [FaceDataDeletion.scrubbed] says whether no deleted bytes remain in
+     * its files (Amendment 6). It is false when a reader held the old snapshot of a write-ahead log, or when the journal
+     * mode keeps page copies: `PERSIST`, `DELETE` or `TRUNCATE` under `exclusive` locking, or a mode not recognised.
+     * Idempotent. The caller repeats it at each start while face data is off, knowing that under `PERSIST` a repeat
+     * reports false again. A `secure_delete` that does not read back throws, and nothing is deleted.
+     */
+    suspend fun deleteAllFaceData(): FaceDataDeletion
 }
 
 data class DateTakenCounts(
@@ -101,6 +137,15 @@ data class MediaIndexEntry(
             dateModified = dateModified
         )
     }
+}
+
+/**
+ * The one rule for whether a written row is still the file its Tier C rows were computed from (ADR-0018
+ * Amendment 6): the stored row exists and its healing triple equals the incoming one. The URI is not compared,
+ * so a heal that moves a row passes while one that changes the file does not.
+ */
+private fun keepsTierC(stored: MediaIdentity?, incoming: MediaIdentity): Boolean {
+    return stored != null && stored.healingKey == incoming.healingKey
 }
 
 class RoomMediaIndexStore(
@@ -166,7 +211,14 @@ class RoomMediaIndexStore(
 
     override suspend fun upsert(entries: List<MediaIndexEntry>) {
         if (entries.isEmpty()) return
-        dao.upsert(entries.map { it.toEntity() })
+        database.withTransaction {
+            // Per URI: one IN list would hit API 28's limit of 999 variables.
+            entries.forEach { entry ->
+                val stored = dao.getByMediaUri(entry.mediaUri)?.toMediaIdentity()
+                if (!keepsTierC(stored, entry.toMediaIdentity())) dropFaceData(entry.mediaUri)
+            }
+            dao.upsert(entries.map { it.toEntity() })
+        }
     }
 
     override suspend fun listPendingPlaceResolution(
@@ -197,15 +249,127 @@ class RoomMediaIndexStore(
     }
 
     override suspend fun deleteByMediaUri(mediaUri: String) {
-        dao.deleteByMediaUri(mediaUri)
+        database.withTransaction {
+            dropFaceData(mediaUri)
+            dao.deleteByMediaUri(mediaUri)
+        }
     }
 
     override suspend fun deleteByVolume(volumeName: String) {
-        dao.deleteByVolume(volumeName)
+        database.withTransaction {
+            dao.deleteFaceStatesByVolume(volumeName)
+            dao.deleteFacesByVolume(volumeName)
+            dao.deleteByVolume(volumeName)
+        }
     }
 
     override suspend fun deleteAll() {
-        dao.deleteAll()
+        database.withTransaction {
+            dao.deleteAllFaceStates()
+            dao.deleteAllFaces()
+            dao.deleteAll()
+        }
+    }
+
+    override suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>): Int {
+        if (writes.isEmpty()) return 0
+        return database.withTransaction {
+            var applied = 0
+            writes.forEach { write ->
+                val row = dao.getByMediaUri(write.identity.mediaUri) ?: return@forEach
+                if (row.toMediaIdentity() != write.identity) return@forEach
+
+                dropFaceData(row.mediaUri)
+                dao.upsertFaceState(MediaIndexFaceStateEntity(row.mediaUri, write.pipelineVersion, write.outcome))
+                if (write.faces.isNotEmpty()) {
+                    dao.insertFaces(write.faces.map { it.toEntity(row.mediaUri, write.pipelineVersion) })
+                }
+                applied += 1
+            }
+            applied
+        }
+    }
+
+    override suspend fun getFaceIndexState(mediaUri: String): FaceIndexState? {
+        return dao.getFaceState(mediaUri)?.let { FaceIndexState(it.mediaUri, it.pipelineVersion, it.outcome) }
+    }
+
+    override suspend fun listFaces(mediaUri: String): List<StoredFace> {
+        return dao.listFaces(mediaUri).map { it.toStoredFace() }
+    }
+
+    override suspend fun hasFaceData(): Boolean = dao.hasFaceData()
+
+    override suspend fun healMediaUri(fromMediaUri: String, healed: MediaIndexEntry) {
+        database.withTransaction {
+            val keeps = keepsTierC(dao.getByMediaUri(fromMediaUri)?.toMediaIdentity(), healed.toMediaIdentity())
+            if (healed.mediaUri != fromMediaUri) {
+                dropFaceData(healed.mediaUri)
+                if (keeps) {
+                    dao.rekeyFaceState(fromMediaUri, healed.mediaUri)
+                    dao.rekeyFaces(fromMediaUri, healed.mediaUri)
+                } else {
+                    dropFaceData(fromMediaUri)
+                }
+                dao.deleteByMediaUri(fromMediaUri)
+            } else if (!keeps) {
+                dropFaceData(fromMediaUri)
+            }
+            dao.upsert(listOf(healed.toEntity()))
+        }
+    }
+
+    override suspend fun deleteAllFaceData(): FaceDataDeletion {
+        val (rowsDeleted, modes) = database.withTransaction {
+            // First statement, on the connection that writes: a pooled reader's setting would prove nothing.
+            val writable = database.openHelper.writableDatabase
+            check(writable.enableSecureDelete()) {
+                "secure_delete could not be enabled, so face data was not deleted"
+            }
+            val deleted = dao.deleteAllFaces() + dao.deleteAllFaceStates()
+            // The modes of the connection that deleted: what the commit did with the deleted pages depends on them.
+            deleted to JournalModes(writable.journalMode(), writable.lockingMode())
+        }
+        val scrubbed = withContext(Dispatchers.IO) {
+            // After the commit: a checkpoint cannot run inside a transaction.
+            deletionIsScrubbed(modes.journalMode, modes.lockingMode) {
+                database.openHelper.writableDatabase.checkpointTruncate()
+            }
+        }
+        return FaceDataDeletion(rowsDeleted = rowsDeleted, scrubbed = scrubbed)
+    }
+
+    private class JournalModes(val journalMode: String, val lockingMode: String)
+
+    private suspend fun dropFaceData(mediaUri: String) {
+        dao.deleteFaces(mediaUri)
+        dao.deleteFaceState(mediaUri)
+    }
+
+    private fun FaceDetection.toEntity(mediaUri: String, pipelineVersion: Int): MediaIndexFaceEntity {
+        return MediaIndexFaceEntity(
+            mediaUri = mediaUri,
+            pipelineVersion = pipelineVersion,
+            boxLeft = box.left,
+            boxTop = box.top,
+            boxRight = box.right,
+            boxBottom = box.bottom,
+            embedding = encodeFaceEmbedding(embedding),
+            groupId = null,
+            groupingVersion = null
+        )
+    }
+
+    private fun MediaIndexFaceEntity.toStoredFace(): StoredFace {
+        return StoredFace(
+            id = id,
+            mediaUri = mediaUri,
+            pipelineVersion = pipelineVersion,
+            box = FaceBox(boxLeft, boxTop, boxRight, boxBottom),
+            embedding = decodeFaceEmbedding(embedding),
+            groupId = groupId,
+            groupingVersion = groupingVersion
+        )
     }
 
     private fun MediaIndexEntity.toStoreEntry(): MediaIndexEntry {
@@ -255,6 +419,11 @@ class InMemoryMediaIndexStore : MediaIndexStore {
     private val lock = Mutex()
     private val rows = linkedMapOf<String, MediaIndexEntry>()
     private val rowsFlow = MutableStateFlow<List<MediaIndexEntry>>(emptyList())
+
+    // Tier C, kept by URI; the models are immutable, so nothing stored can be changed through a reference.
+    private val faceStates = HashMap<String, FaceIndexState>()
+    private val faces = HashMap<String, List<StoredFace>>()
+    private var nextFaceId = 1L
 
     override fun observeAll(): Flow<List<MediaIndexEntry>> = rowsFlow
 
@@ -318,6 +487,9 @@ class InMemoryMediaIndexStore : MediaIndexStore {
 
         lock.withLock {
             entries.forEach { entry ->
+                if (!keepsTierC(rows[entry.mediaUri]?.toMediaIdentity(), entry.toMediaIdentity())) {
+                    dropFaceDataLocked(entry.mediaUri)
+                }
                 rows[entry.mediaUri] = entry
             }
             publishLocked()
@@ -366,6 +538,7 @@ class InMemoryMediaIndexStore : MediaIndexStore {
 
     override suspend fun deleteByMediaUri(mediaUri: String) {
         lock.withLock {
+            dropFaceDataLocked(mediaUri)
             val removed = rows.remove(mediaUri)
             if (removed != null) publishLocked()
         }
@@ -373,6 +546,7 @@ class InMemoryMediaIndexStore : MediaIndexStore {
 
     override suspend fun deleteByVolume(volumeName: String) {
         lock.withLock {
+            rows.values.filter { it.volumeName == volumeName }.forEach { dropFaceDataLocked(it.mediaUri) }
             val removed = rows.entries.removeIf { it.value.volumeName == volumeName }
             if (removed) publishLocked()
         }
@@ -380,10 +554,92 @@ class InMemoryMediaIndexStore : MediaIndexStore {
 
     override suspend fun deleteAll() {
         lock.withLock {
+            faceStates.clear()
+            faces.clear()
             if (rows.isEmpty()) return@withLock
             rows.clear()
             publishLocked()
         }
+    }
+
+    override suspend fun writeFaceIndexResults(writes: List<FaceIndexWrite>): Int {
+        if (writes.isEmpty()) return 0
+        return lock.withLock {
+            var applied = 0
+            writes.forEach { write ->
+                val row = rows[write.identity.mediaUri] ?: return@forEach
+                if (row.toMediaIdentity() != write.identity) return@forEach
+
+                dropFaceDataLocked(row.mediaUri)
+                faceStates[row.mediaUri] = FaceIndexState(row.mediaUri, write.pipelineVersion, write.outcome)
+                if (write.faces.isNotEmpty()) {
+                    faces[row.mediaUri] = write.faces.map { detection ->
+                        StoredFace(
+                            id = nextFaceId++,
+                            mediaUri = row.mediaUri,
+                            pipelineVersion = write.pipelineVersion,
+                            box = detection.box,
+                            embedding = detection.embedding,
+                            groupId = null,
+                            groupingVersion = null
+                        )
+                    }
+                }
+                applied += 1
+            }
+            applied
+        }
+    }
+
+    override suspend fun getFaceIndexState(mediaUri: String): FaceIndexState? {
+        return lock.withLock { faceStates[mediaUri] }
+    }
+
+    override suspend fun listFaces(mediaUri: String): List<StoredFace> {
+        return lock.withLock { faces[mediaUri].orEmpty() }
+    }
+
+    override suspend fun hasFaceData(): Boolean {
+        return lock.withLock { faceStates.isNotEmpty() || faces.isNotEmpty() }
+    }
+
+    override suspend fun healMediaUri(fromMediaUri: String, healed: MediaIndexEntry) {
+        lock.withLock {
+            val keeps = keepsTierC(rows[fromMediaUri]?.toMediaIdentity(), healed.toMediaIdentity())
+            if (healed.mediaUri != fromMediaUri) {
+                dropFaceDataLocked(healed.mediaUri)
+                if (keeps) {
+                    faceStates.remove(fromMediaUri)?.let {
+                        faceStates[healed.mediaUri] = it.copy(mediaUri = healed.mediaUri)
+                    }
+                    faces.remove(fromMediaUri)?.let { moved ->
+                        faces[healed.mediaUri] = moved.map { it.copy(mediaUri = healed.mediaUri) }
+                    }
+                } else {
+                    dropFaceDataLocked(fromMediaUri)
+                }
+                rows.remove(fromMediaUri)
+            } else if (!keeps) {
+                dropFaceDataLocked(fromMediaUri)
+            }
+            rows[healed.mediaUri] = healed
+            publishLocked()
+        }
+    }
+
+    override suspend fun deleteAllFaceData(): FaceDataDeletion {
+        return lock.withLock {
+            val rowsDeleted = faces.values.sumOf { it.size } + faceStates.size
+            faces.clear()
+            faceStates.clear()
+            // No file, so nothing for a journal to keep.
+            FaceDataDeletion(rowsDeleted = rowsDeleted, scrubbed = true)
+        }
+    }
+
+    private fun dropFaceDataLocked(mediaUri: String) {
+        faces.remove(mediaUri)
+        faceStates.remove(mediaUri)
     }
 
     private fun publishLocked() {

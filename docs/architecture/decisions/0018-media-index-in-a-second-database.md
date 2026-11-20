@@ -560,6 +560,11 @@ is decided here.
 are not stored at all: they are never grouped, offered or matched (decision 46), so keeping them would
 be face data with no use.
 
+> **Step 3.2, 2026-11-19:** two tables, `media_index_face_state` and `media_index_face`. The third
+> kind of row, grouping bookkeeping, is a grouping version on each face rather than a table of its
+> own; per-group summaries stay step 3.4's. The schema and its reasons are in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.2 — Tier C schema and store*.
+
 ### Two stamps, by the captured/derived split
 
 The Decision split captured EXIF facts from the place codes derived from them, so that the cheap half
@@ -599,10 +604,17 @@ nor are GIFs — the question below, answered 2026-11-19):
 
 These are Amendment 4's rules for its marker, applied to Tier C:
 
-- **Tier A re-extracting an image** — the file changed — **makes its Tier C state pending.** The
-  faces of a changed file may have changed too.
+- ~~**Tier A re-extracting an image** — the file changed — **makes its Tier C state pending.** The
+  faces of a changed file may have changed too.~~
+
+  > **Reversed 2026-11-20 — see Amendment 6 below.** A re-extraction is not evidence that the file
+  > changed. Tier C is now dropped only when the row's healing triple changed; an unchanged triple
+  > keeps it. The bullet is struck rather than deleted because its reason — a changed file's faces
+  > may have changed — still stands; what was wrong is the test for a changed file.
 - **A reconciler heal rewrites the key** on the image's Tier C rows, in the same transaction as the
-  image row, and keeps them: a heal is a move, not a change of content.
+  image row, and keeps them: a heal is a move, not a change of content. *Amended 2026-11-20
+  (Amendment 6): kept only while the healed row's healing triple equals the moved row's, which every
+  heal the reconciler makes satisfies.*
 - **Reconciliation deleting an image row deletes its Tier C rows** with it, in the same transaction.
   They are a cache ([ADR-0020](0020-automatic-albums-resolve-against-live-media.md)), and an
   unmounted volume keeps them, by ADR-0020 clause 4.
@@ -619,10 +631,17 @@ the change that produces it. The version actually reached is the `@Database` ann
 
 ### Backup
 
-**No rule changes.** The Tier C tables are in `media_index.db`, which `backup_rules.xml` and both
+~~**No rule changes.**~~ **One rule added at step 3.2 — the note below.** The Tier C tables are in `media_index.db`, which `backup_rules.xml` and both
 sections of `data_extraction_rules.xml` already exclude, with its `-wal` and `-shm` files. The stage's
 exit criteria check the rules files rather than assume them, and if step 3.2's deletion (below)
 introduces any other sidecar file, that file needs the same three exclusions.
+
+> **Step 3.2, 2026-11-19 — `media_index.db-journal` excluded as well.** The deletion added no file,
+> but the re-check found one already possible: Room's automatic journal mode is a rollback journal
+> on a low-RAM device, which leaves `media_index.db-journal`, and one left hot by a crash holds
+> pages — face data, now — as they were before the transaction. It gained the same exclusion in all
+> three places, `<exclude>` only. Recorded in [albums-stage-3.md](../../design/albums-stage-3.md),
+> *3.2 — Tier C schema and store*.
 
 ### Deleting face data
 
@@ -645,6 +664,22 @@ deletion removes, and how, is decided here:
   Tier C tables, so a deletion clears it with nothing else to touch. That keeps Amendment 2's file free
   of anything face-derived; Amendment 2's note that the switch "should clear it for tidiness" no
   longer applies.
+
+> **Step 3.2, 2026-11-19 — the mechanism chosen: `secure_delete`, then a `TRUNCATE` checkpoint.**
+> `PRAGMA secure_delete = 1` is set whenever the index opens, so every Tier C delete or update zeroes
+> the old bytes, and again as the deletion transaction's first statement, where it must read back as
+> on or nothing is deleted. After the commit, `PRAGMA wal_checkpoint(TRUNCATE)` empties the
+> write-ahead log; a reader still holding the old snapshot leaves it incomplete, the deletion reports
+> that, and the caller repeats it. `VACUUM` was rejected: it rewrites all of Tier A on every
+> switch-off, builds its copy in RAM on Android, and one cut short is recovered only by another full
+> vacuum. `MediaIndexFaceDataScrubTest` proves the result under Robolectric; what only a device can
+> show is the stage plan's step 3.7. Recorded in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.2 — Tier C schema and store*.
+
+> **Amended 2026-11-20 — see Amendment 6 below.** The note above covers the write-ahead log only.
+> With a rollback journal the checkpoint is a no-op that reads as success, so the result said
+> scrubbed whatever the journal mode; a mode that keeps page copies after commit now reports not
+> scrubbed.
 
 ### Alternatives considered
 
@@ -669,8 +704,9 @@ deletion removes, and how, is decided here:
 
 **Negative**
 
-- Three more tables, one more migration, two more stamps to carry, and every Tier A writer must now
-  also make Tier C pending on re-extraction.
+- ~~Three more tables~~ Two more tables (step 3.2, 2026-11-19), one more migration, two more stamps to carry, and every Tier A writer must now
+  also make Tier C pending ~~on re-extraction~~ when a re-extraction changes the healing triple
+  (Amendment 6, 2026-11-20).
 - A pipeline-version bump re-detects every image — of the order of minutes per thousand photos on the
   one phone measured, in the foreground ([albums-stage-3.md](../../design/albums-stage-3.md),
   *Spike outcome*).
@@ -698,3 +734,167 @@ deletion removes, and how, is decided here:
 - [ADR-0017](0017-composable-album-rule-representation.md) Amendment 4 — how a `people` clause reads
   these states
 - `data/MediaIndexDatabase.kt`, `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`
+
+## Amendment 6 — 2026-11-20 — Tier C survives a re-extraction of an unchanged file, and a rollback journal that keeps page copies is not scrubbed
+
+> **Accepted by the maintainer on 2026-11-20**, as the resolution the Reviewer of step 3.2 suggested
+> for two of his findings ([albums.md](../../design/albums.md) §8 decision 48). Written by the
+> Planner. Nothing below is built yet: the *3.2 follow-up* in
+> [albums-stage-3.md](../../design/albums-stage-3.md) builds it.
+
+> **Built 2026-11-20**, as the *3.2 follow-up* briefed it, and verified by the definition of done —
+> the gate is in [albums-stage-3.md](../../design/albums-stage-3.md), *3.2 follow-up*, *Built and
+> verified*. §1 is `MediaIndexStore.kt`'s one private test, `keepsTierC`, on the healing key, used by
+> `upsert` and `healMediaUri` in both stores; §2 is `deletionIsScrubbed` and the two mode reads in
+> `MediaIndexDatabase.kt`, which `RoomMediaIndexStore.deleteAllFaceData` applies to the connection
+> it deleted on. Nothing above was rewritten. **Not proven by it:** each phone's real journal and
+> locking modes, and so whether *Revisit when* below has fired; that a favourite toggle advances
+> `generationModified` and leaves Tier C intact — still expected, not observed; `exclusive` locking
+> at runtime, which only the pure mapping covers; and a URI written twice in one `upsert` call, whose
+> order can only drop Tier C, never keep it wrongly. The first two are step 3.7's.
+
+This amendment **reverses one rule of Amendment 5**, adopted the day before — the first bullet of
+*Keeping Tier C true* — and **qualifies** what its *Deleting face data* lets a deletion report. Both
+places are annotated above and left intact. Everything else in Amendment 5 continues to govern: the
+tables, the two stamps, the per-image states, the conditional write, `secure_delete` and the
+checkpoint. It is an amendment rather than a superseding ADR for the reason ADR-0007 Amendment 2
+gives when it reverses a point of its Amendment 1: the structural decision has not stopped applying,
+and what changes is one invalidation condition and the meaning of one returned flag.
+
+### 1. Tier C is dropped by a changed file, not by a re-extraction
+
+**What was wrong.** Amendment 5 read "Tier A re-extracts an image" as "the file changed". Tier A
+does not re-extract only changed files. On API 30+ it selects rows by `MediaStore`'s generation
+(Amendment 1), which `MediaStore` advances on any update to a row, metadata-only ones included — a
+favourite toggle is a write to `IS_FAVORITE` ([ADR-0011](0011-favourites-backed-by-mediastore.md))
+and is expected to advance it, **not verified on a device**. And a volume whose `MediaStore` version
+changes is reselected in full. Step 3.2 built the rule as written — `MediaIndexStore.upsert` drops the
+Tier C rows of every URI it writes — so each favourite toggle would send that image through detection
+and embedding again, and a version resync would delete every face on the volume: of the order of
+minutes per thousand photos on the one phone measured
+([albums-stage-3.md](../../design/albums-stage-3.md), *Spike outcome*), with every people album
+waiting until the pass caught up.
+
+**Decision.**
+- When an index row is written over a stored row at the same URI, that image's Tier C rows are
+  dropped in the same transaction **if and only if the incoming row's healing triple —
+  `displayName`, `size`, `dateModified`, the one `MediaIdentity` of `data/MediaIdentity.kt` — differs
+  from the stored row's.** With the triple unchanged, its state and faces stay exactly as they were,
+  pipeline and grouping versions included, while the Tier A columns are rewritten as before.
+- A written URI with no stored row has no Tier C to keep, and any found under it are dropped, as
+  before.
+- **The pipeline-version rule does not change.** The row write never reads or writes a pipeline
+  version. A state stamped with an older one is pending by Amendment 5's table whether or not Tier A
+  touched the row; an unchanged-triple re-extraction leaves it pending, and the Tier C pass's next
+  write replaces it. A changed triple drops it, which is pending too. The grouping version likewise.
+- **A heal applies the same test.** `healMediaUri` re-keys and keeps the moved Tier C rows only when
+  the healed row's triple equals the stored source row's; otherwise the target ends with no Tier C
+  rows, its own included, as before. The reconciler heals only through the healing triple, so every
+  heal it makes passes. The test is there so that one rule holds for every path that writes a row,
+  in the store rather than in its callers. *This point is the Planner's, 2026-11-20, from the
+  Reviewer's finding on a test that heals with a changed name; the maintainer did not rule on it and
+  can reverse it.*
+
+**Why the triple.** It is the app's single definition of "the same file", and
+[ADR-0020](0020-automatic-albums-resolve-against-live-media.md) forbids a second. Tier C already uses
+it the other way round: a face result is written only while the row still has the identity it was
+computed from. Using it to invalidate as well means one test decides both whether a result may be
+written and whether a stored one is still true.
+
+**What it costs.**
+- An edit that keeps the name, the byte size and the modification second keeps its old faces. That
+  is the blind spot membership healing ([ADR-0010](0010-album-membership-dual-key-identity.md)) and
+  the conditional write already accept. Not measured.
+- A rename drops Tier C although the pixels did not change, because the name is in the triple: one
+  image's inference again. Accepted rather than comparing two of the three fields, which would be a
+  second definition of identity.
+
+**Alternatives considered.**
+- **Keep the rule, and have Tier A skip a metadata-only change.** Rejected: Tier A could only tell
+  the cases apart by comparing the same triple, and it would change Tier A's selection, which
+  Amendment 1 governs, to fix a Tier C cost.
+- **A content hash per image.** Rejected: a full file read per re-extracted image is the cost this
+  amendment removes.
+
+### 2. What a deletion may report as scrubbed
+
+**What was wrong.** Step 3.2 sets `secure_delete` rather than assuming it, but left the journal mode
+of a non-WAL database to the platform: Room uses a rollback journal on a low-RAM device, and the
+framework then applies its configured default, `TRUNCATE` on AOSP. Outside WAL,
+`wal_checkpoint(TRUNCATE)` is a no-op whose first column reads 0, so the deletion reported scrubbed
+whatever the rollback mode was. SQLite's documentation is explicit about the mode that matters: under
+`PERSIST` the journal is not deleted at commit, only its header is zeroed, so the pages the deletion
+changed — the face rows as they were — stay in `media_index.db-journal`. `journal_size_limit` bounds
+how much is kept, not whether. `secure_delete` zeroes the database file's pages, not the journal's
+copies of them.
+
+**Decision.** `deleteAllFaceData` reads the journal mode, and the locking mode, of the connection its
+transaction ran on, and reports scrubbed only as this table allows:
+
+| `journal_mode` | Scrubbed when | Why |
+|---|---|---|
+| `wal` | the `TRUNCATE` checkpoint's first column is 0 — unchanged | the log is emptied and truncated |
+| `delete` | the locking mode is `normal` | the journal is deleted at commit |
+| `truncate` | the locking mode is `normal` | the journal is truncated to zero length at commit |
+| `memory`, `off` | always | no journal file is written |
+| `persist` | never | the header is zeroed, the page copies are kept |
+| anything else | never | fail closed |
+
+The locking-mode condition is there because SQLite documents that in `exclusive` locking mode a
+rollback journal may also remain after commit. Android does not open its databases that way, so it
+costs nothing where it is not needed.
+
+- **Not scrubbed is a result, not an error.** The rows are deleted and committed either way. A thrown
+  error would tell the caller nothing was deleted, and on a device whose journal mode never changes a
+  deletion that refused to run would never delete at all — face data kept for good, which is worse
+  than page copies left in a private file that later transactions overwrite. A `secure_delete` that
+  does not read back still stops the deletion, as step 3.2 built it: that is a setting the next
+  attempt makes again, where a journal mode is the platform's and is the same on every attempt.
+- **What the caller does with not scrubbed** is what step 3.2 already said for a blocked checkpoint:
+  the face data is deleted as far as the app is concerned and the switch stays off, and the deletion
+  is repeated at each later process start while face data is off — not only while a Tier C row
+  exists, which is the narrower condition
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §3 states and is annotated there. On a
+  `PERSIST` device every repeat reports not scrubbed again; that is accepted, below. How Settings
+  presents it, if at all, is step 3.6's.
+- **No journal mode is set when the database opens.** Considered and rejected: the mode is Room's
+  and the platform's choice, made per device and applied to every connection the framework opens, so
+  an override would change every index write on that device to fix a property needed only at
+  switch-off, would have to be re-applied for each connection, and would still need this check at the
+  deletion — as `secure_delete` is set at open and checked again. SQLite also refuses a journal-mode
+  change inside a transaction, so it cannot be pinned to the write connection the way `secure_delete`
+  is. No device is known to use `PERSIST`.
+
+**Revisit when** a device is found whose index uses `PERSIST`, or `exclusive` locking: step 3.7
+records each phone's actual modes. Leaving the mode alone would then be a new decision, not a
+detail — switching that connection out of `PERSIST` for the deletion is the obvious candidate.
+
+### Consequences
+
+**Positive**
+
+- A metadata-only change that leaves the triple alone — a favourite toggle is expected to, not
+  verified — no longer costs a face pass; a version resync no longer deletes face data.
+- A deletion's scrubbed result is true of the files on every journal mode SQLite has, and false
+  rather than optimistic for one it does not recognise.
+
+**Negative**
+
+- Stale faces after an edit that keeps the triple, as above.
+- A deletion on a `PERSIST` device never reports scrubbed, and the residue stays until later
+  transactions overwrite the journal.
+- One more pragma read per deletion, and one more stored-row read per row written, inside the
+  transaction that already writes it.
+
+### References
+
+- [docs/design/albums.md](../../design/albums.md) §8 decision 48
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md), *3.2 — Tier C schema and store*:
+  *Reviewed* and *3.2 follow-up*; step 3.7
+- [ADR-0010](0010-album-membership-dual-key-identity.md), [ADR-0011](0011-favourites-backed-by-mediastore.md),
+  [ADR-0020](0020-automatic-albums-resolve-against-live-media.md),
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §3
+- SQLite, *PRAGMA Statements*: `journal_mode`, `journal_size_limit`, `wal_checkpoint`,
+  `secure_delete` — read 2026-11-20
+- `data/MediaIndexStore.kt`, `data/MediaIndexDatabase.kt`, `data/MediaIdentity.kt`,
+  `data/MediaIndexTierAIndexer.kt`

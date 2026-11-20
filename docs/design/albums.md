@@ -386,7 +386,7 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); step 3.2 next | Tier C | yes |
+| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); ~~step 3.2 next~~ step 3.2 built and verified 2026-11-19; ~~step 3.3 next~~ ~~a 3.2 follow-up next (decision 48, 2026-11-20), then step 3.3~~ its follow-up (decision 48) built and verified 2026-11-20; step 3.3 next | Tier C | yes |
 | **4** | Content albums (Tier B) ~~and rule editing — **runs before Stage 3**~~; planned in [albums-stage-4.md](albums-stage-4.md); rule editing moved out (§8 decision 39) | ⬜ Not started — plan drafted 2026-11-13; paused 2026-11-17, see decision 38 | Tier B | yes |
 
 Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
@@ -1880,6 +1880,20 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     ADR-0017 Amendment 4 and ADR-0018 Amendment 5 the same day, as asked separately. The three ADRs
     are `Active`, and each amendment is marked adopted inside its record. Adoption is step 3.1's
     binding deliverable, so Stage 3 moved to In progress (§7 and its stage log).
+
+48. **Tier C survives a re-extraction of an unchanged file, and a deletion is scrubbed only on a
+    journal mode that keeps no page copies.** Accepted by the maintainer on 2026-11-20, as the
+    Reviewer of step 3.2 suggested; recorded as
+    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 6, which
+    holds the reasons and is not restated here. **It reverses part of what was adopted on
+    2026-11-19:** ADR-0018 Amendment 5 made every Tier A re-extraction drop an image's face data,
+    but Tier A re-extracts on metadata-only changes — a favourite toggle, it is expected — and on a
+    whole-volume resync, so face data is now dropped only when the healing triple changed. The
+    deletion, which reported scrubbed whatever the journal mode, now reports not scrubbed on a mode
+    that keeps page copies after commit, `PERSIST`. One point is the Planner's, not the
+    maintainer's, and he can reverse it: a heal keeps face data under the same triple test. The
+    work is [albums-stage-3.md](albums-stage-3.md)'s *3.2 follow-up*, before step 3.3 — built and
+    verified 2026-11-20.
 
 ---
 

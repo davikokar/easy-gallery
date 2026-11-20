@@ -89,6 +89,12 @@ In this order:
   setting is off and any Tier C row exists — a deletion cut short by process death — the deletion
   runs again.**
 
+  > **Amended 2026-11-20 — [ADR-0018](0018-media-index-in-a-second-database.md) Amendment 6.** A
+  > deletion can commit every row and still report its scrub incomplete — a reader holding the old
+  > snapshot, or a rollback journal that keeps page copies — and then no Tier C row exists to
+  > trigger the repeat. The start-up deletion therefore runs whenever the setting is off; with
+  > nothing stored it only re-checks the files.
+
 ### 4. While face data is off
 
 - **No Tier C pass runs**, periodic or Index now. Tier A and the place pass run as before.

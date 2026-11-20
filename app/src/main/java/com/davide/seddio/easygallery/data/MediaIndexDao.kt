@@ -103,4 +103,45 @@ interface MediaIndexDao {
 
     @Query("DELETE FROM media_index_watermark WHERE volumeName = :volumeName")
     fun deleteWatermark(volumeName: String)
+
+    // Tier C. The store composes these inside one transaction; none is a rule on its own.
+    @Query("SELECT * FROM media_index_face_state WHERE mediaUri = :mediaUri LIMIT 1")
+    suspend fun getFaceState(mediaUri: String): MediaIndexFaceStateEntity?
+
+    @Query("SELECT * FROM media_index_face WHERE mediaUri = :mediaUri ORDER BY id ASC")
+    suspend fun listFaces(mediaUri: String): List<MediaIndexFaceEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM media_index_face_state) OR EXISTS(SELECT 1 FROM media_index_face)")
+    suspend fun hasFaceData(): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFaceState(state: MediaIndexFaceStateEntity)
+
+    @Insert
+    suspend fun insertFaces(faces: List<MediaIndexFaceEntity>)
+
+    @Query("DELETE FROM media_index_face_state WHERE mediaUri = :mediaUri")
+    suspend fun deleteFaceState(mediaUri: String)
+
+    @Query("DELETE FROM media_index_face WHERE mediaUri = :mediaUri")
+    suspend fun deleteFaces(mediaUri: String)
+
+    @Query("UPDATE media_index_face_state SET mediaUri = :toMediaUri WHERE mediaUri = :fromMediaUri")
+    suspend fun rekeyFaceState(fromMediaUri: String, toMediaUri: String)
+
+    @Query("UPDATE media_index_face SET mediaUri = :toMediaUri WHERE mediaUri = :fromMediaUri")
+    suspend fun rekeyFaces(fromMediaUri: String, toMediaUri: String)
+
+    // Run before the Tier A delete of the same volume: the subquery reads the rows that delete removes.
+    @Query("DELETE FROM media_index_face_state WHERE mediaUri IN (SELECT mediaUri FROM media_index WHERE volumeName = :volumeName)")
+    suspend fun deleteFaceStatesByVolume(volumeName: String)
+
+    @Query("DELETE FROM media_index_face WHERE mediaUri IN (SELECT mediaUri FROM media_index WHERE volumeName = :volumeName)")
+    suspend fun deleteFacesByVolume(volumeName: String)
+
+    @Query("DELETE FROM media_index_face_state")
+    suspend fun deleteAllFaceStates(): Int
+
+    @Query("DELETE FROM media_index_face")
+    suspend fun deleteAllFaces(): Int
 }

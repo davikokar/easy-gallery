@@ -78,7 +78,8 @@ class MediaIndexDatabaseMigrationTest {
             .addMigrations(
                 MediaIndexDatabase.MIGRATION_1_2,
                 MediaIndexDatabase.MIGRATION_2_3,
-                MediaIndexDatabase.MIGRATION_3_4
+                MediaIndexDatabase.MIGRATION_3_4,
+                MediaIndexDatabase.MIGRATION_4_5
             )
             .build()
 
@@ -107,11 +108,15 @@ class MediaIndexDatabaseMigrationTest {
         val seeded = createSeededDatabase(context, databaseName, version = 2)
 
         val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
-            .addMigrations(MediaIndexDatabase.MIGRATION_2_3, MediaIndexDatabase.MIGRATION_3_4)
+            .addMigrations(
+                MediaIndexDatabase.MIGRATION_2_3,
+                MediaIndexDatabase.MIGRATION_3_4,
+                MediaIndexDatabase.MIGRATION_4_5
+            )
             .build()
         val db = roomDb.openHelper.writableDatabase
 
-        assertEquals(4, db.version)
+        assertEquals(5, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         assertEquals(
@@ -136,7 +141,7 @@ class MediaIndexDatabaseMigrationTest {
 
         val reopened = MediaIndexDatabase.create(context)
         val db = reopened.openHelper.writableDatabase
-        assertEquals(4, db.version)
+        assertEquals(5, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         runBlocking {
@@ -157,11 +162,11 @@ class MediaIndexDatabaseMigrationTest {
         val seeded = createSeededDatabase(context, databaseName, version = 3)
 
         val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
-            .addMigrations(MediaIndexDatabase.MIGRATION_3_4)
+            .addMigrations(MediaIndexDatabase.MIGRATION_3_4, MediaIndexDatabase.MIGRATION_4_5)
             .build()
         val db = roomDb.openHelper.writableDatabase
 
-        assertEquals(4, db.version)
+        assertEquals(5, db.version)
         assertEquals(seeded.allColumns, db.query(ALL_COLUMNS_SQL).use(::snapshot))
         assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
         assertEquals(listOf<Long?>(null, null, null, null), db.query(MARKER_SQL).use(::dates))
@@ -200,7 +205,7 @@ class MediaIndexDatabaseMigrationTest {
     }
 
     @Test
-    fun `the full chain from version 1 to 4 opens with the production builder`() {
+    fun `the full chain from version 1 to 5 opens with the production builder`() {
         val context: Context = ApplicationProvider.getApplicationContext()
         val databaseName = "media_index.db"
         context.deleteDatabase(databaseName)
@@ -209,7 +214,7 @@ class MediaIndexDatabaseMigrationTest {
         val migrated = MediaIndexDatabase.create(context)
         val db = migrated.openHelper.writableDatabase
 
-        assertEquals(4, db.version)
+        assertEquals(5, db.version)
         assertEquals(seeded.otherColumns, db.query(OTHER_COLUMNS_SQL).use(::snapshot))
         assertEquals(
             listOf(null, REAL_1950_DATE, null, ONE_SECOND_AFTER_SENTINEL),
@@ -217,11 +222,74 @@ class MediaIndexDatabaseMigrationTest {
         )
         assertEquals(listOf<Long?>(null, null, null, null), db.query(MARKER_SQL).use(::dates))
         assertEquals(emptyList<List<String?>>(), db.query(WATERMARK_SQL).use(::snapshot))
+        assertEquals(emptyList<List<String?>>(), db.query(FACE_ROWS_SQL).use(::snapshot))
+        assertEquals(emptyList<List<String?>>(), db.query(FACE_STATE_ROWS_SQL).use(::snapshot))
         runBlocking {
             assertEquals(4, migrated.mediaIndexDao().observeAll().first().size)
         }
 
         migrated.close()
+        context.deleteDatabase(databaseName)
+    }
+
+    @Test
+    fun `migration 4 to 5 adds empty tier c tables and changes no existing table`() {
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val databaseName = "media_index.db"
+        context.deleteDatabase(databaseName)
+        val seeded = createSeededDatabase(context, databaseName, version = 4)
+
+        val roomDb = Room.databaseBuilder(context, MediaIndexDatabase::class.java, databaseName)
+            .addMigrations(MediaIndexDatabase.MIGRATION_4_5)
+            .build()
+        val db = roomDb.openHelper.writableDatabase
+
+        assertEquals(5, db.version)
+        assertEquals(seeded.allColumns, db.query(ALL_COLUMNS_SQL).use(::snapshot))
+        assertEquals(seeded.markers, db.query(MARKER_SQL).use(::dates))
+        assertEquals(seeded.watermarks, db.query(WATERMARK_SQL).use(::snapshot))
+        assertEquals(seeded.existingSchema, db.query(EXISTING_SCHEMA_SQL).use(::snapshot))
+        assertEquals(emptyList<List<String?>>(), db.query(FACE_ROWS_SQL).use(::snapshot))
+        assertEquals(emptyList<List<String?>>(), db.query(FACE_STATE_ROWS_SQL).use(::snapshot))
+        assertEquals(
+            listOf("index_media_index_face_mediaUri"),
+            db.query("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'media_index_face' ORDER BY name")
+                .use { cursor -> snapshot(cursor).map { it.single() } }
+        )
+
+        roomDb.close()
+        context.deleteDatabase(databaseName)
+    }
+
+    @Test
+    fun `a migrated 4 to 5 database reopens with the production builder and takes a face write`() {
+        val context: Context = ApplicationProvider.getApplicationContext()
+        val databaseName = "media_index.db"
+        context.deleteDatabase(databaseName)
+        createSeededDatabase(context, databaseName, version = 4)
+
+        val migrated = MediaIndexDatabase.create(context)
+        migrated.openHelper.writableDatabase
+        migrated.close()
+
+        val reopened = MediaIndexDatabase.create(context)
+        val store = RoomMediaIndexStore(reopened)
+        runBlocking {
+            val uri = "content://media/external/video/media/2"
+            val identity = mediaIdentityOf(uri, displayName = "clip2.mp4", size = 101L, dateModified = 201L)
+            val detection = FaceDetection(FaceBox(0.1f, 0.2f, 0.3f, 0.4f), FaceEmbedding(floatArrayOf(0.5f, -0.25f)))
+
+            val applied = store.writeFaceIndexResults(
+                listOf(FaceIndexWrite(identity, pipelineVersion = 1, outcome = FaceIndexOutcome.INDEXED, faces = listOf(detection)))
+            )
+
+            assertEquals(1, applied)
+            assertEquals(FaceIndexState(uri, 1, FaceIndexOutcome.INDEXED), store.getFaceIndexState(uri))
+            assertEquals(listOf(detection), store.listFaces(uri).map { FaceDetection(it.box, it.embedding) })
+            assertEquals(4, reopened.mediaIndexDao().observeAll().first().size)
+        }
+
+        reopened.close()
         context.deleteDatabase(databaseName)
     }
 
@@ -233,10 +301,13 @@ class MediaIndexDatabaseMigrationTest {
     private class Seeded(
         val otherColumns: List<List<String?>>,
         val allColumns: List<List<String?>>,
-        val watermarks: List<List<String?>>
+        val watermarks: List<List<String?>>,
+        val markers: List<Long?>,
+        val existingSchema: List<List<String?>>
     )
 
-    // Builds a file at the given version (1 to 3) with rows at the sentinel, a real 1950 date, null, and sentinel + 1 second.
+    // Builds a file at the given version (1 to 4) with rows at the sentinel, a real 1950 date, null, and sentinel + 1 second.
+    // From version 4 the rows carry a resolver marker: 3, null, 5, null.
     private fun createSeededDatabase(context: Context, databaseName: String, version: Int): Seeded {
         val dbFile = context.getDatabasePath(databaseName)
         dbFile.parentFile?.mkdirs()
@@ -259,6 +330,7 @@ class MediaIndexDatabaseMigrationTest {
                 `derivedCountryCode` TEXT,
                 `derivedRegionCode` TEXT,
                 `derivedPlaceName` TEXT,
+                ${if (version >= 4) "`derivedPlaceResolverVersion` INTEGER," else ""}
                 PRIMARY KEY(`mediaUri`)
             )
             """.trimIndent()
@@ -287,7 +359,7 @@ class MediaIndexDatabaseMigrationTest {
                 INSERT INTO `media_index` VALUES(
                     'content://media/external/video/media/${i + 1}', 'clip${i + 1}.mp4', ${100 + i}, ${200 + i}, 'external_primary',
                     ${10 + i}, ${20 + i}, ${date ?: "NULL"},
-                    45.5, 9.25, 1920, 1080, 'IT', '25', 'Milan'
+                    45.5, 9.25, 1920, 1080, 'IT', '25', 'Milan'${if (version >= 4) ", ${if (i % 2 == 0) 3 + i else "NULL"}" else ""}
                 )
                 """.trimIndent()
             )
@@ -298,7 +370,9 @@ class MediaIndexDatabaseMigrationTest {
         val seeded = Seeded(
             otherColumns = sqlite.rawQuery(OTHER_COLUMNS_SQL, null).use(::snapshot),
             allColumns = sqlite.rawQuery(ALL_COLUMNS_SQL, null).use(::snapshot),
-            watermarks = if (version >= 2) sqlite.rawQuery(WATERMARK_SQL, null).use(::snapshot) else emptyList()
+            watermarks = if (version >= 2) sqlite.rawQuery(WATERMARK_SQL, null).use(::snapshot) else emptyList(),
+            markers = if (version >= 4) sqlite.rawQuery(MARKER_SQL, null).use(::dates) else emptyList(),
+            existingSchema = sqlite.rawQuery(EXISTING_SCHEMA_SQL, null).use(::snapshot)
         )
         sqlite.version = version
         sqlite.close()
@@ -327,6 +401,10 @@ class MediaIndexDatabaseMigrationTest {
         const val WATERMARK_SQL = "SELECT * FROM `media_index_watermark` ORDER BY `volumeName`"
         const val DATES_SQL = "SELECT `capturedDateTakenEpochMillis` FROM `media_index` ORDER BY `mediaUri`"
         const val MARKER_SQL = "SELECT `derivedPlaceResolverVersion` FROM `media_index` ORDER BY `mediaUri`"
+        const val FACE_ROWS_SQL = "SELECT * FROM `media_index_face`"
+        const val FACE_STATE_ROWS_SQL = "SELECT * FROM `media_index_face_state`"
+        const val EXISTING_SCHEMA_SQL =
+            "SELECT `name`, `sql` FROM `sqlite_master` WHERE `tbl_name` IN ('media_index', 'media_index_watermark') ORDER BY `name`"
         const val ALL_COLUMNS_SQL =
             "SELECT `mediaUri`, `displayName`, `size`, `dateModified`, `volumeName`, `generationAdded`, " +
                 "`generationModified`, `capturedDateTakenEpochMillis`, `capturedLatitude`, `capturedLongitude`, " +

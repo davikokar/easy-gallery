@@ -73,6 +73,17 @@ The `InMemory*` half of a store is the counter-example: `MediaIndexInMemoryStore
 because an in-memory implementation touches no Android API. Do not put a Robolectric runner on one
 out of symmetry with its Room sibling.
 
+A test of what reaches the database **file** — `MediaIndexFaceDataScrubTest` — meets Robolectric's
+SQLite, which is not a device's. `auto_vacuum` takes effect only through a following `VACUUM`. A
+non-WAL file reports `journal_mode` `memory`, so a rollback-journal test sets the mode it means —
+`TRUNCATE`, or `PERSIST` for the case that must not report a scrub — with `PRAGMA journal_mode`
+on the store's write connection **outside any transaction**, since SQLite refuses a mode change
+inside one, and then asserts it. What a mode means for the result is the pure
+`deletionIsScrubbed`, tested plain in `MediaIndexScrubModeTest`; the file test proves the files.
+A concurrent reader in a test holds a read snapshot only:
+`beginTransactionNonExclusive` is `BEGIN IMMEDIATE` and blocks the code under test's own write.
+Whatever such a test sets rather than observes is still to be checked on a device.
+
 Do not reach for it to avoid extracting pure logic, and do not add it to a test that would
 otherwise run plain.
 

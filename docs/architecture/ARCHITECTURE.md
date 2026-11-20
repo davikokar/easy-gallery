@@ -211,13 +211,14 @@ below every property it reads, or the class does not compile. Do not work around
 | `AlbumRuleSummary.kt` | `summarizeAlbumRule` — pure, read-only summary of an album's stored rule for the Album info dialog: `Manual` for no rule; `Unreadable` for an unevaluatable one, carrying neither its text nor its reason so the stored text cannot reach the screen; or `Automatic`, a list of place and date conditions, places in stored order and dates newest period first, each `time` clause named as a year, month, day or range. It holds no app string, and the caller supplies country names. It also owns `placeNames` and `placeChoiceLabel`, which the New automatic album screen's choice chips share. |
 | `AlbumRuleEvaluation.kt` | `AlbumRuleEvaluator` — pure evaluation of `(rule matches ∪ additions) − exclusions` over a `MediaIndexLiveJoin`, in a zone the caller passes in, writing nothing back — and `AlbumEvaluationStatus`: `MANUAL`, `COMPLETE`, `WAITING_ON_INDEX` and `UNEVALUATABLE`. Each clause answers per item whether it matches and whether that answer is **settled**, ADR-0017 Amendment 2's rule: a pending row matches provisionally on its old place values, and an item makes the album wait only when some clause is unsettled and none is a settled no-match. An overload takes memberships already resolved, so `AlbumsViewModel` resolves each album once. |
 | `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories, and `LiveMediaLookup` — the one lookup of a stored identity against live media, direct URI then healing key, with the URI key injectable: raw for album memberships, canonical for the index join. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. Membership resolution, rule evaluation and index reconciliation all use the lookup — reconciliation with the canonical key (§11 has why). |
-| `MediaIndexDatabase.kt` | The media index Room database: two entities, schema version 4, `exportSchema = true`, with `MIGRATION_1_2`, `MIGRATION_2_3` and `MIGRATION_3_4` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker — see §6. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
-| `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, ADR-0018's captured and derived column split, and `derivedPlaceResolverVersion`, the marker that says which resolver wrote the derived columns — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name. |
-| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeEvaluationProjection`, the narrow read that rule evaluation, the picker and `MediaIndexingViewModel`'s figures use — identity, captured date, whether coordinates exist, the three derived place columns and the resolver marker, as a query result rather than an entity, so it needed no schema change; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. |
-| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexEvaluationProjection` and `ResolvedPlaceWrite` models. `observeEvaluationProjection()` returns every row unfiltered, with stored rather than canonicalised URIs, so the join can heal a moved item through the shared lookup; a pending row keeps its old derived values beside a null or stale marker. It replaced the date-only identity projection of step 2.5, which was deleted with its model and the evaluator's date-only overload. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. |
+| `MediaIndexDatabase.kt` | The media index Room database: four entities, schema version 5, `exportSchema = true`, with `MIGRATION_1_2` to `MIGRATION_4_5` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker; `MIGRATION_4_5` creates the two Tier C tables, empty — see §6. Built by `create(context)`, which also registers an open callback that turns `secure_delete` on. The file also holds what the face-data deletion uses (§6): the pragma helpers `enableSecureDelete`, `checkpointTruncate`, `journalMode` and `lockingMode`, and `deletionIsScrubbed`, the pure mapping from the journal and locking modes a deletion committed under to whether it may report a scrub — **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 6's table. The singleton lives on `EasyGalleryApp`. |
+| `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, ADR-0018's captured and derived column split, and `derivedPlaceResolverVersion`, the marker that says which resolver wrote the derived columns — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name, and the two Tier C entities of **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 5: `MediaIndexFaceStateEntity`, one per image the face pass has processed, and `MediaIndexFaceEntity`, one per stored face, with the outcome's type converter. Neither Tier C entity has a foreign key, and both redact `toString`. |
+| `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeEvaluationProjection`, the narrow read that rule evaluation, the picker and `MediaIndexingViewModel`'s figures use — identity, captured date, whether coordinates exist, the three derived place columns and the resolver marker, as a query result rather than an entity, so it needed no schema change; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. Its Tier C queries — read, insert, re-key and delete per image, delete per volume and in full, and whether any face data exists — are building blocks the store composes inside its own transactions; none is a rule on its own. |
+| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexEvaluationProjection` and `ResolvedPlaceWrite` models. `observeEvaluationProjection()` returns every row unfiltered, with stored rather than canonicalised URIs, so the join can heal a moved item through the shared lookup; a pending row keeps its old derived values beside a null or stale marker. It replaced the date-only identity projection of step 2.5, which was deleted with its model and the evaluator's date-only overload. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. **It also owns Tier C** ([ADR-0018](decisions/0018-media-index-in-a-second-database.md) Amendment 5), with no store interface of its own, because every Tier C rule runs in the transaction that changes the image row: `writeFaceIndexResults` replaces an image's state and faces only while its row still has the identity they were computed from; `upsert` drops a written URI's Tier C rows in its transaction only when no row is stored there or the stored row's healing triple differs, so a re-extraction of an unchanged file — a metadata-only update, a volume resync — keeps them (Amendment 6); the three deletes clear the matching Tier C rows in theirs; `healMediaUri` moves a row in one transaction and re-keys its Tier C rows only when the healed row's triple equals the stored source row's, otherwise leaving neither the source's nor the target's. Both decide through one private test, `keepsTierC`, on `MediaIdentity`'s healing key. `deleteAllFaceData` empties both tables and reports whether the files were scrubbed (§6). `getFaceIndexState`, `listFaces` and `hasFaceData` read; there is no Tier C `Flow`. The `InMemory*` store applies the same rules, copies embeddings in and out, and always reports a deletion scrubbed, having no file. |
+| `MediaIndexTierC.kt` | Pure, Android-free Tier C models — `FaceIndexOutcome`, `FaceBox` in the upright frame **[ADR-0022](decisions/0022-people-criterion-anchored-to-a-photo.md)** §1 defines, `FaceEmbedding`, `FaceDetection`, `FaceIndexWrite`, `FaceIndexState`, `StoredFace` and `FaceDataDeletion` — and the embedding codec, float32 little-endian. Every `toString` is redacted and no check message carries a value, which is the models' share of **[ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md)** §6's never-logged rule. |
 | `MediaIndexWatermarkStore.kt` | `MediaIndexWatermarkStore` plus `RoomMediaIndexWatermarkStore` and `InMemoryMediaIndexWatermarkStore`, and the `MediaIndexVolumeWatermark` model — version, generation, and the API 28–29 date fallback, one entry per volume. |
 | `MediaIndexDeltaDetection.kt` | Pure, Android-free delta detection: the API-branch resolution, the volume plan (which volumes resync and what the next watermarks are), the per-row selection, the `DATE_MODIFIED` fallback predicate, and the `MediaIndexDeltaDetector` that composes a snapshot provider with the watermark store. |
-| `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared `LiveMediaLookup` keyed on `canonicalMediaStoreUriForJoin`, keeping the row's resolver marker, and returns without touching a volume that is not present. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
+| `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared `LiveMediaLookup` keyed on `canonicalMediaStoreUriForJoin`, keeping the row's resolver marker, and returns without touching a volume that is not present. A heal is one call to the store's `healMediaUri`, so the row and its Tier C rows move in one transaction; it used to be a delete then an upsert. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
 | `MediaStoreVolumeSnapshotProvider.kt` | The `MediaStoreVolumeSnapshotProvider` interface, the `MediaStoreVolumeGateway` that isolates the four level-gated `MediaStore` calls, and the Android implementation that builds one snapshot per API branch. |
 | `MediaStoreRowDeltaProvider.kt` | The `ContentResolver` query behind row selection: the per-volume image and video collections, the generation columns where they exist, and the legacy `external` collections on API 28. It canonicalises every observed URI at the source, so a row's spelling does not depend on which collection it was observed through, while the row keeps its own concrete volume name. |
 | `AndroidMediaStoreVolumeVersionProvider.kt` | Reads a single volume's version string — the no-argument call for the primary volume, the per-volume call on API 29+. |
@@ -241,8 +242,8 @@ There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 (`GalleryTransformations`, `MediaLocation`, `CameraFolder`, `FolderViewOverrides`,
 `AlbumMembership`, `MediaIdentity`, `AlbumRule`, `AlbumRuleJson`, `AlbumRuleEvaluation`,
 `AlbumRuleSummary`, `MediaIndexLiveJoin`, `AutomaticAlbumFacets`, `MediaIndexDeltaDetection`,
-`MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`, `AlbumNaming`,
-`Favourites`), in `ui/AlbumListFiltering.kt`, and in `ui/components/` helper files
+`MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`, `MediaIndexTierC`,
+`AlbumNaming`, `Favourites`), in `ui/AlbumListFiltering.kt`, and in `ui/components/` helper files
 (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`) specifically so it can
 be unit tested on a plain JVM without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
@@ -748,7 +749,7 @@ ADR, because they are structure:
   disabled with no way out short of clearing app data. `SharedPreferencesMediaIndexRunStateStore`
   actively removes that key on every write, which is the scar of having tried it.
 - **It is the one preference file with an `<exclude>`**, in `backup_rules.xml` and in both sections
-  of `data_extraction_rules.xml`, beside the index database's three. Restoring a row count and a
+  of `data_extraction_rules.xml`, beside the index database's four. Restoring a row count and a
   "last indexed" timestamp from another device would describe an index that does not exist on this
   one.
 
@@ -784,7 +785,7 @@ preference file changed — its **Amendment 1**.
 The database is in scope for Android auto-backup and device transfer, which is the project
 template's default kept deliberately —
 **[ADR-0014](decisions/0014-album-database-included-in-auto-backup.md)**: `allowBackup="true"`, and
-the only elements in either rules file are `<exclude>` entries — three for the index database and
+the only elements in either rules file are `<exclude>` entries — four for the index database and
 its sidecars, and one for the `media_index_run_state` preferences file.
 **There is no `<include>` anywhere, and that is what keeps the album database in scope** — adding
 one would silently narrow the whole backup to it, so do not "tidy" those files.
@@ -796,13 +797,15 @@ extension version — **[ADR-0011](decisions/0011-favourites-backed-by-mediastor
 
 ### The media index database
 
-`media_index.db`, Room, schema version 4, exported to `app/schemas/` under its own directory. Two
+`media_index.db`, Room, schema version 5, exported to `app/schemas/` under its own directory. Four
 tables:
 
 | Table | Holds |
 |---|---|
 | `media_index` | one row per indexed item: the content URI, the same healing triple an album membership carries, the volume name, the generation numbers, the captured EXIF columns, the derived place columns, and the resolver-version marker |
 | `media_index_watermark` | one row per volume: the last-seen version string, the last-seen generation, and the API 28–29 `DATE_MODIFIED` fallback watermark |
+| `media_index_face_state` | Tier C: one row per image the face pass has processed — its URI, the face-pipeline version, and the outcome, indexed or failed |
+| `media_index_face` | Tier C: one row per stored face — an id never reused, its image's URI, the face-pipeline version, the box as four fractions, the embedding as a float32 blob, and a group id and grouping version, both null until grouped |
 
 EXIF facts captured from a file and the place codes later derived from them are **separate
 columns**, and the derived ones are written only by the place resolve pass —
@@ -830,6 +833,35 @@ bump of `PLACE_RESOLVER_VERSION` makes every older row pending again with no fil
 resolver writes it with the derived columns only where the row's coordinates are unchanged, because
 the periodic job and Index now can run at once.
 
+The fourth, `Migration(4, 5)`, creates the two **Tier C** tables empty and changes no existing
+table, so every image starts pending. Tier C is face data: what it holds, its two stamps and its
+per-image states are **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)**
+**Amendment 5**'s. The tables carry no foreign key — the store's `INSERT OR REPLACE` upsert would
+fire a cascade on every Tier A write — so `MediaIndexStore` applies each rule itself, in the
+transaction that changes the image row (§3). Nothing in production writes them yet: the face pass,
+and the moments a deletion runs, belong to later steps of
+[albums-stage-3.md](../design/albums-stage-3.md).
+
+**Deleting face data zeroes the deleted bytes, and reports when a copy may remain.** `create` turns
+`PRAGMA secure_delete` on when the database opens, so every Tier C delete and update zeroes the old
+bytes, and a failed read-back there does not stop the index opening. `deleteAllFaceData` sets it
+again as the first statement of its transaction and refuses to delete unless it reads back on, and
+reads `journal_mode` and `locking_mode` on that same connection. After the commit,
+`deletionIsScrubbed` decides what the result may report, by
+**[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 6's table: under `wal`,
+whether `PRAGMA wal_checkpoint(TRUNCATE)` emptied the log, which a reader still holding the old
+snapshot prevents; under `delete` or `truncate`, scrubbed only with `normal` locking; under `memory`
+or `off`, scrubbed; under `persist` or a mode it does not recognise, not scrubbed, because the
+journal may keep the deleted pages' copies. Not scrubbed is a result, not an error: the rows are
+deleted either way, and the caller repeats the deletion — which on a `PERSIST` device reports not
+scrubbed again. There is no `VACUUM`. The mechanism and why are Amendment 5's, as step 3.2 annotated
+it, and what may be reported is Amendment 6's; **when** a deletion runs — the Settings switch, and a
+repeat at start-up — is
+**[ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md)** §3's and is not wired yet.
+`MediaIndexFaceDataScrubTest` proves the result under Robolectric for `wal`, `truncate` and
+`persist`, and `MediaIndexScrubModeTest` the mapping on a plain JVM; what only a device can show —
+the phones' real modes among it — is left to step 3.7 of the stage plan.
+
 **The gazetteer the resolve pass reads is not a database.** It is three UTF-8 TSV assets under
 `app/src/main/assets/gazetteer/` — places, admin1 names, country names — generated by hand from
 GeoNames with `tools/gazetteer/build_gazetteer.py`, committed, and parsed into memory by a worker
@@ -839,8 +871,12 @@ their SHA-256, row counts and the resolver version it was stamped with —
 is GeoNames' under **CC BY 4.0**, and its attribution is the Settings screen's **Place data row**
 in the Legal section, which must survive any reorganisation of Settings.
 
-It is **excluded** from backup and device transfer — the file and its `-wal` / `-shm` sidecars, in
-`backup_rules.xml` and in both sections of `data_extraction_rules.xml`. The
+It is **excluded** from backup and device transfer — the file and its `-wal`, `-shm` and `-journal`
+sidecars, in `backup_rules.xml` and in both sections of `data_extraction_rules.xml`. The
+`-journal` exclusion arrived with Tier C: Room uses a rollback journal on a low-RAM device, and one
+left hot by a crash holds pages as they were before the transaction. Tier C is in the same file, so
+face data is out of cloud backup and device transfer by these rules, which is how
+**[ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md)** §6 says it is checked. The
 `media_index_run_state` preferences file is excluded in the same three places and for the same
 reason. Backup rules select files rather than tables, which is why the split into two databases is
 what makes "back up albums, never back up the index" expressible at all. The exclusion costs

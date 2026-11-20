@@ -15,8 +15,9 @@ Own the design outcome while collaborating with implementation agents. Escalate 
 This is **Easy Gallery**, an Android image and video gallery app built with Jetpack Compose and
 Material 3. The brand colour is `BrandBlue` (`0xFF017DDF`), pinned in both the light and dark
 schemes. Media is a live `MediaStore` query the app never copies; what it owns is two small Room
-databases — albums (ADR-0009) and the media index (ADR-0018), which has no user-visible surface
-yet. Read these before designing anything:
+databases — albums (ADR-0009) and the media index (ADR-0018), whose own controls are the Settings
+screen's **Media index area** and the New automatic album screen's **Index band**, and whose data
+sorts by date taken and fills automatic albums. Read these before designing anything:
 
 1. `AGENTS.md` — tech stack, package layout, and the localisation rules you must design within.
 2. `.github/instructions/ui-vocabulary.instructions.md` — the canonical names for the five main

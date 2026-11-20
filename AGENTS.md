@@ -258,10 +258,13 @@ database is backed up (ADR-0014) while the index must not be.
 - Access goes through a store interface — `AlbumStore`, `MediaIndexStore`, and
   `MediaIndexWatermarkStore` — each with a `Room*` implementation for production and an
   `InMemory*` one for tests, the same shape as the preference stores. DAO-level tests use
-  `inMemoryDatabaseBuilder`.
+  `inMemoryDatabaseBuilder`. Tier C face data has no store of its own: it is on `MediaIndexStore`,
+  because its rows change in the same transaction as the image row they describe
+  ([albums-stage-3.md](docs/design/albums-stage-3.md), step 3.2).
 - **One database does not mean one table.** The album database holds two tables; the index
-  database holds two as well, having gained the per-volume delta watermark table through a real
-  `Migration(1, 2)`. A watermark is index metadata — recomputable, worthless without the index,
+  database holds four, having gained the per-volume delta watermark table through a real
+  `Migration(1, 2)` and the two Tier C tables through `Migration(4, 5)`. A watermark is index
+  metadata — recomputable, worthless without the index,
   already excluded from backup — so it belongs with the data it describes rather than in
   `app_settings`. ADR-0018 Amendment 1 records that.
 - **The index has migrated more than once, and never destructively.** Its second migration,
@@ -270,7 +273,8 @@ database is backed up (ADR-0014) while the index must not be.
   delta detection never re-extracts unchanged media, and a migration was the cheap exact repair —
   ADR-0018 Amendment 3 records why. A third, `Migration(3, 4)`, adds the place resolver's version
   marker (ADR-0018 Amendment 4); a bump of `PLACE_RESOLVER_VERSION` re-resolves rows without
-  another migration. Each database's current version is its `@Database` annotation;
+  another migration. A fourth, `Migration(4, 5)`, creates the Tier C tables empty (ADR-0018
+  Amendment 5). Each database's current version is its `@Database` annotation;
   read it there rather than from a document.
 - Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
   committed — and so does a data migration, which bumps the version even when the schema is
@@ -283,9 +287,11 @@ database is backed up (ADR-0014) while the index must not be.
   `AlbumMembership.kt`. An index row is the opposite case — a cache, deleted rather than retained
   when its media is gone (ADR-0020). Favourites are in **neither** database — they are a
   `MediaStore` column (ADR-0011), unavailable below API 30.
-- **Face data is decided ahead of its code** (Stage 3). ADR-0018 Amendment 5 puts it in the index
-  database as Tier C and says what deleting it removes; ADR-0024 says when it is deleted and that
-  it never enters a backup or a log. A people rule's anchor (ADR-0022) is the one face-related
+- **Face data is decided ahead of most of its code** (Stage 3). ADR-0018 Amendment 5 puts it in the
+  index database as Tier C and says what deleting it removes; ADR-0024 says when it is deleted and
+  that it never enters a backup or a log. Step 3.2 built the tables, the store rules and the
+  deletion; nothing writes face data yet, and nothing calls the deletion.
+  A people rule's anchor (ADR-0022) is the one face-related
   thing in the album database, and it is not face data. Read them before adding a table to either
   database.
 
