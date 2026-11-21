@@ -116,6 +116,15 @@ In this order:
   show, its rule is untouched, and nothing is deleted.
 - **Settings shows the setting off**, and no Tier C figure.
 
+  > **Built 2026-11-21 — step 3.5, evaluation only.** `data/PeopleAvailability.kt` reads the setting
+  > and the persisted capability record, never the pipeline, and a people album is unevaluatable
+  > with `PEOPLE_UNAVAILABLE_FACE_DATA_OFF` while the setting reads off — checked before the
+  > capability, and before any anchor. The disclosure is not an input. `AlbumsViewModel` re-reads
+  > the availability on every face-snapshot emission, but switching face data off when Tier C is
+  > already empty changes no row and so emits nothing: **the switch step 3.6 builds must call
+  > `AlbumsViewModel.refreshPeopleAvailability()`**, in both directions, and nothing calls it yet.
+  > The notice's wording is step 3.6's.
+
 ### 5. Switching face data back on
 
 - **Persist "on"**; the next index pass — periodic or Index now — starts Tier C from empty.

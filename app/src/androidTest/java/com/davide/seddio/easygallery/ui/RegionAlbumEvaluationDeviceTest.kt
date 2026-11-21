@@ -261,7 +261,7 @@ class RegionAlbumEvaluationDeviceTest {
         fun check(kind: String, where: String, shownCount: Int, vararg clauses: AlbumRuleClause) {
             checkedByKind.merge(kind, 1, Int::plus)
             val evaluated = AlbumRuleEvaluator
-                .evaluate(AlbumRule.Evaluatable(clauses.toList()), join, emptyList(), s.zone)
+                .evaluate(AlbumRule.Evaluatable(clauses.toList()), join, emptyList(), s.zone, people = null)
                 .members.size
             if (evaluated != shownCount) mismatches += "$kind $where: shown=$shownCount evaluated=$evaluated"
         }

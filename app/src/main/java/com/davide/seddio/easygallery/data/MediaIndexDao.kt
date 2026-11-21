@@ -24,6 +24,50 @@ data class MediaIndexEvaluationProjectionEntity(
     val derivedPlaceResolverVersion: Int?
 )
 
+// What grouping reads of a face: the id and the embedding, nothing else.
+class MediaIndexFaceEmbeddingEntity(
+    val id: Long,
+    val embedding: ByteArray
+) {
+    override fun toString(): String = "MediaIndexFaceEmbeddingEntity(redacted)"
+}
+
+// One group for the picker, with its representative face and that face's index row.
+class MediaIndexFaceGroupEntity(
+    val groupId: Long,
+    val imageCount: Int,
+    val newestDateTakenEpochMillis: Long?,
+    val representativeMediaUri: String,
+    val representativeDisplayName: String,
+    val representativeSize: Long,
+    val representativeDateModified: Long,
+    val boxLeft: Float,
+    val boxTop: Float,
+    val boxRight: Float,
+    val boxBottom: Float,
+    val pipelineVersion: Int
+) {
+    override fun toString(): String = "MediaIndexFaceGroupEntity(redacted)"
+}
+
+// One row per face; an image with no face is one row with the face columns null. Never the embedding.
+class MediaIndexFaceEvaluationRowEntity(
+    val mediaUri: String,
+    val displayName: String,
+    val size: Long,
+    val dateModified: Long,
+    val outcome: FaceIndexOutcome,
+    val faceId: Long?,
+    val boxLeft: Float?,
+    val boxTop: Float?,
+    val boxRight: Float?,
+    val boxBottom: Float?,
+    val groupId: Long?,
+    val groupingVersion: Int?
+) {
+    override fun toString(): String = "MediaIndexFaceEvaluationRowEntity(redacted)"
+}
+
 @Dao
 interface MediaIndexDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -46,6 +90,17 @@ interface MediaIndexDao {
 
     @Query("SELECT * FROM media_index WHERE volumeName = :volumeName ORDER BY mediaUri ASC")
     fun observeByVolume(volumeName: String): Flow<List<MediaIndexEntity>>
+
+    // One query over three tables, so one emission is one consistent snapshot of a face or grouping write.
+    @Query(
+        "SELECT s.mediaUri AS mediaUri, m.displayName AS displayName, m.size AS size, m.dateModified AS dateModified, " +
+            "s.outcome AS outcome, f.id AS faceId, f.boxLeft AS boxLeft, f.boxTop AS boxTop, f.boxRight AS boxRight, " +
+            "f.boxBottom AS boxBottom, f.groupId AS groupId, f.groupingVersion AS groupingVersion " +
+            "FROM media_index_face_state s JOIN media_index m ON m.mediaUri = s.mediaUri " +
+            "LEFT JOIN media_index_face f ON f.mediaUri = s.mediaUri AND f.pipelineVersion = :pipelineVersion " +
+            "WHERE s.pipelineVersion = :pipelineVersion ORDER BY s.mediaUri ASC, f.id ASC"
+    )
+    fun observeFaceEvaluationRows(pipelineVersion: Int): Flow<List<MediaIndexFaceEvaluationRowEntity>>
 
     @Query("SELECT * FROM media_index WHERE mediaUri = :mediaUri LIMIT 1")
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntity?
@@ -177,6 +232,54 @@ interface MediaIndexDao {
 
     @Query("DELETE FROM media_index_face WHERE mediaUri IN (SELECT mediaUri FROM media_index WHERE volumeName = :volumeName)")
     suspend fun deleteFacesByVolume(volumeName: String)
+
+    // Faces at [pipelineVersion] in id order, after the cursor; a null cursor starts at the first.
+    @Query(
+        "SELECT id, embedding FROM media_index_face WHERE pipelineVersion = :pipelineVersion " +
+            "AND (:afterFaceId IS NULL OR id > :afterFaceId) ORDER BY id ASC LIMIT :limit"
+    )
+    suspend fun listFacesForGrouping(
+        pipelineVersion: Int,
+        afterFaceId: Long?,
+        limit: Int
+    ): List<MediaIndexFaceEmbeddingEntity>
+
+    // A face at the version with no grouping, another grouping, or a group id naming no face at the version.
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM media_index_face f WHERE f.pipelineVersion = :pipelineVersion " +
+            "AND (f.groupingVersion IS NULL OR f.groupingVersion != :groupingVersion OR f.groupId IS NULL " +
+            "OR NOT EXISTS (SELECT 1 FROM media_index_face r WHERE r.id = f.groupId AND r.pipelineVersion = :pipelineVersion)))"
+    )
+    suspend fun hasFacesPendingGrouping(pipelineVersion: Int, groupingVersion: Int): Boolean
+
+    // Only faces still at [pipelineVersion]; returns the rows written. Callers keep [faceIds] under API 28's 999 variables.
+    @Query(
+        "UPDATE media_index_face SET groupId = :groupId, groupingVersion = :groupingVersion " +
+            "WHERE pipelineVersion = :pipelineVersion AND id IN (:faceIds)"
+    )
+    suspend fun updateFaceGroup(groupId: Long, groupingVersion: Int, pipelineVersion: Int, faceIds: List<Long>): Int
+
+    // Images are counted among index rows that still exist; the representative must exist at the version too.
+    @Query(
+        "SELECT g.groupId AS groupId, g.imageCount AS imageCount, g.newestDate AS newestDateTakenEpochMillis, " +
+            "rm.mediaUri AS representativeMediaUri, rm.displayName AS representativeDisplayName, " +
+            "rm.size AS representativeSize, rm.dateModified AS representativeDateModified, " +
+            "r.boxLeft AS boxLeft, r.boxTop AS boxTop, r.boxRight AS boxRight, r.boxBottom AS boxBottom, " +
+            "r.pipelineVersion AS pipelineVersion " +
+            "FROM (SELECT f.groupId AS groupId, COUNT(DISTINCT f.mediaUri) AS imageCount, " +
+            "MAX(m.capturedDateTakenEpochMillis) AS newestDate " +
+            "FROM media_index_face f JOIN media_index m ON m.mediaUri = f.mediaUri " +
+            "WHERE f.pipelineVersion = :pipelineVersion AND f.groupingVersion = :groupingVersion AND f.groupId IS NOT NULL " +
+            "GROUP BY f.groupId HAVING COUNT(DISTINCT f.mediaUri) >= :minimumImages) g " +
+            "JOIN media_index_face r ON r.id = g.groupId AND r.pipelineVersion = :pipelineVersion " +
+            "JOIN media_index rm ON rm.mediaUri = r.mediaUri " +
+            "ORDER BY g.imageCount DESC, (g.newestDate IS NULL) ASC, g.newestDate DESC, g.groupId ASC"
+    )
+    suspend fun listFaceGroups(
+        pipelineVersion: Int,
+        groupingVersion: Int,
+        minimumImages: Int
+    ): List<MediaIndexFaceGroupEntity>
 
     @Query("DELETE FROM media_index_face_state")
     suspend fun deleteAllFaceStates(): Int

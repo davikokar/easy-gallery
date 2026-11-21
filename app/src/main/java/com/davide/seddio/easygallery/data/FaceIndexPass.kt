@@ -127,6 +127,9 @@ object FaceIndexLogLines {
     fun capabilityChecked(capable: Boolean): String = "face capability checked capable=$capable"
 
     fun deletionRan(scrubbed: Boolean): String = "face data deletion ran scrubbed=$scrubbed"
+
+    /** A fixed stop name only: no count of faces or groups, no id, no time (plan 3.4, *Reporting*). */
+    fun groupingFinished(stop: FaceGroupingStop): String = "face grouping finished stop=${stop.name}"
 }
 
 /**

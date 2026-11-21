@@ -619,7 +619,8 @@ it, and what an album does when it cannot be evaluated.
 - **`box`** is the face's position as fractions of the upright photo, `0 ≤ left < right ≤ 1` and
   `0 ≤ top < bottom ≤ 1` (ADR-0022 §1). **The encoder writes the numbers with `Locale.US`**, as
   `AGENTS.md` requires of anything parsed back by machine: a decimal comma would make the clause
-  malformed the moment it is written, and an unreadable rule is never rewritten.
+  malformed the moment it is written, and an unreadable rule is never rewritten. *(Built with
+  `Float.toString`, which is locale-free by definition — see* Built 2026-11-21 *below.)*
 - **`pipeline`** is the face-pipeline version that produced the box (ADR-0022 §1). Not matched.
 - **A combined rule** is any mix: two `people` clauses, a `region` clause and a `time` clause is
   "Silvia and Davide in France, 2025" (decision 33). Amendment 2's note that step 2.7 writes at most
@@ -642,6 +643,7 @@ Amendments 1 and 2's lists, which apply unchanged:
 
 These are parse failures, so the album shows the **Newer-app notice**. **Until step 3.5 ships the
 parser, a `people` clause is an unknown clause type**, as Amendment 1 said of `region` before 2.7.
+*(Step 3.5 shipped the parser on 2026-11-21.)*
 
 ### Settled and unsettled, for a `people` clause
 
@@ -694,7 +696,8 @@ reversal settled for content.
   37's reversal found for content. The wordings, and how the evaluator reports which cause applies
   beside `AlbumEvaluationStatus.UNEVALUATABLE`, are step 3.5 and 3.6's. Whether that status gains a
   sibling or carries a cause is 3.5's choice; **its doc comment, "the stored rule is not understood by
-  this build", becomes too narrow either way.**
+  this build", becomes too narrow either way.** *(3.5 chose a cause; its doc comment was widened —
+  see* Built 2026-11-21 *below.)*
 - **One notice per album.** When several causes apply, the intended order is the unreadable rule
   first, then people unavailable — which leaves no anchor to test — then the anchor not found.
 
@@ -742,6 +745,36 @@ governs every change, and a new field is a new ADR question.
   them as one People criterion.
 - The JSON carries a file name. It already appears in the album database's memberships, so nothing
   new leaves the device; but a database dump of a people album now names its anchor photos.
+
+### Built 2026-11-21 — step 3.5
+
+The clause, its parser and writer, and the two evaluation-time causes landed as this amendment says,
+with no schema change and the envelope still at version 1. Where the code is the record:
+`data/AlbumRule.kt`, `data/AlbumRuleJson.kt`, `data/AlbumRuleEvaluation.kt` and
+`data/PeopleClauseEvaluation.kt`; [ARCHITECTURE.md](../ARCHITECTURE.md) §3 describes each, and
+[albums-stage-3.md](../../design/albums-stage-3.md) *3.5 — Built and verified* has the gate.
+
+- **A cause on `UNEVALUATABLE`, not a sibling status.** `AlbumEvaluationStatus` kept its four values;
+  an `UNEVALUATABLE` evaluation carries an `AlbumUnevaluatableCause` — `RULE_NOT_UNDERSTOOD`,
+  `PEOPLE_UNAVAILABLE_FACE_DATA_OFF`, `PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE`, `ANCHOR_NOT_FOUND` —
+  and no other evaluation does. Why: every reader that already branches on `UNEVALUATABLE` keeps its
+  meaning — the album resolves to additions minus exclusions, whatever the cause — so no screen
+  changed, and the cause is added information rather than a new state every exhaustive `when` must
+  learn. The order above holds: an unreadable rule, then people unavailable, then the anchor not
+  found. Until step 3.6 branches on the cause, every cause is drawn with the Newer-app notice; no
+  released build can reach that, because nothing writes a `people` clause.
+- **The parser's reasons** are three new `UnevaluatableReason` values, `INVALID_ANCHOR`,
+  `INVALID_PIPELINE_VERSION` and `INVALID_FACE_BOX`; an unknown field is the existing reason.
+- **The box numbers are written with `Float.toString`,** not a `Locale.US` formatter: it is
+  locale-free by definition and round-trips a `Float` exactly, which a fixed number of decimals
+  would not. A negative zero, which `-0`, `-0.0` or `-1e-50` read as, is normalised to `+0f`, so
+  equal boxes compare and encode alike.
+- **"In `[0, 1]`" is checked on the `Float` the text reads as, after rounding.** A text such as
+  `1.00000001` rounds to `1f` and is accepted; the list above reads as the literal decimal, but a
+  box is stored and compared as `Float`s, so the rounded value is the one the rule means. The plan
+  and this amendment do not disagree; this is the reading.
+- `People` and `Unevaluatable` redact `toString` (`Unevaluatable(raw=redacted, …)`), so neither an
+  anchor's URI or name nor stored rule text reaches a log or a test failure message.
 
 ### References added by this amendment
 

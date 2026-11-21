@@ -146,6 +146,17 @@ otherwise run plain.
   `-Pandroid.testInstrumentationRunnerArguments.faceIndexMeasurement=true`. It logs aggregates
   only, and works on a throwaway in-memory store, never the app's real one. The `ENVIRONMENT:`
   rule above still applies once it is opted in.
+  Step 3.4 added two more: `FaceGroupingMeasurementDeviceTest` (`faceGroupingMeasurement=true`;
+  `faceGroupingMeasurementReal=false` skips the real library, and
+  `faceGroupingMeasurementSizes=2000,5000` — comma-separated — chooses the synthetic sizes), and
+  `FaceGroupingWorkerMeasurementDeviceTest` (`faceGroupingWorkerMeasurement=true`), the one opt-in
+  test that runs the real worker on the app's own index.
+- **Only test sources set the face-data disclosure flag**, and a test that does lives in
+  `androidTest` only. It snapshots the setting and `face_device_state` first and restores them
+  exactly afterwards, in a step that runs even when the measurement fails — **flags first, then the
+  face-data deletion**, holding the Tier C lock across both so no periodic run can write face data
+  in between — and then checks the restore as a separate step.
+  `FaceGroupingWorkerMeasurementDeviceTest` is the example.
 - A test of the face pipeline needs an arm64 device; on another ABI it must assert the opposite
   answer rather than pass vacuously, as `FaceCapabilityDeviceTest` does. Emulators fail the
   capability check (ADR-0023).

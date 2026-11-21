@@ -27,6 +27,12 @@
 > records the disclosure as shown. §6: the notices are `NOTICE.txt`, the three licence files and
 > `THIRD_PARTY_NOTICES.txt` in the same directory; the Settings row is step 3.6's. §5 is step
 > 3.4's.
+>
+> **Built 2026-11-21** by step 3.4, and verified by the definition of done — the gate is in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.4 — Built and verified*. §4's grouping:
+> `FaceGroupingPass`, run by `MediaIndexingWorker` after the face pass in the same hold of the Tier C
+> lock. §5: `data/FaceGrouping.kt`, components first, measured in the worker (the last note of §5,
+> and verify item 6).
 
 ## Context
 
@@ -151,6 +157,10 @@ switched on and the disclosure has been shown (ADR-0024).
   face-indexed over several runs.
 - **Grouping runs after detection and embedding**, in the same worker or as its own step, as step
   3.4 decides. It must also fit the window or be resumable, and must never run twice at once.
+  *Built 2026-11-21:* in the same worker, after the face pass and inside the same hold of the Tier C
+  lock, unless the pass stopped because the setting went off. It starts only within 8 minutes of
+  the worker's start and writes once, in one transaction at the end, so a run cut short writes
+  nothing and the next repeats it; it is not resumable part-way.
 - **Images only** (decision 40); ~~GIFs per Amendment 5's question~~ no GIFs (Amendment 5's question,
   answered 2026-11-19).
 - **No face data in any log.** What the pass may log is [ADR-0024](0024-face-data-disclosure-and-delete-switch.md)'s.
@@ -163,12 +173,54 @@ A worker that runs out of memory kills the app's process with it.
 
 - **Step 3.4 measures** grouping's peak memory and time on the device, at the largest real library
   available and at a synthetic set of at least 10,000 faces, in the background.
+  *Measured: the synthetic sets in the process (Tasks 1 and 2, the notes below), the real library of
+  422 faces in the worker on 2026-11-21 (the last note); a real library of 10,000 faces or more is
+  step 3.7's.*
 - **It must stay within a memory budget** that 3.4 proposes and the maintainer accepts, with the
   detection models' own footprint counted: the spike's harness peaked at about 300 MB with SFace
   loaded, in the foreground.
 - **If average linkage cannot meet the budget, replacing it is a new decision** in albums.md §8, and an
   amendment to this record — incremental clustering is open question B2 — not an implementation
   detail chosen in a pull request.
+
+> **Note 2026-11-20 — measured, and the budget accepted** ([albums.md](../../design/albums.md) §8
+> decision 50). Step 3.4's Task 1 measured grouping on the SM-G990B; the figures are in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.4*, *Task 1 — measured 2026-11-20*. The
+> maintainer accepted the plan's budget — **at most 256 MB rise in peak RSS and at most 90 s at
+> 10,000 synthetic faces** — as met: 10,000 faces took 30.7 s and +213.9 MB RSS, with no
+> `OutOfMemoryError`. **The binding limit is the Java heap, not RSS:** the float32 triangle is 200 MB
+> at 10,000 faces against the app's 256 MB heap (peak about 233 MB used), so about 10,500 faces is
+> the ceiling. **Grouping therefore splits the faces into connected components first** — pairs at or
+> below the 0.50 cut — and runs average linkage inside each. That yields **exactly the same groups**,
+> so it is not the replacement of average linkage the third bullet above makes a new decision; it
+> changes how the groups are computed, not what they are. Memory then follows the largest component
+> (88 faces on the real library, 60 in the synthetic 10,000), and time, quadratic in all faces for
+> the distances, becomes the ceiling instead. B2 stays not adopted. ~~Step 3.4's Task 2 builds the
+> split and measures it at 10,000 and 20,000 faces.~~ *Done — Task 2 built the split and measured it,
+> the note below.*
+
+> **Note 2026-11-20, later — components first measured** (step 3.4's Task 2, on the SM-G990B; the
+> figures are in [albums-stage-3.md](../../design/albums-stage-3.md), *3.4*, Task 2). **10,000
+> synthetic faces: 12.8 s, +30.4 MB Java heap, +17.5 MB RSS; 20,000: 50.9 s, +46.9 MB heap, +39.1 MB
+> RSS** — both well inside the accepted budget, and 20,000 now fits where the whole-set triangle could
+> not. **The heap now binds on the largest component's triangle**, about 2k² bytes for k faces in one
+> component (float32, half the matrix), so the ceiling is about 10,500 faces *in one component*
+> rather than in the library. The real library's largest component is 88 faces (422 faces, 147
+> components, 164 groups, 104 offered); the synthetic set's is 60, and synthetic data is too
+> idealised to say how close a real library of 10,000 faces would come to that bound. Time, quadratic
+> in all faces for the component search, is the practical ceiling.
+
+> **Note 2026-11-21 — measured in the worker** (step 3.4's Task 5, `FaceGroupingWorkerMeasurementDeviceTest`,
+> opt-in, on the SM-G990B: the app's own index, Index now through the real scheduler, the disclosure
+> marked shown by the test and every preference restored after; figures in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.4 — Built and verified*). The first run
+> succeeded: Tier A 1,133 rows, the face pass 1,002 images indexed, 0 failed, 90 GIFs skipped, stopped
+> `COMPLETED` in 113.2 s, then grouping `GROUPED` in 292 ms — 422 faces, 164 groups, 104 offered. A
+> second, no-op run took 568 ms with grouping `NOT_NEEDED`. Peak RSS rose 372,096 kB in the first
+> run, models and the whole pass included; thermal status 0; charging. Grouping on the real library
+> is far inside the budget; what remains is a production-size library, where the store's paged read
+> and one-transaction write — not in the synthetic figures above — and one large component are
+> unmeasured ([ARCHITECTURE.md](../ARCHITECTURE.md) §11; step 3.7).
 
 ### 6. Licences owed
 
@@ -228,7 +280,7 @@ than in the worker — each marked in its row; items 5's re-check, 6's worker ru
 | 3 | **How the ~~trimmed~~ OpenCV build is produced** — OpenCV's published Android artifact, a build made by a script under `tools/` and committed as a prebuilt, or a native build inside Gradle. Each has different reproducibility, build-time and licence-reading costs. | question 1 below. ✅ **Settled 2026-11-19:** the published artifact, untrimmed | ~~the maintainer, before 3.3~~ the maintainer, 2026-11-19 |
 | 4 | **The merged manifest.** The confirmation covers the library, not what it merges in. | merged debug and release manifests diffed before and after; any new permission, `<queries>` entry or component goes to the maintainer before it ships. ✅ **Settled 2026-11-20:** both byte-identical to the build before the dependency — debug md5 `8856dbd4b4257bd665c4593a325ba624`, release `043a521e4d0a25724364c8b8b6ea6f8d`; nothing went to the maintainer, nothing being added | Coder at 3.3, the change that adds OpenCV |
 | 5 | **The download-size budget** | measured on the release bundle's arm64-v8a delivery with bundletool, not estimated. ✅ **Measured 2026-11-20:** `get-size total` for arm64 is 49,613,983 B, **+46,063,982 B** against the 50 MB budget — within it, with little headroom. The models' 36.1 MB are in the base, so every ABI downloads them | Coder at 3.3; again at 3.7 |
-| 6 | **Background speed, memory and heat** — every spike figure was taken in the foreground, on USB power | measured in the worker, on the device. 🔶 **Measured 2026-11-20 in the process, not in the worker** — the worker's pass cannot run until step 3.6 records the disclosure as shown. `FaceIndexPassMeasurementDeviceTest` (opt-in) on the SM-G990B, on a throwaway in-memory index, screen off, USB charging, thermal status 1 before and after: 1,133 live items; 1,002 images reached a state (27 + 46 + 929 over the runs), 0 failed; 422 faces; 150.7 ms per image, the remainder run's mean; peak RSS 619,804 kB, an upper bound, the test process loading the pipeline three times. Of two budgeted runs, the second processed only what the first left. 90 GIFs skipped by design. At that rate the 7-minute budget fits about 2,800 images per run. Still owed: the run through the worker, with Index now and the screen off | Coder at 3.3 and 3.4; the worker run at 3.7 |
+| 6 | **Background speed, memory and heat** — every spike figure was taken in the foreground, on USB power | measured in the worker, on the device. 🔶 **Measured 2026-11-20 in the process, not in the worker** — the worker's pass cannot run until step 3.6 records the disclosure as shown. `FaceIndexPassMeasurementDeviceTest` (opt-in) on the SM-G990B, on a throwaway in-memory index, screen off, USB charging, thermal status 1 before and after: 1,133 live items; 1,002 images reached a state (27 + 46 + 929 over the runs), 0 failed; 422 faces; 150.7 ms per image, the remainder run's mean; peak RSS 619,804 kB, an upper bound, the test process loading the pipeline three times. Of two budgeted runs, the second processed only what the first left. 90 GIFs skipped by design. At that rate the 7-minute budget fits about 2,800 images per run. Still owed: the run through the worker, with Index now and the screen off. ✅ **Measured in the worker 2026-11-21** (step 3.4's Task 5, SM-G990B, Index now, the disclosure set by the test): run 1 — face pass 1,002 images, 0 failed, 90 GIFs skipped, `COMPLETED` in 113.2 s, then grouping `GROUPED` in 292 ms; run 2, no-op, 568 ms, grouping `NOT_NEEDED`; peak RSS rise 372,096 kB in run 1; thermal 0, charging; §5's last note. Still owed at 3.7: a production-size library, the SM-G781B, a non-Samsung phone, and the run through the real disclosure | Coder at 3.3 and 3.4; the rest at 3.7 |
 | 7 | **The capability check on another phone** | the SM-G781B, if it can be attached | 3.7 |
 | 8 | **The licences of the bundled components** | read ~~once item 3 is decided~~ from the published artifact, item 3 being settled. ✅ **Settled 2026-11-20:** every component `getBuildInformation()` lists, and `libc++_shared.so`, read at the version OpenCV 4.13.0 pins — all permissive, none blocks commercial redistribution; what is owed is in [albums-stage-3.md](../../design/albums-stage-3.md) *OpenCV 4.13.0 bundled components* | Planner at 3.3, 2026-11-20 |
 

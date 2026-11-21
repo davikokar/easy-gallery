@@ -380,7 +380,7 @@ class AutomaticAlbumFacetsTest {
         clauses: List<AlbumRuleClause>,
         requirePositive: Boolean = true
     ) {
-        val members = AlbumRuleEvaluator.evaluate(AlbumRule.Evaluatable(clauses), join, emptyList(), zone).members
+        val members = AlbumRuleEvaluator.evaluate(AlbumRule.Evaluatable(clauses), join, emptyList(), zone, people = null).members
         // MockK keeps every recorded toString() call; thousands of evaluations over ~800 mocks fill the test heap.
         clearAllMocks(answers = false)
         assertEquals("entry for $clauses in $zone", members.size, shown)
@@ -471,10 +471,12 @@ class AutomaticAlbumFacetsTest {
     private fun item(id: Int, dateTaken: Long?, location: LocationState) = JoinedMedia(
         item = liveItem(id),
         date = if (dateTaken == null) DateTakenSortState.IndexedWithoutDate else DateTakenSortState.IndexedWithDate(dateTaken),
-        location = location
+        location = location,
+        indexedIdentity = null
     )
 
-    private fun unreached(id: Int) = JoinedMedia(liveItem(id), DateTakenSortState.NotIndexed, LocationState.NotIndexed)
+    private fun unreached(id: Int) =
+        JoinedMedia(liveItem(id), DateTakenSortState.NotIndexed, LocationState.NotIndexed, indexedIdentity = null)
 
     private fun resolved(country: String, region: String? = null, place: String? = null) =
         LocationState.Resolved(PlaceValues(country, region, place))

@@ -4,6 +4,12 @@
 - Date: 2026-10-08
 - Decision makers: Easy Gallery project maintainer
 
+> ~~**Amendment 8 (2026-11-20), at the end of this record, is adopted and not yet built.** The `Active`
+> status above covers the Decision and Amendments 1–8. Remove this note when step 3.4 has built it.~~
+> **Amendment 8 was reversed on 2026-11-20, the day it was adopted, before anything of it was built**
+> — see its *Reversed* note at the end of this record. The `Active` status above covers the Decision
+> and Amendments 1–7; Amendment 8 is kept as history only. The index stays at version 6.
+
 ## Context
 
 Stage 2 builds the media index ([albums.md](../../design/albums.md) §6): per-item facts computed in
@@ -565,6 +571,21 @@ be face data with no use.
 > own; per-group summaries stay step 3.4's. The schema and its reasons are in
 > [albums-stage-3.md](../../design/albums-stage-3.md), *3.2 — Tier C schema and store*.
 
+> ~~**Amendment 8, 2026-11-20:** a face row also holds its box's short side in pixels of the decoded
+> frame, 0 meaning unknown, so that a group's representative can prefer a face at least 60 px across.
+> "Nothing else" above still holds: it is a fact about a stored face, not a crop.~~ **Reversed the same
+> day, before it was built** (Amendment 8's *Reversed* note): no pixel size is stored; the list above
+> is again the whole of a face row.
+
+> **Built 2026-11-21, by step 3.4** ([albums-stage-3.md](../../design/albums-stage-3.md), *3.4 —
+> Built and verified*). Grouping fills the face row's two grouping columns and adds nothing else:
+> `groupId` is the face id of the group's representative — the plain medoid, ties to the lower face
+> id — and `groupingVersion` is `FACE_GROUPING_VERSION`, 1, naming the algorithm, the cut and the
+> representative rule. Per-group summaries are **computed on read** by the People picker's query,
+> not stored, so there is no third kind of row. **No schema change:** the index stays at version 6;
+> Amendment 8, which would have added a column, was reversed before it was built and stays below as
+> annotated history.
+
 ### Two stamps, by the captured/derived split
 
 The Decision split captured EXIF facts from the place codes derived from them, so that the cheap half
@@ -600,6 +621,18 @@ nor are GIFs — the question below, answered 2026-11-19):
 - **A video or GIF has no state row and is never pending.** Counting it as pending would keep every
   people album waiting for ever.
 
+> **Built 2026-11-21, by step 3.4, for the grouping half of *Pending*.** Grouping is needed when a
+> face at the current pipeline version has no grouping version or another one, or a `groupId` naming
+> no face at that version — a representative deleted, or dropped by a changed healing triple; a
+> deleted face that was not a representative does not make grouping needed. Faces at another
+> pipeline version are ignored. How a `people` clause reads these states per image is step 3.5's.
+
+> **Built 2026-11-21, by step 3.5** ([albums-stage-3.md](../../design/albums-stage-3.md), *3.5 —
+> Built and verified 2026-11-21*). The per-image read is `observeFaceEvaluationProjection`: one Room
+> query, the face state inner-joined to `media_index` and left-joined to its faces at the asked
+> pipeline version, with **no embedding**; it re-emits on face writes and on group-only writes. **No
+> schema change:** the index stays at version 6.
+
 ### Keeping Tier C true to the image it describes
 
 These are Amendment 4's rules for its marker, applied to Tier C:
@@ -621,6 +654,12 @@ These are Amendment 4's rules for its marker, applied to Tier C:
 - **Writes are conditional.** The periodic run and Index now can overlap (Amendment 4). A Tier C
   result is written only if the image row is still the one it was computed from, and grouping must
   not run twice at once. The mechanism is steps 3.3 and 3.4's; the requirement is fixed here.
+
+  > **Built 2026-11-21, by step 3.4, for grouping.** Grouping runs in the worker after the face
+  > pass, inside the same hold of the Tier C lock, so it never runs twice at once. It writes every
+  > group in one transaction, only to faces still at the pipeline version it read, and reads the
+  > face-data setting inside that transaction (Amendment 7 §4); a face added since the read keeps a
+  > null grouping version, so the next run groups again.
 
 ### The migration
 
@@ -1109,3 +1148,173 @@ spelling, the repair is Amendment 3's kind: a data migration to the canonical on
   read 2026-11-20
 - `data/MediaIndexStore.kt`, `data/MediaIndexDatabase.kt`, `data/MediaIndexingWork.kt`,
   `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`
+
+## Amendment 8 — 2026-11-20 — ~~Each face's pixel size is stored, so that a group's representative is a usable face, and the index reaches version 7~~ (adopted 2026-11-20; **reversed 2026-11-20, before anything was built**)
+
+> **Reversed 2026-11-20, by the maintainer — his words "let's go with your recommendations", given to
+> the Planner's recommendation after reading the measurement below.** Step 3.4's Task 2 built §3's
+> size-aware representative in `data/FaceGrouping.kt` and measured it on the SM-G990B over the real
+> library ([albums-stage-3.md](../../design/albums-stage-3.md), *3.4*, Task 2): **21 of the 104
+> offered groups have no member at least 60 px across**, so the rule has nothing better to choose for
+> them, and it fixes **1 of the 22** representatives under 60 px — 83 of 104 offered representatives
+> are at least 60 px with the rule, 82 of 104 with the plain medoid; the median stays 108 px and the
+> smallest 40 px. A permanent schema change — a seventh index version, a sixth migration and a column
+> on every face — is not worth one thumbnail.
+>
+> **What was built and what was not.** No `Migration(6, 7)`, no column and no `7.json` were ever
+> built; the index stays at **version 6**, and no install holds a row this amendment describes. The
+> size-aware rule exists only in Task 2's uncommitted `data/FaceGrouping.kt`, and step 3.4's Task 2b
+> removes it. *Removed: step 3.4 was built and verified on 2026-11-21 with the plain medoid, no
+> size-aware code in `app/src/`, and the index at version 6 (Amendment 5's Built notes).*
+>
+> **What remains of it: nothing.** A group's representative is its plain **medoid**, ties within the
+> tolerance to the lower face id, as Task 1 built; `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS` (60) and the
+> unknown-size rule (§2) are dropped with the column; `FACE_GROUPING_VERSION` stays 1 (§3's bump to 2
+> named a rule that no longer exists). Small thumbnails — 22 of 104 under 60 px — are accepted as the
+> picker's behaviour for now ([albums.md](../../design/albums.md) §8 decision 50, amended the same
+> day); a different fix would be a new decision. The headings and decisions below are struck rather
+> than deleted because their reasoning is the record of why a size was wanted and why it was dropped.
+
+> **Adopted 2026-11-20, on the maintainer's approval** — his words "Let's go with your
+> recommendations", given to the Planner's recommendation of option (i) once step 3.4's Task 1 had
+> measured the representatives: a `Migration(6, 7)`, an amendment to this record, and a
+> representative that prefers a face at least 60 px across ([albums.md](../../design/albums.md) §8
+> decision 50). Written by the Planner the same day, after the approval and from the recommendation
+> as it was put. The column, the rule for existing rows and the grouping-version bump below are the
+> Planner's within that approval, each with its reason; **the maintainer can reverse any of them** —
+> as a text edit until step 3.4's Task 3 has run the migration on a device, and only by another
+> change after. ~~This record's `Active` status covers the Decision and Amendments 1–8. **Nothing below
+> is built yet:** Task 2 builds §3, Task 3 builds §1, §2 and §5
+> ([albums-stage-3.md](../../design/albums-stage-3.md), *3.4*, *Tasks*).~~ *Reversed the same day,
+> above: Task 2 built §3 and Task 2b removes it; §1, §2 and §5 were never built. Task 2b removed it
+> before step 3.4 was verified on 2026-11-21.*
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–7. It is
+an amendment rather than a new ADR for Amendment 1's reason: the index is still the one database for
+Tier C, and what follows applies Amendment 1's precedent — bump, migrate, commit the JSON — to one more
+fact on Amendment 5's face row. It reverses a choice of the plan's, not of a record: step 3.4's
+refinement had decided on no migration and the plain medoid as representative.
+
+### What was measured
+
+Step 3.4's Task 1 on the SM-G990B, over the real library — 422 faces, 104 groups with at least two
+distinct images: **22 of the 104 representatives**, each its group's medoid, have a face **under
+60 px** on the shorter side of the decoded frame; 35 are under 80 px, the median is 108 px and the
+smallest 40 px. The plan had said that more than a few would put a stored size to the maintainer; 22
+is a fifth of the picker. The spike's rule — the medoid among members at least 60 px across — had been
+set aside at the refinement only because no size was stored: a stored box is in fractions of the
+upright frame ([ADR-0022](0022-people-criterion-anchored-to-a-photo.md) §1), the decoded size is not
+kept, and Tier A's EXIF width and height are often absent and not upright.
+
+### ~~1. One column on the face row: the box's short side in pixels~~ (reversed; never built)
+
+~~**Decision.**~~ *Withdrawn:* `media_index_face` gains **`boxShortSidePx INTEGER NOT NULL DEFAULT 0`**: the shorter of
+the box's width and height **as detected**, in pixels of the upright decoded frame (long side at most
+`FACE_DECODE_LONG_SIDE`), before the box is clamped to the frame, rounded down. The Tier C pass writes
+it with the face, from the `RawFace` it already holds, and nothing else writes it. A stored face is at
+least `FACE_MIN_SIDE_PIXELS` (40) on both sides, so every real value is at least 40 and **0 means
+unknown**.
+
+*Why per face, and not the decoded width and height per image* — which is the more primitive fact:
+- **The same measure as the cut-off.** Decision 46's 40 px cut-off is judged on the detected box in
+  the decoded frame, unclamped (`faceDetectionOf`). A stored fraction times the decoded size gives the
+  box after clamping, which is smaller for a face cut by the image's edge, so 60 would be judged on
+  another measure than 40.
+- **What its reader needs.** Grouping reads faces by id, ids and embeddings; one integer from the same
+  row joins nothing. Width and height on `media_index_face_state` would need a join by image key for
+  every face, and two columns on every processed image, most of which have no face.
+- **An integer, rounded down**, because both thresholds are whole pixels: ⌊x⌋ ≥ 60 exactly when
+  x ≥ 60.
+- Nothing else needs the decoded size: step 3.6's crop decodes the image at display time and knows
+  its size then. If something later does, it is a column added then.
+
+ADR-0022 is unchanged: an anchor stores a box in fractions, and the pixel size never enters the album
+database.
+
+### ~~2. Rows written before it: unknown, and never treated as large~~ (reversed; never built)
+
+~~**Decision.**~~ *Withdrawn:* `Migration(6, 7)` adds the column with its default and changes nothing else — no row
+deleted, no state or attempt cleared, `FACE_PIPELINE_VERSION` unchanged. A face written by a build at
+index version 6 reads 0, unknown, and **unknown counts as under 60 px**: the representative rule (§3)
+passes over it, and a group with no face known to be at least 60 px falls back to its medoid — the rule
+Task 1 measured, so no group is worse off than before this amendment. Such a face gains a size only
+when it is detected again: when its file changes (Amendment 6) or at the next pipeline-version bump.
+
+*Why not force those faces to be detected again:*
+- **No install holds them.** The only install is the dev phone (the plan's *The dev-device route*), on
+  which no face data is persisted: the pass is dormant until step 3.6's disclosure, and 3.3's and
+  3.4's measurements ran on in-memory indexes or delete what they wrote. The rule is for a build that
+  had faces, and for such a build the cost of the fallback is a medoid thumbnail, not a wrong one.
+- **Clearing Tier C inside a migration would delete face data outside the deletion's guarantees.**
+  `secure_delete` is set when the index opens (Amendment 5, *Deleting face data*); a migration's
+  `DELETE` may run before that, leaving the old bytes in free pages that no later switch-off scrubs.
+- **A pipeline-version bump would misname the change.** The pipeline computes the same boxes and
+  embeddings; a bump would decode every image again to choose among faces already stored.
+
+### ~~3. The representative rule that uses it~~ (reversed; built by Task 2, removed by Task 2b)
+
+~~**Decision.**~~ *Withdrawn — the representative is the plain medoid:* A group's representative is its **medoid** — the member whose summed cosine distance to
+the other members is smallest, a tie within the medoid tolerance going to the lower face id — **unless
+the medoid's short side is under 60 px**. Then it is the member with the smallest summed distance among
+those whose short side is at least 60 px, ties as before: the first usable face in medoid order. If no
+member is at least 60 px, or none is known, it is the medoid. The sums stay over the whole group, so
+the representative is the usable face most typical of the whole group, not of the usable ones. The
+60 px threshold is a named constant beside the grouping cut, `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS`.
+
+- *Why 60:* it is the spike's rule, which the approval restores. The 40 px cut-off decides whether a
+  face can be matched at all; 60 px is about whether a thumbnail cropped from it is recognisable. It is
+  a judgement, not a measurement of recognisability.
+- **Membership is unchanged** — which faces form a group never depends on size; only which member
+  stands for it.
+- ~~**`FACE_GROUPING_VERSION` becomes 2.**~~ *Reversed: it stays 1.* `groupId` is the representative's face id (the plan's
+  *Decided at 3.4*), so a changed representative rule changes stored group ids, and the constant names
+  that rule. Version 1 named the plain medoid Task 1 built; no build has written it, grouping not being
+  wired, so the bump regroups nothing and keeps the constant meaning what it names. The component split
+  of decision 50 changes how groups are computed and not what — the same groups and representatives —
+  so it bumps nothing by itself.
+
+### ~~4. Every existing rule applies, unchanged~~ (moot: nothing is stored)
+
+- **Recomputable cache.** It is derived from the face's detection and recomputed by detecting again.
+- **Deletion.** It lives on face rows, so `deleteAllFaceData`, which deletes those rows under
+  `secure_delete`, removes it with nothing else to touch; a changed healing triple drops it with its
+  face (Amendment 6); a heal keeps it with the face's id; reconciliation deletes it with the image.
+- **Backup.** The index database is excluded in all four places (Amendment 7 §2); there is no new file.
+- **Writes and logs.** It is written in the face's own write, under Amendment 7 §4's setting read, and
+  is never logged ([ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §6).
+
+### ~~5. The migration~~ (reversed; never built — the index stays at version 6)
+
+`Migration(6, 7)` is `ALTER TABLE media_index_face ADD COLUMN boxShortSidePx INTEGER NOT NULL DEFAULT 0`,
+its SQL `7.json`'s, registered beside the five earlier migrations with no destructive fallback. The
+entity declares the same default, so that Room's validation of the migrated schema matches. ~~The index
+reaches version 7, read from the `@Database` annotation; `7.json` is committed by the change that
+produces it.~~ *Reversed: no migration, no `7.json`; the index stays at version 6.*
+
+### Consequences
+
+*As adopted, and moot since the reversal; the reversal's own cost is the Reversed note's — 22 of 104
+thumbnails under 60 px, accepted.*
+
+**Positive**
+
+- ~~Where a group has a usable face, the picker shows it — the 22 groups in 104 measured, at most.~~
+  Measured by Task 2: 1 of the 22.
+- Groups are unchanged, and no image is decoded again.
+
+**Negative**
+
+- ~~A seventh version and a sixth migration, for one integer per face.~~
+- ~~A face stored before version 7 is unknown until detected again, and its group keeps the medoid.~~
+- 60 px is a judgement; a thumbnail at 60 px may still be hard to recognise.
+
+### References
+
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md), *3.4 — Clustering and the person
+  record*: *Decided at 3.4* and *Tasks*
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 46 and 50
+- [ADR-0022](0022-people-criterion-anchored-to-a-photo.md) §1,
+  [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §5,
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §6
+- `data/FaceGrouping.kt`, `data/FaceIndexPass.kt`, `data/MediaIndexEntities.kt`,
+  `data/MediaIndexDatabase.kt`

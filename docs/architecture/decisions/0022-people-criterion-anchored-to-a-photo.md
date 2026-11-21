@@ -85,7 +85,8 @@ Resolution runs at evaluation, reads only, and is pure apart from its inputs.
 4. **Found and face-indexed** → among the photo's stored faces, take the one whose box overlaps the
    anchor's box best by intersection over union, and accept it only at **IoU ≥ 0.5** (decision 46).
    Faces under the 40 px cut-off are never candidates, because they are never stored (Amendment 5;
-   decision 46). A tie is broken deterministically, by a rule step 3.5 fixes.
+   decision 46). A tie is broken deterministically, by a rule step 3.5 fixes. *(Fixed 2026-11-21:
+   the lower face id — see* Built 2026-11-21 *below.)*
 5. **No face at IoU ≥ 0.5**, or the photo's face inference is recorded as failed → **no face at the
    anchored position**. The album is unevaluatable (decision 42).
 6. **A face is found** → the person is that face's group. A group seen in one image still resolves
@@ -116,6 +117,31 @@ person's anchor, or deleting the album.
 - A restore that rewrites files so that the healing triple changes loses the anchor; the album is
   unevaluatable until the user picks the person again. This is ADR-0014's accepted cost for
   memberships, now also paid by anchors.
+
+### Built 2026-11-21 — step 3.5
+
+The resolution of §3 and the membership it leads to landed in `data/PeopleClauseEvaluation.kt`, pure
+and read-only, with no write-back, as §4 requires; [ARCHITECTURE.md](../ARCHITECTURE.md) §3 describes
+it and [albums-stage-3.md](../../design/albums-stage-3.md) *3.5 — Built and verified* has the gate.
+What the code settled that this record left open or did not spell out:
+
+- **The tie rule is the lower face id.** On exactly equal overlap the face with the lower id wins,
+  whatever order the faces arrive in — the same tie rule grouping uses for its medoid.
+- **IoU is computed in `Double` from the stored `Float`s,** and the 0.5 threshold is inclusive.
+- **The person's photos are the images with any face in the anchor's group** at the current grouping
+  version. A video or GIF is a settled no-match; an image with no face in the group but a face not
+  yet grouped at that version is unsettled.
+- **"Not found" does not wait for grouping.** Step 3 above waits while an anchor photo's faces are
+  ungrouped; the code waits only while the best face at IoU ≥ 0.5 is. Once the photo's face state is
+  current under the pipeline version, no face at the box is step 5's not found at once, because
+  grouping changes no box and so cannot make a face appear there.
+- **An anchor's Tier C data is trusted only while three triples agree** — the live photo's, the
+  index row that won it, and the face snapshot's — and is waiting otherwise, so a file changed since
+  it was face-indexed is never resolved against its old faces.
+- **Availability is told before any anchor**, as the paragraph after §3's list says: face data off,
+  then a capability record for this build saying incapable. An unknown capability counts as
+  available, which leaves a gap on devices without arm64-v8a that step 3.6 must close
+  ([ARCHITECTURE.md](../ARCHITECTURE.md) §11).
 
 ## Alternatives Considered
 

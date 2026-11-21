@@ -5,6 +5,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -762,10 +763,28 @@ class AlbumRuleEvaluationTest {
 
     @Test
     fun `live media not yet supplied is waiting for a region album and not an empty complete`() {
-        val result = AlbumRuleEvaluator.evaluate(regionRule("IT"), null, emptyList(), UTC)
+        val result = AlbumRuleEvaluator.evaluate(regionRule("IT"), null, emptyList(), UTC, people = null)
 
         assertTrue(result.members.isEmpty())
         assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+    }
+
+    // --- the people clause with no people input (its evaluation is PeopleClauseEvaluationTest) ---
+
+    @Test
+    fun `a people album with no people input waits and is never complete`() {
+        val indexed = located(1, country = "IT", marker = CURRENT)
+        val clause = AlbumRuleClause.People(
+            anchor = mediaIdentityOf("content://media/external/images/media/1234", "IMG_0001.jpg", 1L, 2L),
+            box = FaceBox(0.25f, 0.125f, 0.5f, 0.75f),
+            pipelineVersion = 1
+        )
+
+        val result = evaluateRows(AlbumRule.Evaluatable(listOf(clause)), indexed)
+
+        assertTrue(result.members.isEmpty())
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, result.status)
+        assertNull(result.unevaluatableCause)
     }
 
     // --- fixtures -----------------------------------------------------------------------------
@@ -801,7 +820,7 @@ class AlbumRuleEvaluationTest {
         items: Array<out Located>,
         memberships: List<StoredMembership>
     ): AlbumRuleEvaluation {
-        return AlbumRuleEvaluator.evaluate(rule, joinOf(*items), memberships, UTC)
+        return AlbumRuleEvaluator.evaluate(rule, joinOf(*items), memberships, UTC, people = null)
     }
 
     private fun regionRule(
@@ -867,7 +886,7 @@ class AlbumRuleEvaluationTest {
         zone: ZoneId
     ): AlbumRuleEvaluation {
         val join = live?.let { MediaIndexLiveJoin.build(rows, it) }
-        return AlbumRuleEvaluator.evaluate(rule, join, memberships, zone)
+        return AlbumRuleEvaluator.evaluate(rule, join, memberships, zone, people = null)
     }
 
     private fun timeRule(from: String?, to: String?): AlbumRule.Evaluatable {

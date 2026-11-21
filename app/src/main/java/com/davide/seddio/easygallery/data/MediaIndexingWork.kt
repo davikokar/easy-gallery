@@ -61,6 +61,8 @@ class MediaIndexingWorker @JvmOverloads constructor(
         { (appContext as EasyGalleryApp).createFaceCapabilityChecker() },
     private val createFaceIndexPass: () -> FaceIndexPass =
         { (appContext as EasyGalleryApp).createFaceIndexPass() },
+    private val createFaceGroupingPass: () -> FaceGroupingPass =
+        { (appContext as EasyGalleryApp).createFaceGroupingPass() },
     private val faceIndexLock: Mutex = (appContext as EasyGalleryApp).faceIndexLock,
     private val faceIndexLog: FaceIndexLog = (appContext as EasyGalleryApp).faceIndexLog
 ) : CoroutineWorker(appContext, params) {
@@ -138,7 +140,7 @@ class MediaIndexingWorker @JvmOverloads constructor(
         KEY_SKIPPED_ROWS to progress.skippedRows
     )
 
-    // Anything the face path throws, an Error included, becomes FaceIndexPassFailure so no message or throwable escapes.
+    // Anything the face path throws, grouping included and an Error too, becomes FaceIndexPassFailure so no message or throwable escapes.
     private suspend fun runFaceIndexPass(workStartedAtMillis: Long) {
         if (!faceDataSettingStore.isEnabled()) {
             faceIndexLog.line(FaceIndexLogLines.passNotRun(FaceIndexNotRunReason.SETTING_OFF))
@@ -161,7 +163,11 @@ class MediaIndexingWorker @JvmOverloads constructor(
                 faceIndexLog.line(FaceIndexLogLines.passNotRun(FaceIndexNotRunReason.DISCLOSURE_NOT_SHOWN))
                 return
             }
-            createFaceIndexPass().run(workStartedAtMillis)
+            val passResult = createFaceIndexPass().run(workStartedAtMillis)
+            // Grouping shares this hold of the lock and every gate above. Not after SETTING_OFF: the face data is going.
+            if (passResult.stop != FaceIndexPassStop.SETTING_OFF) {
+                createFaceGroupingPass().run(workStartedAtMillis)
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Throwable) {

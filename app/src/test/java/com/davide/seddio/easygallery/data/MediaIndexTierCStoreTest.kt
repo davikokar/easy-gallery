@@ -3,6 +3,8 @@ package com.davide.seddio.easygallery.data
 import android.os.Build
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import app.cash.turbine.test
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
@@ -910,6 +912,489 @@ class MediaIndexTierCStoreTest {
         }
     }
 
+    // ---- grouping and the person record (plan 3.4, Task 3) ----
+
+    @Test
+    fun `the faces for grouping are the current pipeline version's only, ids and embeddings in id order`() = runTest {
+        forEachStore { store ->
+            val first = store.addImage(uri(1), faceCount = 2)
+            store.addImage(uri(2), pipelineVersion = 2)
+            val third = store.addImage(uri(3))
+
+            val listed = store.listFacesForGrouping(pipelineVersion = 1, afterFaceId = null, limit = 100)
+
+            assertEquals(first + third, listed.map { it.faceId })
+            assertEquals(
+                listOf(detection(1).embedding, detection(2).embedding, detection(1).embedding),
+                listed.map { it.embedding }
+            )
+        }
+    }
+
+    @Test
+    fun `the faces for grouping start strictly after the cursor, stop at the limit, and the limit must be positive`() = runTest {
+        forEachStore { store ->
+            val ids = (1..5).flatMap { store.addImage(uri(it)) }
+
+            val first = store.listFacesForGrouping(1, null, limit = 2)
+            val second = store.listFacesForGrouping(1, first.last().faceId, limit = 2)
+            val third = store.listFacesForGrouping(1, second.last().faceId, limit = 2)
+            val beyond = store.listFacesForGrouping(1, ids.last(), limit = 2)
+
+            assertEquals(ids.take(2), first.map { it.faceId })
+            assertEquals(ids.slice(2..3), second.map { it.faceId })
+            assertEquals(ids.takeLast(1), third.map { it.faceId })
+            assertTrue(beyond.isEmpty())
+            assertTrue(runCatching { store.listFacesForGrouping(1, null, 0) }.exceptionOrNull() is IllegalArgumentException)
+        }
+    }
+
+    @Test
+    fun `grouping is not needed without faces, is needed for ungrouped ones, and not once every face carries the version`() = runTest {
+        forEachStore { store ->
+            assertFalse(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+            val ids = store.addImage(uri(1)) + store.addImage(uri(2))
+
+            assertTrue(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+            store.group(ids.first(), ids)
+
+            assertFalse(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `grouping is needed again for a grouping version other than the current one, older or newer`() = runTest {
+        forEachStore { store ->
+            val ids = store.addImage(uri(1)) + store.addImage(uri(2))
+            store.group(ids.first(), ids, groupingVersion = GROUPING_VERSION + 1)
+
+            assertTrue(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+            assertFalse(store.isFaceGroupingNeeded(1, GROUPING_VERSION + 1))
+            assertTrue(store.isFaceGroupingNeeded(1, GROUPING_VERSION + 2))
+        }
+    }
+
+    @Test
+    fun `grouping is needed when one face is added after the others were grouped`() = runTest {
+        forEachStore { store ->
+            val ids = store.addImage(uri(1)) + store.addImage(uri(2))
+            store.group(ids.first(), ids)
+
+            store.addImage(uri(3))
+
+            assertTrue(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `grouping ignores a face at another pipeline version`() = runTest {
+        forEachStore { store ->
+            val ids = store.addImage(uri(1)) + store.addImage(uri(2))
+            store.group(ids.first(), ids)
+
+            store.addImage(uri(3), pipelineVersion = 2)
+
+            assertFalse(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+            assertTrue(store.isFaceGroupingNeeded(2, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `grouping is needed when the representative's image is deleted and not when another member's is`() = runTest {
+        forEachStore { store ->
+            val ids = (1..3).flatMap { store.addImage(uri(it)) }
+            store.group(ids[0], ids)
+
+            store.deleteByMediaUri(uri(3))
+            assertFalse("a deleted face that was not the representative does not regroup", store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+
+            store.deleteByMediaUri(uri(1))
+            assertTrue("a deleted representative leaves its members pending", store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `a changed healing triple drops the faces, which makes grouping needed only if one was the representative`() = runTest {
+        forEachStore { store ->
+            val ids = (1..3).flatMap { store.addImage(uri(it)) }
+            store.group(ids[0], ids)
+
+            store.upsert(listOf(entry(uri(3), size = 11L)))
+            assertTrue(store.listFaces(uri(3)).isEmpty())
+            assertFalse(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+
+            store.upsert(listOf(entry(uri(1), size = 11L)))
+            assertTrue(store.listFaces(uri(1)).isEmpty())
+            assertTrue(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `a heal keeps the group id and version of a face and so does a row write with an unchanged triple`() = runTest {
+        forEachStore { store ->
+            val ids = store.addImage(uri(1)) + store.addImage(uri(2))
+            store.group(ids[0], ids)
+
+            store.healMediaUri(uri(1), entry(uri(9)))
+            store.upsert(listOf(entry(uri(2)).copy(generationModified = 50L)))
+
+            val healed = store.listFaces(uri(9)).single()
+            assertEquals(ids[0], healed.id)
+            assertEquals(ids[0], healed.groupId)
+            assertEquals(GROUPING_VERSION, healed.groupingVersion)
+            assertEquals(ids[0], store.listFaces(uri(2)).single().groupId)
+            assertFalse(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `a group write stores the group id and the version on each listed face and counts them`() = runTest {
+        forEachStore { store ->
+            val a = store.addImage(uri(1)).single()
+            val b = store.addImage(uri(2)).single()
+            val c = store.addImage(uri(3)).single()
+            val untouched = store.addImage(uri(4)).single()
+
+            val written = store.writeFaceGroups(
+                listOf(FaceGroup(a, listOf(a, b)), FaceGroup(c, listOf(c))),
+                pipelineVersion = 1,
+                groupingVersion = 7,
+                faceDataEnabled = { true }
+            )
+
+            assertEquals(3, written)
+            assertEquals(listOf(a, a, c), listOf(uri(1), uri(2), uri(3)).map { store.listFaces(it).single().groupId })
+            assertEquals(listOf(7, 7, 7), listOf(uri(1), uri(2), uri(3)).map { store.listFaces(it).single().groupingVersion })
+            assertNull(store.listFaces(uri(4)).single().groupId)
+            assertNull(store.listFaces(uri(4)).single().groupingVersion)
+            assertEquals(untouched, store.listFaces(uri(4)).single().id)
+        }
+    }
+
+    @Test
+    fun `a group write skips an id that is gone, leaves a face at another version, and touches nothing else`() = runTest {
+        forEachStore { store ->
+            val a = store.addImage(uri(1)).single()
+            val old = store.addImage(uri(2), pipelineVersion = 2).single()
+            val attempted = entry(uri(3))
+            store.upsert(listOf(attempted))
+            store.recordAttempt(attempted.toMediaIdentity(), 1)
+            val rowBefore = store.getByMediaUri(uri(1))
+            val stateBefore = store.getFaceIndexState(uri(1))
+            val oldBefore = store.listFaces(uri(2))
+
+            val written = store.writeFaceGroups(
+                listOf(FaceGroup(a, listOf(a, 987_654L, old))),
+                pipelineVersion = 1,
+                groupingVersion = GROUPING_VERSION,
+                faceDataEnabled = { true }
+            )
+
+            assertEquals(1, written)
+            assertEquals(oldBefore, store.listFaces(uri(2)))
+            assertEquals(a, store.listFaces(uri(1)).single().groupId)
+            assertEquals(rowBefore, store.getByMediaUri(uri(1)))
+            assertEquals(stateBefore, store.getFaceIndexState(uri(1)))
+            assertEquals(1, store.attemptsOf(uri(3), version = 1))
+        }
+    }
+
+    @Test
+    fun `a group write with the setting off writes nothing and returns 0`() = runTest {
+        forEachStore { store ->
+            val ids = store.addImage(uri(1)) + store.addImage(uri(2))
+
+            val written = store.writeFaceGroups(
+                listOf(FaceGroup(ids[0], ids)),
+                pipelineVersion = 1,
+                groupingVersion = GROUPING_VERSION,
+                faceDataEnabled = { false }
+            )
+
+            assertEquals(0, written)
+            assertNull(store.listFaces(uri(1)).single().groupId)
+            assertNull(store.listFaces(uri(2)).single().groupingVersion)
+            assertTrue(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `the setting is read once per group write and inside the write transaction of the room store`() = runTest {
+        val store = RoomMediaIndexStore(database)
+        val ids = store.addImage(uri(1)) + store.addImage(uri(2))
+        val inTransaction = mutableListOf<Boolean>()
+
+        store.writeFaceGroups(listOf(FaceGroup(ids[0], ids)), 1, GROUPING_VERSION) {
+            inTransaction += database.openHelper.writableDatabase.inTransaction()
+            true
+        }
+
+        assertEquals(listOf(true), inTransaction)
+    }
+
+    @Test
+    fun `a group of more faces than one update takes is written in chunks that stay under the variable limit`() = runTest {
+        val real = database.mediaIndexDao()
+        val idsPerUpdate = mutableListOf<Int>()
+        val recordingDao = object : MediaIndexDao by real {
+            override suspend fun updateFaceGroup(
+                groupId: Long,
+                groupingVersion: Int,
+                pipelineVersion: Int,
+                faceIds: List<Long>
+            ): Int {
+                idsPerUpdate += faceIds.size
+                return real.updateFaceGroup(groupId, groupingVersion, pipelineVersion, faceIds)
+            }
+        }
+        val store = RoomMediaIndexStore(database, recordingDao)
+        val row = entry(uri(1))
+        store.upsert(listOf(row))
+        val detections = (1..1_200).map { FaceDetection(FaceBox(0.1f, 0.1f, 0.5f, 0.5f), FaceEmbedding(floatArrayOf(it.toFloat(), 1f))) }
+        store.writeFaceIndexResults(listOf(write(row, 1, detections)))
+        val ids = store.listFaces(uri(1)).map { it.id }
+
+        val written = store.writeFaceGroups(listOf(FaceGroup(ids.first(), ids)), 1, GROUPING_VERSION) { true }
+
+        assertEquals(1_200, written)
+        assertEquals(1_200, idsPerUpdate.sum())
+        // Three more variables ride with each list: the group id, the grouping version and the pipeline version.
+        assertTrue("an update carried ${idsPerUpdate.max()} ids", idsPerUpdate.max() + 3 <= 999)
+        assertTrue(store.listFaces(uri(1)).all { it.groupId == ids.first() })
+    }
+
+    @Test
+    fun `the person record counts distinct images, so two faces in one image count once`() = runTest {
+        forEachStore { store ->
+            val shared = store.addImage(uri(1), faceCount = 2)
+            val other = store.addImage(uri(2))
+            val lone = store.addImage(uri(3), faceCount = 2)
+            store.group(shared[0], shared + other)
+            store.group(lone[0], lone)
+
+            val offered = store.listFaceGroups(1, GROUPING_VERSION, minimumImages = 2)
+            val everything = store.listFaceGroups(1, GROUPING_VERSION, minimumImages = 1)
+
+            assertEquals(listOf(shared[0]), offered.map { it.groupId })
+            assertEquals(2, offered.single().imageCount)
+            assertEquals(mapOf(shared[0] to 2, lone[0] to 1), everything.associate { it.groupId to it.imageCount })
+        }
+    }
+
+    @Test
+    fun `the person record applies the minimum and the minimum must be positive`() = runTest {
+        forEachStore { store ->
+            val two = store.makeGroup(listOf(1L, 2L))
+            val three = store.makeGroup(listOf(3L, 4L, 5L))
+
+            assertEquals(setOf(two, three), store.listFaceGroups(1, GROUPING_VERSION, 2).map { it.groupId }.toSet())
+            assertEquals(listOf(three), store.listFaceGroups(1, GROUPING_VERSION, 3).map { it.groupId })
+            assertTrue(store.listFaceGroups(1, GROUPING_VERSION, 4).isEmpty())
+            assertTrue(runCatching { store.listFaceGroups(1, GROUPING_VERSION, 0) }.exceptionOrNull() is IllegalArgumentException)
+        }
+    }
+
+    @Test
+    fun `the person record sorts by image count, then newest date with no date last, then group id`() = runTest {
+        forEachStore { store ->
+            val old = store.makeGroup(listOf(500L, null))
+            val noDateLate = store.makeGroup(listOf(null, null))
+            val tieEarly = store.makeGroup(listOf(700L, 100L))
+            val big = store.makeGroup(listOf(100L, 100L, 100L))
+            val newest = store.makeGroup(listOf(100L, 900L))
+            val noDateEarly = store.makeGroup(listOf(null, null))
+            val tieLate = store.makeGroup(listOf(100L, 700L))
+
+            val listed = store.listFaceGroups(1, GROUPING_VERSION, 2)
+
+            assertEquals(listOf(big, newest, tieEarly, tieLate, old, noDateLate, noDateEarly), listed.map { it.groupId })
+            assertEquals(listOf(100L, 900L, 700L, 700L, 500L, null, null), listed.map { it.newestDateTakenEpochMillis })
+        }
+    }
+
+    @Test
+    fun `the person record carries the representative's identity, box and pipeline version, the healed uri after a heal`() = runTest {
+        forEachStore { store ->
+            val box = FaceBox(0.125f, 0.25f, 0.5f, 0.75f)
+            val row = entry(uri(1), name = "representative.jpg", size = 77L, dateModified = 88L)
+            store.upsert(listOf(row))
+            store.writeFaceIndexResults(listOf(write(row, 1, listOf(FaceDetection(box, detection(1).embedding)))))
+            val representative = store.listFaces(uri(1)).single().id
+            val other = store.addImage(uri(2)).single()
+            store.group(representative, listOf(representative, other))
+
+            val before = store.listFaceGroups(1, GROUPING_VERSION, 2).single()
+            store.healMediaUri(uri(1), row.copy(mediaUri = uri(9)))
+            val after = store.listFaceGroups(1, GROUPING_VERSION, 2).single()
+
+            assertEquals(representative, before.groupId)
+            assertEquals(FaceGroupRepresentative(row.toMediaIdentity(), box, 1), before.representative)
+            assertEquals(uri(9), after.representative.identity.mediaUri)
+            assertEquals(row.toMediaIdentity().healingKey, after.representative.identity.healingKey)
+            assertEquals(box, after.representative.box)
+        }
+    }
+
+    @Test
+    fun `the person record leaves out a stale grouping version, a missing representative and another pipeline version`() = runTest {
+        forEachStore { store ->
+            val offered = store.makeGroup(listOf(1L, 2L))
+            val staleVersion = store.makeGroup(listOf(1L, 2L), groupingVersion = GROUPING_VERSION + 1)
+            val otherPipeline = store.makeGroup(listOf(1L, 2L), pipelineVersion = 2)
+            val orphaned = store.makeGroup(listOf(1L, 2L, 3L))
+            store.deleteByMediaUri(imageOf(orphaned))
+
+            val listed = store.listFaceGroups(1, GROUPING_VERSION, 2)
+
+            assertEquals(listOf(offered), listed.map { it.groupId })
+            assertEquals(listOf(staleVersion), store.listFaceGroups(1, GROUPING_VERSION + 1, 2).map { it.groupId })
+            assertEquals(listOf(otherPipeline), store.listFaceGroups(2, GROUPING_VERSION, 2).map { it.groupId })
+        }
+    }
+
+    @Test
+    fun `a group whose images are partly gone is judged on the images still indexed`() = runTest {
+        forEachStore { store ->
+            val group = store.makeGroup(listOf(1L, 2L, 3L))
+            assertEquals(3, store.listFaceGroups(1, GROUPING_VERSION, 2).single().imageCount)
+
+            store.deleteByMediaUri(imageOf(group, 2))
+            assertEquals(2, store.listFaceGroups(1, GROUPING_VERSION, 2).single().imageCount)
+
+            store.deleteByMediaUri(imageOf(group, 1))
+            assertTrue(store.listFaceGroups(1, GROUPING_VERSION, 2).isEmpty())
+            assertEquals(1, store.listFaceGroups(1, GROUPING_VERSION, 1).single().imageCount)
+        }
+    }
+
+    @Test
+    fun `deleting face data after grouping leaves no face, no group and no pending work`() = runTest {
+        forEachStore { store ->
+            store.makeGroup(listOf(1L, 2L))
+            assertTrue(store.hasFaceData())
+
+            val deletion = store.deleteAllFaceData()
+
+            assertEquals(4, deletion.rowsDeleted)
+            assertFalse(store.hasFaceData())
+            assertTrue(store.listFacesForGrouping(1, null, 100).isEmpty())
+            assertTrue(store.listFaceGroups(1, GROUPING_VERSION, 1).isEmpty())
+            assertFalse(store.isFaceGroupingNeeded(1, GROUPING_VERSION))
+        }
+    }
+
+    @Test
+    fun `the face projection holds only the images and faces at the asked pipeline version`() = runTest {
+        forEachStore { store ->
+            val old = store.addImage(uri(1), faceCount = 2, pipelineVersion = 1)
+            store.addImage(uri(2), faceCount = 1, pipelineVersion = 2)
+            store.addImage(uri(3), faceCount = 0, pipelineVersion = 1)
+            val failed = entry(uri(4))
+            store.upsert(listOf(failed))
+            store.writeFaceIndexResults(listOf(write(failed, 1, emptyList(), FaceIndexOutcome.FAILED)))
+            store.upsert(listOf(entry(uri(5))))
+
+            val version1 = store.observeFaceEvaluationProjection(1).first()
+            val version2 = store.observeFaceEvaluationProjection(2).first()
+
+            assertEquals(listOf(uri(1), uri(3), uri(4)), version1.images.map { it.identity.mediaUri })
+            assertEquals(old, version1.images[0].faces.map { it.id })
+            assertEquals(listOf(FaceIndexOutcome.INDEXED, FaceIndexOutcome.INDEXED, FaceIndexOutcome.FAILED), version1.images.map { it.outcome })
+            assertTrue(version1.images[1].faces.isEmpty())
+            assertTrue(version1.images[2].faces.isEmpty())
+            assertEquals(listOf(uri(2)), version2.images.map { it.identity.mediaUri })
+            assertTrue(store.observeFaceEvaluationProjection(3).first().images.isEmpty())
+        }
+    }
+
+    @Test
+    fun `the face projection carries the index row's identity, each face's box and group, and nothing of the embedding`() = runTest {
+        forEachStore { store ->
+            val row = entry(uri(1), name = "anchor.jpg", size = 77L, dateModified = 88L)
+            store.upsert(listOf(row))
+            store.writeFaceIndexResults(listOf(write(row, 1, listOf(detection(1), detection(2)))))
+            val ids = store.listFaces(uri(1)).map { it.id }
+            store.group(ids[0], listOf(ids[0]))
+
+            val image = store.observeFaceEvaluationProjection(1).first().images.single()
+
+            assertEquals(row.toMediaIdentity(), image.identity)
+            assertEquals(
+                listOf(
+                    FaceEvaluationFace(ids[0], detection(1).box, ids[0], GROUPING_VERSION),
+                    FaceEvaluationFace(ids[1], detection(2).box, null, null)
+                ),
+                image.faces
+            )
+            assertTrue(FaceEvaluationFace::class.java.declaredFields.none { it.name.contains("embedding", ignoreCase = true) })
+            assertFalse(image.toString().contains("anchor"))
+            assertFalse(image.faces.first().toString().contains(ids[0].toString()))
+        }
+    }
+
+    @Test
+    fun `the face projection emits again after a face-pass write`() = runTest {
+        forEachStore { store ->
+            val row = entry(uri(1))
+            store.upsert(listOf(row))
+
+            store.awaitFaceProjection(
+                change = { store.writeFaceIndexResults(listOf(write(row, 1, listOf(detection(1))))) },
+                until = { it.images.size == 1 }
+            )
+        }
+    }
+
+    @Test
+    fun `the face projection emits again after a grouping write alone`() = runTest {
+        forEachStore { store ->
+            val ids = store.addImage(uri(1), faceCount = 1)
+
+            store.awaitFaceProjection(
+                change = { store.group(ids[0], ids) },
+                until = { it.images.single().faces.single().groupId == ids[0] }
+            )
+        }
+    }
+
+    @Test
+    fun `the face projection emits again after a heal, an upsert that drops Tier C and the three deletes`() = runTest {
+        forEachStore { store ->
+            store.addImage(uri(1))
+            store.awaitFaceProjection(
+                change = { store.healMediaUri(uri(1), entry(uri(2))) },
+                until = { it.images.map { image -> image.identity.mediaUri } == listOf(uri(2)) }
+            )
+
+            store.awaitFaceProjection(
+                change = { store.upsert(listOf(entry(uri(2), size = 11L))) },
+                until = { it.images.isEmpty() }
+            )
+
+            store.addImage(uri(3))
+            store.awaitFaceProjection(change = { store.deleteByMediaUri(uri(3)) }, until = { it.images.isEmpty() })
+
+            store.addImage(uri(4))
+            store.awaitFaceProjection(change = { store.deleteByVolume("external_primary") }, until = { it.images.isEmpty() })
+
+            store.addImage(uri(5))
+            store.awaitFaceProjection(change = { store.deleteAllFaceData() }, until = { it.images.isEmpty() })
+        }
+    }
+
+    // Waits for the first emission, makes the change, then for the emission [until] accepts: a predicate, never the next item.
+    private suspend fun MediaIndexStore.awaitFaceProjection(
+        change: suspend () -> Unit,
+        until: (FaceEvaluationSnapshot) -> Boolean
+    ) {
+        observeFaceEvaluationProjection(1).test {
+            awaitItem()
+            change()
+            while (!until(awaitItem())) Unit
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     private suspend fun forEachStore(block: suspend (MediaIndexStore) -> Unit) {
         listOf(
             "in-memory" to InMemoryMediaIndexStore(),
@@ -934,12 +1419,54 @@ class MediaIndexTierCStoreTest {
     private suspend fun MediaIndexStore.attemptsOf(mediaUri: String, version: Int): Int =
         listPendingFaceImages(version, null, 1_000).firstOrNull { it.identity.mediaUri == mediaUri }?.attempts ?: 0
 
+    private fun uri(n: Int) = "content://media/external_primary/images/media/$n"
+
+    // One index row and its faces, at the pipeline version given; the faces' ids ascend.
+    private suspend fun MediaIndexStore.addImage(
+        mediaUri: String,
+        faceCount: Int = 1,
+        pipelineVersion: Int = 1,
+        dateTaken: Long? = 1_700_000_000_000L
+    ): List<Long> {
+        val row = entry(mediaUri, dateTaken = dateTaken)
+        upsert(listOf(row))
+        writeFaceIndexResults(listOf(write(row, pipelineVersion, List(faceCount) { detection(it + 1) })))
+        return listFaces(mediaUri).map { it.id }
+    }
+
+    private suspend fun MediaIndexStore.group(
+        representative: Long,
+        members: List<Long>,
+        groupingVersion: Int = GROUPING_VERSION,
+        pipelineVersion: Int = 1
+    ): Int = writeFaceGroups(listOf(FaceGroup(representative, members.sorted())), pipelineVersion, groupingVersion) { true }
+
+    private val madeGroups = HashMap<Long, List<String>>()
+
+    // A group of one face in each of as many images as there are dates, the first face the representative; returns its id.
+    private suspend fun MediaIndexStore.makeGroup(
+        dates: List<Long?>,
+        groupingVersion: Int = GROUPING_VERSION,
+        pipelineVersion: Int = 1
+    ): Long {
+        val uris = dates.map { uri(nextImage++) }
+        val ids = dates.mapIndexed { index, date -> addImage(uris[index], dateTaken = date, pipelineVersion = pipelineVersion).single() }
+        group(ids.first(), ids, groupingVersion, pipelineVersion)
+        madeGroups[ids.first()] = uris
+        return ids.first()
+    }
+
+    private var nextImage = 1_000
+
+    private fun imageOf(groupId: Long, index: Int = 0): String = madeGroups.getValue(groupId)[index]
+
     private fun entry(
         mediaUri: String,
         volume: String = "external_primary",
         name: String = "photo.jpg",
         size: Long = 10L,
-        dateModified: Long = 20L
+        dateModified: Long = 20L,
+        dateTaken: Long? = 1_700_000_000_000L
     ): MediaIndexEntry {
         return MediaIndexEntry(
             mediaUri = mediaUri,
@@ -949,7 +1476,7 @@ class MediaIndexTierCStoreTest {
             volumeName = volume,
             generationAdded = 1L,
             generationModified = 2L,
-            capturedDateTakenEpochMillis = 1_700_000_000_000L,
+            capturedDateTakenEpochMillis = dateTaken,
             capturedLatitude = 45.5,
             capturedLongitude = 9.25,
             capturedWidth = 100,
@@ -981,5 +1508,6 @@ class MediaIndexTierCStoreTest {
         const val URI_A = "content://media/external_primary/images/media/1"
         const val URI_B = "content://media/external_primary/images/media/2"
         const val URI_C = "content://media/external_primary/images/media/3"
+        const val GROUPING_VERSION = FACE_GROUPING_VERSION
     }
 }

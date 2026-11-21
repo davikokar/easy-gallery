@@ -200,7 +200,9 @@ the audit is for the rest.
   by `AlbumsViewModel` rather than being a sixth ViewModel, because the picker's counts must read
   the same join as the albums they create. Per-album display overrides are the same case:
   `AlbumsViewModel` holds a second `FolderViewPreferencesState` of its own, so `GalleryViewModel`
-  gained nothing for them (ADR-0021).
+  gained nothing for them (ADR-0021). People albums added no state holder either: `AlbumsViewModel`
+  owns their second shared flow, the face snapshot with the availability, beside the join (step
+  3.5).
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -254,7 +256,10 @@ and backed up. Whether the face-data disclosure has been shown is **not** there,
 `app_settings` is backed up and the disclosure is per installation: it lives in `face_device_state`
 beside the capability record, and that file is excluded from backup in all four rules sections —
 the second preferences file with an `<exclude>`, after `media_index_run_state` (ADR-0018
-Amendment 7 §3). Nothing in `ui/` reads or writes either yet; step 3.6 does.
+Amendment 7 §3). Since step 3.5, `AlbumsViewModel` **reads** the setting and the capability record,
+through `StoredPeopleAvailabilitySource`, to decide whether a people album can be evaluated; nothing
+in `ui/` writes either, marks the disclosure shown, or runs the capability check yet — step 3.6
+does.
 
 ### The two databases
 
@@ -305,8 +310,13 @@ database is backed up (ADR-0014) while the index must not be.
   inside the write's transaction, `face_device_state` and the fourth backup section. Step 3.2 built
   the tables, the store rules and the deletion; step 3.3 built the face pass and its gates in
   `MediaIndexingWorker`, and the repeat of the deletion at the start of every worker run while the
-  setting is off. The pass is dormant until step 3.6 records the disclosure as shown, and nothing
-  in `ui/` calls the deletion yet.
+  setting is off. Step 3.4 built grouping: it runs after the face pass in the same hold of the Tier
+  C lock, fills the face rows' `groupId` and `groupingVersion` with no schema change, and the store
+  has the People picker's query, `listFaceGroups`. Both passes are dormant until step 3.6 records
+  the disclosure as shown, and nothing in `ui/` calls the deletion or the picker query yet. Step
+  3.5 built the `people` clause and its evaluation, and the Tier C evaluation projection it reads
+  — no schema change in either database; [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §3
+  and §6 say where.
   A people rule's anchor (ADR-0022) is the one face-related
   thing in the album database, and it is not face data. Read them before adding a table to either
   database.

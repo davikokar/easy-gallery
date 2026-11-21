@@ -12,7 +12,9 @@
 > and 2026-11-18), 41, 42 and 43 (2026-11-18), and 44, 45 and 46 (2026-11-18, delegated by the
 > maintainer; 44, and 45's OpenCV dependency, confirmed by him the same day), and 47 (2026-11-19,
 > the answers to group E), and 48 (2026-11-20, two findings of step 3.2's review), and 49 (2026-11-20,
-> ADR-0018 Amendment 7 approved and OpenCV pinned at 4.13.0). The steps, the
+> ADR-0018 Amendment 7 approved and OpenCV pinned at 4.13.0), and 50 (2026-11-20, grouping's budget
+> accepted, components first, and ~~ADR-0018 Amendment 8's size-aware representative~~ the plain medoid
+> as representative — Amendment 8's size-aware rule withdrawn the same day on Task 2's measurement). The steps, the
 > exit criteria and every recommendation below are proposals until the maintainer answers the open
 > questions and step 3.1 records the decisions. Group A was answered on 2026-11-17. Where something
 > was not known, it is a question, not a guess. ~~Nothing here names a face model, a licence or an
@@ -255,18 +257,186 @@
   route is accepted for 3.4's measurements and tests**, and is neither a blocker nor a risk. It is
   recorded, with the one design constraint it carries, in *3.4 — Clustering and the person record*,
   *The dev-device route — answered 2026-11-20*, which is also the brief: measurement first, **no
-  schema change** (the index stays at version 6; no ADR-0018 Amendment 8), a pure grouping class,
+  schema change** (the index stays at version 6; no ADR-0018 Amendment 8 — *added later the same
+  day:* one was adopted and reversed before it was built, so this stands; the entry *2026-11-20,
+  latest* below says why), a pure grouping class,
   grouping in the worker under the Tier C lock, the person record computed on read. B2 is settled
-  there, subject to the budget. One correction found on the way: 3.3's measurement did not set the
+  there, ~~subject to the budget~~ not adopted (*2026-11-20:* the budget met, decision 50). One correction found on the way: 3.3's measurement did not set the
   disclosure flag, as the question below says — it ran the pass outside the worker. No Gradle run by
   the Planner.
-- **Next action: step 3.4, Task 1 — Coder, with the SM-G990B attached:** the pure grouping class,
+- ~~**Next action: step 3.4, Task 1 — Coder, with the SM-G990B attached:** the pure grouping class,
   its plain-JVM test and the opt-in measurement — *3.4*, *Tasks*, Task 1 is the brief. **It waits on
   nothing.** Then **the maintainer accepts the budget** proposed in *3.4*, *The budget* — now, or
   once Task 1's figures are in; Task 2 waits on it. If the figures fail it, he chooses among the
   options listed there, which is a new decision, and nothing after Task 1 is built until he has.
   Then Tasks 2 and 3 (store, grouping pass, worker), Task 4 (the worker measurement on the phone),
-  the verification phase once, and task P.
+  the verification phase once, and task P.~~ Done 2026-11-20 — the two entries below.
+- **2026-11-20, later — step 3.4's Task 1 built and verified on the SM-G990B.** `data/FaceGrouping.kt`,
+  `FaceGroupingTest` (28 tests) and the opt-in `FaceGroupingMeasurementDeviceTest`; six mutation
+  checks each failed its test; the full unit suite 1105 tests, 0 failures. The figures are in *3.4*,
+  *Task 1 — measured 2026-11-20*: both budget limits held at 10,000 faces (30.7 s, +213.9 MB RSS), but
+  the Java heap peaked at about 233 MB of 256, so the full triangle tops out near 10,500 faces; and 22
+  of the 104 representatives offered were under 60 px. The maintainer has edited `FaceGrouping.kt` by
+  hand since; the next task reads it as it stands.
+- **2026-11-20, later still — the maintainer's answer, decision 50:** "Let's go with your
+  recommendations." The budget is accepted as met; grouping splits faces into components first, which
+  gives the same groups (the proof is under *3.4*, *Measurement first*, option (a)); and
+  [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) **Amendment 8 is
+  adopted**: each face's short side in pixels, `Migration(6, 7)` to index version 7, the representative
+  preferring a face at least 60 px across, `FACE_GROUPING_VERSION` 2. It reverses the refinement's "no
+  schema change". The Planner recorded it in [albums.md](albums.md) §8 decision 50 and §7, decision
+  45's B2 pointer, ADR-0018 (the amendment, a marker under its title, a pointer in Amendment 5),
+  ADR-0023 §5's dated note, and here: the step row, *3.4*'s budget, *Decided at 3.4* and *Tasks*,
+  renumbered to five. No Gradle run by the Planner. *Amendment 8 was reversed later the same day,
+  before it was built — the entry after next.*
+- ~~**Next action: step 3.4, Task 2 — Coder:** components first and the size-aware representative, in
+  `FaceGrouping.kt` and its tests, then the opt-in measurement at 10,000 and 20,000 faces on the
+  SM-G990B — *3.4*, *Tasks*, Task 2 is the brief, with its file list. **It waits on nothing; no
+  approval is pending.** Then Task 3 (schema, store, DAO and the grouping pass — `Migration(6, 7)`),
+  Task 4 (the worker), Task 5 (grouping through the worker on the phone), the verification phase
+  once, and task P.~~ Done 2026-11-20 — the entry below.
+- **2026-11-20, latest — step 3.4's Task 2 built and verified, and Amendment 8 reversed.**
+  Components first and the size-aware representative in `data/FaceGrouping.kt`, `FaceGroupingTest`
+  and `FaceGroupingMeasurementDeviceTest`, uncommitted; the figures are under *3.4*, *Tasks*, Task 2.
+  Components first holds the budget with room to spare — 10,000 faces in 12.8 s, 20,000 in 50.9 s.
+  **The size-aware rule fixed 1 of the 22** small representatives: 21 of the 104 offered groups have
+  no member at least 60 px across. The Planner recommended dropping the stored size, and the
+  maintainer answered "let's go with your recommendations": a permanent schema change is not worth
+  one thumbnail. So **ADR-0018 Amendment 8 is reversed before anything of it was built** — no
+  column, no `Migration(6, 7)`, the index stays at version 6, the representative is the plain medoid
+  — and the refinement's "no schema change" stands after all. This is the one place the reversal is
+  told; the records are [albums.md](albums.md) §8 decision 50 (amended) and §7, ADR-0018 (Amendment
+  8 marked reversed, the marker under its title, the pointer in Amendment 5), ADR-0023 §5 (a second
+  dated note with Task 2's figures), and here: the step row, *3.4*'s *Decided at 3.4*, *Tasks* with a
+  new Task 2b, Task 3 rewritten without the schema, and open question B2. No Gradle run by the
+  Planner.
+- ~~**Next action: step 3.4, Task 2b — Coder:** remove the size-aware representative from
+  `FaceGrouping.kt`, `FaceGroupingTest` and `FaceGroupingMeasurementDeviceTest`, and set
+  `FACE_GROUPING_VERSION` back to 1 — *3.4*, *Tasks*, Task 2b is the brief, with its file list. **It
+  waits on nothing; nothing is pending for the maintainer.** Then Task 3 (store, DAO and the grouping
+  pass — no schema change), Task 4 (the worker), Task 5 (grouping through the worker on the phone),
+  the verification phase once, and task P.~~ Done 2026-11-21 — the entry below.
+- **2026-11-21 — step 3.4 built and verified: Tasks 2b, 3, 4, 5, the verification phase and task P
+  done.** Plain medoid and `FACE_GROUPING_VERSION` 1 again; the store's grouping methods and the
+  People picker's query `listFaceGroups`; `data/FaceGroupingPass.kt`, run by the worker after the
+  face pass under the same hold of the Tier C lock; the opt-in worker measurement on the phone. **No
+  schema change** — the index stays at version 6. **The gate**, on the SM-G990B: unit 75 files, 1174
+  tests, 0 failures; `connectedDebugAndroidTest` 266 tests, 0 failures, 3 skipped (the opt-in
+  measurements); the merged manifests byte-identical. Through the real worker: the face pass 1,002
+  images in 113.2 s, grouping 292 ms, a no-op second run. The figures, the review's judgement calls
+  on Task 5's test and what is not proven are in *3.4 — Built and verified 2026-11-21*; 3.7's list
+  gained items 11 to 14. Task P landed `ARCHITECTURE.md` §2, §3, §6 and §11, `AGENTS.md`, ADR-0018
+  Amendment 5's *Built* notes and Amendment 8's reversal annotations, ADR-0023's *Built* note, §4, §5
+  and verify row 6, and the test conventions; then this plan — the step row, the Tasks, the stale
+  Amendment 8 text struck and annotated, open question B2, this handoff — and [albums.md](albums.md)
+  §7's Stage 3 row. Stage 3 stays In progress. No Gradle run by the Planner.
+- ~~**Next action: step 3.5, Task 1 — the clause.** Owner: the Coder. Step 3.5 was refined on
+  2026-11-21 into *3.5 — The people clause and its evaluation* below: three Coder tasks, sequential
+  because they share `AlbumRuleEvaluation.kt` and `ui/AlbumsViewModel.kt`, then the verification
+  phase, which alone runs the definition of done, then task P. **Nothing is pending for the
+  maintainer:** no schema change, no ADR or amendment, no dependency, permission, preferences file or
+  string. The two choices the records left to 3.5 are taken there — a tie between equal overlaps goes
+  to the lower face id; the cause of unevaluatable is a field beside `UNEVALUATABLE`, not a new status.~~
+  Done 2026-11-21 — the entry below.
+  - **Read first:** that section whole — its four *Decided at 3.5* parts and *Tasks*; ADR-0017
+    Amendments 1, 2 and 4; ADR-0022 §1, §3 and §4; `data/AlbumRule.kt`, `data/AlbumRuleJson.kt` and
+    `test/.../data/AlbumRuleTest.kt`, whose strictness tests Task 1's follow.
+  - **Task 1's report calls out** the interim branch it leaves in `AlbumRuleEvaluation.kt` (a people
+    album waits), which Task 2 removes.
+  - **Left to 3.6 by it**, listed under *3.2 to 3.8*: the cause carried to the notices before any
+    build that writes a `people` clause ships, the availability refresh's callers, and a durable
+    capability answer on a phone with no pipeline.
+- **2026-11-21, latest — step 3.5 built and verified: Tasks 1, 2, 3, the verification phase and task
+  P done.** The `people` clause, parsed strictly with three new reasons, its `toString`s redacted, and
+  `anchoredAt`; `observeFaceEvaluationProjection`, a second projection with no embedding;
+  `data/PeopleClauseEvaluation.kt` (resolution at IoU ≥ 0.5, a tie to the lower face id, the
+  per-item answers) and `data/PeopleAvailability.kt`; `AlbumUnevaluatableCause` beside
+  `UNEVALUATABLE`; in `AlbumsViewModel`, a second shared flow for people albums only and
+  `refreshPeopleAvailability()`. **No schema change** in either database, and no string. **The
+  gate**, on the SM-G990B: unit 78 files, 1293 tests, 0 failures; `connectedDebugAndroidTest` 266
+  tests, 0 failures, 3 skipped (the opt-in measurements); the merged manifests byte-identical;
+  `app/schemas` unchanged. Two Reviewers, no hard violations; every follow-up done but a one-line
+  cleanup. The figures, the review's dispositions and what is not proven are in *3.5 — Built and
+  verified 2026-11-21*; 3.6's brief under *3.2 to 3.8* now lists five items it must do, and 3.7's
+  list gained items 15 and 16. Task P landed `ARCHITECTURE.md` §2, §3, §6 and §11, `AGENTS.md`,
+  ADR-0017 Amendment 4's, ADR-0022's and ADR-0024 §4's notes in an earlier run, and ADR-0018
+  Amendment 5's *Built* note, this plan and [albums.md](albums.md) §7's Stage 3 row in this one.
+  Stage 3 stays In progress. No Gradle run by the Planner.
+- **Next action: step 3.6 — the UI: the People criterion, the disclosure, the switch, the strings
+  and the notices.** Owner: **the Designer first**, for D1 — where the People picker lives — and the
+  criterion's layout (*Open questions* D1); then the Planner refines 3.6 into a step plan, as 3.2 to
+  3.5 were; then the Coder builds it. 3.6's own text, under *3.2 to 3.8*, says: the People criterion
+  with its thumbnails, with no merge and no split (decision 40); the notice of an unevaluatable
+  people album, whose wording is open (decision 42); the disclosure, and the Settings switch; the
+  Settings row showing the licence notices (E5); strings in every shipped locale; vocabulary
+  in-change — and the five items *Added 2026-11-21 from 3.5*, each a must: a durable answer on a
+  phone without arm64-v8a, the app-open capability check and start-up deletion, the refresh's
+  callers, a limit on people per album, and the cause carried to the notices.
+  - **Read first:** 3.6's text and its five items;
+    [the UI vocabulary](../../.github/instructions/ui-vocabulary.instructions.md);
+    [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §1 to §5;
+    ADR-0017 Amendment 4 (the notices, one per album); ADR-0022 §5 (a restore); *Open questions* D1
+    and D2; *3.5 — Built and verified 2026-11-21* below.
+  - **It starts from what landed:** `MediaIndexStore.listFaceGroups`, the People picker's query
+    (3.4); `AlbumRuleClause.People.anchoredAt`, what the picker calls when a person is selected;
+    `PeopleAvailability` and `AlbumsViewModel.refreshPeopleAvailability()`; `AlbumUnevaluatableCause`,
+    which stops at `AlbumRuleEvaluation`; and the persisted capability record and disclosure flag in
+    `face_device_state`, the setting in `app_settings` and `FaceCapabilityChecker` (3.3) — none of
+    which anything in `ui/` calls or writes yet.
+  - **For the maintainer, before 3.6's picker is built — one real question: the limit on people per
+    album**, a product choice (3.6, item 4; *Open questions* D3). **Recommended: 8.** It is the most that always fits the
+    16 KiB cap whatever the anchor photos' names — 8 fit with 255-character names escaped
+    throughout, 10 do not — so the picker can never build a rule the encoder refuses; and a member
+    must show every chosen person (decision 35), so an album of more than eight people in one photo
+    is rare. The `require` is caught in `createAutomaticAlbum` as well, as the backstop.
+  - **Reserved — not before 3.6**, named so that nobody waits on them:
+    - **the disclosure's wording.** ADR-0024's adoption note says its wording and placement are
+      intent, not final strings; adoption bound the mechanism, and the Designer finalises both at
+      3.6. The record asks no further approval. It is the one privacy statement the app makes, so
+      the maintainer may want to read it at 3.6's review;
+    - **D1**, the Designer's, not his — unless the answer is a screen of its own, which reopens D2
+      (ADR-0013's back stack), answered by him on 2026-11-19 on the premise that it is not;
+    - **the translations**, 16 locales beyond English (`LocaleHelper.supportedLanguageTags`).
+      `AGENTS.md` requires every string in every shipped locale in the same change and names no
+      translator; Stage 2's precedent is that the change writes them and a native-speaker pass
+      stays outstanding ([albums-stage-2.md](albums-stage-2.md)). Nothing asks the maintainer to
+      supply them; the disclosure is where a native-speaker pass matters most — before a release,
+      not before 3.6;
+    - rule editing's D6, constrained, not answered; and the Play Data Safety check, before the
+      first Play release that ships the Tier C pass.
+- ~~**Next action: step 3.5 — the `people` clause and evaluation.** Owner: the Planner refines it into
+  a step plan, as 3.2 to 3.4 were; then the Coder builds it.~~ Refined 2026-11-21 — the *Next action:
+  step 3.5, Task 1* entry above.
+  **Nothing is pending for the maintainer
+  before the refinement** — 3.5's records leave no question open to him (below).
+  - **3.5's own text**, under *3.2 to 3.8*, says only: "Parse, encode and evaluate, with strictness
+    tests like Stage 2's; combined people + region + time, with tests." *3.4*, *What 3.4 produces*,
+    adds: "**Left to 3.5:** the `people` clause, building an anchor from the representative
+    candidate, and evaluation — resolving an anchor by IoU to a face and its group (ADR-0022 §3), and
+    the per-image projection evaluation needs."
+  - **It starts from what 3.4 landed:** `MediaIndexStore.listFaceGroups`, the People picker's query,
+    whose representative candidate carries exactly an anchor's fields;
+    [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §1 (the
+    anchor: the photo's media identity, the box as upright fractions, the pipeline version, nothing
+    else) and §3 (resolution: gone, waiting, IoU ≥ 0.5, no face at the anchored position);
+    [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 4
+    (one `people` clause per person, each with one anchor; its parser strictness; settled and
+    unsettled, a video or GIF a settled no-match; the two causes of unevaluatable found at
+    evaluation; never rewritten); [albums.md](albums.md) §8 decisions 41 and 42 (an anchor that
+    cannot be followed: a pending photo is waiting, a deleted photo or no face at the position is
+    unevaluatable) and 46 (IoU ≥ 0.5, the best overlap wins, faces under 40 px never candidates).
+  - **Left by those records to 3.5 itself, the Planner's to settle in the refinement, not the
+    maintainer's:** the deterministic tie-break between equal overlaps (ADR-0022 §3 step 4: "a rule
+    step 3.5 fixes"); and how the evaluator reports which cause of unevaluatable applies — "Whether
+    that status gains a sibling or carries a cause is 3.5's choice" (ADR-0017 Amendment 4), whose
+    `AlbumEvaluationStatus.UNEVALUATABLE` doc comment becomes too narrow either way. The notices'
+    wording is 3.6's, with the People criterion's layout (D1, the Designer's).
+  - **Open, but not before 3.5:** a heap-based cap on one giant component, open for the maintainer
+    in `ARCHITECTURE.md` §11 — grouping's, not the clause's; and rule editing's D6, the order
+    against 3.6, which ADR-0017 Amendment 4 constrains and does not answer.
+  - **Read first, on starting 3.5:** *3.4 — Built and verified 2026-11-21* below; ADR-0022 §1, §3
+    and §4; ADR-0017 Amendments 1, 2 and 4 (Stage 2's strictness, and the people clause);
+    [albums.md](albums.md) §8 decisions 35, 41, 42 and 46; ADR-0018 Amendment 5 (a pending image).
 - ~~**Next action: step 3.4 — clustering and the person record.** Owner: the Planner refines it into
   a step plan, as 3.2 and 3.3 were; then the Coder builds it.~~ Refined 2026-11-20 — the two entries
   above. It starts from what 3.3 landed: Tier C
@@ -815,8 +985,8 @@ step is refined when it starts.
 | **3.1** | The decisions: ADRs and amendments, and these exit criteria confirmed | ~~🔶 In progress~~ ✅ Complete 2026-11-19 — decisions 43–46 taken 2026-11-18; ADRs 0022–0024 and amendments to ADR-0017 and ADR-0018 drafted 2026-11-18; their questions (group E) answered 2026-11-19; all five adopted 2026-11-19; exit criteria confirmed |
 | **3.2** | Tier C schema and store | ~~⬜ Not started — refined 2026-11-19, ready to build~~ ~~✅ Built and verified 2026-11-19~~ ~~🔶 Built and verified 2026-11-19 — the gate is under *3.2 — Tier C schema and store*, *Built and verified*; reopened 2026-11-20 for its follow-up (decision 48)~~ ✅ Built and verified 2026-11-19; reopened 2026-11-20 for its follow-up (decision 48), built and verified 2026-11-20 — both gates are under *3.2 — Tier C schema and store* |
 | **3.3** | Face detection and embedding in the indexing pipeline, behind the disclosure | ~~⬜ Not started — refined 2026-11-20 into *3.3 — Face detection and embedding*;~~ ~~Task 1 waits on the approval of ADR-0018 Amendment 7, Task 2 on F2 as well~~ ~~ADR-0018 Amendment 7 adopted and F2 answered (OpenCV 4.13.0) 2026-11-20, decision 49; Task 1 ready to build~~ ✅ Built and verified 2026-11-20 — refined, its storage adopted as ADR-0018 Amendment 7 and OpenCV pinned at 4.13.0 the same day (decision 49); Tasks 1 to 4 and task P done; the gate and the device results are under *3.3 — Built and verified 2026-11-20* |
-| **3.4** | Clustering and the person record | ⬜ Not started — refined 2026-11-20 into *3.4 — Clustering and the person record*, ready to build: no schema change, so no amendment to approve; Task 1 waits on nothing, Task 2 on the maintainer's acceptance of the budget |
-| **3.5** | The `people` clause and evaluation | ⬜ Not started |
+| **3.4** | Clustering and the person record | ~~⬜ Not started~~ ~~🔶 In progress — refined 2026-11-20 into *3.4 — Clustering and the person record*;~~ ~~ready to build: no schema change, so no amendment to approve; Task 1 waits on nothing, Task 2 on the maintainer's acceptance of the budget~~ ~~Task 1 ✅ built and verified 2026-11-20; the budget accepted, components first~~ ~~and ADR-0018 Amendment 8 adopted the same day (decision 50), so there is a schema change after all — `Migration(6, 7)`, in Task 3; Task 2 next, waiting on nothing~~ ~~adopted the same day (decision 50); Task 2 ✅ built and verified 2026-11-20, and on its measurement ADR-0018 Amendment 8 reversed before it was built (decision 50, amended) — no schema change, the index stays at version 6; Task 2b next, waiting on nothing~~ ✅ Built and verified 2026-11-21 — refined 2026-11-20; the budget accepted with components first (decision 50); ADR-0018 Amendment 8 adopted and reversed before it was built (decision 50, amended), so no schema change and the index stays at version 6; Tasks 1, 2, 2b, 3, 4, 5 and task P done; the gate and the device results are under *3.4 — Built and verified 2026-11-21* |
+| **3.5** | The `people` clause and evaluation | ~~⬜ Not started — refined 2026-11-21 into *3.5 — The people clause and its evaluation*, ready to build: Tasks 1 to 3, sequential, then verification and task P; nothing waits on the maintainer~~ ✅ Built and verified 2026-11-21 — refined the same day; Tasks 1, 2, 3, the verification phase and task P done; no schema change in either database, no string; the gate and the review's dispositions are under *3.5 — Built and verified 2026-11-21* |
 | **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ⬜ Not started |
 | **3.7** | Device verification and installed-app walkthrough | ⬜ Not started |
 | **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ⬜ Not started |
@@ -1764,8 +1934,9 @@ calls are (g) of the handoff's entry for Tasks 1 and 2.
 ### 3.4 — Clustering and the person record — refined 2026-11-20
 
 The Coder's brief. What grouping is and what it must meet is [albums.md](albums.md) §8 decisions 9,
-40, 42, 45 and 46,
-[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendments 5–7,
+40, 42, 45 and 46, and 50 (2026-11-20),
+[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendments 5–7, ~~and 8
+(2026-11-20)~~ (Amendment 8, adopted and reversed 2026-11-20, binds nothing),
 [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §1 and §3, and
 [ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md) §1, §4 and §5,
 and is not restated. What they left to 3.4 is marked **Decided at 3.4**, with its reason; each is the
@@ -1816,6 +1987,40 @@ records.
 3. **At the real library**, 422 faces, both are expected to hold by orders of magnitude; Task 1 shows
    it rather than assuming it.
 
+**Accepted 2026-11-20, as met** ([albums.md](albums.md) §8 decision 50; a dated note in ADR-0023 §5):
+the maintainer accepted the budget as proposed, with Task 1's figures below in front of him. Task 2
+is unblocked.
+
+#### Task 1 — measured 2026-11-20
+
+On the SM-G990B, screen off, thermal status 0 throughout. `FaceGroupingMeasurementDeviceTest`, opt-in.
+- **The real library:** 422 faces in 299 images with faces; **164 groups, 104 with at least two
+  distinct images** — the groups the picker would offer; the largest group 57 faces; **the largest
+  connected component at ≤ 0.50, 88 faces**. Grouping 241 ms; peak RSS +3.2 MB.
+- **Synthetic sets**, in ascending order:
+
+  | Faces | Time | Java heap rise | Peak RSS rise |
+  |---|---|---|---|
+  | 2,000 | 1.2 s | +11.3 MB | +10.8 MB |
+  | 5,000 | 7.5 s | +61.9 MB | +57.8 MB |
+  | 10,000 | 30.7 s — 18.7 s distances, 11.9 s clustering | +224.5 MB | +213.9 MB |
+
+  At 10,000 in a fresh process: 30.9 s and +212.6 MB. The Java heap peaked at about **233 MB of its
+  256 MB maximum** (`memoryClass` 256, `largeMemoryClass` 512). No `OutOfMemoryError`. The largest
+  component of the synthetic 10,000 was 60 faces.
+- **Representatives under 60 px:** of the 104 offered, each its group's medoid, **22 have a face under
+  60 px** on the shorter side of the decoded frame, 35 under 80 px; the median is 108 px, the
+  smallest 40 px.
+- **Tests:** `FaceGroupingTest`, 28 tests; six mutation checks, each seen to fail its test; the full
+  unit suite 1105 tests, 0 failures.
+
+**What the figures mean.** Both limits hold at 10,000, but **the binding limit is the Java heap, not
+RSS**: the float32 triangle is 200 MB at 10,000 faces against a 256 MB heap, so the full-triangle
+ceiling is about **10,500 faces** — about 25,000 images at the real library's density. Option (a)
+below lifts it at no cost to the groups, and is adopted (decision 50). The 22 representatives under
+60 px led to ADR-0018 Amendment 8 (*The representative*, below), reversed the same day when Task 2
+measured that it fixed one of them.
+
 **If Task 1's figures fail the budget**, nothing after Task 1 is built, and the maintainer chooses.
 **The options, for him — none is decided here:**
 - (a) **Same groups, less memory — components first.** Split the faces into the connected components
@@ -1838,11 +2043,39 @@ change the groups. Under the rule in *3.2 to 3.8* each is a new decision, not a 
 [albums.md](albums.md) §8 and an amendment to ADR-0023 §5 — and, for (d), to ADR-0018 — before
 anything is built on it.
 
-**B2 — Decided at 3.4, subject to the budget: not adopted.** Every run that finds grouping needed
+**The figures met the budget, and (a) is adopted anyway — 2026-11-20** (decision 50), because it lifts
+the Java-heap ceiling above. It is not the "new decision" the paragraph above reserves: that is for a
+change to the groups, and (a) gives the same groups. It is recorded as part of decision 50 all the same,
+because it moves the ceiling the budget was judged against. **Why the groups are identical**, as a
+proof the tests must hold:
+- Let the graph's edges be the pairs whose distance **as stored in the float32 triangle** is at most
+  0.50, compared exactly as the clustering compares it. Two different components have no edge between
+  them, so every cross pair is above 0.50.
+- Average linkage merges two clusters only when the mean of their cross-pair distances is at most
+  0.50. If each cluster lies inside one component and the two lie in different components, every term
+  of that mean is above 0.50, so the mean is too — and also after rounding, since the update is a
+  weighted mean computed in double and rounded to float, and rounding to nearest is monotone. So no
+  such pair ever merges, and by induction every cluster stays inside one component.
+- Merges in one component change no distance inside another, so each component's merges happen in
+  the same order as if it were alone, ties included, provided its faces keep their ascending face-id
+  order. The medoid~~, and Amendment 8's representative,~~ is computed per group from the embeddings.
+- So clustering each component alone gives exactly the groups and representatives of the whole.
+
+**What it costs and leaves.** Finding the components needs every pairwise distance once, as now, but
+keeps none: a union-find of an `IntArray` per face — about 40 KB at 10,000 faces, 80 KB at 20,000 —
+while the unit vectors, already held today, are 10 MB at 10,000 and 20 MB at 20,000. Each component's
+triangle is then built and freed in turn: at the largest component measured, 88 faces, about 15 KB.
+**The ceiling becomes time, not memory:** the distances stay quadratic in all faces, 18.7 s at 10,000,
+so about 75 s at 20,000; ~~Task 2 measures it~~ Task 2 measured 12.8 s at 10,000 and 50.9 s at 20,000. **Its worst case** is one giant component, which is the full
+triangle again; the cap on faces a triangle can hold applies to a component, not to the input. Nothing
+measured comes near it.
+
+**B2 — Decided at 3.4, ~~subject to the budget~~ the budget met (decision 50): not adopted.** Every run that finds grouping needed
 (below) regroups every face from scratch with decision 45's average linkage. *Why:* the result is
 then a function of the stored faces alone, independent of the order they arrived in, which is
 decision 45's reason for average linkage, and what the spike measured; and the budget above is what
-makes a full regrouping affordable. B2 comes back only as option (e).
+makes a full regrouping affordable. B2 comes back only as option (e). **2026-11-20:** the budget was
+accepted as met (decision 50); B2 is not adopted.
 
 #### Decided at 3.4 — the grouping
 
@@ -1863,14 +2096,35 @@ makes a full regrouping affordable. B2 comes back only as option (e).
   - **A zero-norm embedding** — which `FaceEmbedding` allows — is at distance 1.0 from every face,
     so it is a group of its own; no NaN reaches the triangle. Embeddings of unequal length are a
     bug, and fail the grouping with a fixed message that names no value.
-- **`FACE_GROUPING_VERSION = 1`**, beside `FACE_PIPELINE_VERSION`: it names the algorithm, the
+  - **Components first — added 2026-11-20** (decision 50). The faces are split into the connected
+    components of the graph of pairs whose float32 distance is at most 0.50, by a union-find over one
+    pass of the distances, and average linkage runs inside each component, its faces in ascending
+    face-id order. Same groups, proved under *Measurement first*, option (a); the cap on faces a
+    triangle can hold applies to a component.
+- ~~**`FACE_GROUPING_VERSION = 1`**~~ ~~**`FACE_GROUPING_VERSION = 2`** (2026-11-20, ADR-0018
+  Amendment 8 §3: the representative rule changed, and `groupId` is the representative)~~
+  **`FACE_GROUPING_VERSION = 1`** again (2026-11-20, later: Amendment 8 reversed; Task 2b sets it
+  back), beside
+  `FACE_PIPELINE_VERSION`: it names the algorithm, the
   metric, the 0.50 cut and its inclusiveness, the float32 triangle, the tie-break and the two rules
   below. Changing any of them bumps it, which regroups with no file I/O and no inference
-  (Amendment 5).
+  (Amendment 5). The component split changes none of them.
+  - **When it bumps — Decided at 3.4, 2026-11-20:** only when grouping's result for the same stored
+    faces would change — which faces share a group, or the `groupId` written for them. A change to
+    how the result is computed that leaves it identical bumps nothing: components first is the
+    example, proved under *Measurement first*, option (a). *Why:* a bump makes every installed index
+    regroup, and a stored `groupingVersion` must name the rule that produced the stored ids, no more.
+  - **Why 1 and not 2:** version 2 named only the size-aware representative, which is withdrawn; no
+    build has persisted a grouping at any version, grouping not being wired until Task 4, so no
+    stored value can be misread; and components first gives the same groups and representatives as
+    the plain medoid Task 1 built under version 1. So 1 still names exactly the rule that will run.
 - **What a group stores — Decided at 3.4: no table and no column; the index stays at version 6.**
+  ~~*Amended 2026-11-20:* one column on the face row, for the representative — ADR-0018 Amendment 8,
+  next bullet but one; the index reaches version 7.~~ *Restored 2026-11-20, later:* Amendment 8 was
+  reversed before it was built.
   Amendment 5 left per-group summaries — image count, most recent photo, medoid face — to 3.4, stored
   or computed on read. Each face's `groupId` and `groupingVersion`, which `Migration(4, 5)` already
-  created, are all that is written:
+  created, are all that ~~is~~ grouping writes:
   - **`groupId` is the id of the group's representative face** (next bullet). Face ids are
     auto-generated and never reused, and groups are disjoint, so it is unique within a grouping —
     the stable id decision 46's last tie-break needs — and it records the representative without a
@@ -1880,18 +2134,35 @@ makes a full regrouping affordable. B2 comes back only as option (e).
     so storing them would add a second thing to keep true; a query over at most tens of thousands of
     rows costs no migration (Amendment 4's precedent: an index or a table is added when a measured
     query needs it).
-  - So there is **no `Migration(6, 7)` and no ADR-0018 Amendment 8**. Task 2 checks that `6.json`
-    is unchanged and that no `7.json` appears.
+  - So there is **no `Migration(6, 7)`** ~~and no ADR-0018 Amendment 8~~. ~~Task 2 checks that `6.json`
+    is unchanged and that no `7.json` appears.~~ ~~**Reversed 2026-11-20** (decision 50): there is a
+    `Migration(6, 7)` and an ADR-0018 Amendment 8, for the face's pixel size — not for anything
+    grouping writes. Task 3 builds it; `7.json` is new and `6.json` unchanged.~~ *Restored 2026-11-20,
+    later:* Amendment 8 exists only as a reversed record. The verification phase checks that
+    `git status app/schemas` shows nothing.
 - **The representative — Decided at 3.4: the group's medoid, ties to the lowest face id.** The member
   whose summed cosine distance to the other members is smallest; a group of one is its own face.
   Computed after clustering from the embeddings, streaming per group, since clustering overwrites the
-  triangle. **Deliberately not the spike's rule** — the medoid among members at least 60 px across:
+  triangle. ~~**Deliberately not the spike's rule** — the medoid among members at least 60 px across:
   a stored box is in fractions (ADR-0022 §1), the decoded size is not stored, and Tier A's EXIF width
   and height are often absent and not upright. Restoring the 60 px rule would need the decoded size
   stored, a migration and an ADR-0018 amendment. The 40 px cut-off already removes the smallest
   faces, and the medoid favours a group's most typical face. **Measured, not assumed:** Task 1
   reports how many offered representatives are under 60 px, decoding each on the phone; if it is
-  more than a few, the Planner puts the stored-size amendment to the maintainer.
+  more than a few, the Planner puts the stored-size amendment to the maintainer.~~
+  ~~**Amended 2026-11-20 — the spike's rule restored**, by ADR-0018 Amendment 8, adopted with decision
+  50, after Task 1 found 22 of 104 offered representatives under 60 px. Each face stores
+  `boxShortSidePx`, the shorter side of its box as detected in the decoded frame, 0 for unknown. The
+  representative is the medoid unless its short side is under
+  `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS` (60); then the member with the smallest summed distance to
+  the whole group among those at least 60 px, ties to the lower id; if none is, the medoid. Unknown
+  counts as under 60. The amendment holds the reasons, the column and the rule for rows written
+  before it.~~
+  **Amended 2026-11-20, later — the plain medoid, as decided first** (decision 50, amended). Task 2
+  built the spike's 60 px rule and measured it: 21 of the 104 offered groups have no member at least
+  60 px across, so it fixed 1 of the 22 small representatives. Small thumbnails — 22 of 104 under
+  60 px, the smallest 40 px — are accepted as the picker's behaviour for now; a lower threshold, a
+  quality score from the detector or upscaling at 3.6 would be a new decision.
 - **When grouping is needed.** Some face at `FACE_PIPELINE_VERSION` has a null `groupingVersion`
   or another one; or its `groupId` names a face that no longer exists — its representative was
   deleted with its image, or dropped by a changed healing triple (Amendment 6). Otherwise nothing
@@ -1905,7 +2176,8 @@ makes a full regrouping affordable. B2 comes back only as option (e).
   read keeps its null version, so grouping is needed again next run. Nothing else is touched: states,
   attempts, Tier A. *Why it is safe without comparing more:* only the Tier C pass inserts faces, and
   it holds the same lock; a heal re-keys a face but keeps its id; any other change deletes the face.
-- **The read is paged by face id**, ids and embeddings only, outside a transaction; at 10,000 faces
+- **The read is paged by face id**, ids and embeddings only ~~— and, from 2026-11-20, each face's
+  `boxShortSidePx`~~ (withdrawn the same day), outside a transaction; at 10,000 faces
   the embeddings are 5 MB.
 - **Where it runs — Decided at 3.4: in the worker, after the pass, under the same hold of the Tier C
   lock** (ADR-0023 §4: "in the same worker or as its own step"). `runFaceIndexPass` already holds
@@ -1955,13 +2227,26 @@ the album database (Amendment 5, ADR-0022 §1), and none in an image loader's di
 §6); the disclosure that wakes the pass and grouping on a real install; dropping held state on
 switch-off.
 
-#### Tasks — four, sequential, with the maintainer between Task 1 and Task 2
+#### Tasks — ~~four, sequential, with the maintainer between Task 1 and Task 2~~ ~~five, sequential (renumbered 2026-11-20)~~ Tasks 1, 2, 2b, 3, 4 and 5, sequential (2026-11-20)
+
+*Amended 2026-11-20, later.* Tasks 1 and 2 are built. Amendment 8 being reversed, **Task 2b** removes
+the size-aware representative Task 2 built; **Task 3 loses the migration** and every short-side field
+(rewritten below, not struck, because no Coder has started it); Tasks 4 and 5 keep their numbers.
+
+*Renumbered 2026-11-20, after decision 50.* Task 1 is built. Components first and the size-aware
+representative change `FaceGrouping.kt`, so that is a task of its own, **Task 2**; what was Task 2,
+the store and the grouping pass, is **Task 3** and gains the migration; the worker is **Task 4**; the
+worker measurement on the phone is **Task 5**. Each task's file list below is complete: nothing runs in
+parallel, but each Coder edits only the files his task names.
 
 Paths are under `app/src/main/java/com/davide/seddio/easygallery/`, and tests under
 `app/src/test/…/data/` or `app/src/androidTest/…/data/`. Method names are the Coder's; what each
 does is not. The Kotlin files are CRLF, and new ones should be too.
 
-**Task 1 — Coder, with the SM-G990B attached: the grouping and its measurement.** Waits on nothing.
+**Task 1 — Coder, with the SM-G990B attached: the grouping and its measurement.** ✅ **Built and
+verified 2026-11-20** — the figures are *Task 1 — measured 2026-11-20*, above; the brief is kept as
+it was. `data/FaceGrouping.kt` has been hand-edited by the maintainer since; Task 2 starts from the
+file as it stands, not from this brief.
 - New `data/FaceGrouping.kt`, Android-free: `FACE_GROUPING_VERSION`, the 0.50 cut, the triangle
   core, the embedding front, the representatives, a probe for the setting, cancellation checks, and
   redacted input and output types — a face id with its embedding in, a group id per face id out.
@@ -2003,26 +2288,160 @@ does is not. The Kotlin files are CRLF, and new ones should be too.
 - **Verification by the Coder:** `FaceGroupingTest`, `compileDebugAndroidTestKotlin`, the opt-in run
   with every figure in the report beside the budget, and mutations 1 to 5 below. Not the full gate.
 
-**Then the maintainer — the budget.** He accepts the budget under *Measurement first*, as proposed or
+**Then the maintainer — the budget.** ✅ **Accepted 2026-11-20, as met** (decision 50), with option (a)
+and ADR-0018 Amendment 8 adopted the same day (and reversed later that day, after Task 2). ~~He accepts the budget under *Measurement first*, as proposed or
 changed, now or with Task 1's figures in front of him. If the figures fail it, he chooses among
 options (a) to (f), and the Planner records the choice as a decision in [albums.md](albums.md) §8
 and an amendment to ADR-0023 §5 before Task 2 is briefed again. The Planner records an acceptance
-too: a decision in §8 and a dated note in ADR-0023 §5.
+too: a decision in §8 and a dated note in ADR-0023 §5.~~ Both records are written.
 
-**Task 2 — Coder: the store and the grouping pass.** Needs the budget accepted.
+**Task 2 — Coder: components first and the size-aware representative.** ✅ **Built and verified
+2026-11-20** on the SM-G990B, uncommitted; the brief below is kept as it was. **Its representative
+rule is withdrawn** (decision 50, amended; ADR-0018 Amendment 8 reversed) and Task 2b removes it.
+What it measured:
+- **Components first, synthetic:** 10,000 faces in **12.8 s, +30.4 MB Java heap, +17.5 MB RSS**;
+  20,000 in **50.9 s, +46.9 MB heap, +39.1 MB RSS** — against Task 1's 30.7 s and +224.5 MB heap at
+  10,000 with the full triangle. The largest synthetic component, 60 faces.
+- **The real library:** 422 faces, 147 components, 164 groups, 104 offered; the largest component
+  88 faces — the same groups as Task 1's.
+- **The size-aware representative:** 21 of the 104 offered groups have no member at least 60 px
+  across; offered representatives at least 60 px, **83 of 104 with the rule against 82 of 104 with
+  the plain medoid** — 1 of Task 1's 22 fixed; the median 108 px, the smallest 40 px, unchanged.
+- **Tests:** the full unit suite 1126 tests, 0 failures; 12 mutation checks, each seen to fail its
+  test (the report lists them; 8 and 9 below among them).
+- ADR-0023 §5 carries the synthetic figures and what bounds the heap now, in a dated note.
+
+~~Waits on nothing.~~ Plain JVM,
+except its last item, which needs the SM-G990B. No schema, store or worker file.
+- `data/FaceGrouping.kt` — **read as it stands**, the maintainer having edited it since Task 1:
+  - `FaceGroupingInput` gains the face's short side in pixels, an `Int`, 0 meaning unknown; still
+    redacted.
+  - **Components first** (*Decided at 3.4*; the proof under *Measurement first*, option (a)): one pass
+    over every pair, each distance computed and rounded to float32 exactly as the triangle stores it
+    and compared with the cut exactly as the clustering compares it, joining the pairs at or below
+    0.50 in a union-find; then, per component of two or more faces, in ascending face-id order, its
+    own triangle, average linkage and representatives, the triangle freed before the next. A component
+    of one is its own group with no triangle. The face-count cap applies to a component, with its
+    fixed message. The setting and cancellation are checked at every row of the pass, as for the
+    distances now, and before each component.
+  - **The representative** — ADR-0018 Amendment 8 §3, with `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS = 60`
+    beside `FACE_GROUPING_CUT`; unknown counts as under 60.
+  - **`FACE_GROUPING_VERSION = 2`**, its KDoc naming the 60 px rule and the order of preference.
+  - The full-triangle path stays reachable from the tests, as the reference the split is held to.
+- `app/src/test/…/data/FaceGroupingTest.kt` — Task 1's tests adapted to the new input, and these
+  exit criteria, each a test:
+  1. **identical groups and representatives** to the full-triangle path on at least 200 seeded random
+     sets of 2 to 200 faces, drawn so that each set has several components and cross pairs near
+     0.50, with random short sides including some under 60 and some 0;
+  2. a pair at exactly 0.50 is joined, and a set of two components whose closest cross pair is just
+     above 0.50 stays two; the edge test reads the float32 value — on a stated triangle, or a seeded
+     pair found by search, whose double distance is above 0.50 and whose float32 value is 0.50;
+  3. 100 shuffles of a random set give one output, through the split;
+  4. the representative: a medoid at 60 px or more is kept; a medoid under 60 gives the usable member
+     with the smallest summed distance — not the lowest id, not the largest face; a tie among usable
+     members goes to the lower id; exactly 60 is usable; no usable member gives the medoid; 0 is
+     treated as under 60; a group of one under 60 is itself;
+  5. a singleton component, and a zero-norm face, each a group of its own.
+- `app/src/androidTest/…/data/FaceGroupingMeasurementDeviceTest.kt` — synthetic faces carry random
+  short sides; per size, the component pass timed as a phase of its own. **Run on the phone** with
+  `faceGroupingMeasurement=true`, `faceGroupingMeasurementReal=false` and
+  `faceGroupingMeasurementSizes=10000,20000`: time per phase, the Java heap and `VmHWM` rises, the
+  largest component. Expected: the heap rise falls from Task 1's +224.5 MB at 10,000 to tens of MB,
+  and time stays near Task 1's distances, about 19 s at 10,000 and 75 s at 20,000 — measured, not
+  assumed. The real library's count of representatives under 60 px after the rule needs stored sizes,
+  so it is Task 5's.
+- **Verification by the Coder:** `FaceGroupingTest`, `compileDebugAndroidTestKotlin`, the opt-in run
+  with every figure in the report, and mutations 6 to 9 below. Not the full gate.
+
+**Task 2b — Coder: a small revision — the representative back to the plain medoid.** ✅ **Done
+2026-11-21** — *3.4 — Built and verified 2026-11-21* below; the brief is kept as it was. After Task 2;
+~~waits on nothing.~~ Plain JVM. ADR-0018 Amendment 8 is reversed (decision 50, amended), so the
+size-aware rule Task 2 built is removed; components first stays exactly as built. No schema, store or
+worker file. Its files, and only these:
+- `data/FaceGrouping.kt` — **read as it stands**:
+  - `FaceGroupingInput` loses `boxShortSidePx`: a face id and its embedding, as in Task 1; still
+    redacted. Whatever carries the sizes inside the grouping goes with it.
+  - `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS` and the usable-member branch are deleted. **The
+    representative is the plain medoid**: the member whose summed cosine distance to the other
+    members is smallest, a tie within the medoid tolerance going to the lower face id, a group of one
+    being its own face — as Task 1 built it.
+  - **`FACE_GROUPING_VERSION = 1`**, its KDoc naming the plain medoid and saying why it is 1 again: no
+    build has persisted a grouping, and components first yields the same groups and representatives
+    as Task 1's version 1; and the rule, in one line, that the version bumps only when grouping's
+    result for the same stored faces would change (*Decided at 3.4*, *When it bumps*).
+  - Components first, the full-triangle reference path, the cap, the probes and the messages are not
+    touched.
+- `app/src/test/…/data/FaceGroupingTest.kt` — the size tests deleted (Task 2's criterion 4); the
+  random short sides dropped from the property test's input. **Kept, each a test:**
+  1. the components-first property test — identical groups and representatives to the full-triangle
+     path on at least 200 seeded sets, as Task 2 wrote it;
+  2. the float32 edge test, the shuffle test, the singleton and zero-norm tests (Task 2's 2, 3, 5);
+  3. Task 1's criterion 5: `groupId` is the medoid's id; a medoid tie goes to the lower id — a stated
+     triangle with two members of equal summed distance, the higher-id one first in the input; the
+     medoid is not the lowest id when another member is more central.
+- `app/src/androidTest/…/data/FaceGroupingMeasurementDeviceTest.kt` — **the short-side figures go**:
+  the synthetic faces' random short sides, and the real-library run's count of representatives under
+  60 px together with whatever records sizes for it (the pipeline wrapper that captures each
+  `RawFace`'s pixels, and the matching by box). *Why delete rather than keep it as information:* no
+  decision uses the figure any more — decision 50, amended, accepted 22 of 104 — and the code that
+  produces it is the most intricate in the file; if 3.6's thumbnail work wants it again, Task 1's
+  method, decoding each representative, recomputes it. **Kept:** every size measurement — time per
+  phase, the Java heap and `VmHWM` rises, `maxMemory`, the memory classes, the largest component,
+  thermal status and charging — and the real library's faces, components, groups and groups offered.
+  The instrumentation arguments are unchanged: `faceGroupingMeasurement=true`,
+  `faceGroupingMeasurementReal=false`, `faceGroupingMeasurementSizes=…`.
+- **Exit check, by search:** no `boxShortSidePx`, `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS`, short side or
+  60 px left anywhere under `app/src`.
+- **Verification by the Coder:** `FaceGroupingTest`, the full unit suite (Task 2's 1126, less the
+  deleted size tests), `compileDebugAndroidTestKotlin`, and ~~mutations 5 and 17~~ mutation 5 below
+  (*corrected 2026-11-21:* there is no mutation 17; the list ends at 16). If the SM-G990B
+  is attached, one opt-in run with the real library and `faceGroupingMeasurementSizes=2000`, showing
+  164 groups and 104 offered as before — the groups must not move; if it is not attached, say so and
+  rely on the property test. Not the full gate.
+
+**Task 3 — Coder: the store and the grouping pass — no schema change.** ✅ **Done 2026-11-21** —
+*3.4 — Built and verified 2026-11-21* below; the brief is kept as it was. After Task 2b.
+
+*Rewritten 2026-11-20, later, when ADR-0018 Amendment 8 was reversed, before any Coder had started
+it.* What it lost: `MediaIndexFaceEntity.boxShortSidePx`, version 7 and `MIGRATION_6_7` in
+`MediaIndexDatabase.kt`, `7.json`, the short side on `FaceDetection` and `StoredFace`,
+`faceDetectionOf` computing it, `MediaIndexDatabaseMigrationTest.kt`, and the compile fixes in four
+test files the new required field would have forced — the amendment says what each was for. **The
+index stays at version 6; the Tier C pass writes nothing new.** What grouping writes uses the two
+columns `Migration(4, 5)` already created on `media_index_face`: `groupId` (`Long?`) and
+`groupingVersion` (`Int?`), on `MediaIndexFaceEntity` and `StoredFace` as they stand.
+
+Its files, and only these:
+- `data/MediaIndexTierC.kt` — the models the store returns for grouping and for the person record,
+  each with a redacted `toString`. `FaceDetection`, `StoredFace` and the encoders unchanged.
 - `data/MediaIndexDao.kt` and `data/MediaIndexStore.kt` — the interface, `RoomMediaIndexStore` and
-  `InMemoryMediaIndexStore`: the faces for grouping, current pipeline version only, ids and
-  embeddings, paged by id; whether grouping is needed (*When grouping is needed*); the conditional
-  write by id with the setting read inside it (*The write*); and the person record (*What 3.4
-  produces*). All `suspend`; no `Flow`.
-- `data/MediaIndexTierC.kt` — the models those return, redacted.
-- New `data/FaceGroupingPass.kt`, Android-free: needed or not, read, group, write; the setting, the
-  deadline and cancellation; its log line. Its caller holds the Tier C lock and has checked the gates.
-- `data/FaceIndexPass.kt` — `FaceIndexLogLines` gains the grouping line and its fixed stop names,
-  so the logger test still holds one set.
+  `InMemoryMediaIndexStore`, all `suspend`, no `Flow`:
+  - **the faces for grouping:** current `FACE_PIPELINE_VERSION` only, ids and embeddings, paged by id;
+  - **whether grouping is needed** (*When grouping is needed*): a face at the current pipeline version
+    with a null `groupingVersion` or another one, or whose `groupId` names a face that no longer
+    exists; faces at another pipeline version ignored;
+  - **the write**, one transaction with the setting read inside it (*The write*; Amendment 7 §4):
+    each face's `groupId` — the id of its group's representative face, the plain medoid — and
+    `groupingVersion` = `FACE_GROUPING_VERSION`, by id, chunked under 999 variables; off, nothing
+    written and 0 returned;
+  - **the person record** (*What 3.4 produces*): groups at the current pipeline and grouping
+    versions whose representative exists, with at least a given number of distinct images — the
+    picker passes two (decision 40) — sorted by distinct images, most first, then the newest
+    `capturedDateTakenEpochMillis` with no date last, then `groupId`; each with its `groupId`, its
+    distinct-image count, that date and the representative's anchor fields — the image's identity
+    (URI and healing triple, from its index row), its `FaceBox` and its pipeline version
+    (ADR-0022 §1).
+  - `deleteAllFaceData` needs nothing: grouping writes only columns of face rows, which it already
+    deletes under `secure_delete`.
+- `data/FaceIndexPass.kt` — `FaceIndexLogLines` only: the grouping line and its fixed stop names —
+  grouped, not needed, setting off, past the deadline — so the logger test still holds one set.
+- New `data/FaceGroupingPass.kt`, Android-free: needed or not; read; `groupFaces`, which splits into
+  components itself; write; the setting, the deadline and cancellation; its fixed-message log line.
+  Its caller holds the Tier C lock and has checked the gates (Task 4); it takes no lock of its own.
 - Tests: `MediaIndexTierCStoreTest.kt` through `forEachStore`, so both stores meet each rule;
   `MediaIndexDaoTest.kt` for the queries on `inMemoryDatabaseBuilder`, with an update of more than
-  999 ids; new `FaceGroupingPassTest.kt`, plain JVM on the in-memory store. Exit criteria:
+  999 ids; `FaceIndexPassTest.kt` for the fixed set of log lines only; new `FaceGroupingPassTest.kt`,
+  plain JVM on the in-memory store. Exit criteria:
   1. the faces for grouping are the current pipeline version's only, in id order, paged;
   2. grouping is needed for a null version, another version and a missing representative, and not
      with none or all current; faces at another pipeline version are ignored;
@@ -2035,13 +2454,16 @@ too: a decision in §8 and a dated note in ADR-0023 §5.
   5. after grouping, `deleteAllFaceData` leaves no face and `hasFaceData` reads false; a heal keeps
      `groupId`; a changed triple drops the faces, and makes grouping needed if one was a
      representative;
-  6. the pass: not needed — nothing written; needed — written with the version; the setting off
-     before the write, the deadline past, or a cancellation — nothing written;
+  6. the pass: not needed — nothing written; needed — written with the version, `groupId` the
+     medoid's id; the setting off before the write, the deadline past, or a cancellation — nothing
+     written;
   7. **the logger test (ADR-0024 §6):** every line is one of the fixed set and carries no digit;
      fixtures with distinctive ids, URIs and embedding values appear in no line.
-- **No schema change:** `git status app/schemas` shows nothing new, and `6.json` is unchanged.
+- **No schema change:** `MediaIndexEntities.kt`, `MediaIndexDatabase.kt` and `app/schemas` are not
+  touched, and `git status app/schemas` shows nothing.
 
-**Task 3 — Coder: the worker.** After Task 2; the same Coder may take both in turn.
+**Task 4 — Coder: the worker.** ✅ **Done 2026-11-21** — *3.4 — Built and verified 2026-11-21*
+below; the brief is kept as it was. After Task 3; the same Coder may take Tasks 3 and 4 in turn.
 - `data/MediaIndexingWork.kt` — a `createFaceGroupingPass` seam on the `@JvmOverloads` constructor,
   defaulting to `EasyGalleryApp`'s wiring as the other seams do; `runFaceIndexPass` runs it after
   the pass, inside the same lock hold and `try`, on the stops and deadline in *Where it runs*.
@@ -2053,63 +2475,631 @@ too: a decision in §8 and a dated note in ADR-0023 §5.
   fixed message and nothing else in the output data, no throwable logged; the run state's counters
   are Tier A's alone.
 
-**Task 4 — Coder, with the SM-G990B attached: grouping through the worker.** After Task 3.
-- New `FaceGroupingWorkerMeasurementDeviceTest.kt`, **opt-in**
-  (`faceGroupingWorkerMeasurement=true`), and androidTest only by the constraint in *The dev-device
-  route*. On the app's own index, on the dev phone: the setting on through
+**Task 5 — Coder, with the SM-G990B attached: grouping through the worker.** ✅ **Done 2026-11-21**
+— *3.4 — Built and verified 2026-11-21* below, with the review's judgement calls on this test; the
+brief is kept as it was, except where it is struck. After Task 4.
+- New `app/src/androidTest/…/data/FaceGroupingWorkerMeasurementDeviceTest.kt`, its only file,
+  **opt-in** (`faceGroupingWorkerMeasurement=true`), and androidTest only by the constraint in *The
+  dev-device route*: whatever sets the disclosure flag stays in `src/androidTest`. On the app's own
+  index, on the dev phone: the setting on through
   `SharedPreferencesFaceDataSettingStore`; the disclosure marked shown through
   `SharedPreferencesFaceDeviceStateStore.markDisclosureShown()`; Index now through
-  `WorkManagerMediaIndexingWorkScheduler`; the unique work awaited, and repeated until no image is
-  pending, three runs at most. Figures: runs, wall time per run, the `VmHWM` rise, thermal status,
-  charging, faces, groups, groups offered, and that grouping is no longer needed. **In `finally`:**
+  `WorkManagerMediaIndexingWorkScheduler`; the unique work awaited, and ~~repeated until no image is
+  pending, three runs at most~~ repeated until the face pass reports `stop=COMPLETED`, six runs at
+  most (*as built, accepted at review 2026-11-21:* the GIFs stay pending by design, so "no image
+  pending" never holds). Figures: runs, wall time per run, the `VmHWM` rise, thermal status,
+  charging, faces, groups, groups offered, that grouping is no longer needed, ~~and **how many offered
+  representatives are under 60 px**, from the stored short sides — against Task 1's 22 of 104~~
+  (*withdrawn 2026-11-20 with ADR-0018 Amendment 8:* no short side is stored). *As built, accepted
+  at review 2026-11-21:* the test also deletes any face data already on the phone before it starts.
+  **In `finally`:**
   `deleteAllFaceData()` on the app's store, and the `face_device_state` file cleared through
   `Context.getSharedPreferences` in the test — no new method in `src/main`. The face data stays on
   the phone (decision 9), and the run leaves none behind.
 - It discharges the worker half of ADR-0023 verify item 6 for 3.3's pass and 3.4's grouping alike,
   with the disclosure set by a test rather than by 3.6's screen; 3.7's item 5 keeps the run through
-  the real disclosure.
+  the real disclosure. ~~It is likely the first time `Migration(6, 7)` runs on a device; the migration
+  is proved by Task 3's test, not by this run.~~ *Withdrawn 2026-11-20 with Amendment 8:* there is
+  no `Migration(6, 7)`; the index stays at version 6.
 
 **Mutation checks — required.** Each applied, its test seen to fail, and the source restored and
-checked by checksum, as 3.2 did; the report lists each with its failing test. 1 to 5 in Task 1, 6 to
-8 in Task 2, 9 and 10 in Task 3:
+checked by checksum, as 3.2 did; the report lists each with its failing test. 1 to 5 were Task 1's,
+done; ~~6 to 8 in Task 2, 9 and 10 in Task 3~~ renumbered 2026-11-20: 6 to 9 in Task 2, 10 to 14 in
+Task 3, 15 and 16 in Task 4:
 1. single linkage in place of average; 2. `<` in place of `≤` at the cut; 3. a cut of 0.55;
 4. the tie-break removed, input order kept; 5. the representative as the lowest id, not the medoid;
-6. the write ignoring the setting; 7. "needed" ignoring a missing representative; 8. the person
-record counting faces, not distinct images; 9. grouping called outside the lock, or without the
-disclosure; 10. a grouping log line carrying a count.
+6. the component edge test on the double distance, not the float32 value; 7. components joined only
+below the cut, not at it; ~~8. the representative ignoring the short side; 9. an unknown short side
+treated as usable;~~ 10. the write ignoring the setting; 11. "needed" ignoring a missing representative;
+12. the person record counting faces, not distinct images; ~~13. the migration deleting face rows;
+14. `faceDetectionOf` storing the clamped short side;~~ 15. grouping called outside the lock, or without
+the disclosure; 16. a grouping log line carrying a count.
 
-**Verification** is its own phase, once, over Tasks 1 to 4 integrated, owned by whoever the brief
-names — not by Task 4's Coder: the definition of done with `adb devices` stated,
+*Amended 2026-11-21:* 8 and 9 were run in Task 2 and their code was removed by Task 2b; 13 and 14
+were for Amendment 8's migration and short side, reversed before they were built. Neither pair
+applies to the code as it stands, and the numbers are not reused.
+
+**Verification** ✅ **Done 2026-11-21** — the gate is under *3.4 — Built and verified 2026-11-21*
+below. It is its own phase, once, over Tasks 1 to 5 integrated, owned by whoever the brief
+names — not by Task 5's Coder: the definition of done with `adb devices` stated,
 `connectedDebugAndroidTest` on the SM-G990B if attached with every opt-in measurement skipped, and
-`git status app/schemas` showing nothing new. Tasks 1 and 4's device measurements are not repeated
-there.
+`git status app/schemas` showing ~~`7.json` new and nothing else~~ nothing (*corrected 2026-11-20
+with Amendment 8's reversal:* no schema change). Tasks 1, 2 and 5's device measurements
+are not repeated there.
 
-**After it lands — Planner, task P.** What 3.4 makes stale:
+**After it lands — Planner, task P.** ✅ **Done 2026-11-21:** landed in `ARCHITECTURE.md` §2, §3,
+§6 and §11, `AGENTS.md` *The two databases*, ADR-0018 Amendment 5's *Built* notes and Amendment 8's
+reversal annotations, ADR-0023's *Built* note, §4, §5 and verify row 6, and the test conventions;
+this plan and [albums.md](albums.md) §7 last. The brief was — what 3.4 makes stale:
 - `ARCHITECTURE.md` §3 — the two new `data/` files, in the pure, Android-free list as well; the store,
   DAO, Tier C, worker and `EasyGalleryApp` rows; §6 — what `groupId` means, summaries computed on
-  read, the version still 6; §11 — if the 60 px figure or a budget option leaves debt.
-- `AGENTS.md` *The two databases* — the paragraph on face data, which says what each step built.
+  read, ~~the version still 6~~ ~~the index at version 7 with `Migration(6, 7)`, and the face row's
+  `boxShortSidePx` and what 0 means (ADR-0018 Amendment 8)~~ the version still 6 (*restored
+  2026-11-20 with Amendment 8's reversal*); §11 — if the 60 px figure or a budget
+  option leaves debt.
+- `AGENTS.md` *The two databases* — the paragraph on face data, which says what each step built ~~and
+  the migrations paragraph, which gains a sixth, `Migration(6, 7)` (Amendment 8)~~ (*withdrawn
+  2026-11-20 with Amendment 8:* no sixth migration).
 - ADR-0018 Amendment 5 — dated notes under *What Tier C stores* (no third kind of row; `groupId` is
-  the representative; summaries on read) and *Keeping Tier C true* (the conditional write; the lock).
-- ADR-0023 §4 (where grouping runs), §5 (the figures and the budget accepted) and verify row 6
-  (Task 4's worker run).
-- [albums.md](albums.md) §7's Stage 3 row, and decision 45's B2 pointer (added 2026-11-20) if the
-  budget's answer changes it. The budget's decision is written when the maintainer answers, not at P.
+  the representative; summaries on read ~~— the pointer to Amendment 8's column is written~~) and
+  *Keeping Tier C true* (the conditional write; the lock). ~~Amendment 8 — a *Built* note, and the
+  marker under the record's title removed.~~ *Amended 2026-11-20:* Amendment 8 is reversed, so it
+  takes no *Built* note; it is marked reversed instead.
+- ADR-0023 §4 (where grouping runs), §5 (Task 2's figures at 10,000 and 20,000 faces, under the
+  dated note of 2026-11-20, which already holds Task 1's and the acceptance) and verify row 6
+  (Task 5's worker run).
+- [albums.md](albums.md) §7's Stage 3 row. ~~, and decision 45's B2 pointer (added 2026-11-20) if the
+  budget's answer changes it. The budget's decision is written when the maintainer answers, not at P.~~
+  Decision 50 and decision 45's pointer were written 2026-11-20.
 - This plan: the step row, the handoff, a *3.4 — Built and verified* section, *Open questions* B2,
-  and 3.7's list with whatever Task 4 did not prove.
-- The test conventions, for the two new opt-in measurements and the rule that only test sources set
-  the disclosure flag; and `.github/agents/*.agent.md`, checked for a sentence about grouping.
+  and 3.7's list with whatever Task 5 did not prove.
+- The test conventions (`.github/instructions/tests.instructions.md`), for the opt-in measurements —
+  Task 1's `faceGroupingMeasurement=true`, with `faceGroupingMeasurementReal=false` to skip the real
+  library and `faceGroupingMeasurementSizes=10000` (comma-separated) to choose the synthetic sizes,
+  and Task 5's `faceGroupingWorkerMeasurement=true` — and the rule that only test sources set the
+  disclosure flag; and `.github/agents/*.agent.md`, checked for a sentence about grouping.
 
-**Needs the maintainer.** **Before Task 1: nothing.** **Before Task 2:** his acceptance of the budget —
+**Needs the maintainer.** ~~**Before Task 1: nothing.** **Before Task 2:** his acceptance of the budget —
 or, if Task 1's figures fail it, his choice among (a) to (f), a new decision. **Not needed:** no schema
 change, so no amendment to approve and no call-out; no dependency, permission, preferences file,
 `*Content` signature or string. The representative rule (*Decided at 3.4*) is the Planner's and he can
-reverse it.
+reverse it.~~ **Nothing pending, from 2026-11-20:** the budget is accepted ~~and Amendment 8 adopted~~
+(decision 50). **Not needed:** no dependency, permission, preferences file, `*Content` signature or
+string. ~~The migration is Amendment 8's, already approved. What is the Planner's — the column's
+form, the rule for rows written before it, the grouping-version bump (Amendment 8), and the
+representative rule's details — he can reverse, most cheaply before the migration first runs on the
+phone.~~ *Amended 2026-11-20:* Amendment 8 was reversed before it was built (decision 50, amended),
+so there is no migration and nothing of it to reverse.
 
 **Not 3.4's:** the `people` clause, anchors and evaluation (3.5); the picker, the crop, the disclosure,
 the switch and its confirmation, every string (3.6); grouping on the SM-G781B, and the worker through
-the real disclosure (3.7); B2, unless the budget fails; any Tier C `Flow`. No `ui/` file, no
+the real disclosure (3.7); B2, ~~unless the budget fails~~ not adopted (decision 50); any Tier C `Flow`. No `ui/` file, no
 `*Content` signature, no string.
+
+### 3.4 — Built and verified 2026-11-21
+
+Built as Tasks 1, 2, 2b, 3, 4 and 5 above, then task P. What landed is not restated here: it is
+[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 5's dated
+*Built* notes — grouping fills `groupId` and `groupingVersion` on the face row and nothing else, the
+person record computed on read — and
+[ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md)'s *Built*
+note, §4, §5 and verify row 6, with `ARCHITECTURE.md` §3, §6 and §11 for where each piece sits:
+`data/FaceGrouping.kt` (components first, average linkage at 0.50, the plain medoid,
+`FACE_GROUPING_VERSION` 1), `data/FaceGroupingPass.kt`, the store's grouping methods with the People
+picker's query `listFaceGroups`, and the pass run by `MediaIndexingWorker` after the face pass under
+the same hold of the Tier C lock. **No schema change:** the index stays at version 6; ADR-0018
+Amendment 8 was adopted and reversed before it was built (decision 50, amended).
+
+**The gate — the definition of done, once, over the integrated change:** `compileDebugKotlin` OK;
+the unit suite, 75 files, 1174 tests, 0 failures; `compileDebugAndroidTestKotlin` OK; a device was
+attached, the SM-G990B, so `connectedDebugAndroidTest` ran: 266 tests, 0 failures, 3 skipped — the
+three opt-in measurements. The debug and release merged manifests byte-identical to the build before
+3.4 (debug md5 `8856dbd4b4257bd665c4593a325ba624`, release `043a521e4d0a25724364c8b8b6ea6f8d`). This
+document does not record tracking state.
+
+**The grouping core** (`FaceGroupingMeasurementDeviceTest`, opt-in, on the phone):
+- synthetic: 2,000 faces in 0.58 s; 5,000 in 3.2 s; 10,000 in 12.8 s, +30.4 MB Java heap and
+  +17.5 MB RSS; 20,000 in 50.9 s, +46.9 MB heap and +39.1 MB RSS; the largest synthetic component,
+  60 faces;
+- the real library: 422 faces in 299 images, 147 components, the largest 88 faces; 164 groups, 104
+  offered; grouping 125 to 292 ms.
+
+**Through the real worker** (`FaceGroupingWorkerMeasurementDeviceTest`, opt-in, Index now on the
+app's own index, the disclosure set by the test): run 1 SUCCEEDED — Tier A 1,133 rows; the face pass
+1,002 images, 0 failed, the 90 GIFs skipped, `stop=COMPLETED` in 113.2 s; grouping `stop=GROUPED` in
+292 ms; peak RSS rise 372,096 kB. A second, no-op run took 568 ms with grouping `NOT_NEEDED`. Thermal
+status 0, charging. The face data was then deleted — 1,424 rows, scrubbed — and the flags restored.
+
+**Review outcomes.** No hard violations. Fixed: the device test now restores the flags under the
+held Tier C lock before deleting; two comments in `FaceGrouping.kt` corrected; the device test re-run
+once on the phone afterwards, passed. **Judgement calls on Task 5's test, accepted as built:**
+- **at most six runs, not the brief's three** — a ceiling, not a count; run 1 completed;
+- **it stops on `stop=COMPLETED`, not on "no image pending"** — the GIFs stay pending by design (E2),
+  so the brief's condition could never hold;
+- **it deletes any face data already on the phone before it starts** — so run 1 measures a full pass
+  from empty; the phone is the only install, face data is recomputable, and before 3.6 no installed
+  app holds any.
+
+**Not proven by it** — each step 3.7's, items 11 to 14 under *3.2 to 3.8*, or debt already in
+`ARCHITECTURE.md` §11:
+- a production-size library: grouping and the face pass at 10,000 faces and more, with the store's
+  read and write cost, which is unmeasured there — the 10,000 and 20,000 figures are the core alone,
+  on synthetic faces;
+- the SM-G781B (A4), and any non-Samsung phone;
+- the heap ceiling: one connected component of about 10,500 faces fails with `OutOfMemoryError`, not
+  the fixed "too many" message, and nothing enforces a limit before it — a heap-based cap is open for
+  the maintainer (`ARCHITECTURE.md` §11);
+- the deadline, checked only at the start: after a face pass that used its 7-minute budget, about
+  37,000 faces fit before WorkManager's stop, about 68,000 in a whole window — quadratic arithmetic
+  from the 20,000-face figure, not a measurement; beyond that every run is cut and writes nothing;
+- the GIFs, still pending (3.5), and the worker through the real disclosure (3.7 item 5).
+
+### 3.5 — The people clause and its evaluation — refined 2026-11-21
+
+Refined by the Planner on 2026-11-21 from the code as it stands after 3.4, read file by file, not
+from earlier reports. It does not restate the records it builds on:
+[ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 4 (the
+clause, its strictness, settled and unsettled, the two causes found at evaluation, never rewritten);
+[ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §1, §3 and §4 (the
+anchor, its resolution, no write-back); [albums.md](albums.md) §8 decisions 35, 41, 42 and 46;
+[ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §4 (face data off
+is "people unavailable", not waiting); ADR-0018 Amendment 5 (a pending image).
+
+**Nothing in it needs the maintainer.** No schema change in either database, no ADR amendment, no
+dependency, permission or preferences file, no new architectural pattern. Every choice below is one
+those records leave to 3.5: the clause's code shape, the tie rule (ADR-0022 §3 step 4), and how the
+evaluator reports a cause (Amendment 4).
+
+#### Decided at 3.5 — the clause
+
+- **`AlbumRuleClause.People(anchor: MediaIdentity, box: FaceBox, pipelineVersion: Int)`**, in
+  `data/AlbumRule.kt` — exactly ADR-0022 §1's fields. It reuses the shared identity type, which
+  ADR-0020 forbids duplicating, and Tier C's `FaceBox`, whose `init` already holds the fractions in
+  [0, 1] with a positive width and height. Its own `init` requires `pipelineVersion ≥ 1` and a
+  non-empty URI and display name.
+- **Redacted `toString`s.** An anchor names a file and where a face is in it, so `People`'s
+  `toString` prints no field (ADR-0024 §6; Amendment 4's *Negative*). So does
+  `AlbumRule.Unevaluatable`'s for `raw`, which it prints today: an unreadable people rule's text names
+  its anchor photo. `reason` still prints. No message of a `require` names a value.
+- **The stored form is Amendment 4's example, in its key order:** `type`, `pipeline`, `uri`,
+  `displayName`, `size`, `dateModified`, then `box` with `left`, `top`, `right`, `bottom`. Strings go
+  through the encoder's existing escaping, non-ASCII as `\uXXXX`.
+- **The box's numbers are written with `Float.toString`**, which no locale affects and which reads
+  back to the same float exactly — never `String.format` or any `%f`. That meets Amendment 4's
+  `Locale.US` requirement, whose point is no decimal comma, and keeps the round trip exact, so a rule
+  built from the picker's representative stores its box bit for bit.
+- **Parsed strictly** — Amendment 4's list, with the reason values `UnevaluatableReason` owns:
+  - an unknown key, at the clause level or inside `box` → `UNKNOWN_CLAUSE_FIELD`;
+  - `uri` or `displayName` missing, not a string, or empty; `size` or `dateModified` missing, or not
+    an integer token within `Long` → **`INVALID_ANCHOR`**, new;
+  - `pipeline` missing, not an integer token, outside `Int`, or below 1 →
+    **`INVALID_PIPELINE_VERSION`**, new. Any value from 1 up is accepted, a newer build's included:
+    it is informational (ADR-0022 §1), unlike a `region` clause's `dataset`;
+  - `box` missing or not an object, one of its four missing, a value that is not a number, or one
+    that read as a `Float` is not finite or not in [0, 1], or `left ≥ right` or `top ≥ bottom` →
+    **`INVALID_FACE_BOX`**, new. **The checks are made on the `Float` values**, after rounding,
+    because those are what `FaceBox` holds: two edges that differ only beyond float precision are a
+    malformed box, never an exception out of `FaceBox`'s `init`. `1e400` reads as infinity and is
+    rejected; `0` and `1` are numbers and are accepted.
+    *Noted 2026-11-21, from the review:* so a text edge just above 1 that rounds to `1f` is accepted.
+    ADR-0017 Amendment 4's "in [0, 1]" is read as the stored `Float`'s range, which is what
+    `FaceBox` holds, so the two do not disagree.
+  - Everything Amendments 1 and 2 already reject applies unchanged — duplicate keys, the depth cap
+    (`box` is depth 4 of 8), the length cap, the envelope version.
+
+  All are parse failures, so the album shows the Newer-app notice, as Amendment 4 says.
+- **No embedding, crop, group id, score or name has a key**, so the unknown-field rule refuses any
+  document that tries to carry one.
+- **Combination is the conjunction, unchanged.** One clause per person: two people are two clauses,
+  and a photo is a member only when it has a face in each one's group — both in the picture (decision
+  35). If two anchors resolve to the same group, one face satisfies both: grouping's answer that they
+  are one person, the album following the group's mistakes (decision 42). Any mix with `region` and
+  `time` is ANDed; the evaluator already takes any number of each.
+- **No version bump and no schema change.** The envelope stays at `"version": 1`: a new clause type
+  is what the Decision's unknown-clause rule exists for. A build before 3.5 reads a `people` clause as
+  `UNKNOWN_CLAUSE_TYPE`, and a field a later build adds reads here as `UNKNOWN_CLAUSE_FIELD` — the
+  Newer-app notice both times, its wording true both times. The rule lives in `albums.rule`, nullable
+  `TEXT` since the album database's version 1 (ADR-0017; ADR-0022 §2), so the album database does not
+  change; the index database gains a query and no column. *Checked against the code 2026-11-21:*
+  `AlbumRule.Evaluatable` holds a list of `AlbumRuleClause`, stored whole through `AlbumRuleJson`.
+  The verification phase checks that `git status app/schemas` shows nothing.
+- **The encoder's 16 KiB cap stays.** A clause is about 250 characters, more with a long or non-ASCII
+  file name: about fifty people fit in practice, and as few as eight with 255-character names escaped
+  throughout. How many people the People criterion lets the user pick is 3.6's, and it must not let
+  the encoder's `require` fail on save.
+
+#### Decided at 3.5 — building an anchor
+
+- **`AlbumRuleClause.People.anchoredAt(representative: FaceGroupRepresentative)`** copies the
+  representative's identity, box and pipeline version, and nothing else. `listFaceGroups` read them
+  from the index row and the face row together, so the clause stores the face the user saw (decision
+  41). It is what 3.6's picker calls when a person is selected. Pure; no UI.
+
+#### Decided at 3.5 — resolution and evaluation
+
+*Checked against the code 2026-11-21:* `MediaIndexLiveJoin.build` keeps, for each live item, the one
+index row that won it — a direct URI match beats a heal — and drops the row's identity once it has
+read the date and place; Tier C is keyed by that row's **stored** URI, and `FaceIndexPass` only
+processes a live image whose healing triple equals the row's; `observeEvaluationProjection` reads
+`media_index` alone, so no Tier C write makes it emit, and `InMemoryMediaIndexStore` keeps Tier C in
+maps that emit nothing.
+
+- **The join keeps the winning row's identity.** `JoinedMedia` gains `indexedIdentity: MediaIdentity?`
+  — the stored URI and healing triple of the row that won the item, null when none did. Required, no
+  default: null already means *not indexed*, and a default would let a caller say that of an indexed
+  item. `MediaIndexLiveJoin` also exposes, built lazily once per join like `liveMedia`, the
+  `LiveMediaLookup` over its live media and its items by live URI, so every anchor of every album
+  resolves against the one join (ADR-0020) and no evaluation builds its own lookup.
+- **Tier C is trusted for a live item only when three healing triples agree:** the live item's, the
+  winning row's, and the one the face projection read with the face state (next bullet). Otherwise
+  the item is **pending** for a `people` clause — never settled, never "not found". *Why:* it is the
+  face pass's own rule (it skips an image whose triple differs) and Amendment 6's (a changed triple
+  drops Tier C); and the Tier A and Tier C projections are two flows that can be one emission apart,
+  so a file changed under one URI could otherwise be compared against the faces of its previous
+  content and show a false "anchor not found" for a moment. With the check, skew costs a moment of
+  waiting. It compares `MediaHealingKey`s; it is not a second identity (ADR-0020).
+- **An anchor resolves** — ADR-0022 §3, in this order, once per clause per evaluation:
+  1. `lookup.find(anchor)` over the join's live media — the stored URI, then the healing triple. No
+     live item → **not found**. The healed URI is not written back (ADR-0022 §4).
+  2. The live item is a video or a GIF → **not found**: neither is ever face-indexed (decision 40;
+     E2), so waiting would never end. An anchor is always built from an image, so this is a restore
+     or heal landing on another kind of file.
+  3. No winning row, no face state at `FACE_PIPELINE_VERSION`, or the three triples disagree →
+     **waiting**.
+  4. The state is `FAILED` → **not found** (ADR-0022 §3 step 5).
+  5. Among the image's faces at that version, the one with the best IoU against the anchor's box,
+     computed in `Double` from the stored `Float`s, accepted only at **IoU ≥ 0.5, inclusive**
+     (decision 46). None → **not found**. An image indexed with no face at all is this case.
+  6. **The tie rule** (ADR-0022 §3 step 4): between faces with exactly equal IoU, **the lower face
+     id**. *Why:* an exact tie needs two stored faces overlapping one box identically — in practice
+     a duplicate detection, which the detector's non-maximum suppression makes rare — so the rule is
+     about determinism, not about picking better. The face id is the stable id the codebase already
+     breaks ties with (grouping's merges, the representative, `listFaceGroups`, decision 46).
+     *Rejected:* the larger face first — a box can tie on area too, so it needs the id after it
+     anyway, and nothing says the larger face is the right person. Face ids differ between devices,
+     so on a restored device a tie may land on the other face: accepted, as rare as the tie.
+  7. The chosen face has a null `groupId`, or a `groupingVersion` other than
+     `FACE_GROUPING_VERSION` → **waiting**: grouping has not reached it.
+  8. Otherwise the person is that face's `groupId`. A `groupId` naming a representative that has
+     since been deleted still names a group — its faces share it until the next grouping, which
+     `isFaceGroupingNeeded` already schedules — so it is not treated as pending.
+- **Per live item, for a clause resolved to group G** — Amendment 4's table, made exact. An added or
+  excluded item is handled before any clause, as today.
+
+  | Live item | Answer |
+  |---|---|
+  | a video or a GIF | settled no-match |
+  | an image with no winning row, no face state at the current version, or triples that disagree | unsettled |
+  | an image whose state is `FAILED` | settled no-match |
+  | an image with a face whose `groupId` is G at the current grouping version | match |
+  | otherwise, an image with a face not grouped at the current grouping version | unsettled |
+  | otherwise — no face, or every face in another group | settled no-match |
+
+  A clause whose anchor is **waiting** answers unsettled for every item, so the album waits.
+  **Members of the group are images, not faces:** an image is a member when any of its faces is in
+  G, so two people in one photo match one clause each (decision 35). Then Amendment 2's rules,
+  unchanged: a member when every clause matches; waiting when some clause is unsettled and none is a
+  settled no-match; region and time ANDed exactly as today.
+- **The evaluator's input — a second, separate projection.** `MediaIndexStore` gains
+  `observeFaceEvaluationProjection(pipelineVersion: Int): Flow<FaceEvaluationSnapshot>`: per stored
+  URI with a face state at that version, the index row's identity, the outcome, and the faces — id,
+  box, `groupId`, `groupingVersion`; **no embedding**. Room reads it with **one** query, the face
+  state joined to `media_index` and left-joined to its faces at the same version, so one emission is
+  one consistent snapshot of a grouping write, which is one transaction (3.4, *The write*); Room
+  re-runs it on a write to any of the three tables. `InMemoryMediaIndexStore` gains a Tier C revision
+  flow, bumped by every method that changes a Tier C row — face results, groups, a heal, an upsert
+  that drops Tier C, the deletes — and builds the same snapshot from it and its rows. Its types live
+  in `data/MediaIndexTierC.kt`, with `toString`s that print no URI and no box (ADR-0024 §6).
+- **Why a second flow, not a wider `observeEvaluationProjection`:** Room invalidates by table, so
+  widening the existing projection would make every region and time album re-evaluate on every face
+  pass batch, and `MediaIndexingViewModel`, which also collects it, would carry face rows it never
+  reads; Stage 2's rule that a library pays for the index flow only while it needs it would break for
+  every library with face data. A second flow keeps the Tier A join exactly as it is; the link
+  between the two is `JoinedMedia.indexedIdentity`.
+- **The evaluator stays pure.** `AlbumRuleEvaluator.evaluate` gains a required
+  `people: PeopleEvaluationInput?` — the availability (next section) and the face snapshot. A rule
+  with no `people` clause never reads it, so callers without one pass null; a `people` clause given
+  null answers unsettled for every item — **not loaded yet means waiting**, never unevaluatable.
+  Required, not defaulted, so every caller states it. The resolution and the per-item answers live in
+  a new `data/PeopleClauseEvaluation.kt`; `AlbumRuleEvaluation.kt` keeps the combination.
+  *As built, 2026-11-21:* the input is `PeopleEvaluationInput(availability: PeopleAvailability,
+  faces: FaceEvaluationSnapshot)`, both non-null — when it is given, the snapshot is there. Only the
+  parameter is nullable. Null skips the availability check, so it is never unavailable, and
+  `resolveAnchor` returns waiting for it **before** the anchor's lookup in the join, so a gone photo
+  is not reported as not found while the face data is still loading.
+- **In `AlbumsViewModel`, only a people album subscribes.** A second shared flow — the face
+  projection at `FACE_PIPELINE_VERSION`, combined with the availability — shared `WhileSubscribed`
+  like `liveJoin`, and combined into `observeComputedAlbum` **only for a rule with a `people` clause**.
+  A manual album and a region or time album collect exactly what they collect today. The People
+  picker (3.6) reads `listFaceGroups`, not this flow.
+- **Accepted limits**, each also the memberships': a stale anchor URI that directly matches an
+  unrelated file on a restored device is followed (ADR-0010's direct-URI-first rule, ADR-0014's
+  cost); the face projection's cost at 10,000 faces and more is unmeasured — a full snapshot per
+  emission while a people album is on screen — and belongs with 3.7 item 11.
+
+#### Decided at 3.5 — status, causes and availability
+
+*Checked against the code 2026-11-21:* `AlbumEvaluationStatus` has four values and its consumers
+are `AlbumsViewModel` (which copies it into `AlbumListItem`), `AlbumGridItem`'s exhaustive
+`when (status)` and `AlbumDetailScreen`'s `== UNEVALUATABLE` for the Newer-app notice band.
+`AlbumInfoDialog` reads `AlbumRuleSummary`, built from the parsed rule, not the status. No `ui/` file
+has a `when` over clause types or over `UnevaluatableReason`.
+
+- **A cause on `UNEVALUATABLE`, not a sibling status.** `AlbumEvaluationStatus` keeps its four
+  values. `AlbumRuleEvaluation.kt` gains `enum class AlbumUnevaluatableCause { RULE_NOT_UNDERSTOOD,
+  PEOPLE_UNAVAILABLE_FACE_DATA_OFF, PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE, ANCHOR_NOT_FOUND }`, and
+  `AlbumRuleEvaluation` a required `unevaluatableCause`, non-null exactly when the status is
+  `UNEVALUATABLE` — checked in its `init`. The two "people unavailable" reasons are two values
+  because Amendment 4's notice names which. `UNEVALUATABLE`'s doc comment is widened, as Amendment 4
+  requires: the rule contributes nothing, because this build does not understand it or a `people`
+  clause cannot be evaluated here; the cause says which.
+  *Why:* everything Amendment 4 says of an unevaluatable album holds "for both causes without
+  exception" — additions minus exclusions, never widened, never deleted — so it is one state with a
+  reason, the shape `AlbumRule.Unevaluatable(raw, reason)` already has. A sibling status would
+  compile at the `==` in `AlbumDetailScreen` and silently drop the notice band for the new statuses;
+  only `AlbumGridItem`'s `when` would catch it.
+- **The mapping** (decision 42; Amendment 4's *One notice per album* order). Per album, the first row
+  that applies:
+
+  | Condition | Status | Cause |
+  |---|---|---|
+  | no rule | `MANUAL` | — |
+  | the rule did not parse | `UNEVALUATABLE` | `RULE_NOT_UNDERSTOOD` |
+  | a `people` clause, and the availability is face data off | `UNEVALUATABLE` | `PEOPLE_UNAVAILABLE_FACE_DATA_OFF` |
+  | a `people` clause, and the availability is device incapable | `UNEVALUATABLE` | `PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE` |
+  | live media not read yet (join null) | `WAITING_ON_INDEX` | — |
+  | some anchor **not found** | `UNEVALUATABLE` | `ANCHOR_NOT_FOUND` |
+  | some item unsettled and no clause a settled no-match for it — a waiting anchor, a pending image, people input not loaded | `WAITING_ON_INDEX` | — |
+  | otherwise | `COMPLETE` | — |
+
+  The availability is tested before the join because it needs no media: "before any anchor"
+  (Amendment 4). One anchor not found makes the album unevaluatable even while another waits, as one
+  unknown clause does. In every `UNEVALUATABLE` row the members are the additions minus the
+  exclusions, as today. **Waiting is** the anchor photo not yet face-indexed at the current pipeline
+  version, its row not yet written, the triples not yet agreeing, or the chosen face not yet grouped;
+  **not found is** the photo gone or neither an image, its inference failed, or no face at IoU ≥ 0.5
+  once its state is current.
+- **`ui/` in 3.5: one file, and no presentation.** Only `ui/AlbumsViewModel.kt` changes, for the new
+  parameter and the wiring. `AlbumGridItem` and `AlbumDetailScreen` compile unchanged — no status
+  value is added — and every cause shows what `UNEVALUATABLE` shows today, the Newer-app notice;
+  waiting shows what it shows today. `AlbumRuleSummary` picks clauses with `filterIsInstance`, so a
+  rule's `people` clauses are simply absent from the Album info dialog — compiles, and is 3.6's. **The cause stops at `AlbumRuleEvaluation`:**
+  carrying it into `ComputedAlbum` and `AlbumListItem`, the notices' wording and presentation, and
+  their strings in every shipped locale at once are 3.6's. *The interim is safe because it is
+  unreachable:* the Newer-app wording is wrong for both new causes (Amendment 4), but no build before
+  3.6's picker writes a `people` clause, so only a test or a hand-edited database reaches it. **3.6
+  must branch on the cause before any build that can write a `people` clause ships.**
+- **Availability is an input, derived outside the evaluator.**
+  `enum class PeopleAvailability { AVAILABLE, FACE_DATA_OFF, DEVICE_INCAPABLE }` sits with the
+  evaluator; the pure derivation, `peopleAvailabilityOf(faceDataEnabled: Boolean, capability:
+  FaceCapabilityState?, currentKey: String)`, and the source that reads it, in a new
+  `data/PeopleAvailability.kt`:
+  1. the face-data setting off → `FACE_DATA_OFF` (ADR-0024 §4). First when both apply, because it is
+     the one the user can fix;
+  2. a capability record for **the current key** with `capable == false` → `DEVICE_INCAPABLE`;
+  3. otherwise `AVAILABLE` — no record, a record for another key, or a check started and unfinished
+     (`capable` null). **Unknown is not incapable.** *Why:* ADR-0023 §3 records one answer per key —
+     another build, pipeline or device is another question — and the check loads the pipeline, so
+     evaluation must never run it (it is 3.6's, at app open). Reading unknown as unavailable would
+     show "people unavailable" on the first open after every app update and on every restored device
+     until the check ran — a wrong notice. Reading it as waiting is true: without an answer the worker
+     runs no face pass, Tier C stays empty and the album waits, as ADR-0022 §5 says of a restore;
+  4. **the disclosure is not read.** Not shown is not unavailable: the flag is per installation, so
+     a restored device always starts there; 3.6 shows the disclosure at the next open, and a user who
+     declines it switches face data off, which is rule 1. Until then the worker's own gate leaves Tier
+     C empty and the album waits — for a while, not for ever, which is what separates it from
+     ADR-0024 §4's reason for not waiting.
+
+  **The exception, 3.6's to close:** `FaceCapabilityChecker` records nothing when this build has no
+  pipeline for the device (`FacePipelineUnavailableException` — a phone without arm64-v8a) or runs out
+  of memory, so on such a phone rule 3 holds for ever and a restored people album waits for ever —
+  the failure ADR-0024 §4 names. 3.6's app-open check must leave a durable answer for every outcome
+  that is not transient, or the availability must read an equally cheap fact; 3.5 does not guess one.
+- **The source.** `PeopleAvailabilitySource` with `read(): PeopleAvailability`;
+  `StoredPeopleAvailabilitySource` reads `FaceDataSettingStore`, `FaceDeviceStateStore.capabilityState()`
+  and the current key; `InMemoryPeopleAvailabilitySource` is the test double, settable. It owns no
+  file, so `AGENTS.md`'s preference-store table does not change. The key comes from a new
+  `EasyGalleryApp.faceCapabilityKey()`, extracted from `createFaceCapabilityChecker` so the checker
+  and the availability can never read two keys. `AlbumsViewModel` takes the source as a constructor
+  seam, defaulting to the stored one on `EasyGalleryApp` and to `InMemoryPeopleAvailabilitySource`
+  (`AVAILABLE`) otherwise, as its index store falls back to `InMemoryMediaIndexStore`.
+- **When it is read:** on `evaluationDispatcher`, at every emission of the face projection and at
+  `refreshPeopleAvailability()`, a new public method that bumps an epoch. Switching face data off
+  deletes Tier C, so the projection emits and the album turns unavailable with no call. Switching it
+  on, and the check's result, change nothing in Tier C, so **3.6 calls the refresh** — from the
+  switch, after the capability check, and on resume (the precedent is
+  `FavouritesViewModel.refreshCapabilityState()` from `MainActivity.onResume`). In 3.5 only tests call
+  it.
+
+#### Tasks — three, sequential, then verification and task P
+
+Sequential because they share files: `AlbumRuleEvaluation.kt` is Task 1's and Task 2's,
+`ui/AlbumsViewModel.kt` Task 2's and Task 3's. Each task compiles and passes its own tests before the
+next starts; the definition of done runs once, in the verification phase. Nothing waits on a
+measurement or on the maintainer. No string, no resource, no vocabulary term, no schema, no
+dependency, no permission, no preferences file.
+
+**Task 1 — the clause** (Coder). ✅ **Done 2026-11-21** — *3.5 — Built and verified 2026-11-21*
+below; the brief is kept as it was. *Decided at 3.5 — the clause* and *building an anchor*.
+- **Files:** `data/AlbumRule.kt` (`People`, its `init`, `anchoredAt`, the three reasons, the two
+  redacted `toString`s); `data/AlbumRuleJson.kt` (parse and encode); `data/AlbumRuleEvaluation.kt` —
+  **an interim branch only**, so the exhaustive `when` compiles: a `people` clause answers unsettled
+  for every item, so a people album waits; Task 2 replaces it. Tests: `test/.../data/AlbumRuleTest.kt`,
+  `test/.../data/AlbumRuleStorageTest.kt`, `test/.../data/AlbumRuleEvaluationTest.kt` (the interim
+  branch, one test).
+- **Exit criteria, each with a test:**
+  1. `parse(encode(rule)) == rule` for one and several `people` clauses, mixed with `region` and
+     `time`; a non-ASCII display name; box values `0`, `1`, `1f / 3`, `0.1f` and the smallest positive
+     float — **the box read back bit for bit**;
+  2. the encoded text has Amendment 4's key order, and no `Locale` changes it (run under a
+     decimal-comma default locale);
+  3. one test per strictness row of *the clause*, each asserting its exact reason: unknown key in the
+     clause and in `box`; `uri` and `displayName` missing, not a string, empty; `size` and
+     `dateModified` missing, a string, `1.0`, beyond `Long`; `pipeline` missing, `"1"`, `0`, beyond
+     `Int`; `box` missing, an array, a member missing, a string member, `1e400`, `-0.1`, `1.1`,
+     `left == right`, `top > bottom`; **two edges that differ in the text and equal as `Float`s give
+     `INVALID_FACE_BOX`, not `UNEXPECTED_ERROR`**; a duplicate key inside `box` gives `DUPLICATE_KEY`;
+  4. `pipeline` 99 parses;
+  5. the `toString` of a `People` clause, of an `Evaluatable` rule holding one, and of an
+     `Unevaluatable` rule whose raw text names a file, contain no URI, display name or box number —
+     the reason still prints;
+  6. `anchoredAt` copies the representative's identity, box and pipeline version;
+  7. a people rule stored through the album store reads back equal (`AlbumRuleStorageTest`);
+  8. the interim: a people album evaluates to `WAITING_ON_INDEX`, never `COMPLETE`.
+- **Mutation checks**, each run, seen to fail the named test, and reverted: the box checks made on
+  the parsed `Double` instead of the `Float` (criterion 3's equal-as-`Float` test); the box encoded
+  with `String.format("%f")` (criteria 1 and 2); unknown keys not checked inside `box`; `People`'s
+  default `toString` restored; `Unevaluatable`'s `raw` printed again.
+
+**Task 2 — the projection and the pure evaluation** (Coder). ✅ **Done 2026-11-21** — *3.5 — Built
+and verified 2026-11-21* below; the brief is kept as it was, its caller list corrected. *Resolution
+and evaluation*, and the cause and the mapping of *status, causes and availability*.
+- **Files:** `data/MediaIndexTierC.kt` (the snapshot types, redacted); `data/MediaIndexDao.kt` (the one
+  query and its row type); `data/MediaIndexStore.kt` (`observeFaceEvaluationProjection` on the
+  interface, Room, and the in-memory store with its revision flow); `data/MediaIndexLiveJoin.kt`
+  (`indexedIdentity`, the lazy lookup and by-URI items); **new** `data/PeopleClauseEvaluation.kt`
+  (`PeopleAvailability`, `PeopleEvaluationInput`, anchor resolution with the IoU and the tie rule, the
+  per-item answers); `data/AlbumRuleEvaluation.kt` (`AlbumUnevaluatableCause`, the field and its
+  `init`, the widened doc comment, the `people` parameter, the mapping; the interim branch removed);
+  `ui/AlbumsViewModel.kt` — **compile only**: its one call passes `people = null`. Tests:
+  `test/.../data/MediaIndexDaoTest.kt`, `test/.../data/MediaIndexTierCStoreTest.kt` (through its
+  `forEachStore`, both stores), **new** `test/.../data/PeopleClauseEvaluationTest.kt`,
+  `test/.../data/AlbumRuleEvaluationTest.kt`, and the callers the two new required values break:
+  `test/.../data/AutomaticAlbumFacetsTest.kt`, `test/.../ui/AutomaticAlbumPickerStateTest.kt`,
+  `androidTest/.../ui/NewAutomaticAlbumContentTest.kt` and, *corrected 2026-11-21 from the build*,
+  `androidTest/.../ui/RegionAlbumEvaluationDeviceTest.kt` — fixed, not defaulted.
+- **Exit criteria, each with a test:**
+  1. the snapshot holds only faces at the asked pipeline version; a state with no faces is present
+     with an empty list; no embedding is read; both stores return the same snapshot;
+  2. **it re-emits, in both stores, after** `writeFaceIndexResults`, `writeFaceGroups`,
+     `healMediaUri`, an `upsert` that drops Tier C, `deleteByMediaUri`, `deleteByVolume` and
+     `deleteAllFaceData`;
+  3. the join's `indexedIdentity` is the winning row's — the direct match's when a healed row also
+     reaches the item — and null for an item no row reached;
+  4. every resolution outcome of *An anchor resolves*, one test each, steps 1 to 8; IoU exactly 0.5
+     accepted and just under rejected; **a tie goes to the lower face id with the faces given in
+     descending id order**;
+  5. every row of the per-item table, one test each; three triples that disagree give waiting, never
+     not found;
+  6. every row of the mapping table, in order: face data off beats an anchor not found; an anchor
+     not found beats another anchor waiting; unavailability with the join still null is
+     `UNEVALUATABLE`; a people clause with `people = null` waits;
+  7. combined: two people, both in the picture, AND a region AND a time range — members exactly the
+     images with a face in each group, in the region, in the range; a GIF and a video in the library
+     leave it `COMPLETE`;
+  8. `AlbumRuleEvaluation`'s `init` rejects `UNEVALUATABLE` without a cause, and a cause on any other
+     status; an unparsed rule's cause is `RULE_NOT_UNDERSTOOD`;
+  9. every Stage 2 evaluation test passes unchanged apart from the added argument.
+- **Mutation checks:** `>` for `≥` at 0.5; the tie taken in list order; `groupingVersion` ignored;
+  a GIF answered unsettled (criterion 7 never completes); the triple check dropped (criterion 5);
+  the unavailable and not-found checks swapped; the in-memory revision not bumped in
+  `writeFaceGroups`; the Room query's pipeline-version filter dropped.
+
+**Task 3 — availability and the wiring** (Coder). ✅ **Done 2026-11-21** — *3.5 — Built and verified
+2026-11-21* below; the brief is kept as it was. *Status, causes and availability*: the source, the
+refresh, and *only a people album subscribes*.
+- **Files:** **new** `data/PeopleAvailability.kt` (`peopleAvailabilityOf(faceDataEnabled: Boolean,
+  capability: FaceCapabilityState?, currentKey: String)`, `PeopleAvailabilitySource`,
+  `StoredPeopleAvailabilitySource`, `InMemoryPeopleAvailabilitySource`); `EasyGalleryApp.kt`
+  (`faceCapabilityKey()`, extracted, used by `createFaceCapabilityChecker` too); `ui/AlbumsViewModel.kt`
+  (the source seam, the shared people flow, `refreshPeopleAvailability()`, the combine for people
+  albums only). Tests: **new** `test/.../data/PeopleAvailabilityTest.kt`;
+  `test/.../ui/AlbumsViewModelTest.kt`; **new** `test/.../ui/PeopleAlbumReevaluationTest.kt`,
+  Robolectric, set up as `AlbumsViewModelMediaStoreVersionApi28Test` is.
+- **Exit criteria, each with a test:**
+  1. the derivation, every rule of *Availability* — off; incapable under the current key; incapable
+     under another key is `AVAILABLE`; no record; `capable` null; off beats incapable; the disclosure
+     never read — and the stored source over the in-memory stores;
+  2. a people album is `UNEVALUATABLE` while the source says face data off, and after
+     `refreshPeopleAvailability()` with it on is `WAITING_ON_INDEX` — no Tier C write between;
+  3. with the in-memory index store, a people album goes from `WAITING_ON_INDEX` to `COMPLETE` with
+     the expected members on `writeFaceGroups` alone;
+  4. **a manual album and a region or time album never subscribe to the face projection**, counted
+     as the existing delegating store counts projection subscriptions;
+  5. **Room invalidation** (`PeopleAlbumReevaluationTest`): over an in-memory Room index database, a
+     people album waits while its anchor's face is ungrouped, and `writeFaceGroups` alone — no Tier A
+     write — moves it to `COMPLETE` with the expected members.
+- **Mutation checks:** the face projection combined into every rule album (criterion 4); the
+  availability read once at construction (criterion 2); the Room store's face projection replaced
+  by a one-shot read (criterion 5).
+
+**Verification phase — once, over the integrated change; it owns the gate.** ✅ **Done 2026-11-21**
+— the gate is under *3.5 — Built and verified 2026-11-21* below. The definition of
+done, steps 1 to 5. `adb devices` settles step 4 and the report says which ran: 3.5 adds no
+behaviour that only a device shows — the evaluator is pure and the Room flow is proved under
+Robolectric — so the device run is the existing suite, `NewAutomaticAlbumContentTest`'s changed
+helper included. Also: `git status app/schemas` shows nothing, so both databases keep their versions;
+the debug and release merged manifests byte-identical to the build before 3.5 (3.4's figures are
+under *3.4 — Built and verified 2026-11-21*), since no dependency changes; no `Log` call in the new or
+changed `data/` code; and `git diff --stat` against `git diff --ignore-all-space --stat`, for line
+endings. No task runs `connectedDebugAndroidTest` itself.
+
+**Not 3.5's** — each 3.6's unless named: the People criterion, its thumbnails, its visibility and the
+picker's call to `anchoredAt`; the disclosure and the Settings switch; the app-open capability check
+and the start-up deletion's call; the callers of `refreshPeopleAvailability()`; carrying the cause to
+`AlbumListItem`, the notices' wording and presentation, and their strings in every locale; `people`
+clauses in `AlbumRuleSummary` and the Album info dialog; how many people one album may hold under the
+16 KiB cap; a durable capability answer on a phone with no pipeline; rule editing's D6.
+
+**Task P — afterwards** (Planner). ✅ **Done 2026-11-21:** landed in `ARCHITECTURE.md` §2, §3, §6
+and §11, `AGENTS.md`, ADR-0017 Amendment 4's *Built* note, ADR-0022's §3 step 4 note and *Built*
+note, ADR-0024 §4's note, ADR-0018 Amendment 5's *Built* note; this plan and [albums.md](albums.md)
+§7 last. The brief was — on the built code, not on reports: `ARCHITECTURE.md` §3 (the two
+new `data/` files, `JoinedMedia.indexedIdentity`), §6 (the second flow, people albums only) and §11
+(the interim notice until 3.6, the non-arm64 wait, the face projection's unmeasured cost); `AGENTS.md`
+(*The two databases*' face-data paragraph, which says nothing in `ui/` reads face data — now
+`AlbumsViewModel` does); ADR-0017 Amendment 4, a *Built* note (the cause on `UNEVALUATABLE`, the
+three reasons, the widened doc comment); ADR-0022 §3 step 4, a note naming the tie rule, and a *Built*
+note; ADR-0018 Amendment 5, a note on the new query with no schema change; [albums.md](albums.md) §7's
+Stage 3 row; this plan — the step row, a *Built and verified* section, the handoff, and any item for
+3.7; the test conventions only if a convention changed. No ADR is expected: every choice here is one
+the records leave to 3.5.
+
+### 3.5 — Built and verified 2026-11-21
+
+Built as Tasks 1, 2 and 3 above, then task P. What landed is not restated here: it is
+[ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 4's
+*Built* note (the clause, its three new reasons, the cause on `UNEVALUATABLE`),
+[ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md)'s §3 step 4 note
+and *Built* note (the tie to the lower face id),
+[ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 5's *Built*
+note (`observeFaceEvaluationProjection`) and
+[ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §4's note, with
+`ARCHITECTURE.md` §2, §3, §6 and §11 for where each piece sits: `data/PeopleClauseEvaluation.kt`,
+`data/PeopleAvailability.kt`, `JoinedMedia.indexedIdentity` and the join's one shared lookup, and in
+`AlbumsViewModel` the second shared flow, collected by people albums only, and
+`refreshPeopleAvailability()`. **No schema change** in either database, and no string, dependency,
+permission or preferences file.
+
+**The gate — the definition of done, once, over the integrated change:** `compileDebugKotlin` OK;
+the unit suite, 78 files, 1293 tests, 0 failures — 1292 at the gate, and one added by the review's
+follow-up; `compileDebugAndroidTestKotlin` OK; a device was attached, the SM-G990B, so
+`connectedDebugAndroidTest` ran: 266 tests, 0 failures, 3 skipped — the three opt-in measurements.
+It ran before the follow-up, whose changes are covered by unit tests only. The debug and release
+merged manifests byte-identical to 3.4's (debug md5 `8856dbd4b4257bd665c4593a325ba624`, release
+`043a521e4d0a25724364c8b8b6ea6f8d`); `app/schemas` unchanged. **Mutation checks**, each run, seen to
+fail its test and reverted: Task 1, 12; Task 2, 15; Task 3, 6; and 1 more for the negative-zero
+follow-up. This document does not record tracking state.
+
+**Review outcomes.** Two Reviewers; no hard violations. **Fixed:** a box edge of negative zero is
+normalised to `+0f`, with a test; `computeAlbum`'s default for `people` removed; the availability
+epoch updated atomically; one lookup removed from `peopleItemAnswer`; `MediaIndexLiveJoin` shares the
+lookup built in `build()`; the depth comment corrected; the re-evaluation test strengthened with a
+probe album. **Left, a one-line cleanup:** `peopleItemAnswer`'s `join` parameter, now unused —
+declared in `data/PeopleClauseEvaluation.kt`, passed at its one call in `AlbumRuleEvaluation.kt`.
+**Judgement calls, accepted as built:** recorded in `ARCHITECTURE.md` §11 and the ADR notes above;
+also a box edge written just above 1 that rounds to `1f` is accepted — noted under *Decided at 3.5 —
+the clause* — and `MediaIdentity`'s and `MediaHealingKey`'s `toString`s still print the URI and the
+name, which 3.6's brief carries under ADR-0024 §6.
+
+**Not proven by it** — each 3.6's or 3.7's, under *3.2 to 3.8*, or debt in `ARCHITECTURE.md` §11:
+- a phone without arm64-v8a: nothing records an answer there, so a restored people album waits for
+  ever — 3.6 must close it, 3.7 observes it if such a phone exists;
+- the cost at production size: the face projection is a full snapshot per emission, re-run on Tier A
+  and face-pass batches while a people album is on screen — 3.7 item 11;
+- the cause's presentation: every cause still shows the Newer-app notice until 3.6 branches on it;
+- the refresh: nothing outside tests calls `refreshPeopleAvailability()` yet — 3.6's;
+- any of it through the UI: no build writes a `people` clause before 3.6's picker.
 
 ### 3.2 to 3.8
 
@@ -2133,11 +3123,52 @@ settled what it depends on.
   relying on them; a different algorithm is a new decision, not a detail. Refined 2026-11-20 into
   its own section above.
 - **3.5 — The `people` clause and evaluation.** Parse, encode and evaluate, with strictness tests
-  like Stage 2's; combined people + region + time, with tests.
+  like Stage 2's; combined people + region + time, with tests. Refined 2026-11-21 into its own
+  section above.
 - **3.6 — The UI.** The People criterion with its thumbnails, with no merge and no split (decision
   40); the notice of an unevaluatable people album, whose wording is open (decision 42); the
   disclosure, and the Settings switch; the Settings row showing the licence notices (E5); strings in
   every shipped locale; vocabulary in-change.
+  - ~~**Added 2026-11-21 from 3.5** — left to 3.6 by *3.5*'s *status, causes and availability*:
+    carrying `AlbumUnevaluatableCause` to `AlbumListItem` and branching the notice on it **before any
+    build that can write a `people` clause ships** — until then every cause shows the Newer-app
+    notice; calling `refreshPeopleAvailability()` from the switch, after the capability check and on
+    resume; a durable capability answer on a phone with no pipeline, without which a restored people
+    album waits for ever there; and how many people one album may hold under the encoder's 16 KiB
+    cap.~~ *Made explicit 2026-11-21, when 3.5 was built* — the five items below.
+  - **Added 2026-11-21 from 3.5 — 3.6 must do each of these; none is optional:**
+    1. **A durable capability answer on a phone without arm64-v8a.** The face pipeline ships for
+       arm64-v8a only, and minSdk 28 also allows an armeabi-v7a phone. There `FaceCapabilityChecker`
+       catches `FacePipelineUnavailableException` and records nothing, so the availability stays
+       unknown, which is available, and a restored people album **waits for ever** — the failure
+       ADR-0024 §4 names. Either treat a `Build.SUPPORTED_ABIS` without `arm64-v8a` as
+       `DEVICE_INCAPABLE`, or record a per-key "no pipeline" answer when the exception fires — the
+       key names the build, so the next build is still asked afresh. Out of memory stays transient
+       and records nothing.
+    2. **The app-open capability check and the start-up deletion's call.** Built in 3.3 and 3.2, and
+       called by nothing in `ui/`: without the check no answer is ever recorded, and without the
+       deletion's call face data switched off is not removed again at start-up (ADR-0024).
+    3. **`refreshPeopleAvailability()` called from the switch, in both directions, after the
+       capability check, and on resume** — the precedent is
+       `FavouritesViewModel.refreshCapabilityState()` from `MainActivity.onResume`. *Why both
+       directions:* switching face data on, and the check's answer, write no Tier C row; switching
+       it off deletes Tier C, but when Tier C is already empty no row changes, Room never
+       invalidates, and the projection does not emit — so without the call the album keeps its old
+       status.
+    4. **A limit on the number of people per album, and/or catching the encoder's `require` in
+       `createAutomaticAlbum`.** The rule's 16 KiB cap holds about 8 to 50 people, depending on the
+       anchor photos' name lengths: 8 fit with 255-character names escaped throughout, 10 do not.
+       Today an oversized rule throws from `AlbumRuleJson.encode` on the calling thread, before the
+       launch, so nothing is written but nothing catches it either. The limit itself is a product
+       choice for the maintainer (*Next session starts here*).
+    5. **The cause carried to the notices.** `AlbumUnevaluatableCause` carried from
+       `AlbumRuleEvaluation` through `ComputedAlbum` to `AlbumListItem`, and the notice branching on
+       it, **before any build that can write a `people` clause ships** — until then every cause
+       shows the Newer-app notice, whose wording is wrong for the three new causes (ADR-0017
+       Amendment 4). The notices' strings go into every shipped locale
+       (`LocaleHelper.supportedLanguageTags`) in the same change. And under ADR-0024 §6:
+       `MediaIdentity`'s and `MediaHealingKey`'s `toString`s still print the URI and the display
+       name, so no log line, message or string may interpolate an anchor or either type.
 - **3.7 — Verification.** The definition of done, once, with `adb devices` checked and stated;
   then an installed-app walkthrough including the delete switch, and the capability check on the
   SM-G781B if it can be attached (decision 45).
@@ -2176,6 +3207,24 @@ settled what it depends on.
     9. ADR-0023 verify item 7 — the capability check on another phone; see its row;
     10. the non-arm64 branch of `FaceCapabilityDeviceTest`, which asserts *incapable* and has never
         run on a device without arm64-v8a.
+  - **Added 2026-11-21 from 3.4** — what *3.4 — Built and verified 2026-11-21* could not prove:
+    11. a production-size library: grouping and the face pass at 10,000 faces and more through the
+        worker, the store's paged read and its one-transaction write included — 3.4 measured the
+        grouping core alone at that size, on synthetic faces, and the store only at 422 faces;
+    12. the worker window under the start-only deadline: grouping that starts within 8 minutes is
+        not stopped after it, so how much of WorkManager's window a large grouping uses after a full
+        face pass, against the arithmetic of about 37,000 faces (`ARCHITECTURE.md` §11);
+    13. one giant connected component against the heap ceiling — about 10,500 faces fails with
+        `OutOfMemoryError`, not the fixed message — unless the maintainer has chosen a heap-based
+        cap by then (`ARCHITECTURE.md` §11);
+    14. grouping, and the worker run with it, on the SM-G781B (A4) — 3.4 ran on the SM-G990B only.
+  - **Added 2026-11-21 from 3.5** — what *3.5 — Built and verified 2026-11-21* could not prove:
+    15. item 11 extended to evaluation: with a people album on screen, the face projection re-runs
+        as a full snapshot on every Tier A and face-pass batch — measured at a production-size
+        library, its time per emission and how often it emits during an Index now run;
+    16. on a phone without arm64-v8a, if one can be attached: a restored people album does not wait
+        for ever once 3.6 has closed the gap (*3.6*, item 1) — it shows the device-incapable
+        notice. If no such phone exists, say so; it is then proven by unit tests only.
 - **3.8 — Close-out.** `ARCHITECTURE.md`, exit criteria checked against the repository,
   `/docs-audit`, archive.
 
@@ -2570,9 +3619,12 @@ The spike's inputs to both are under *Spike outcome*, clustering and anchor stab
    embeddings — [albums.md](albums.md) §8 decision 45. Its memory and time in the app are 3.4's to
    measure.
 2. **B2 — Incremental clustering** as new photos arrive. ~~**Still open, for 3.4.**~~ **Settled at
-   3.4's refinement, 2026-11-20, subject to the budget: not adopted** — every run that needs grouping
-   regroups every face with average linkage; *3.4*, *Measurement first, and the budget*. It returns
-   only as option (e) there, if Task 1's figures fail the budget. The spike found
+   3.4's refinement, 2026-11-20, ~~subject to the budget~~ the budget met (decision 50; *built
+   2026-11-21*): not adopted** — every run that needs grouping
+   regroups every face with average linkage, split into components first; *3.4*, *Measurement first,
+   and the budget*. ~~It returns only as option (e) there, if Task 1's figures fail the budget.~~
+   *2026-11-20:* the figures met it, so option (e) is not taken; incremental grouping would be a new
+   decision. The spike found
    the order-dependent incremental method much less stable than average linkage, so 3.4 must not
    assume it (decision 45).
 
@@ -2651,6 +3703,10 @@ delegation, in decision 46.
    - **This does not decide D1**, which stays the Designer's. It only says what D1's answer costs:
      a People criterion inside the screen costs no navigation change; a screen of its own reopens
      D2.
+3. **D3 — How many people may one album hold?** *Raised by the Planner 2026-11-21, from 3.5;
+   blocks 3.6's picker; the maintainer's — a product choice.* The rule's 16 KiB cap holds about 8 to
+   50 `people` clauses, depending on the anchor photos' name lengths. **Recommended: 8**, the most
+   that always fits — the reasoning is in the handoff's *Next action: step 3.6* and *3.6*, item 4.
 
 ### E. Questions from the step 3.1 drafts — raised 2026-11-18, answered 2026-11-19
 

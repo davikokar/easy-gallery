@@ -676,6 +676,7 @@ internal object FaceLogRules {
         Regex("^face pass not run reason=(SETTING_OFF|INCAPABLE|DISCLOSURE_NOT_SHOWN|BUSY)$"),
         Regex("^face capability checked capable=(true|false)$"),
         Regex("^face data deletion ran scrubbed=(true|false)$"),
+        Regex("^face grouping finished stop=(GROUPED|NOT_NEEDED|SETTING_OFF|PAST_DEADLINE)$"),
         Regex("^face pass failed$"),
         Regex("^face data deletion failed$")
     )

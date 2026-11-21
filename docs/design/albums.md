@@ -386,7 +386,7 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); ~~step 3.2 next~~ step 3.2 built and verified 2026-11-19; ~~step 3.3 next~~ ~~a 3.2 follow-up next (decision 48, 2026-11-20), then step 3.3~~ its follow-up (decision 48) built and verified 2026-11-20; ~~step 3.3 next, refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49)~~ step 3.3 refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49), and built and verified 2026-11-20 (decisions 43–49 stand); step 3.4 next. The stage's status is unchanged: a step landing takes no stage-log line (*Stage log*) | Tier C | yes |
+| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); ~~step 3.2 next~~ step 3.2 built and verified 2026-11-19; ~~step 3.3 next~~ ~~a 3.2 follow-up next (decision 48, 2026-11-20), then step 3.3~~ its follow-up (decision 48) built and verified 2026-11-20; ~~step 3.3 next, refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49)~~ step 3.3 refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49), and built and verified 2026-11-20 (decisions 43–49 stand); ~~step 3.4 next~~ ~~step 3.4 in progress — its Task 1 built and verified 2026-11-20, its budget accepted and~~ ~~ADR-0018 Amendment 8 adopted the same day~~ ~~components first adopted the same day (decision 50); its Task 2 built and verified 2026-11-20, and ADR-0018 Amendment 8 reversed on its measurement, before it was built (decision 50, amended)~~ step 3.4 built and verified 2026-11-21 — Tasks 1 to 5 (with 2b) and its verification on the SM-G990B; its budget accepted with components first (decision 50); ADR-0018 Amendment 8 adopted and reversed before it was built (decision 50, amended), so no schema change and the index stays at version 6; ~~step 3.5 next~~ step 3.5 built and verified 2026-11-21 — Tasks 1 to 3 and its verification on the SM-G990B; the `people` clause and its evaluation, with no schema change in either database and no string; step 3.6 next — the People criterion, the disclosure, the switch, the strings and the notices. The stage's status is unchanged: a step landing takes no stage-log line (*Stage log*) | Tier C | yes |
 | **4** | Content albums (Tier B) ~~and rule editing — **runs before Stage 3**~~; planned in [albums-stage-4.md](albums-stage-4.md); rule editing moved out (§8 decision 39) | ⬜ Not started — plan drafted 2026-11-13; paused 2026-11-17, see decision 38 | Tier B | yes |
 
 Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
@@ -1780,7 +1780,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
       assume it. **Pointer added 2026-11-20:** settled at step 3.4's refinement, subject to the
       memory and time budget the maintainer is asked to accept — not adopted; each grouping regroups
       every face with average linkage ([albums-stage-3.md](albums-stage-3.md), *3.4*). It returns as
-      an option only if that budget fails.
+      an option only if that budget fails. **2026-11-20, later:** the budget was accepted as met
+      (decision 50), so B2 is not adopted.
     - **The runtime: OpenCV's DNN module, bundled in the app, arm64-v8a only, built trimmed** to the
       modules the pipeline uses. The spike used core, imgproc, dnn, objdetect and calib3d; step 3.3
       confirms the list. **Not chosen:** ONNX Runtime, which would add a second runtime for nothing,
@@ -1911,6 +1912,47 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     (ADR-0023 verify item 4), and anything it adds goes to him before it ships, as decision 24's
     WorkManager permissions did. Still open: F1's residual — how an API 36.1 device reads the
     fourth section — which blocks nothing.
+
+50. **Grouping's budget is accepted as met; grouping splits faces into components first; ~~and a
+    group's representative prefers a face at least 60 px across~~ and a group's representative is
+    its plain medoid (amended the same day, below).** Decided by the maintainer on
+    2026-11-20, in his words "Let's go with your recommendations", once step 3.4's Task 1 had
+    measured grouping on the SM-G990B (the figures are in [albums-stage-3.md](albums-stage-3.md),
+    *3.4*, *Task 1 — measured 2026-11-20*, and are not restated here).
+    - **The budget** — at most 256 MB rise in peak RSS and at most 90 s at 10,000 synthetic faces —
+      **is accepted as met** (30.7 s, +213.9 MB). ADR-0023 §5 carries a dated note.
+    - **Components first.** The Java heap, not RSS, is the binding limit: the float32 triangle is
+      200 MB at 10,000 faces in a 256 MB heap, about 10,500 faces at most. So grouping first splits the
+      faces into the connected components of the graph of pairs at or below the 0.50 cut, and runs
+      average linkage inside each. **It yields exactly the same groups** — a merge needs a mean cross
+      distance of at most 0.50, and two components have every cross pair above it — so it is not the
+      new decision the plan reserves for a change to the groups; it is recorded here because it lifts
+      the ceiling the budget was judged against. Memory then follows the largest component, and time
+      becomes the ceiling. **B2 stays not adopted** (decision 45's pointer).
+    - ~~**The representative prefers a usable face.** 22 of the 104 representatives offered were under
+      60 px, so each face's pixel size is stored —
+      [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 8,
+      adopted with this decision: a column, `Migration(6, 7)` to index version 7, and the rule that the
+      representative is the medoid unless it is under 60 px, then the usable member nearest it in
+      medoid order. **It reverses the plan's 2026-11-20 choice** of no migration and the plain medoid,
+      which was taken only because no size was stored. The column, the rule for rows written before it
+      and the grouping-version bump are the Planner's within the approval, and he can reverse them; the
+      amendment holds their reasons.~~
+
+    **Amended 2026-11-20, later — the size-aware representative withdrawn on its measurement.**
+    Decided by the maintainer, again in his words "let's go with your recommendations", after reading
+    what step 3.4's Task 2 measured on the SM-G990B ([albums-stage-3.md](albums-stage-3.md), *3.4*,
+    Task 2): 21 of the 104 offered groups have no member at least 60 px across, so the rule fixes
+    **1 of the 22** small representatives (83 of 104 at least 60 px, against 82 with the plain medoid;
+    median 108 px, smallest 40 px). A permanent schema change is not worth one thumbnail.
+    - **The budget and components first stand** as decided above.
+    - **The representative is the plain medoid**, ties within the tolerance to the lower face id, as
+      Task 1 built. No pixel size is stored, there is no `Migration(6, 7)`, and the index stays at
+      version 6: ADR-0018 Amendment 8 is marked reversed, with the evidence, before anything of it
+      was built. The plan's earlier choice of no migration and the plain medoid is therefore restored.
+    - **Small thumbnails are accepted as the picker's behaviour for now** — 22 of 104 under 60 px, the
+      smallest 40 px. A different fix — a lower threshold, a quality score from the detector, or
+      upscaling at step 3.6 — would be a new decision.
 
 ---
 

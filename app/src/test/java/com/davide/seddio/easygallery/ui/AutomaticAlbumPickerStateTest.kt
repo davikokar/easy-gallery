@@ -441,6 +441,6 @@ class AutomaticAlbumPickerStateTest {
         } else {
             DateTakenSortState.IndexedWithDate(dateTaken)
         }
-        return JoinedMedia(item, date, location)
+        return JoinedMedia(item, date, location, indexedIdentity = null)
     }
 }

@@ -1343,7 +1343,7 @@ class NewAutomaticAlbumContentTest {
         } else {
             DateTakenSortState.IndexedWithDate(Instant.parse(dateTaken).toEpochMilli())
         }
-        return JoinedMedia(item, date, location)
+        return JoinedMedia(item, date, location, indexedIdentity = null)
     }
 
     private fun assertCanScrollLastItemAboveCreateButton(containerTag: String, targetTag: String) {

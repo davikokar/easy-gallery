@@ -13,6 +13,15 @@ import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
 import com.davide.seddio.easygallery.data.FAVOURITES_OVERRIDE_KEY
+import com.davide.seddio.easygallery.data.FACE_GROUPING_VERSION
+import com.davide.seddio.easygallery.data.FACE_PIPELINE_VERSION
+import com.davide.seddio.easygallery.data.FaceBox
+import com.davide.seddio.easygallery.data.FaceDetection
+import com.davide.seddio.easygallery.data.FaceEmbedding
+import com.davide.seddio.easygallery.data.FaceEvaluationSnapshot
+import com.davide.seddio.easygallery.data.FaceGroup
+import com.davide.seddio.easygallery.data.FaceIndexOutcome
+import com.davide.seddio.easygallery.data.FaceIndexWrite
 import com.davide.seddio.easygallery.data.FolderViewOverrides
 import com.davide.seddio.easygallery.data.FolderViewPreferencesStore
 import com.davide.seddio.easygallery.data.GazetteerNames
@@ -21,6 +30,7 @@ import com.davide.seddio.easygallery.data.InMemoryAlbumStore
 import com.davide.seddio.easygallery.data.InMemoryFolderViewPreferencesStore
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
 import com.davide.seddio.easygallery.data.InMemoryMediaStoreVersionStore
+import com.davide.seddio.easygallery.data.InMemoryPeopleAvailabilitySource
 import com.davide.seddio.easygallery.data.MediaIndexEntry
 import com.davide.seddio.easygallery.data.MediaIndexEvaluationProjection
 import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
@@ -32,6 +42,8 @@ import com.davide.seddio.easygallery.data.MembershipOrphanStateChange
 import com.davide.seddio.easygallery.data.MembershipUriRewrite
 import com.davide.seddio.easygallery.data.OverridablePreference
 import com.davide.seddio.easygallery.data.PLACE_RESOLVER_VERSION
+import com.davide.seddio.easygallery.data.PeopleAvailability
+import com.davide.seddio.easygallery.data.PeopleAvailabilitySource
 import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 import com.davide.seddio.easygallery.data.SortOrder
 import com.davide.seddio.easygallery.data.SortType
@@ -40,6 +52,7 @@ import com.davide.seddio.easygallery.data.StoredMembership
 import com.davide.seddio.easygallery.data.StoredMembershipKind
 import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.albumOverrideKey
+import com.davide.seddio.easygallery.data.toMediaIdentity
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -1067,6 +1080,218 @@ class AlbumsViewModelTest {
         assertNull(viewModel.selectedAlbumRule.value)
     }
 
+    // --- people albums (ADR-0022, plan 3.5) -------------------------------------------------------
+
+    @Test
+    fun `a people album waits, then holds the images of its person once the anchor is face indexed and grouped`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val samePerson = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val someoneElse = mediaItem("content://media/external/images/media/3", "3.jpg")
+        val albumId = albumStore.createAlbum("Her", 1_000L, peopleRuleText(anchor))
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        viewModel.setAllMedia(listOf(anchor, samePerson, someoneElse))
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, viewModel.album(albumId).status)
+        assertEquals(0, viewModel.album(albumId).resolvedMemberCount)
+
+        indexStore.upsert(listOf(anchor, samePerson, someoneElse).map { indexEntry(it, JUNE_15) })
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, viewModel.album(albumId).status)
+
+        val ids = listOf(anchor, samePerson, someoneElse).map { indexStore.indexFaces(it, LEFT_BOX).single() }
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, viewModel.album(albumId).status)
+
+        indexStore.writeFaceGroups(
+            listOf(FaceGroup(ids[0], listOf(ids[0], ids[1])), FaceGroup(ids[2], listOf(ids[2]))),
+            FACE_PIPELINE_VERSION,
+            FACE_GROUPING_VERSION
+        ) { true }
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.COMPLETE, viewModel.album(albumId).status)
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+        assertEquals(
+            setOf("1.jpg", "2.jpg"),
+            viewModel.selectedAlbumMembers.value.map { it.mediaItem.name }.toSet()
+        )
+    }
+
+    @Test
+    fun `two people in one album are both required in the picture`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val firstAnchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val secondAnchor = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val both = mediaItem("content://media/external/images/media/3", "3.jpg")
+        val onlyFirst = mediaItem("content://media/external/images/media/4", "4.jpg")
+        val onlySecond = mediaItem("content://media/external/images/media/5", "5.jpg")
+        val rule = AlbumRuleJson.encode(
+            AlbumRule.Evaluatable(listOf(peopleClause(firstAnchor, LEFT_BOX), peopleClause(secondAnchor, RIGHT_BOX)))
+        )
+        val albumId = albumStore.createAlbum("Both", 1_000L, rule)
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        viewModel.setAllMedia(listOf(firstAnchor, secondAnchor, both, onlyFirst, onlySecond))
+
+        val first = indexStore.indexFaces(firstAnchor, LEFT_BOX).single()
+        val second = indexStore.indexFaces(secondAnchor, RIGHT_BOX).single()
+        val (bothFirst, bothSecond) = indexStore.indexFaces(both, LEFT_BOX, RIGHT_BOX)
+        val firstOnly = indexStore.indexFaces(onlyFirst, LEFT_BOX).single()
+        val secondOnly = indexStore.indexFaces(onlySecond, RIGHT_BOX).single()
+        indexStore.writeFaceGroups(
+            listOf(
+                FaceGroup(first, listOf(first, bothFirst, firstOnly)),
+                FaceGroup(second, listOf(second, bothSecond, secondOnly))
+            ),
+            FACE_PIPELINE_VERSION,
+            FACE_GROUPING_VERSION
+        ) { true }
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.COMPLETE, viewModel.album(albumId).status)
+        viewModel.selectAlbum(albumId)
+        advanceUntilIdle()
+        assertEquals(listOf("3.jpg"), viewModel.selectedAlbumMembers.value.map { it.mediaItem.name })
+    }
+
+    @Test
+    fun `a people album is unevaluatable while face data is off or the device is incapable, with no media read yet`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val albumId = albumStore.createAlbum("Her", 1_000L, peopleRuleText(anchor))
+        val source = InMemoryPeopleAvailabilitySource(PeopleAvailability.FACE_DATA_OFF)
+        val viewModel = createViewModel(albumStore = albumStore, peopleAvailabilitySource = source)
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+
+        viewModel.setAllMedia(listOf(anchor))
+        source.availability = PeopleAvailability.DEVICE_INCAPABLE
+        viewModel.refreshPeopleAvailability()
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+    }
+
+    @Test
+    fun `refreshing the people availability turns an unavailable people album back to waiting, with no face write between`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val albumId = albumStore.createAlbum("Her", 1_000L, peopleRuleText(anchor))
+        val source = InMemoryPeopleAvailabilitySource(PeopleAvailability.FACE_DATA_OFF)
+        val viewModel = createViewModel(albumStore = albumStore, peopleAvailabilitySource = source)
+        viewModel.setAllMedia(listOf(anchor))
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+
+        source.availability = PeopleAvailability.AVAILABLE
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+
+        viewModel.refreshPeopleAvailability()
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, viewModel.album(albumId).status)
+
+        source.availability = PeopleAvailability.DEVICE_INCAPABLE
+        viewModel.refreshPeopleAvailability()
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+    }
+
+    @Test
+    fun `the availability is read again at every face projection emission, so a deletion of face data needs no refresh`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val albumId = albumStore.createAlbum("Her", 1_000L, peopleRuleText(anchor))
+        val source = InMemoryPeopleAvailabilitySource()
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore, peopleAvailabilitySource = source)
+        viewModel.setAllMedia(listOf(anchor))
+        advanceUntilIdle()
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, viewModel.album(albumId).status)
+
+        source.availability = PeopleAvailability.FACE_DATA_OFF
+        indexStore.upsert(listOf(indexEntry(anchor, JUNE_15)))
+        indexStore.indexFaces(anchor, LEFT_BOX)
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+    }
+
+    @Test
+    fun `an unavailable people album keeps its stored additions`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val added = mediaItem("content://media/external/images/media/2", "2.jpg")
+        val albumId = albumStore.createAlbum("Her", 1_000L, peopleRuleText(anchor))
+        val viewModel = createViewModel(
+            albumStore = albumStore,
+            peopleAvailabilitySource = InMemoryPeopleAvailabilitySource(PeopleAvailability.FACE_DATA_OFF)
+        )
+        viewModel.setAllMedia(listOf(anchor, added))
+        viewModel.addMembers(albumId, listOf(added))
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+        assertEquals(1, viewModel.album(albumId).resolvedMemberCount)
+    }
+
+    @Test
+    fun `only an album with a people clause subscribes to the face projection, and they share one subscription`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = CountingMediaIndexStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        albumStore.createAlbum("Manual", 1_000L)
+        albumStore.createAlbum("June", 1_001L, JUNE_RULE)
+        albumStore.createAlbum("Italy", 1_002L, italyRuleText())
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        viewModel.setAllMedia(listOf(anchor))
+        advanceUntilIdle()
+
+        assertEquals(1, indexStore.projectionSubscriptions)
+        assertEquals(0, indexStore.faceProjectionSubscriptions)
+
+        albumStore.createAlbum("Her", 1_003L, peopleRuleText(anchor))
+        albumStore.createAlbum("Him", 1_004L, peopleRuleText(anchor))
+        advanceUntilIdle()
+
+        assertEquals(1, indexStore.faceProjectionSubscriptions)
+    }
+
+    @Test
+    fun `an album whose rule is not understood does not subscribe to the face projection`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = CountingMediaIndexStore()
+        albumStore.createAlbum("Newer", 1_000L, UNKNOWN_VERSION_RULE)
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        viewModel.setAllMedia(listOf(mediaItem("content://media/external/images/media/1", "1.jpg")))
+        advanceUntilIdle()
+
+        assertEquals(0, indexStore.faceProjectionSubscriptions)
+    }
+
+    private fun peopleClause(anchor: MediaItem, box: FaceBox = LEFT_BOX) =
+        AlbumRuleClause.People(anchor = anchor.toMediaIdentity(), box = box, pipelineVersion = FACE_PIPELINE_VERSION)
+
+    private fun peopleRuleText(anchor: MediaItem, box: FaceBox = LEFT_BOX): String =
+        AlbumRuleJson.encode(AlbumRule.Evaluatable(listOf(peopleClause(anchor, box))))
+
+    // Writes [item]'s index row and one detected face per box, returning the new face ids in write order.
+    private suspend fun MediaIndexStore.indexFaces(item: MediaItem, vararg boxes: FaceBox): List<Long> {
+        val row = indexEntry(item, JUNE_15)
+        upsert(listOf(row))
+        val detections = boxes.map { FaceDetection(it, FaceEmbedding(floatArrayOf(1f, 0f, 0f))) }
+        writeFaceIndexResults(
+            listOf(FaceIndexWrite(row.toMediaIdentity(), FACE_PIPELINE_VERSION, FaceIndexOutcome.INDEXED, detections)),
+            faceDataEnabled = { true }
+        )
+        return listFaces(row.mediaUri).map { it.id }
+    }
+
     private fun AlbumsViewModel.album(albumId: Long): AlbumListItem =
         albums.value.first { it.id == albumId }
 
@@ -1616,7 +1841,8 @@ class AlbumsViewModelTest {
         joinFactory: (List<MediaIndexEvaluationProjection>, List<MediaItem>) -> MediaIndexLiveJoin =
             { projection, live -> MediaIndexLiveJoin.build(projection, live) },
         gazetteerNamesLoader: () -> GazetteerNames = { error("this test does not open the picker") },
-        albumOverrideStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore()
+        albumOverrideStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore(),
+        peopleAvailabilitySource: PeopleAvailabilitySource = InMemoryPeopleAvailabilitySource()
     ): AlbumsViewModel {
         return AlbumsViewModel(
             application = application,
@@ -1631,7 +1857,8 @@ class AlbumsViewModelTest {
             joinFactory = joinFactory,
             gazetteerNamesLoader = gazetteerNamesLoader,
             localeProvider = { Locale.US },
-            albumOverrideStore = albumOverrideStore
+            albumOverrideStore = albumOverrideStore,
+            peopleAvailabilitySource = peopleAvailabilitySource
         )
     }
 
@@ -1658,6 +1885,8 @@ class AlbumsViewModelTest {
     }
 
     private companion object {
+        val LEFT_BOX = FaceBox(0.1f, 0.2f, 0.3f, 0.5f)
+        val RIGHT_BOX = FaceBox(0.6f, 0.2f, 0.8f, 0.5f)
         val JUNE_15: Long = Instant.parse("2025-06-15T12:00:00Z").toEpochMilli()
         val JANUARY_15: Long = Instant.parse("2025-01-15T12:00:00Z").toEpochMilli()
         val JUNE_RULE: String = AlbumRuleJson.encode(
@@ -1684,6 +1913,13 @@ class AlbumsViewModelTest {
 
         override fun observeEvaluationProjection(): Flow<List<MediaIndexEvaluationProjection>> {
             return delegate.observeEvaluationProjection().onStart { projectionSubscriptions += 1 }
+        }
+
+        var faceProjectionSubscriptions: Int = 0
+            private set
+
+        override fun observeFaceEvaluationProjection(pipelineVersion: Int): Flow<FaceEvaluationSnapshot> {
+            return delegate.observeFaceEvaluationProjection(pipelineVersion).onStart { faceProjectionSubscriptions += 1 }
         }
     }
 

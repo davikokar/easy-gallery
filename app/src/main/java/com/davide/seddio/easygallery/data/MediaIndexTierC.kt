@@ -136,3 +136,63 @@ data class FaceDataDeletion(
     val rowsDeleted: Int,
     val scrubbed: Boolean
 )
+
+/**
+ * The face the People picker shows for a group, and exactly an anchor's fields under ADR-0022 §1: the image's current
+ * identity from its index row, the face's box in the upright frame, and the pipeline version that box was found under.
+ */
+data class FaceGroupRepresentative(
+    val identity: MediaIdentity,
+    val box: FaceBox,
+    val pipelineVersion: Int
+) {
+    override fun toString(): String = "FaceGroupRepresentative(redacted)"
+}
+
+/**
+ * One group as the picker reads it, computed from the stored faces. [groupId] is the representative face's id
+ * (decision 46's last tie-break); [imageCount] counts distinct images still in the index; [newestDateTakenEpochMillis]
+ * is the newest capture date among them, null when none has one.
+ */
+data class FaceGroupSummary(
+    val groupId: Long,
+    val imageCount: Int,
+    val newestDateTakenEpochMillis: Long?,
+    val representative: FaceGroupRepresentative
+) {
+    override fun toString(): String = "FaceGroupSummary(redacted)"
+}
+
+/** One face as a rule evaluation reads it: where it is and which group it is in. No embedding, by construction. */
+data class FaceEvaluationFace(
+    val id: Long,
+    val box: FaceBox,
+    val groupId: Long?,
+    val groupingVersion: Int?
+) {
+    override fun toString(): String = "FaceEvaluationFace(redacted)"
+}
+
+/** One image with a face state at the asked pipeline version: its index row's identity, the outcome, its faces by id. */
+data class FaceEvaluationImage(
+    val identity: MediaIdentity,
+    val outcome: FaceIndexOutcome,
+    val faces: List<FaceEvaluationFace>
+) {
+    override fun toString(): String = "FaceEvaluationImage(redacted)"
+}
+
+/**
+ * Every image with a face state at one pipeline version, as one consistent read (plan 3.5). [images] is ordered by
+ * stored URI; an image with no face is present with an empty list, which is how it differs from one not yet processed.
+ */
+data class FaceEvaluationSnapshot(val images: List<FaceEvaluationImage>) {
+    private val byStoredUri: Map<String, FaceEvaluationImage> by lazy {
+        images.associateBy { it.identity.mediaUri }
+    }
+
+    /** The image whose index row has [storedMediaUri], the stored form and not a live URI. */
+    fun imageOf(storedMediaUri: String): FaceEvaluationImage? = byStoredUri[storedMediaUri]
+
+    override fun toString(): String = "FaceEvaluationSnapshot(redacted)"
+}

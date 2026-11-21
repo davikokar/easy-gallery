@@ -21,6 +21,14 @@ interface MediaIndexStore {
      */
     fun observeEvaluationProjection(): Flow<List<MediaIndexEvaluationProjection>>
 
+    /**
+     * Per index row with a face state at [pipelineVersion]: the row's identity, the outcome and the faces at that version
+     * with box and group, never an embedding (plan 3.5). One emission is one consistent snapshot, and it re-emits on any
+     * change to the index rows, states or faces. Separate from [observeEvaluationProjection] so that a region or time
+     * album does not re-evaluate on every face write.
+     */
+    fun observeFaceEvaluationProjection(pipelineVersion: Int): Flow<FaceEvaluationSnapshot>
+
     suspend fun listByVolume(volumeName: String): List<MediaIndexEntry>
     suspend fun getByMediaUri(mediaUri: String): MediaIndexEntry?
 
@@ -79,6 +87,41 @@ interface MediaIndexStore {
     suspend fun getFaceIndexState(mediaUri: String): FaceIndexState?
     suspend fun listFaces(mediaUri: String): List<StoredFace>
     suspend fun hasFaceData(): Boolean
+
+    /**
+     * Faces stored at [pipelineVersion] and no other, ascending by face id, strictly after [afterFaceId] (null starts at
+     * the beginning); ids and embeddings only. Page by passing the last id back.
+     */
+    suspend fun listFacesForGrouping(pipelineVersion: Int, afterFaceId: Long?, limit: Int): List<FaceGroupingInput>
+
+    /**
+     * Whether grouping has work (plan 3.4, *When grouping is needed*): some face at [pipelineVersion] has no grouping
+     * version or one other than [groupingVersion], or has a group id naming no face at [pipelineVersion], which is a
+     * representative that was deleted or dropped by a changed healing triple. A face deleted that was not a
+     * representative does not count. Faces at another pipeline version are ignored.
+     */
+    suspend fun isFaceGroupingNeeded(pipelineVersion: Int, groupingVersion: Int): Boolean
+
+    /**
+     * One transaction. Each group's faces get its [FaceGroup.groupId] and [groupingVersion], by face id, only while
+     * they still exist at [pipelineVersion]: a face deleted since the read is skipped, a face added since keeps its null
+     * version. Nothing else is touched. [faceDataEnabled] is read inside the transaction (ADR-0018 Amendment 7 §4):
+     * off, nothing is written and 0 is returned. Returns how many faces were written.
+     */
+    suspend fun writeFaceGroups(
+        groups: List<FaceGroup>,
+        pipelineVersion: Int,
+        groupingVersion: Int,
+        faceDataEnabled: () -> Boolean
+    ): Int
+
+    /**
+     * The groups the People picker offers: faces at [pipelineVersion] and [groupingVersion] whose group's representative
+     * face exists at [pipelineVersion], with at least [minimumImages] distinct images among the index rows that still
+     * exist. Sorted by distinct images, most first; then the newest capture date among them, an image with none counting
+     * as the oldest and a group with no date last; then [FaceGroupSummary.groupId] ascending (decision 46).
+     */
+    suspend fun listFaceGroups(pipelineVersion: Int, groupingVersion: Int, minimumImages: Int): List<FaceGroupSummary>
 
     /**
      * One transaction: the row at [fromMediaUri] becomes [healed]. Its Tier C rows are re-keyed and kept, and a row
@@ -169,6 +212,9 @@ private fun keepsTierC(stored: MediaIdentity?, incoming: MediaIdentity): Boolean
     return stored != null && stored.healingKey == incoming.healingKey
 }
 
+// Ids per UPDATE: with the three other variables, well under API 28's limit of 999.
+private const val FACE_GROUP_UPDATE_CHUNK = 500
+
 class RoomMediaIndexStore(
     private val database: MediaIndexDatabase,
     private val dao: MediaIndexDao = database.mediaIndexDao()
@@ -219,6 +265,39 @@ class RoomMediaIndexStore(
                     derivedPlaceResolverVersion = row.derivedPlaceResolverVersion
                 )
             }
+        }
+    }
+
+    override fun observeFaceEvaluationProjection(pipelineVersion: Int): Flow<FaceEvaluationSnapshot> {
+        return dao.observeFaceEvaluationRows(pipelineVersion).map { rows ->
+            val images = ArrayList<FaceEvaluationImage>()
+            var current: MediaIndexFaceEvaluationRowEntity? = null
+            var currentFaces = ArrayList<FaceEvaluationFace>()
+            fun close() {
+                val head = current ?: return
+                images += FaceEvaluationImage(
+                    identity = mediaIdentityOf(head.mediaUri, head.displayName, head.size, head.dateModified),
+                    outcome = head.outcome,
+                    faces = currentFaces
+                )
+            }
+            for (row in rows) {
+                if (current?.mediaUri != row.mediaUri) {
+                    close()
+                    current = row
+                    currentFaces = ArrayList()
+                }
+                if (row.faceId != null) {
+                    currentFaces += FaceEvaluationFace(
+                        id = row.faceId,
+                        box = FaceBox(row.boxLeft!!, row.boxTop!!, row.boxRight!!, row.boxBottom!!),
+                        groupId = row.groupId,
+                        groupingVersion = row.groupingVersion
+                    )
+                }
+            }
+            close()
+            FaceEvaluationSnapshot(images)
         }
     }
 
@@ -359,6 +438,61 @@ class RoomMediaIndexStore(
 
     override suspend fun hasFaceData(): Boolean = dao.hasFaceData()
 
+    override suspend fun listFacesForGrouping(pipelineVersion: Int, afterFaceId: Long?, limit: Int): List<FaceGroupingInput> {
+        require(limit > 0) { "limit must be positive, was $limit" }
+        return dao.listFacesForGrouping(pipelineVersion, afterFaceId, limit)
+            .map { FaceGroupingInput(it.id, decodeFaceEmbedding(it.embedding)) }
+    }
+
+    override suspend fun isFaceGroupingNeeded(pipelineVersion: Int, groupingVersion: Int): Boolean {
+        return dao.hasFacesPendingGrouping(pipelineVersion, groupingVersion)
+    }
+
+    override suspend fun writeFaceGroups(
+        groups: List<FaceGroup>,
+        pipelineVersion: Int,
+        groupingVersion: Int,
+        faceDataEnabled: () -> Boolean
+    ): Int {
+        if (groups.isEmpty()) return 0
+        return database.withTransaction {
+            if (!faceDataEnabled()) return@withTransaction 0
+            var written = 0
+            groups.forEach { group ->
+                // Chunked: one IN list of every member could pass API 28's limit of 999 variables.
+                group.memberFaceIds.chunked(FACE_GROUP_UPDATE_CHUNK).forEach { ids ->
+                    written += dao.updateFaceGroup(group.groupId, groupingVersion, pipelineVersion, ids)
+                }
+            }
+            written
+        }
+    }
+
+    override suspend fun listFaceGroups(
+        pipelineVersion: Int,
+        groupingVersion: Int,
+        minimumImages: Int
+    ): List<FaceGroupSummary> {
+        require(minimumImages > 0) { "minimumImages must be positive, was $minimumImages" }
+        return dao.listFaceGroups(pipelineVersion, groupingVersion, minimumImages).map {
+            FaceGroupSummary(
+                groupId = it.groupId,
+                imageCount = it.imageCount,
+                newestDateTakenEpochMillis = it.newestDateTakenEpochMillis,
+                representative = FaceGroupRepresentative(
+                    identity = mediaIdentityOf(
+                        it.representativeMediaUri,
+                        it.representativeDisplayName,
+                        it.representativeSize,
+                        it.representativeDateModified
+                    ),
+                    box = FaceBox(it.boxLeft, it.boxTop, it.boxRight, it.boxBottom),
+                    pipelineVersion = it.pipelineVersion
+                )
+            )
+        }
+    }
+
     override suspend fun healMediaUri(fromMediaUri: String, healed: MediaIndexEntry) {
         database.withTransaction {
             val keeps = keepsTierC(dao.getByMediaUri(fromMediaUri)?.toMediaIdentity(), healed.toMediaIdentity())
@@ -487,7 +621,17 @@ class InMemoryMediaIndexStore : MediaIndexStore {
     private val attempts = HashMap<String, RecordedAttempt>()
     private var nextFaceId = 1L
 
+    // A copy of Tier C and of the identities of the rows it describes, replaced on every change; a new object each
+    // time, so the flow re-emits like Room's does.
+    private val faceView = MutableStateFlow(FaceView(emptyMap(), emptyMap(), emptyMap()))
+
     private class RecordedAttempt(val pipelineVersion: Int, val attempts: Int)
+
+    private class FaceView(
+        val states: Map<String, FaceIndexState>,
+        val faces: Map<String, List<StoredFace>>,
+        val identities: Map<String, MediaIdentity>
+    )
 
     override fun observeAll(): Flow<List<MediaIndexEntry>> = rowsFlow
 
@@ -529,6 +673,26 @@ class InMemoryMediaIndexStore : MediaIndexStore {
                     derivedPlaceResolverVersion = entry.derivedPlaceResolverVersion
                 )
             }
+        }
+    }
+
+    override fun observeFaceEvaluationProjection(pipelineVersion: Int): Flow<FaceEvaluationSnapshot> {
+        return faceView.map { view ->
+            val images = view.states.values
+                .filter { it.pipelineVersion == pipelineVersion }
+                .sortedBy { it.mediaUri }
+                .mapNotNull { state ->
+                    val identity = view.identities[state.mediaUri] ?: return@mapNotNull null
+                    FaceEvaluationImage(
+                        identity = identity,
+                        outcome = state.outcome,
+                        faces = view.faces[state.mediaUri].orEmpty()
+                            .filter { it.pipelineVersion == pipelineVersion }
+                            .sortedBy { it.id }
+                            .map { FaceEvaluationFace(it.id, it.box, it.groupId, it.groupingVersion) }
+                    )
+                }
+            FaceEvaluationSnapshot(images)
         }
     }
 
@@ -621,7 +785,7 @@ class InMemoryMediaIndexStore : MediaIndexStore {
             faceStates.clear()
             faces.clear()
             attempts.clear()
-            if (rows.isEmpty()) return@withLock
+            if (rows.isEmpty()) return@withLock publishFaceViewLocked()
             rows.clear()
             publishLocked()
         }
@@ -653,6 +817,7 @@ class InMemoryMediaIndexStore : MediaIndexStore {
                 }
                 applied += 1
             }
+            if (applied > 0) publishFaceViewLocked()
             applied
         }
     }
@@ -715,6 +880,93 @@ class InMemoryMediaIndexStore : MediaIndexStore {
         return lock.withLock { faceStates.isNotEmpty() || faces.isNotEmpty() || attempts.isNotEmpty() }
     }
 
+    override suspend fun listFacesForGrouping(pipelineVersion: Int, afterFaceId: Long?, limit: Int): List<FaceGroupingInput> {
+        require(limit > 0) { "limit must be positive, was $limit" }
+        return lock.withLock {
+            faces.values
+                .asSequence()
+                .flatten()
+                .filter { it.pipelineVersion == pipelineVersion }
+                .filter { afterFaceId == null || it.id > afterFaceId }
+                .sortedBy { it.id }
+                .take(limit)
+                .map { FaceGroupingInput(it.id, it.embedding) }
+                .toList()
+        }
+    }
+
+    override suspend fun isFaceGroupingNeeded(pipelineVersion: Int, groupingVersion: Int): Boolean {
+        return lock.withLock {
+            val current = faces.values.flatten().filter { it.pipelineVersion == pipelineVersion }
+            val currentIds = current.mapTo(HashSet()) { it.id }
+            current.any { it.groupingVersion != groupingVersion || it.groupId == null || it.groupId !in currentIds }
+        }
+    }
+
+    override suspend fun writeFaceGroups(
+        groups: List<FaceGroup>,
+        pipelineVersion: Int,
+        groupingVersion: Int,
+        faceDataEnabled: () -> Boolean
+    ): Int {
+        if (groups.isEmpty()) return 0
+        return lock.withLock {
+            if (!faceDataEnabled()) return@withLock 0
+            val groupOf = HashMap<Long, Long>()
+            groups.forEach { group -> group.memberFaceIds.forEach { groupOf[it] = group.groupId } }
+            var written = 0
+            faces.replaceAll { _, stored ->
+                stored.map { face ->
+                    val groupId = groupOf[face.id]
+                    if (groupId == null || face.pipelineVersion != pipelineVersion) {
+                        face
+                    } else {
+                        written += 1
+                        face.copy(groupId = groupId, groupingVersion = groupingVersion)
+                    }
+                }
+            }
+            if (written > 0) publishFaceViewLocked()
+            written
+        }
+    }
+
+    override suspend fun listFaceGroups(
+        pipelineVersion: Int,
+        groupingVersion: Int,
+        minimumImages: Int
+    ): List<FaceGroupSummary> {
+        require(minimumImages > 0) { "minimumImages must be positive, was $minimumImages" }
+        return lock.withLock {
+            val current = faces.values.flatten().filter { it.pipelineVersion == pipelineVersion }
+            val byId = current.associateBy { it.id }
+            current
+                .filter { it.groupingVersion == groupingVersion && it.groupId != null && rows.containsKey(it.mediaUri) }
+                .groupBy { it.groupId!! }
+                .mapNotNull { (groupId, members) ->
+                    val images = members.map { it.mediaUri }.distinct()
+                    val representative = byId[groupId] ?: return@mapNotNull null
+                    val representativeRow = rows[representative.mediaUri] ?: return@mapNotNull null
+                    if (images.size < minimumImages) return@mapNotNull null
+                    FaceGroupSummary(
+                        groupId = groupId,
+                        imageCount = images.size,
+                        newestDateTakenEpochMillis = images.mapNotNull { rows[it]?.capturedDateTakenEpochMillis }.maxOrNull(),
+                        representative = FaceGroupRepresentative(
+                            identity = representativeRow.toMediaIdentity(),
+                            box = representative.box,
+                            pipelineVersion = representative.pipelineVersion
+                        )
+                    )
+                }
+                .sortedWith(
+                    compareByDescending<FaceGroupSummary> { it.imageCount }
+                        .thenByDescending { it.newestDateTakenEpochMillis ?: Long.MIN_VALUE }
+                        .thenBy { it.groupId }
+                )
+        }
+    }
+
     override suspend fun healMediaUri(fromMediaUri: String, healed: MediaIndexEntry) {
         lock.withLock {
             val keeps = keepsTierC(rows[fromMediaUri]?.toMediaIdentity(), healed.toMediaIdentity())
@@ -746,6 +998,7 @@ class InMemoryMediaIndexStore : MediaIndexStore {
             faces.clear()
             faceStates.clear()
             attempts.clear()
+            if (rowsDeleted > 0) publishFaceViewLocked()
             // No file, so nothing for a journal to keep.
             FaceDataDeletion(rowsDeleted = rowsDeleted, scrubbed = true)
         }
@@ -759,5 +1012,12 @@ class InMemoryMediaIndexStore : MediaIndexStore {
 
     private fun publishLocked() {
         rowsFlow.value = rows.values.sortedBy { it.mediaUri }
+        publishFaceViewLocked()
+    }
+
+    private fun publishFaceViewLocked() {
+        val identities = HashMap<String, MediaIdentity>()
+        faceStates.keys.forEach { uri -> rows[uri]?.let { identities[uri] = it.toMediaIdentity() } }
+        faceView.value = FaceView(HashMap(faceStates), HashMap(faces), identities)
     }
 }
