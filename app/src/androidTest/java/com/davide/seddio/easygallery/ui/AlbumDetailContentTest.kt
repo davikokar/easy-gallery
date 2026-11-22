@@ -34,6 +34,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumRuleSummary
+import com.davide.seddio.easygallery.data.AlbumUnevaluatableCause
 import com.davide.seddio.easygallery.data.Folder
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
@@ -208,6 +209,85 @@ class AlbumDetailContentTest {
             .onAllNodesWithText(appContext.getString(R.string.album_hidden_items_notice))
             .assertCountEquals(0)
         composeTestRule.onNodeWithTag("media_tile_$mediaUri").assertIsDisplayed()
+    }
+
+    @Test
+    fun faceDataOffAlbumShowsItsFullNoticeAboveTheHiddenItemsNotice() {
+        assertStatusNoticeAboveHiddenItems(
+            AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_FACE_DATA_OFF,
+            "album_people_face_data_off_notice",
+            R.string.album_people_face_data_off_notice
+        )
+    }
+
+    @Test
+    fun deviceIncapableAlbumShowsItsFullNoticeAboveTheHiddenItemsNotice() {
+        assertStatusNoticeAboveHiddenItems(
+            AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE,
+            "album_people_device_incapable_notice",
+            R.string.album_people_device_incapable_notice
+        )
+    }
+
+    @Test
+    fun personNotFoundAlbumShowsItsFullNoticeAboveTheHiddenItemsNotice() {
+        assertStatusNoticeAboveHiddenItems(
+            AlbumUnevaluatableCause.ANCHOR_NOT_FOUND,
+            "album_people_anchor_not_found_notice",
+            R.string.album_people_anchor_not_found_notice
+        )
+    }
+
+    @Test
+    fun newerAppNoticeStaysAboveTheHiddenItemsNotice() {
+        assertStatusNoticeAboveHiddenItems(
+            AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD,
+            "album_rule_unevaluatable_notice",
+            R.string.album_rule_unevaluatable_notice
+        )
+    }
+
+    @Test
+    fun waitingPeopleAlbumShowsNoStatusNotice() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = emptyList(),
+                hiddenMemberCount = 0,
+                evaluationStatus = AlbumEvaluationStatus.WAITING_ON_INDEX,
+                unevaluatableCause = null
+            )
+        }
+
+        STATUS_NOTICE_TAGS.forEach { tag ->
+            composeTestRule.onAllNodesWithTag(tag).assertCountEquals(0)
+        }
+    }
+
+    // The hidden-members notice stays below the status notice, which is the only one of its kind.
+    private fun assertStatusNoticeAboveHiddenItems(cause: AlbumUnevaluatableCause, tag: String, fullText: Int) {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                hiddenMemberCount = 1,
+                evaluationStatus = AlbumEvaluationStatus.UNEVALUATABLE,
+                unevaluatableCause = cause
+            )
+        }
+
+        val notice = composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(fullText)).assertIsDisplayed()
+        assertEquals(
+            LiveRegionMode.Polite,
+            notice.fetchSemanticsNode().config.getOrNull(SemanticsProperties.LiveRegion)
+        )
+        val hidden = composeTestRule.onNodeWithTag("album_hidden_items_notice").assertIsDisplayed()
+        assertTrue(
+            "The hidden-members notice must sit below the status notice",
+            hidden.fetchSemanticsNode().boundsInRoot.top >= notice.fetchSemanticsNode().boundsInRoot.bottom - 1f
+        )
+        (STATUS_NOTICE_TAGS - tag).forEach { other ->
+            composeTestRule.onAllNodesWithTag(other).assertCountEquals(0)
+        }
     }
 
     @Test
@@ -780,7 +860,9 @@ class AlbumDetailContentTest {
         status: AlbumEvaluationStatus,
         resolved: Int,
         stored: Int,
-        hidden: Int
+        hidden: Int,
+        cause: AlbumUnevaluatableCause? =
+            if (status == AlbumEvaluationStatus.UNEVALUATABLE) AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD else null
     ) = AlbumListItem(
         id = 1L,
         name = "Rule album",
@@ -792,7 +874,8 @@ class AlbumDetailContentTest {
         storedMemberCount = stored,
         hiddenMemberCount = hidden,
         storedMembershipCount = stored,
-        status = status
+        status = status,
+        unevaluatableCause = cause
     )
 
     @Composable
@@ -800,6 +883,8 @@ class AlbumDetailContentTest {
         media: List<MediaItem> = emptyList(),
         hiddenMemberCount: Int = 0,
         evaluationStatus: AlbumEvaluationStatus = AlbumEvaluationStatus.MANUAL,
+        unevaluatableCause: AlbumUnevaluatableCause? =
+            if (evaluationStatus == AlbumEvaluationStatus.UNEVALUATABLE) AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD else null,
         albumRuleSummary: AlbumRuleSummary? = null,
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
@@ -823,6 +908,7 @@ class AlbumDetailContentTest {
             media = media,
             hiddenMemberCount = hiddenMemberCount,
             evaluationStatus = evaluationStatus,
+            unevaluatableCause = unevaluatableCause,
             albumRuleSummary = albumRuleSummary,
             preferences = ViewPreferences.defaultFor(PreferenceScope.ALBUM_DETAIL),
             searchQuery = "",
@@ -865,4 +951,11 @@ class AlbumDetailContentTest {
             isFavouritesAlbum = isFavouritesAlbum
         )
     }
+
+    private val STATUS_NOTICE_TAGS = setOf(
+        "album_rule_unevaluatable_notice",
+        "album_people_face_data_off_notice",
+        "album_people_device_incapable_notice",
+        "album_people_anchor_not_found_notice"
+    )
 }

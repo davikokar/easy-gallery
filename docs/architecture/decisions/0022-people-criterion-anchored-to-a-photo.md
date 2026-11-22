@@ -141,7 +141,18 @@ What the code settled that this record left open or did not spell out:
 - **Availability is told before any anchor**, as the paragraph after §3's list says: face data off,
   then a capability record for this build saying incapable. An unknown capability counts as
   available, which leaves a gap on devices without arm64-v8a that step 3.6 must close
-  ([ARCHITECTURE.md](../ARCHITECTURE.md) §11).
+  ([ARCHITECTURE.md](../ARCHITECTURE.md) §11). *(Decided 2026-11-21 by
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) Amendment 1 §3: such a device is
+  recorded incapable without loading anything. Step 3.6's task A builds it.)* *(Built 2026-11-22,
+  step 3.6: `supportsFacePipelineAbi`, in the checker and, to skip the lock, in `FaceDataViewModel`.)*
+
+### Built 2026-11-22 — step 3.6
+
+The anchors are now written: the People picker builds each person's clause entry through
+`AlbumRuleClause.People.anchoredAt` from the group's representative face, and a rule holds at most
+`MAX_PEOPLE_PER_ALBUM` (8) people — the picker stops there and `createAutomaticAlbum` refuses more,
+with the encoder's `require` caught as a backstop. Nothing in §1 to §5 changed;
+[ARCHITECTURE.md](../ARCHITECTURE.md) §3 and §11 describe it.
 
 ## Alternatives Considered
 

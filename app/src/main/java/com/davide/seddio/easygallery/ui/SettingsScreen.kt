@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,8 +29,10 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -42,6 +46,9 @@ import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 import com.davide.seddio.easygallery.data.MediaIndexRunOutcome
 import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
+import com.davide.seddio.easygallery.ui.components.DeleteFaceDataDialog
+import com.davide.seddio.easygallery.ui.components.FaceDataDisclosureDialog
+import com.davide.seddio.easygallery.ui.components.FaceLicencesDialog
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,6 +59,7 @@ fun SettingsScreen(
     viewModel: GalleryViewModel,
     billingViewModel: BillingViewModel,
     mediaIndexingViewModel: MediaIndexingViewModel,
+    faceDataViewModel: FaceDataViewModel,
     onContactSupportClick: (Context) -> Unit = { contactSupport(it) }
 ) {
     val context = LocalContext.current
@@ -59,7 +67,16 @@ fun SettingsScreen(
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showPlaceDataDialog by remember { mutableStateOf(false) }
+    var showFaceLicencesDialog by remember { mutableStateOf(false) }
+    var showFaceDataInfoDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteFaceDataDialog by rememberSaveable { mutableStateOf(false) }
     val indexingState by mediaIndexingViewModel.uiState.collectAsState()
+    val faceDataState by faceDataViewModel.uiState.collectAsState()
+
+    // The not-scrubbed sentence lasts until Settings is left (ADR-0024 Am. 1 §4).
+    DisposableEffect(faceDataViewModel) {
+        onDispose { faceDataViewModel.dismissCleanupNotice() }
+    }
 
     // The location permission is changed outside the app, so it is read again on every resume.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -77,6 +94,29 @@ fun SettingsScreen(
 
     if (showPlaceDataDialog) {
         PlaceDataDialog(onDismiss = { showPlaceDataDialog = false })
+    }
+
+    if (showFaceLicencesDialog) {
+        FaceLicencesDialog(onDismiss = { showFaceLicencesDialog = false })
+    }
+
+    if (showFaceDataInfoDialog) {
+        FaceDataDisclosureDialog(
+            isInfoMode = true,
+            onOk = {},
+            onTurnOff = {},
+            onClose = { showFaceDataInfoDialog = false }
+        )
+    }
+
+    if (showDeleteFaceDataDialog) {
+        DeleteFaceDataDialog(
+            onConfirm = {
+                showDeleteFaceDataDialog = false
+                faceDataViewModel.switchOff()
+            },
+            onCancel = { showDeleteFaceDataDialog = false }
+        )
     }
 
     if (showLanguageDialog) {
@@ -141,6 +181,13 @@ fun SettingsScreen(
                 color = Color.Gray.copy(alpha = 0.5f)
             )
 
+            FaceDataSettingsArea(
+                state = faceDataState,
+                onSwitchOn = faceDataViewModel::switchOn,
+                onSwitchOffRequested = { showDeleteFaceDataDialog = true },
+                onInfoClick = { showFaceDataInfoDialog = true }
+            )
+
             SettingsSection(title = stringResource(R.string.settings_app))
             SettingsItem(
                 title = stringResource(R.string.settings_share_app),
@@ -202,7 +249,79 @@ fun SettingsScreen(
                 onClick = { showPlaceDataDialog = true },
                 modifier = Modifier.testTag(PLACE_DATA_ROW_TAG)
             )
+            // Never hidden: the models and OpenCV are in the APK whatever the device or the setting.
+            SettingsItem(
+                title = stringResource(R.string.settings_face_licences),
+                subtitle = stringResource(R.string.settings_face_licences_credit),
+                icon = Icons.Default.Description,
+                onClick = { showFaceLicencesDialog = true },
+                modifier = Modifier.testTag(FACE_LICENCES_ROW_TAG)
+            )
         }
+    }
+}
+
+/**
+ * The Face data area, shown only while the stored capability record says capable, whatever the setting, so a user who
+ * switched face data off can switch it on again (ADR-0024 Am. 1 §5). Turning it off is requested, not performed: the
+ * caller confirms first.
+ */
+@Composable
+fun FaceDataSettingsArea(
+    state: FaceDataUiState,
+    onSwitchOn: () -> Unit,
+    onSwitchOffRequested: () -> Unit,
+    onInfoClick: () -> Unit
+) {
+    if (state.capability != FaceCapabilityStatus.CAPABLE) return
+
+    Column(modifier = Modifier.testTag(FACE_DATA_AREA_TAG)) {
+        SettingsSection(title = stringResource(R.string.settings_people))
+        SettingsItem(
+            title = stringResource(R.string.settings_face_data),
+            subtitle = stringResource(
+                when {
+                    state.isDeleting -> R.string.settings_face_data_deleting
+                    state.enabled -> R.string.settings_face_data_on
+                    else -> R.string.settings_face_data_off
+                }
+            ),
+            icon = Icons.Default.Face,
+            onClick = { if (state.enabled) onSwitchOffRequested() else onSwitchOn() },
+            enabled = !state.isDeleting,
+            checked = state.enabled && !state.isDeleting,
+            trailing = {
+                if (state.isDeleting) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    Switch(checked = state.enabled, onCheckedChange = null)
+                }
+            },
+            modifier = Modifier.testTag(FACE_DATA_ROW_TAG)
+        )
+        if (state.cleanupPending) {
+            Text(
+                text = stringResource(R.string.settings_face_data_cleanup_pending),
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .padding(start = 56.dp, end = 16.dp, bottom = 8.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+                    .testTag(FACE_DATA_CLEANUP_PENDING_TAG)
+            )
+        }
+        SettingsItem(
+            title = stringResource(R.string.settings_face_data_about),
+            icon = Icons.Default.Info,
+            onClick = onInfoClick,
+            modifier = Modifier.testTag(FACE_DATA_INFO_ROW_TAG)
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            thickness = 0.5.dp,
+            color = Color.Gray.copy(alpha = 0.5f)
+        )
     }
 }
 
@@ -411,16 +530,21 @@ fun SettingsItem(
     onClick: () -> Unit,
     subtitle: String? = null,
     enabled: Boolean = true,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Non-null makes the whole row a switch (Role.Switch) in that state; [trailing] draws it.
+    checked: Boolean? = null,
+    trailing: (@Composable () -> Unit)? = null
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .then(if (checked != null) Modifier.heightIn(min = 56.dp) else Modifier)
             .then(
-                if (enabled) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier.semantics { disabled() }
+                when {
+                    !enabled -> Modifier.semantics(mergeDescendants = checked != null) { disabled() }
+                    checked != null -> Modifier
+                        .toggleable(value = checked, role = Role.Switch, onValueChange = { onClick() })
+                    else -> Modifier.clickable(onClick = onClick)
                 }
             ),
         color = Color.Transparent
@@ -438,7 +562,7 @@ fun SettingsItem(
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = if (trailing != null) Modifier.weight(1f) else Modifier) {
                 Text(
                     text = title,
                     color = Color.White.copy(alpha = if (enabled) 1f else 0.38f),
@@ -451,6 +575,10 @@ fun SettingsItem(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+            }
+            if (trailing != null) {
+                Spacer(modifier = Modifier.width(16.dp))
+                trailing()
             }
         }
     }
@@ -544,6 +672,11 @@ fun AboutDialog(onDismiss: () -> Unit) {
     )
 }
 
+internal const val FACE_DATA_AREA_TAG = "face_data_area"
+internal const val FACE_DATA_ROW_TAG = "face_data_row"
+internal const val FACE_DATA_INFO_ROW_TAG = "face_data_info_row"
+internal const val FACE_DATA_CLEANUP_PENDING_TAG = "face_data_cleanup_pending"
+internal const val FACE_LICENCES_ROW_TAG = "face_licences_row"
 internal const val PLACE_DATA_ROW_TAG = "place_data_row"
 internal const val PLACE_DATA_NOTICE_TAG = "place_data_notice"
 internal const val PLACE_DATA_SOURCE_LINK_TAG = "place_data_source_link"

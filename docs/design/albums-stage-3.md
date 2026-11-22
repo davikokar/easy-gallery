@@ -362,7 +362,7 @@
   ADR-0017 Amendment 4's, ADR-0022's and ADR-0024 §4's notes in an earlier run, and ADR-0018
   Amendment 5's *Built* note, this plan and [albums.md](albums.md) §7's Stage 3 row in this one.
   Stage 3 stays In progress. No Gradle run by the Planner.
-- **Next action: step 3.6 — the UI: the People criterion, the disclosure, the switch, the strings
+- ~~**Next action: step 3.6 — the UI: the People criterion, the disclosure, the switch, the strings
   and the notices.** Owner: **the Designer first**, for D1 — where the People picker lives — and the
   criterion's layout (*Open questions* D1); then the Planner refines 3.6 into a step plan, as 3.2 to
   3.5 were; then the Coder builds it. 3.6's own text, under *3.2 to 3.8*, says: the People criterion
@@ -371,7 +371,8 @@
   Settings row showing the licence notices (E5); strings in every shipped locale; vocabulary
   in-change — and the five items *Added 2026-11-21 from 3.5*, each a must: a durable answer on a
   phone without arm64-v8a, the app-open capability check and start-up deletion, the refresh's
-  callers, a limit on people per album, and the cause carried to the notices.
+  callers, a limit on people per album, and the cause carried to the notices.~~ Designed and refined
+  2026-11-21 — the entry below; its sub-items are kept as they were.
   - **Read first:** 3.6's text and its five items;
     [the UI vocabulary](../../.github/instructions/ui-vocabulary.instructions.md);
     [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §1 to §5;
@@ -404,6 +405,125 @@
       not before 3.6;
     - rule editing's D6, constrained, not answered; and the Play Data Safety check, before the
       first Play release that ships the Tier C pass.
+- **2026-11-21, later — the maintainer answered D3; the Designer designed 3.6; the Planner refined
+  it.** D3: at most **8 people in one album**, as recommended, and start 3.6. The Designer answered
+  D1 — **a third tab, People, on the New automatic album screen**, so D2 is not reopened — and designed
+  the picker, the disclosure, the Settings switch, the notices, the licence row and the Album info
+  entry, in a scratch file outside the repository. The Planner copied its decisions, wording drafts,
+  string keys, vocabulary proposals and file list into *3.6 — The People criterion, the disclosure
+  and the switch* below, which is now the record, split the work into tasks S1, C, S2, A and B, and
+  drafted [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md)
+  **Amendment 1, Proposed**, for the six points the records reserve for the maintainer or leave open
+  — a marker sits under the record's title. D1 and D3 are marked answered under *Open questions*; the
+  step row says what waits. No code, no Gradle run, no commit.
+- ~~**Next action: the maintainer approves ADR-0024 Amendment 1 and reads the disclosure's wording;
+  meanwhile step 3.6's tasks S1 and C.**~~ Done 2026-11-21 — the entry below; its sub-items are kept
+  as they were. *3.6 — The People criterion, the disclosure and the switch*
+  is the brief: its *Tasks* hold each task's files, exit criteria and mutation checks.
+  - **For the maintainer — one approval, with one choice and one reading in it:**
+    1. **Amendment 1 as a whole** — §1 OK and Turn off, not dismissable, no run started (recommended
+       by both); §3 the app-open check, with *incapable* recorded without loading on a device that
+       lists no arm64-v8a, and the start-up deletion at app open (recommended); §4 the switch-off
+       order and the memory drop, the whole image memory cache if crops cannot be removed alone
+       (recommended); §5's table of what is offered where, an unknown capability hidden on screens and
+       available to evaluation (recommended); §6 the Place and Date counts following the chosen people
+       (recommended by both);
+    2. **the choice at §2** — when face data is switched on and the disclosure was never shown on this
+       installation: **A, the disclosure shows** (the Planner's recommendation), or B, switching on
+       marks it shown (the Designer's);
+    3. **the disclosure's wording, §5** — the app's one privacy statement; the third paragraph, on
+       anchors being backed up, recommended kept. Approving it approves task S2's English.
+  - **Not for him:** D1, the layout, the notices' wording, the licence row, the vocabulary, the task
+    split, and `FaceDataViewModel` with the disclosure at `MainActivity`'s root — each follows a
+    precedent `AGENTS.md` names. The translations stay the implementer's, a native-speaker review
+    before a release.
+  - **Task order:** **S1 → C**, now — Coder, one at a time; neither depends on the amendment. Then,
+    after the approval, **S2 → A → B** — A may run beside C if the approval comes while C runs, no file
+    being shared. Then **the verification phase, once — it owns the definition of done**, with `adb
+    devices` deciding step 4 and the device-only checks listed in *3.6*; then **task P** (Planner; the
+    vocabulary's edits to existing entries routed to the Designer).
+  - **Read first, for any 3.6 task:** *3.6* whole; the UI vocabulary; ADR-0024 §1 to §6 and Amendment
+    1; ADR-0017 Amendment 4; `AGENTS.md` *Strings and localisation*; the test conventions.
+- **2026-11-21, later still — tasks S1 and C built and verified; Amendment 1 approved, option A.**
+  S1: the 24 S1 keys in all 17 locales, `LocaleResourceParityTest` 11/11. C: the notices by cause
+  through one pure mapping (`AlbumStatusNoticeKind`, `albumStatusNoticeKind`) and the People entry in
+  the Album info dialog; unit 79 classes, 1310 tests, 0 failures; `FolderListContentTest` 51,
+  `AlbumDetailContentTest` 38 and `AlbumInfoDialogTest` 15 pass on the SM-G990B; two planned
+  mutations not run (*3.6*, *Tasks*, Task C). The maintainer approved
+  [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) Amendment 1 as
+  drafted, the disclosure's wording unchanged, and chose **option A at §2** — switching face data on
+  when the disclosure was never shown on this installation shows it — in his words "I approve the
+  amendment and I choose the option you recommend". The Planner adopted the amendment in the record,
+  made *3.6* coherent with option A (the switch-on path does not mark the disclosure shown; Task A's
+  criterion 4 and a mutation check say so), added dated pointers in ADR-0022 and ADR-0023 §3, and
+  wrote task S2's brief in full. No code, no Gradle run, no commit.
+- ~~**Next action: step 3.6, task S2 — Coder: the privacy strings, 18 keys in 17 locales, from the
+  approved English.**~~ Done 2026-11-22, and with it A, B, the verification phase and task P — the
+  entry below; its sub-items are kept as they were. *3.6*, *Tasks*, Task S2 is the whole brief — keys, final English, the per-locale
+  *face data* terms S1 fixed, the rules, the exit criteria and the mutation checks.
+  - **Then:** task A (face data: the ViewModel, Settings, the disclosure, the licences, app open); then
+    task B (the People picker; after A, and after C, which is done); then **the verification phase,
+    once — it owns the definition of done**, `adb devices` deciding step 4 and the device-only checks
+    in *3.6* included, the short notices at font scale 2.0 among them; then **task P** (Planner; the
+    vocabulary's edits to existing entries — Newer-app notice, Album info dialog — routed to the
+    Designer).
+  - **Open, none blocking:** the short notices at 74–85 characters in some locales against ~60; the
+    native-speaker review, priority the three notices, the *face data* term and, once S2 lands, the
+    disclosure (*3.6*, *Open after S1 and C*).
+  - **For the maintainer: nothing pending** except reading the translated privacy text before a
+    release.
+- **2026-11-22 — step 3.6 built and verified: tasks S2, A and B (as B1 and B2), the verification
+  phase and task P done.** The privacy strings in all 17 locales; `FaceDataViewModel` with the Face
+  data area, the Face licences row, the disclosure at `MainActivity`'s root, the Delete face data
+  dialog, the app-open check and start-up deletion, and the no-arm64 answer; the People tab, its
+  tiles and face crops, at most 8 people, the counts through the evaluator. **No schema change.**
+  **The gate**, on the SM-G990B, after the review's fixes: unit 84 files, 1427 tests, 0 failures;
+  `connectedDebugAndroidTest` 334 tests, 0 failures, 0 errors, 3 skipped (the opt-in measurements);
+  the merged manifests byte-identical; `app/schemas` unchanged. Two Reviewers, no hard violations;
+  their fixes done, three judgement calls left as built. The figures, the dispositions and what is
+  not proven are in *3.6 — Built and verified 2026-11-22*; 3.7's list gained items 17 to 24. Task P
+  landed `ARCHITECTURE.md` and `AGENTS.md` in an earlier run, and in this one the *Built* notes on
+  ADR-0024 Amendment 1, ADR-0017 Amendment 4, ADR-0022 and ADR-0023 §3, three conventions in the
+  test instructions (Back on a dialog by key, a harness's copy of a rule, a leftover mutant), this
+  plan and [albums.md](albums.md) §7's Stage 3 row. The UI vocabulary's edits to existing entries are
+  still the Designer's. Stage 3 stays In progress. No Gradle run by the Planner, no commit.
+- **Next action: step 3.7 — device verification and the installed-app walkthrough; then step 3.8,
+  the close-out.** 3.7's text under *3.2 to 3.8* requires "the definition of done, once, with `adb
+  devices` checked and stated; then an installed-app walkthrough including the delete switch, and
+  the capability check on the SM-G781B if it can be attached (decision 45)", and its items 1 to 24.
+  3.8's requires "`ARCHITECTURE.md`, exit criteria checked against the repository, `/docs-audit`,
+  archive" — the stage moves to Complete only then, on the criteria checked against the repository
+  ([albums.md](albums.md) §7).
+  - **It starts from** the integrated 3.6 change on `feat/album-people`, not yet committed, on top
+    of `d0357c7` (step 3.5); 3.6's gate as the baseline (*3.6 — Built and verified 2026-11-22*), its
+    manifest md5s included; and `ARCHITECTURE.md` §11, which names what each 3.7 item would settle.
+  - **Owner, in order:** the Planner refines 3.7 into a step plan, as 3.2 to 3.6 were — its 24 items
+    grouped by phone and by how each is observed without the database leaving the phone (decision 9);
+    the Coder runs the device checks and measurements; the Designer makes the vocabulary's edits to
+    existing entries (*3.6 — Built and verified*, *Not proven by it*) before 3.8; the Planner does 3.8.
+  - **For the maintainer, himself — none of it can be done by an agent:**
+    1. **commit 3.6.** As of 2026-11-22, 14 files are untracked — the new `ui/` and `ui/components/`
+       files (`FaceDataViewModel`, `PeoplePicker`, `PersonFaceImage`, `FaceCrop`, `FaceDataDialogs`,
+       `AlbumStatusNotices`) and their unit and device tests — and 52 tracked files modified: code
+       under `app/src/main/java`, the 17 `strings.xml`, tests, `AGENTS.md`, `ARCHITECTURE.md`, four
+       ADRs, two instruction files and this plan. Stage the untracked ones explicitly, and compare
+       `git diff --stat` with `git diff --ignore-all-space --stat` for line endings;
+    2. **attach the second phone, the SM-G781B (A4)**, for items 7, 9 and 14 and 3.7's capability
+       check, and a phone without arm64-v8a if one exists, for items 10, 16 and 24 — or say that none
+       does;
+    3. **run the walkthrough on the installed app** — the disclosure, the switch both ways, the delete,
+       a people album. `connectedDebugAndroidTest` uninstalls the app, so reinstall with
+       `:app:installDebug` and grant the media permission first (`AGENTS.md`, *Running Gradle*);
+    4. **the translated privacy text read and approved before a release** — a native-speaker review,
+       priority the disclosure, the Delete face data dialog, the Face data row and the three people
+       notices;
+    5. **the Play Data Safety check**, before the first Play release that ships the Tier C pass
+       (*The Play Data Safety check — recorded 2026-11-18, not answered*);
+    6. and, still open from 3.4, whether to add a heap-based cap on one giant component (item 13,
+       `ARCHITECTURE.md` §11).
+  - **Read first:** 3.7's text and items 1 to 24; *3.6 — Built and verified 2026-11-22*;
+    `ARCHITECTURE.md` §11; the test conventions on opt-in measurements and on setting the disclosure
+    flag; `AGENTS.md` *Running Gradle*.
 - ~~**Next action: step 3.5 — the `people` clause and evaluation.** Owner: the Planner refines it into
   a step plan, as 3.2 to 3.4 were; then the Coder builds it.~~ Refined 2026-11-21 — the *Next action:
   step 3.5, Task 1* entry above.
@@ -987,8 +1107,8 @@ step is refined when it starts.
 | **3.3** | Face detection and embedding in the indexing pipeline, behind the disclosure | ~~⬜ Not started — refined 2026-11-20 into *3.3 — Face detection and embedding*;~~ ~~Task 1 waits on the approval of ADR-0018 Amendment 7, Task 2 on F2 as well~~ ~~ADR-0018 Amendment 7 adopted and F2 answered (OpenCV 4.13.0) 2026-11-20, decision 49; Task 1 ready to build~~ ✅ Built and verified 2026-11-20 — refined, its storage adopted as ADR-0018 Amendment 7 and OpenCV pinned at 4.13.0 the same day (decision 49); Tasks 1 to 4 and task P done; the gate and the device results are under *3.3 — Built and verified 2026-11-20* |
 | **3.4** | Clustering and the person record | ~~⬜ Not started~~ ~~🔶 In progress — refined 2026-11-20 into *3.4 — Clustering and the person record*;~~ ~~ready to build: no schema change, so no amendment to approve; Task 1 waits on nothing, Task 2 on the maintainer's acceptance of the budget~~ ~~Task 1 ✅ built and verified 2026-11-20; the budget accepted, components first~~ ~~and ADR-0018 Amendment 8 adopted the same day (decision 50), so there is a schema change after all — `Migration(6, 7)`, in Task 3; Task 2 next, waiting on nothing~~ ~~adopted the same day (decision 50); Task 2 ✅ built and verified 2026-11-20, and on its measurement ADR-0018 Amendment 8 reversed before it was built (decision 50, amended) — no schema change, the index stays at version 6; Task 2b next, waiting on nothing~~ ✅ Built and verified 2026-11-21 — refined 2026-11-20; the budget accepted with components first (decision 50); ADR-0018 Amendment 8 adopted and reversed before it was built (decision 50, amended), so no schema change and the index stays at version 6; Tasks 1, 2, 2b, 3, 4, 5 and task P done; the gate and the device results are under *3.4 — Built and verified 2026-11-21* |
 | **3.5** | The `people` clause and evaluation | ~~⬜ Not started — refined 2026-11-21 into *3.5 — The people clause and its evaluation*, ready to build: Tasks 1 to 3, sequential, then verification and task P; nothing waits on the maintainer~~ ✅ Built and verified 2026-11-21 — refined the same day; Tasks 1, 2, 3, the verification phase and task P done; no schema change in either database, no string; the gate and the review's dispositions are under *3.5 — Built and verified 2026-11-21* |
-| **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ⬜ Not started |
-| **3.7** | Device verification and installed-app walkthrough | ⬜ Not started |
+| **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ~~⬜ Not started — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, waiting on the maintainer's approval of ADR-0024 Amendment 1 for tasks S2, A and B; tasks S1 and C ready to build.~~ ~~🔶 In progress — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2): **S1 and C built and verified; S2, A and B ready to build**, S2 next.~~ ✅ Built and verified 2026-11-22 — refined and approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2); tasks S1, C, S2, A and B, the verification phase and task P done; no schema change in either database; the gate, the review's dispositions and what is not proven are under *3.6 — Built and verified 2026-11-22*. D1 answered by the Designer (a third tab), D3 by the maintainer (8 people) |
+| **3.7** | Device verification and installed-app walkthrough | ⬜ Not started — next |
 | **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ⬜ Not started |
 
 ### 3.0 — Feasibility spike
@@ -3101,6 +3221,718 @@ name, which 3.6's brief carries under ADR-0024 §6.
 - the refresh: nothing outside tests calls `refreshPeopleAvailability()` yet — 3.6's;
 - any of it through the UI: no build writes a `people` clause before 3.6's picker.
 
+### 3.6 — The People criterion, the disclosure and the switch — refined 2026-11-21
+
+Refined by the Planner on 2026-11-21 from the Designer's design of the same day, checked against the
+code as it stands after 3.5. **The design was written to a scratch file outside the repository
+(`/tmp/design36.md`), which is not durable, so this section is the record:** its decisions, wording
+drafts, string keys, vocabulary proposals and file list are copied below in compact form, with its
+reasoning kept only where a decision would be reversed without it. It does not restate the records it
+builds on: [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) §1 to
+§6; [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendments 3
+and 4 (no notice for waiting; the causes, one notice per album);
+[ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md) §1 and §5;
+[ADR-0013](../architecture/decisions/0013-albums-as-third-display-mode.md) and D2 (the chain stays);
+[ADR-0016](../architecture/decisions/0016-album-creation-type-choice-and-picker-screen.md) Amendment 2
+(the picker counts over the evaluator's join);
+[ADR-0019](../architecture/decisions/0019-offline-reverse-geocoding-for-region-albums.md) Amendment 1
+(the Place data row, the licence row's pattern); [albums.md](albums.md) §8 decisions 29, 33, 35, 40,
+41 and 42.
+
+**The maintainer, 2026-11-21:** at most **8 people in one album** (D3, as recommended), and start 3.6.
+
+**What waited on him — [ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md)
+Amendment 1 — approved 2026-11-21, with option A at §2.** ~~Proposed.~~ Six points the records
+reserve for him or leave open, each drafted with the Planner's and the Designer's recommendation: (1)
+the disclosure's model and its *Turn off*; (2) ~~switching face data on from Settings marks a
+never-shown disclosure shown~~ switching face data on from Settings when the disclosure was never
+shown on this installation — **option A, chosen: the disclosure shows**; (3) the app-open
+capability check, with a durable *incapable* when the device lists no arm64-v8a, and the start-up
+deletion at app open; (4) the switch-off order, the memory drop and the not-scrubbed sentence; (5) the
+disclosure's wording and the hiding rules; (6) the Place and Date counts cross-filtered by the chosen
+people. ~~**He approves the amendment as a whole and reads the disclosure's wording**~~ **He approved
+the amendment as a whole, the disclosure's wording unchanged** (*Strings*, group S2), in his words "I
+approve the amendment and I choose the option you recommend". Nothing else here needs him. Tasks S1
+and C built nothing the amendment governs and were built before it was approved; S2, A and B waited
+for it and may now start (*Tasks* below).
+
+**No new architectural pattern** under `AGENTS.md`, so no approval is asked on that ground:
+- `FaceDataViewModel` is a feature-scoped ViewModel, the escape `AGENTS.md` names — `CreateFolderViewModel`,
+  `BillingViewModel`, `AlbumsViewModel`, `FavouritesViewModel` and `MediaIndexingViewModel` are the
+  precedent. The Tier C lock it takes is the one `EasyGalleryApp`'s comment already reserves for "the
+  face-data switch" (ADR-0024 §3; ADR-0018 Amendment 7 §5), and its app-open check follows
+  `FavouritesViewModel.refreshCapabilityState()`, called from `MainActivity.onResume`.
+- The disclosure is hosted at `MainActivity`'s root, after the screen chain, as the Manage-media
+  rationale dialog (driven by `FavouritesViewModel`) and the Add to album dialog already are.
+- No navigation change (D1 below); no schema change in either database; no dependency, permission,
+  preferences file or store — the setting, the flag and the record are 3.3's stores. Strings in all 17
+  shipped locales (`LocaleHelper.supportedLanguageTags`).
+
+#### Decided at 3.6 — D1 and the People picker
+
+- **D1 — a third tab, People, on the New automatic album screen:** Place | Date | People
+  (`TAB_PLACE` 0, `TAB_DATE` 1, `TAB_PEOPLE` 2). The Designer's answer, 2026-11-21. No screen of its
+  own, no navigation change: ADR-0013 is untouched and D2 is not reopened, its trigger 1 not firing.
+  *Why:* one draft — name, choice chips, match-count line, FAB — so People ANDs with Place and Date
+  and the count stays live; a screen of its own is the second level the chain does not model, and
+  would have to carry the draft across.
+- **Offered only when** the face-data setting is on **and** the capability record for the current key
+  says `capable == true`. Otherwise the screen is exactly today's two tabs — no entry point, no teaser
+  (E9). *Unknown is hidden here and available to evaluation (3.5's rule 3), on purpose:* evaluation
+  must not call a never-checked phone unavailable, which would put a wrong notice on every people album
+  after every update; the picker must not offer a tab that may vanish when the check ends. Amendment
+  1 §5.
+- **If it stops being offered while open** — the check ends incapable, the setting goes off — the tab
+  falls back to Place and the draft's people and the picker's people data are dropped. `selectedTab` is
+  `rememberSaveable`: a restored 2 is coerced to 0 when People is not offered.
+- **Tabs:** three weighted `Role.Tab` boxes; horizontal padding 16 dp → 8 dp; label `titleSmall`, one
+  line, ellipsis, the full label as content description. Device check: "Personen" (de) and "Persone"
+  (it) at font scale 2.0 on a 360 dp width.
+- **The grid:** `LazyVerticalGrid(GridCells.Adaptive(96.dp))`, tag `new_automatic_album_people_grid`;
+  content padding 16 dp at the sides, 8 dp top and **96 dp bottom — the FAB clearance lives here,
+  never in a strip**; 12 dp spacing both ways. Full-span header items, each keyed, in this order: (a)
+  the Status area and Index band — the same component and expanded flag as the other tabs, only when
+  the band is not Hidden; its Running text is this tab's own; (b) the People hint, tag
+  `new_automatic_album_people_hint`, a polite live region — the hint below 8 chosen, the limit sentence
+  at 8, `%1$d` filled from `MAX_PEOPLE_PER_ALBUM` and never typed into a translation; (c) the tiles.
+- **Person tile** (`PersonTile`; tag `new_automatic_album_person_<index>`, index = position in the
+  list, **never the group id**): an 80 dp circular face crop, centred in a cell at least 96 dp wide;
+  under it a 14 dp photo icon and the group's photo count (`NumberFormat.getIntegerInstance(locale)`,
+  `labelMedium`). The count is `FaceGroupSummary.imageCount`, global, not cross-filtered: a number is
+  not a label (decision 40), and it says why the order is what it is. **The order is exactly
+  `listFaceGroups`'s** — photo count descending, newest date, group id — with no re-sort, search or
+  filter.
+- **Selection:** the whole cell `toggleable(role = Role.Checkbox)`; selected is a 3 dp primary ring and
+  a `CheckCircle` badge at TopEnd (tag `new_automatic_album_person_selected_<index>`), with **no
+  scrim**, which would dim the face being recognised — unlike the Media tile, on purpose.
+- **The cap, 8 (D3):** at 8 chosen every unselected tile is disabled (alpha 0.38, no click) and the
+  hint says why — no toast, no error; selected tiles stay enabled so one can always be removed. The
+  state's toggle returns false at the cap, the first backstop; `createAutomaticAlbum` catches the
+  encoder's `require` (*3.2 to 3.8*, 3.6 item 4), the second.
+- **The face crop:** from the representative's image and `FaceBox` (fractions of the upright frame,
+  ADR-0022 §1). The box's centre; side = 1.8 × the larger of its width and height **in pixels**;
+  clamped to the image's short side; **shifted** to stay inside the image rather than shrunk; square.
+  Computed at display time, never stored; the rectangle arithmetic in its own Android-free file,
+  unit-tested. The mechanism is the Coder's, within these limits: a Coil request with a custom
+  `Transformation`, or an `ImageDecoder` path; decode capped near 1536 px; EXIF-upright;
+  **`diskCachePolicy(DISABLED)`** — Coil writes its disk cache only from network fetches, so this is
+  belt and braces, but it makes ADR-0024 §6's "never to a disk cache" checkable in code and in a test;
+  cancelled when the tile leaves composition. Loading, image gone and decode failed look alike: a
+  neutral circle with a person icon, and the tile stays pickable — the anchor is data, not pixels.
+- **Accessibility:** one merged node; content description from the plural
+  `automatic_album_person_description` ("Person 3 of 41, 12 photos", quantity = the photo count); the
+  checkbox role carries the checked state. **No URI, box or group id in any semantics, tag or
+  string.** RTL by construction: TopEnd, no absolute left or right.
+- **One People chip**, after Place and Date (`Icons.Default.People`, a plural label, tag
+  `new_automatic_album_people_chip`, content description "Clear people"), clears every chosen person;
+  one person is removed by tapping its tile. Per-person chips rejected: up to 8 chips of repeated
+  crops, a second way to do what the tiles do.
+- **AND, in the UI:** the hint says "all appear in the same photo"; **the match-count line is the
+  evaluator's member count for people + place + date — a must**, the stage's exit criterion; the Place
+  and Date lists' counts reflect the chosen people (Amendment 1 §6, adopted 2026-11-21). The People grid is
+  **not** cross-filtered (decision 40, global counts), so a place and a person can give 0: the line says
+  0 and Create stays enabled — an empty album is legal, and indexing may be partial.
+- **Hint with nothing chosen:** `automatic_album_hint_choose_with_people` replaces
+  `automatic_album_hint_choose` when People is offered. **FAB:** `canCreate` = a valid name **and** (a
+  region, a time, or at least one person).
+- **The tab's states**, each tagged: Loading (`new_automatic_album_people_loading`); Ready, the grid;
+  Empty — `listFaceGroups` returned nothing, which covers "pass not run", "running" and "nobody in two
+  photos" — one message (`new_automatic_album_people_empty`), and with the band Hidden a tonal Index now
+  button under it (`new_automatic_album_people_index_now`, reusing `settings_index_now`), since Index
+  now runs the face pass once the disclosure is shown; Failed — the one-shot query threw — a message and
+  Retry (`new_automatic_album_people_failed`, `new_automatic_album_people_retry`). One person is a grid
+  of one, not a state. The tab's states are its own: the screen-wide `LOADING_NAMES`, `NAMES_FAILED` and
+  `WAITING_FOR_MEDIA` keep governing the lists and the count line, and do not gate the grid.
+- **Freshness:** loaded at the tab's first reveal in a visit; reloaded when indexing leaves RUNNING;
+  **not reloaded while any person is chosen** — a regroup can change group ids, and the anchors come
+  from the list the user saw (decision 41). The draft keeps each chosen `FaceGroupSummary`, not only its
+  id, and builds the clause with `AlbumRuleClause.People.anchoredAt(summary.representative)`.
+- **Where the state lives:** in `AutomaticAlbumPickerState`, owned by `AlbumsViewModel`, dropped by
+  `close()` with the rest of the draft — nothing in `GalleryViewModel`, no new state holder. **The picker
+  subscribes to the face projection only while at least one person is chosen**, so 3.5's "only a people
+  album subscribes" still holds otherwise. The cross-filter is one set of matching items computed per
+  emission from that snapshot, then a set lookup per item inside `AutomaticAlbumFacets` — never a face
+  lookup per facet entry; that is why the cost argument for dropping it does not hold (Amendment 1 §6).
+
+#### Decided at 3.6 — the disclosure, the switch and app open
+
+Each point marked **(Am. 1 §n)** is decided in ADR-0024 Amendment 1, ~~drafted and binding nothing
+until the maintainer approved it~~ adopted 2026-11-21 on his approval; what is unmarked is
+presentation the adopted records leave to 3.6.
+
+- **The Face data disclosure** (`FaceDataDisclosureDialog`, content tag `face_data_disclosure`), hosted
+  at `MainActivity`'s root. **Shown while all hold:** the media permission is granted, the setting is
+  on, the capability record for the current key says capable, the disclosure has not been shown on
+  this installation, and the Full-screen viewer is closed — it waits for the viewer rather than
+  covering it. Derived from the stores by `FaceDataViewModel`, so a recreate shows it again until a
+  button is pressed. Never on an incapable or unknown device (E6). **Shown, not consented (Am. 1
+  §1):** two buttons — **OK** (`face_data_disclosure_ok`) marks it shown, durably, before it closes;
+  **Turn off** (`face_data_disclosure_turn_off`) marks it shown and runs the switch-off below without
+  its confirmation, since nothing can exist before the first pass and the deletion is idempotent. No
+  *Not now*: a deferral would leave the worker's gate shut with no end. **Not dismissable** by Back or
+  an outside tap (`dismissOnBackPress` and `dismissOnClickOutside` false): "shown" means a button was
+  pressed, and an accidental tap must not use up a once-per-installation statement. The body scrolls,
+  as the Place data dialog's does, so the buttons stay visible at font scale 2.0. **It starts no run:**
+  the first face pass is the next periodic run, or the user's Index now. *Why:* heavy work started by
+  an OK is a surprise, and the app never starts Tier A by itself either.
+- **Its info mode**, opened from the Face data info row in Settings: the same body, one button,
+  Close (`face_data_disclosure_close`), no side effect.
+- **The Face data area in Settings** (`FaceDataSettingsArea`, tag `face_data_area`, heading "People"),
+  directly under the Media index area and above App, with the same divider. Two rows: the **Face data
+  row** (`face_data_row`) — a switch, the whole row `toggleable(role = Role.Switch)`, at least 56 dp,
+  `Icons.Default.Face` — and the **Face data info row** (`face_data_info_row`, "About face data").
+  `SettingsItem` gains an optional trailing slot, default null, so existing calls are unchanged.
+  **The area is hidden unless the capability record for the current key says capable**, whatever the
+  setting — ADR-0024 §1, "not offered" — so a user who switched it off can still switch it on. The
+  subtitle follows the state: on; off; deleting (row disabled, a progress indicator in place of the
+  switch); and, after a deletion that returned `scrubbed == false`, the cleanup sentence — transient,
+  UI state only, a polite live region; true is silent, the Off subtitle being the confirmation. *Why
+  the sentence is true:* the rows are gone either way and the start-up deletion repeats the scrub
+  (ADR-0018 Amendments 6 and 7 §5). **No Tier C figure in Settings**, on or off (ADR-0024 §4); the scan's
+  progress stays in the Media index area.
+- **Switching off (Am. 1 §4).** The tap opens the **Delete face data dialog** (`DeleteFaceDataDialog`,
+  `face_data_delete_dialog`, buttons `face_data_delete_confirm` in the error colour and
+  `face_data_delete_cancel`) before anything changes; the switch stays on until it is confirmed, and
+  Cancel leaves it on (E8). Confirmed, `FaceDataViewModel`, in its own scope: persist off → take
+  `faceIndexLock` with `lock()`, which waits for a running pass, itself stopped at its next check →
+  `deleteAllFaceData()` → drop what memory holds — the Coil memory cache cleared, and the picker's
+  people data and chosen people, which go when People stops being offered → release the lock →
+  `AlbumsViewModel.refreshPeopleAvailability()`. Cut short by the process ending, it is finished by
+  the start-up deletion at the next start, the setting being already off (ADR-0024 §3).
+- **Switching on:** persist on → `refreshPeopleAvailability()`; no confirmation, and no dialog when
+  the disclosure was already shown on this installation (E10). **If the disclosure was never shown on
+  this installation** — a restore whose backed-up setting was off — ~~the Planner recommends that the
+  disclosure then shows, which the derivation above does with no extra code; the Designer recommended
+  that switching on marks it shown instead. The maintainer chooses~~ **the disclosure shows: option A,
+  chosen by the maintainer on 2026-11-21 (Am. 1 §2)**; the Designer's option B, switching on marks it
+  shown, was not chosen. Precisely: the switch persists the setting on and does **not** call
+  `markDisclosureShown()`; the disclosure's condition above — permission granted, setting on,
+  capable, not shown, viewer closed — now holds, so the dialog appears at `MainActivity`'s root over
+  Settings, from the same derivation and with no code of its own; until a button is pressed the
+  worker's gate stays shut, and Tier C is not written; **OK** marks it shown, the first face pass
+  being the next periodic run or Index now; **Turn off** marks it shown and runs the switch-off above
+  without its confirmation, so the setting returns to off and the disclosure is used up. Once per
+  installation is unchanged: this is the installation's first disclosure, and a later switch-on shows
+  none.
+- **At app open (Am. 1 §3),** in `FaceDataViewModel`'s creation, off the main thread — so once per
+  Activity, not on a rotation, and free when an answer is stored: (i) **the capability check** — read
+  the stored record first; only when there is no answer for the current key, take `faceIndexLock`
+  with `lock()` and run `FaceCapabilityChecker`, which reads the record again. The lock because the
+  worker takes it before its own check, and two checks at once load the models twice. Whatever the
+  setting, since the area above needs the answer. **No arm64-v8a in `Build.SUPPORTED_ABIS`: the
+  checker records incapable under the current key without loading anything** — given the ABI list by
+  its caller, so it stays pure Kotlin and the worker's check records the same answer; the key names
+  the build, so a later build that ships other ABIs is asked afresh. Out of memory stays transient,
+  and so does `FacePipelineUnavailableException` on a device that does list arm64-v8a. This closes
+  *3.2 to 3.8*, 3.6 item 1. (ii) **The start-up deletion**, when the setting reads off:
+  `createFaceDataStartupDeletion().run()`, under the lock, its result not shown (3.6 item 2). (iii)
+  Then `refreshPeopleAvailability()`.
+- **`refreshPeopleAvailability()`'s callers** (3.6 item 3): after the app-open check; from
+  `MainActivity.onResume`, beside `favouritesViewModel.refreshCapabilityState()`; and from both
+  directions of the switch, the disclosure's Turn off included.
+- **Nothing identifying anywhere:** no log line in `FaceDataViewModel`; no URI, box, group id or
+  count of faces in any string or semantics.
+
+#### Decided at 3.6 — the notices, the licence row and the Album info dialog
+
+- **One status notice per album**, chosen by one pure function over `AlbumListItem.status` and its
+  cause, in a new `ui/components` file, used by the tile, the row and the detail view alike — three
+  surfaces branching separately would drift:
+
+  | Status, cause | Notice | Tag | Icon |
+  |---|---|---|---|
+  | `UNEVALUATABLE`, `RULE_NOT_UNDERSTOOD` | Newer-app notice, unchanged | `album_rule_unevaluatable_notice` | `SystemUpdate` |
+  | `UNEVALUATABLE`, `PEOPLE_UNAVAILABLE_FACE_DATA_OFF` | Face-data-off notice | `album_people_face_data_off_notice` | `FaceRetouchingOff` |
+  | `UNEVALUATABLE`, `PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE` | Device-incapable notice | `album_people_device_incapable_notice` | `FaceRetouchingOff` |
+  | `UNEVALUATABLE`, `ANCHOR_NOT_FOUND` | Person-not-found notice | `album_people_anchor_not_found_notice` | `PersonOff` |
+  | `WAITING_ON_INDEX`, `COMPLETE`, `MANUAL` | none — decisions 29 and 42, ADR-0017 Amendment 3 | — | — |
+
+  The hidden-members notice is unchanged and stacks below the status notice. Tile and row show the
+  short wording, also as `stateDescription` as today; the Album Detail View shows the full wording in
+  `AlbumNoticeBand`, a polite live region as today; the Album info dialog repeats none. **No action in
+  any notice:** the Face-data-off wording names Settings, one tap away on the Main view bar, so no
+  callback is threaded through `AlbumDetailContent`; Person-not-found offers no re-pick, rule editing
+  being its own plan — its text says how it clears instead. No wording interpolates an anchor or a
+  `MediaIdentity` (ADR-0024 §6). *Observation, not changed:* after a restore every people album may
+  wait for days with nothing said, as decision 42 accepted.
+- **The cause carried** (3.6 item 5): `AlbumRuleEvaluation` → `ComputedAlbum` → `AlbumListItem`, a
+  new required, nullable field — fixed in every caller, not defaulted.
+- **The Face licences row** (`face_licences_row`, "Face recognition licences", subtitle "OpenCV, YuNet
+  and SFace", `Icons.Default.Description`) — the **last row of the Legal section**, after the Place
+  data row, by the same pattern (ADR-0019 Amendment 1; E5); **never hidden**: the models and OpenCV are
+  in the APK whatever the setting or the device. Named for what it covers: a row called "Open-source
+  licences" would claim a completeness the app does not have — Compose, Coil, Room and Media3 have no
+  notice surface; that gap is older than Stage 3 and not 3.6's. The **Face licences dialog**
+  (`FaceLicencesDialog`, content tag `face_licences_notice`, OK): one translated intro sentence, then
+  the five files under `assets/face/`, each under its file name as a heading, in this order —
+  `NOTICE.txt`, `LICENSE-OpenCV-Apache-2.0.txt`, `LICENSE-SFace-Apache-2.0.txt`,
+  `LICENSE-YuNet-MIT.txt`, `THIRD_PARTY_NOTICES.txt`. Verbatim and never translated, like the GeoNames
+  text. They are large (`THIRD_PARTY_NOTICES.txt` about 58 KB) and hard-wrapped: a `LazyColumn` of
+  paragraphs split on blank lines, monospace `bodySmall`, read on `Dispatchers.IO` with
+  `produceState`; loading shows progress, a failure a sentence and OK. Device check: a `LazyColumn` in
+  `AlertDialog`'s text slot gets a bounded height and OK stays visible at font scale 2.0 and in
+  landscape; the fallback is a `Dialog` with a `Surface` capped by `heightIn(max)`.
+- **The Album info dialog:** `AlbumRuleSummary.Automatic` gains `AlbumRuleCondition.People(count)` —
+  pure data, built from the rule's `people` clauses, no anchor in it — after Place and Date. Its entry
+  (`album_info_people`): label "People", value the plural count, and a second line, "Only photos that
+  show all of them." Shown whether or not people are available now, since it describes the rule; a
+  people-only rule still shows the Automatic heading.
+
+#### Strings — keys and English drafts
+
+English **intent**, the Designer's drafts; the implementer of each strings task writes them into all
+17 folders (`values` and the 16 of `LocaleHelper.supportedLanguageTags`, Indonesian in `values-in`).
+**A native-speaker review stays outstanding** — Stage 2's precedent — and matters most for S2, before a
+release. `LocaleResourceParityTest` enforces the keys, the placeholders and each locale's plural
+categories (`PLURAL_CATEGORIES`); every plural item carries its count. Never translated: the licence
+files' text, "OpenCV", "YuNet", "SFace". Reused, not added: `action_ok`, `action_close`,
+`action_retry`, `settings_index_now`.
+
+**S1 — ~~may be written before the amendment is approved~~ ✅ written 2026-11-21 (task S1):**
+- *People picker:* `automatic_album_section_people` "People"; `automatic_album_hint_choose_with_people`
+  "Choose a place, a date, people, or any mix of them"; `automatic_album_people_hint` "Pick the people
+  who should all appear in the same photo. You can pick up to %1$d."; `automatic_album_people_limit`
+  "You have picked the most people an album can have (%1$d). Tap a person to remove them.";
+  `automatic_album_people_loading` "Finding people"; `automatic_album_people_failed` "People could not
+  be loaded"; `automatic_album_people_empty` "No people to pick yet. Someone appears here once their
+  face is found in at least two photos. Faces are found in the background, a little at a time, mostly
+  while the phone is charging."; `automatic_album_people_index_running` "Reading your photos and
+  videos, including finding faces. This can take a while."; plural
+  `automatic_album_person_description` "Person %1$d of %2$d, %3$d photo" / "… %3$d photos" (quantity =
+  the photo count); plural `automatic_album_people_chip` "%1$d person" / "%1$d people";
+  `automatic_album_clear_people` "Clear people".
+- *Album info:* plural `album_info_people_count` "%1$d person" / "%1$d people"; `album_info_people_note`
+  "Only photos that show all of them."
+- *Notices, full and short (short at most about 60 characters: a fixed square tile, three lines at 11
+  sp):* `album_people_face_data_off_notice` "Face data is turned off, so the people in this album can't
+  be found. Only the items you added by hand are shown. Turn face data on in Settings to bring the rest
+  back." / `_short` "Face data is off. Only items added by hand are shown.";
+  `album_people_device_incapable_notice` "This phone can't find people in photos, so the people in this
+  album can't be found here. Only the items you added by hand are shown." / `_short` "People
+  unavailable here. Only items added by hand are shown."; `album_people_anchor_not_found_notice` "A
+  person in this album can't be found in your photos, perhaps because the photo they were chosen from
+  is gone. Only the items you added by hand are shown. If the photo comes back the album fills in
+  again; otherwise create the album again." / `_short` "A person can't be found. Only items added by
+  hand are shown."
+- *Licences:* `settings_face_licences` "Face recognition licences"; `settings_face_licences_credit`
+  "OpenCV, YuNet and SFace"; `face_licences_intro` "Notices for the software and models that find faces
+  on this phone."; `face_licences_loading` "Loading notices"; `face_licences_failed` "The notices could
+  not be read."
+
+**S2 — ~~waits for the approval of Amendment 1, which governs what they say~~ governed by Amendment
+1, approved 2026-11-21 with this English unchanged — the text below is final English, not intent:**
+- *The disclosure* (Am. 1 §5): `face_data_disclosure_title` "People in your photos";
+  `face_data_disclosure_p1` "Easy Gallery finds and groups the faces in your photos, so that you can
+  make albums of people."; `_p2` "This happens on your phone only. What it finds is never sent anywhere
+  and is not included in backups."; `_p3` "Faces are never named. An album of people remembers one
+  photo for each person you pick, and that is saved and backed up with the album." — ~~**recommended
+  kept**~~ **kept, approved 2026-11-21**: anchors are not face data (decision 9, clarified) but are backed up (ADR-0024 §6), and
+  without it `_p2` reads as if nothing about faces reached a backup; `_p4` "Finding faces takes time
+  and mostly runs in the background while the phone is charging."; `_p5` "You can turn this off at any
+  time in Settings, under Face data. Turning it off deletes everything that was found.";
+  `face_data_turn_off` "Turn off".
+- *Settings:* `settings_people` "People"; `settings_face_data` "Face data"; `settings_face_data_on`
+  "Faces in your photos are found and grouped on this phone, so you can make albums of people.";
+  `settings_face_data_off` "Off. Faces are not looked for and no face data is kept. Turn on to find and
+  group faces on this phone, so you can make albums of people. Nothing leaves your phone.";
+  `settings_face_data_deleting` "Deleting face data…"; `settings_face_data_cleanup_pending` "Face data
+  is deleted. Cleaning up its files will finish the next time the app starts.";
+  `settings_face_data_about` "About face data".
+- *The Delete face data dialog* (Am. 1 §4): `face_data_delete_title` "Delete face data?";
+  `face_data_delete_message_1` "This turns off face data and deletes the faces Easy Gallery found in
+  your photos, on this phone. Your photos, places and dates are not affected.";
+  `face_data_delete_message_2` "Albums of people stay, but show only the items you added by hand. They
+  fill in again if you turn face data back on and your photos are scanned again, which can take a long
+  time."; `face_data_delete_confirm` "Delete and turn off".
+
+#### Vocabulary — the Designer's proposals, added in-change by the implementer
+
+Collision-checked by the Designer against
+[the UI vocabulary](../../.github/instructions/ui-vocabulary.instructions.md): "People", "Person",
+"Face data" and "licences" do not occur in it. **Additions are in-change** — each task adds the terms
+for what it builds, in the same change. **The edits to existing entries are not additions:** they are
+routed to the Designer, who makes them in task P (`AGENTS.md`, *Documentation*).
+- **New** — Task B: People picker (the third section; `new_automatic_album_people_tab`,
+  `new_automatic_album_people_grid`); Person tile (`PersonTile`; a grid cell like the Folder, Media and
+  Album tiles, deliberately not a "thumbnail", which already names the Folder thumbnail and the Album
+  cover — the image inside is the *face crop*); People chip; People hint; the People picker's empty,
+  loading and failed states. Task A: Face data area (heading "People"; not the Media index area); Face
+  data row; Face data info row; Face data disclosure, with its info mode; Delete face data dialog, a
+  sibling of the Delete album dialog; Face licences row and Face licences dialog, siblings of the Place
+  data row and dialog. Task C: Face-data-off notice, Device-incapable notice and Person-not-found
+  notice, siblings of the Newer-app notice and together the *status notices*, one per album; the People
+  entry of the Album info dialog.
+- **Edits, routed to the Designer:** Status area and Index band — "appears nowhere but these two
+  pickers" becomes three, and the band's Running text differs on the People picker; New automatic
+  album screen — "by place and date" becomes "by place, date and people", "two sections reached from
+  tabs" becomes three, the third present only when face data is on and the device capable, the choice
+  chips gain the People chip, the hint's wording; Automatic album — the rule adds people to "a place, a
+  date range, or both"; *Pick* — the People picker picks up to eight, so "a single thing" widens;
+  Settings screen — adds the Face data area and the Face licences row; Newer-app notice — no longer the
+  only status notice; Album info dialog — the People entry.
+
+#### Tasks — S1, C, S2, A and B, then verification and task P
+
+**Order: S1 → C → *the maintainer approves Amendment 1* → S2 → A → B → verification → task P.**
+~~**Where it stands, 2026-11-21:** S1 and C ✅ built and verified; Amendment 1 ✅ approved, option
+A at §2; **next S2**, then A, then B (C, which B follows in `AlbumsViewModel.kt`, is done), then the
+verification phase, then task P.~~
+**Where it stands, 2026-11-22:** ✅ all done — S1, C, S2, A, B (as B1 and B2), the verification phase
+and task P; *3.6 — Built and verified 2026-11-22* below has the gate. The briefs below are kept as
+they were, with dated notes where the build settled something differently.
+- **Shared files, which decide the order:** the 17 `res/values*/strings.xml` — S1 and S2 only; a later
+  task that finds a key missing adds it to all 17 and says so in its report. `ui/AlbumsViewModel.kt` —
+  C, then B. `MainActivity.kt` — A, then B. No other file is in two tasks.
+- **Before approval:** S1, then C — neither builds anything the amendment governs. **After it:** S2,
+  then A, then B. A and C share no file, so if the approval comes while C is running A may run beside
+  it; the default is sequential, the habit of this repository, one Coder at a time.
+- **Why five tasks and not one,** against the habit of one sequential task per feature: 3.6 has three
+  areas — face data (Settings, disclosure, app open), the notices, the picker — that share almost no
+  file, and two pieces of work (S1, C) need nothing from the maintainer, so splitting lets them start
+  while he reads. **Why not more:** the picker is one area — its state, screen, tile and crop share the
+  draft, and splitting it would put `AutomaticAlbumPickerState.kt` and `NewAutomaticAlbumScreen.kt`
+  into two tasks; the strings are one task per approval state, because 17 files edited by several
+  tasks at once are the usual collision.
+- **Each task** ends compiling (`compileDebugKotlin`), its own unit tests passing, and
+  `compileDebugAndroidTestKotlin` passing whenever it changed a `*Content` or screen signature. **No
+  task runs `connectedDebugAndroidTest`;** the verification phase runs the definition of done once.
+- **Signatures, no defaults (`AGENTS.md`):** `NewAutomaticAlbumContent` (People offered, the people
+  UI state, toggle, clear, retry, Index now — B); `SettingsScreen` (+ `FaceDataViewModel` — A);
+  `AlbumListItem` (+ the cause — C), which reaches `AlbumGridItem`, the Album row and
+  `AlbumDetailContent`. Every test that builds one is fixed, not defaulted.
+- **Each task's report** names the vocabulary terms it added (additions only) and every document its
+  change made wrong, by section, for task P.
+
+**Task S1 — the strings the amendment does not govern** (Coder). Waits on nothing. ✅ **Done
+2026-11-21:** the 24 S1 keys of *Strings* in all 17 locales; `LocaleResourceParityTest` 11/11; the
+unit suite green (79 classes, 1310 tests, 0 failures, run with task C). Open items it leaves are
+under *Open after S1 and C* below.
+- **Files:** `app/src/main/res/values*/strings.xml`, all 17 — the S1 keys of *Strings* above.
+- **Exit criteria:** `LocaleResourceParityTest` passes — every key in every folder, each locale's
+  plural categories, the placeholders, a count in every plural item, escaped apostrophes; the English
+  matches the drafts above.
+- **Mutation checks:** one key dropped from one locale; the count dropped from one plural item; `%1$d`
+  dropped from one translation — each seen to fail the parity test, then reverted.
+
+**Task C — the cause to the notices, and the Album info dialog** (Coder). After S1; waits on no
+approval. ✅ **Done 2026-11-21:** the notices chosen by cause through one pure mapping,
+`AlbumStatusNoticeKind` and `albumStatusNoticeKind` in `ui/components/AlbumStatusNotices.kt`, used by
+the tile, the Album row and `AlbumNoticeBand`; the People entry in the Album info dialog. Unit tests
+11 (`AlbumStatusNoticesTest`) + 3 (`AlbumsViewModelTest`) + 3 (`AlbumRuleSummaryTest`); Compose
+tests 4 + 5 + 4 added to `FolderListContentTest` (51 pass), `AlbumDetailContentTest` (38) and
+`AlbumInfoDialogTest` (15), run on the SM-G990B; unit suite 79 classes, 1310 tests, 0 failures. Every
+mutation check that was run was killed. **Not run, and recorded as not run:** two of the planned
+mutations — the hidden-members notice put first, and face data off / incapable swapped as seen by the
+Compose layer *(2026-11-22: the final gate reports Task C's mutations as 6 or more, all killed, without
+saying whether these two are among them)*. The vocabulary gained the new entries only; the edits to existing
+entries are routed to the Designer (*Open after S1 and C*).
+- **Files:** `ui/AlbumsViewModel.kt` (the cause on `ComputedAlbum` and `AlbumListItem` — nothing else);
+  **new** `ui/components/AlbumStatusNotices.kt` (the pure mapping of *the notices*, Android-free apart
+  from resource ids, so it is unit-tested); `ui/components/AlbumGridItem.kt` (the tile's and row's
+  notices through the mapping); `ui/AlbumDetailScreen.kt` (`AlbumNoticeBand` through the mapping);
+  `data/AlbumRuleSummary.kt` (`AlbumRuleCondition.People`); `ui/components/AlbumInfoDialog.kt` (the
+  People entry); the vocabulary, additions only. Tests: **new**
+  `test/.../ui/components/AlbumStatusNoticesTest.kt`; `test/.../ui/AlbumsViewModelTest.kt`;
+  `test/.../data/AlbumRuleSummaryTest.kt`; `androidTest/.../ui/FolderListContentTest.kt`,
+  `androidTest/.../ui/AlbumDetailContentTest.kt`, `androidTest/.../ui/components/AlbumInfoDialogTest.kt`,
+  and every other test the new required field breaks.
+- **Exit criteria, each with a test:**
+  1. each cause reaches `AlbumListItem`: face data off and incapable through
+     `InMemoryPeopleAvailabilitySource`, an anchor not found through the in-memory index store, an
+     unparsed rule as `RULE_NOT_UNDERSTOOD`; a waiting, complete and manual album carry none;
+  2. the mapping, every row of the table, waiting included;
+  3. in Compose, for each of the four notices: the tile and the row show the short wording and
+     expose it as `stateDescription`; the Album Detail View shows the full wording under its tag; the
+     hidden-members notice stacks after it; a waiting people album shows none;
+  4. the Album info dialog shows the People entry with the plural count and the note, after Place and
+     Date, for a people-only rule under the Automatic heading; `AlbumRuleSummary`'s `toString` holds no
+     URI, display name or box;
+  5. no notice string has a placeholder (the parity test sees none to compare).
+- **Mutation checks:** face data off and incapable swapped in the mapping; the cause dropped in
+  `toListItem` (every cause becomes the Newer-app notice); the hidden-members notice put first; the
+  People count taken from every clause rather than the `people` ones.
+
+**Open after S1 and C** — none blocks S2, A or B:
+- **Short notices longer than the ~60-character budget in some locales** — 74 to 85 characters for
+  some `*_notice_short` translations against the ~60 the tile's three lines at 11 sp were drafted
+  for. The tile ellipsizes rather than overflows; whether it reads acceptably is a device check —
+  **the tile at font scale 2.0**, in the verification phase if a device is attached, else carried to
+  3.7. Shortening a translation is the remedy, not a layout change.
+- **Native-speaker review outstanding**, before a release, Stage 2's precedent. **Priority:** the
+  three notices (full and short), and the term *face data* per locale, which the notices fixed and
+  **S2 must reuse verbatim**: ar بيانات الوجوه; de Gesichtsdaten; es datos faciales; fr données
+  faciales; in data wajah; it dati dei volti; ja 顔データ; ko 얼굴 데이터; pl dane twarzy; pt-rBR dados
+  faciais; ro datele despre chipuri; th ข้อมูลใบหน้า; tr yüz verileri; uk дані облич; vi dữ liệu khuôn
+  mặt; zh-rCN 人脸数据. After S2, the disclosure joins the priority list — the app's one privacy
+  statement.
+- **The vocabulary's edits to existing entries, routed to the Designer:** task C added only the new
+  entries. The existing **Newer-app notice** entry (it still describes one notice for every
+  unevaluatable cause, where the cause now picks one of four) and the existing **Album info dialog**
+  entry (it does not mention the People entry) still need an edit. Task P routes both.
+
+**Task S2 — the strings the amendment governs** (Coder). After the approval — ✅ given 2026-11-21 —
+and after S1 — ✅ done. ~~**Next.**~~ ✅ **Done 2026-11-22** — the 18 keys in all 17 locales, the
+English verbatim; *3.6 — Built and verified 2026-11-22* below. The brief is kept as it was. This brief is complete: the Coder needs nothing outside it, the
+files and `AGENTS.md` *Strings and localisation*.
+- **Files:** `app/src/main/res/values/strings.xml` and the 16 `values-*` folders of
+  `LocaleHelper.supportedLanguageTags` — `ar de es fr in it ja ko pl pt-rBR ro th tr uk vi zh-rCN`,
+  Indonesian in `values-in`, never `values-id`. Nothing else: no code, no test, no vocabulary.
+  Insert the block after the S1 block in each file, at the same place in all 17. **Line endings
+  differ per file** — `values-in`, `-pl`, `-ro` and `-tr` are CRLF, the rest LF, and some files have
+  no final newline: match each file, and compare `git diff --stat` with `git diff
+  --ignore-all-space --stat` afterwards.
+- **The 18 keys, English final — approved 2026-11-21 with ADR-0024 Amendment 1 §5 and §4; copy
+  verbatim into `values/strings.xml`**, a plain `<string>` each, none `translatable="false"`:
+
+  | Key | English |
+  |---|---|
+  | `face_data_disclosure_title` | People in your photos |
+  | `face_data_disclosure_p1` | Easy Gallery finds and groups the faces in your photos, so that you can make albums of people. |
+  | `face_data_disclosure_p2` | This happens on your phone only. What it finds is never sent anywhere and is not included in backups. |
+  | `face_data_disclosure_p3` | Faces are never named. An album of people remembers one photo for each person you pick, and that is saved and backed up with the album. |
+  | `face_data_disclosure_p4` | Finding faces takes time and mostly runs in the background while the phone is charging. |
+  | `face_data_disclosure_p5` | You can turn this off at any time in Settings, under Face data. Turning it off deletes everything that was found. |
+  | `face_data_turn_off` | Turn off |
+  | `settings_people` | People |
+  | `settings_face_data` | Face data |
+  | `settings_face_data_on` | Faces in your photos are found and grouped on this phone, so you can make albums of people. |
+  | `settings_face_data_off` | Off. Faces are not looked for and no face data is kept. Turn on to find and group faces on this phone, so you can make albums of people. Nothing leaves your phone. |
+  | `settings_face_data_deleting` | Deleting face data… |
+  | `settings_face_data_cleanup_pending` | Face data is deleted. Cleaning up its files will finish the next time the app starts. |
+  | `settings_face_data_about` | About face data |
+  | `face_data_delete_title` | Delete face data? |
+  | `face_data_delete_message_1` | This turns off face data and deletes the faces Easy Gallery found in your photos, on this phone. Your photos, places and dates are not affected. |
+  | `face_data_delete_message_2` | Albums of people stay, but show only the items you added by hand. They fill in again if you turn face data back on and your photos are scanned again, which can take a long time. |
+  | `face_data_delete_confirm` | Delete and turn off |
+
+  **Reused, not added:** `action_ok` (the disclosure's OK), `action_close` (its info mode),
+  `action_cancel` (the Delete face data dialog's Cancel). **Not S2's:** every S1 key, already in.
+- **Translation rules:**
+  1. **The same terms as S1.** *Face data* is the locale's term in the list under *Open after S1 and
+     C*, in every S2 string that names it, inflected only as the grammar demands; `settings_face_data`
+     is that term as a row title. *Under Face data* in `_p5` names the row: write the locale's
+     `settings_face_data` text there, and the locale's existing `settings_title` for *Settings*. *People*
+     (`settings_people`) matches the locale's existing `automatic_album_section_people`. *Albums of
+     people* and *items you added by hand* match the wording the locale's S1 notices already use.
+  2. **"Easy Gallery" is never translated** (`app_name` is `translatable="false"`); nor anything else
+     — no licence text is in S2.
+  3. **No placeholders and no plurals:** none of the 18 has a `%` argument or a `<plurals>`; a
+     translation must not add one. `PLURAL_CATEGORIES` is untouched.
+  4. **Escape every apostrophe** as `\'` (French, Italian and others will have them) and write the
+     ellipsis in `_deleting` as the literal `…`, as `settings_index_running` does.
+  5. **Register:** plain, second person, the register the locale's existing Settings strings use; a
+     statement, not a consent request — the disclosure has OK, not *Agree*.
+  6. **Meaning over form for `_p2` and `_p3`**, the privacy claims: "never sent anywhere", "not
+     included in backups", and "that is saved and backed up with the album" must each survive
+     translation as a claim, neither softened nor widened.
+- **Exit criteria:** `LocaleResourceParityTest` passes (all 17 folders, the 18 keys in each, no key
+  extra, placeholders and apostrophes); the English in `values/strings.xml` is the table above,
+  character for character; the unit suite stays green (`compileDebugUnitTestKotlin
+  testDebugUnitTest`); `compileDebugKotlin` passes. No `connectedDebugAndroidTest` (the verification
+  phase owns it). The report lists, per locale, the term used for *face data* and any string the
+  Coder is least sure of, for the native-speaker review.
+- **Mutation checks**, each seen to fail the parity test and then reverted: one S2 key dropped from one
+  locale; an unescaped apostrophe in one translation; a `%1$s` added to one translation; one S2 key
+  misspelt in one locale (missing and extra at once).
+
+**Task A — face data: the ViewModel, Settings, the disclosure, the licences, app open** (Coder). After
+S2. ✅ **Done 2026-11-22** — *3.6 — Built and verified 2026-11-22* below, with the review's fixes; the
+brief is kept as it was.
+- **Files:** `data/FaceCapability.kt` (the supported ABIs as a constructor value; none of them
+  `arm64-v8a` → incapable recorded under the current key, no loader call); `EasyGalleryApp.kt` (passes
+  `Build.SUPPORTED_ABIS`; whatever `FaceDataViewModel` needs built); **new** `ui/FaceDataViewModel.kt`
+  (the setting, the capability and the disclosure as state; the app-open check and start-up deletion;
+  the switch in both directions; the disclosure's two buttons; the cleanup sentence's transient state;
+  seams for the stores, the lock, the deletion, the checker, the Coil memory cache and the refresh
+  callback, as `AlbumsViewModel`'s are); **new** `ui/components/FaceDataDialogs.kt` (the disclosure in
+  both modes, the Delete face data dialog, the Face licences dialog); `ui/SettingsScreen.kt` (a
+  stateless `FaceDataSettingsArea`, as `MediaIndexSettingsArea` is; the Face licences row;
+  `SettingsItem`'s trailing slot; the new parameter); `MainActivity.kt` (the ViewModel, the root host,
+  the `onResume` refresh, the `SettingsScreen` argument, the refresh callback into `AlbumsViewModel`);
+  the vocabulary, additions only. Tests: `test/.../data/FaceCapabilityTest.kt`; **new**
+  `test/.../ui/FaceDataViewModelTest.kt`; `androidTest/.../ui/SettingsScreenTest.kt`; **new**
+  `androidTest/.../ui/components/FaceDataDialogsTest.kt`; `androidTest/.../ui/SettingsSupportIntentTest.kt`
+  if the signature reaches it.
+- **Exit criteria, each with a test:**
+  1. the checker with no `arm64-v8a` records incapable under the current key and never calls the
+     loader; with it, unchanged; `FacePipelineUnavailableException` and out of memory still record
+     nothing;
+  2. the app-open check reads a stored answer without the lock and without the checker; with none,
+     it takes the lock before the checker; the start-up deletion runs only while the setting is off;
+     the refresh follows both;
+  3. **switching off, in order:** persist off → lock → delete → memory cache cleared → unlock →
+     refresh, asserted on recording fakes; nothing happens before the confirmation; Cancel changes
+     nothing; the cleanup sentence on `scrubbed == false` and silence on true; *(made precise
+     2026-11-22 by the review: silence too when the deletion throws — it rolls back, and the start-up
+     deletion repeats it — so the sentence follows a returned `false` only)*
+  4. switching on: persist on and refresh, no deletion, no confirmation; ~~the never-shown case as
+     Amendment 1 §2 is approved~~ **the never-shown case as Amendment 1 §2 option A, adopted
+     2026-11-21: switching on when the disclosure was never shown leaves it not shown —
+     `markDisclosureShown()` is never called on the switch-on path — and the disclosure's condition
+     true**, on a capable device with the permission granted and the viewer closed; switching on when it
+     was already shown leaves the condition false;
+  5. the disclosure's derivation — every condition of *the disclosure*, one test each, the viewer
+     open included; OK marks it shown; Turn off marks it shown and runs criterion 3's order without the
+     confirmation; Back and an outside tap leave it showing; the info mode has one button and no side
+     effect;
+  6. Settings: the Face data area absent while the capability is unknown or incapable, present while
+     capable with the setting on or off; the Face licences row present in every state, its dialog
+     showing the five file names in order (rows below the fold reached with `performScrollTo` before
+     asserting);
+  7. no `Log` call in `FaceDataViewModel` or the dialogs, read in review.
+- **Mutation checks:** delete before persist-off; the lock not taken for the check; the ABI test
+  inverted; `dismissOnBackPress` true; the area shown on an unknown capability; the refresh dropped
+  from the switch-on path; `markDisclosureShown()` called on the switch-on path (option B, not
+  chosen) — criterion 4 must fail.
+
+**Task B — the People picker** (Coder). After A, which it reads — the People-offered state — and after
+C, which it follows in `AlbumsViewModel.kt`. ✅ **Done 2026-11-22**, built as B1 and B2 — *3.6 — Built
+and verified 2026-11-22* below, with the review's fixes and `PersonFaceOrientationDeviceTest`; the
+brief is kept as it was.
+- **Files:** `ui/AutomaticAlbumPickerState.kt` (the chosen summaries, `MAX_PEOPLE_PER_ALBUM` = 8, the
+  toggle and its false at the cap, clear, the groups' load and freeze, the People-offered input and
+  the drop when it goes false, the face projection subscribed only while a person is chosen, the match
+  count through the evaluator, the member set for the cross-filter, `canCreate`);
+  `data/AutomaticAlbumFacets.kt` (the member-set predicate, ~~if §6 is approved as recommended~~ §6
+  being adopted 2026-11-21);
+  `ui/AlbumsViewModel.kt` (`listFaceGroups` as the picker's source, the face projection handed to the
+  picker, the `require` caught in `createAutomaticAlbum`); `ui/NewAutomaticAlbumScreen.kt` (the third
+  tab and its fallback, the chip, the hint, the new parameters); **new** `ui/PeoplePicker.kt` (the
+  grid, `PersonTile`, the states); **new** `ui/components/FaceCrop.kt` (the pure rectangle) and the
+  crop request beside the tile; `MainActivity.kt` (People offered into the screen); the vocabulary,
+  additions only. Tests: **new** `test/.../ui/components/FaceCropTest.kt`;
+  `test/.../ui/AutomaticAlbumPickerStateTest.kt`; `test/.../data/AutomaticAlbumFacetsTest.kt`;
+  `test/.../ui/AlbumsViewModelTest.kt`; `androidTest/.../ui/NewAutomaticAlbumContentTest.kt`.
+- **Exit criteria, each with a test:**
+  1. the crop: the 1.8 margin; clamped to the short side; shifted, not shrunk, at each edge and corner;
+     portrait, landscape and square images; a box of the whole frame;
+  2. the toggle: select, deselect, the order kept; the ninth returns false and changes nothing; clear;
+     the rule holds one `people` clause per chosen person, each equal to `anchoredAt` of the summary
+     shown;
+  3. **the match count equals the evaluator's member count** for people alone, people + region, people
+     + time and all three, over the in-memory index store with grouped faces;
+  4. the cross-filter: each Place and Date count equals the evaluator's member count for that entry
+     with the chosen people;
+  5. no reload while a person is chosen; a reload when indexing leaves RUNNING with none chosen;
+  6. People offered going false drops the chosen people and the groups, and the tab falls back to
+     Place; a restored tab index 2 with People not offered shows Place;
+  7. no subscription to the face projection while nobody is chosen — counted as 3.5's criterion 4
+     counts them;
+  8. an oversized rule given to `createAutomaticAlbum` returns false with nothing written;
+  9. in Compose: the tab only when offered; tiles in the list's order; select and deselect; at 8 the
+     unselected tiles disabled and the limit hint shown; the chip clears; loading, empty, failed and
+     Retry; Index now only with the band Hidden; **the last tile clear of the FAB, by bounds after
+     `performScrollToNode`** at font scale 2.0; the badge at the end edge in RTL; the content
+     description's pattern; no tag or description holding a URI or a group id;
+  10. the crop request sets `diskCachePolicy(DISABLED)` — asserted on the built request.
+- **Mutation checks:** the cap at 9; the freeze dropped; the cross-filter predicate ignored by one
+  facet; the projection subscribed at open; `diskCachePolicy` removed; the clamp done by shrinking.
+
+**Device-only checks** — in the verification phase if a device is attached, else carried to 3.7, and
+the report says which: the tab labels at font scale 2.0 on a 360 dp width (de, it); the tile notices'
+ellipsis at 2.0; `AlertDialog` with a `LazyColumn` — a bounded height, OK visible, at 2.0 and in
+landscape; the crop's decode cost scrolling 100 or more tiles, and sharpness for small faces (21 of
+104 groups have no member at least 60 px across, *3.4*); **Coil's disk cache directory unchanged
+after the People picker renders** (ADR-0024 §6), and the memory cache emptied by a switch-off; the
+disclosure shown once, on a capable phone with face data on, and the first face pass through the real
+worker after it — which is also 3.7's item 5. *(2026-11-22: the gate ran none of these as a
+separate check; the ones the review named are 3.7's items 17 to 24, and the first face pass stays
+item 5.)*
+
+**Verification phase — once, over the integrated change; it owns the gate.** ✅ **Done 2026-11-22** —
+the gate is under *3.6 — Built and verified 2026-11-22* below. The definition of done,
+steps 1 to 5; `adb devices` settles step 4 and the report says which ran. Also: `git status
+app/schemas` empty — neither database changes version; the debug and release merged manifests
+byte-identical to 3.5's (*3.5 — Built and verified 2026-11-21*); no `Log` call in the new `ui/` code;
+`git diff --stat` against `git diff --ignore-all-space --stat` for line endings. No task runs
+`connectedDebugAndroidTest` itself.
+
+**Task P — afterwards** (Planner; the vocabulary's edits the Designer's). ✅ **Done 2026-11-22**,
+except the vocabulary's edits, which stay routed to the Designer (*3.6 — Built and verified
+2026-11-22*, *Not proven by it*): `ARCHITECTURE.md` and `AGENTS.md` in an earlier run; the *Built*
+notes on ADR-0024 Amendment 1, ADR-0017 Amendment 4, ADR-0022 and ADR-0023 §3, this plan and
+[albums.md](albums.md) §7 in this one. On the built code, not on
+reports: `ARCHITECTURE.md` §1 and §2 (the third tab; the Face data area and the licences row; the
+disclosure at the root), §3 (`FaceDataViewModel`, the new `ui/` and `ui/components` files, the ABI
+answer in `FaceCapability.kt`) and §11 (what is closed — the interim notice, the non-arm64 wait, the
+uncalled refresh — and what is left); `AGENTS.md` (*State ownership*: `FaceDataViewModel` among the
+feature ViewModels; *Preference stores*: "nothing in `ui/` writes either … step 3.6 does" made true;
+*The two databases*: "nothing in `ui/` calls the deletion or the picker query yet"); ADR-0024 —
+a *Built* note on Amendment 1 (its marker was already turned into an adoption line on 2026-11-21);
+ADR-0023 §3, a *Built* note under the dated note of 2026-11-21 on the ABI
+answer; ADR-0017 Amendment 4, a *Built* note on the notices; the UI vocabulary's edits, routed to the
+Designer — at least the existing **Newer-app notice** and **Album info dialog** entries (*Open after S1
+and C*); [albums.md](albums.md) §7's Stage 3 row and decision 33's D1 pointer; this plan — the step
+row, a *Built and verified* section, the handoff, 3.7's list.
+
+**Not 3.6's:** rule editing, and with it re-picking a person who cannot be found (its own plan); a
+notice for a waiting album (decision 42); naming, merging or splitting people (decision 40); a
+complete open-source licences screen; the Play Data Safety check (before the first Play release that
+ships the Tier C pass); the face projection's cost at production size (3.7 items 11 and 15).
+
+### 3.6 — Built and verified 2026-11-22
+
+Built as tasks S1, C, S2, A and B above, then the verification phase and task P. What landed is not
+restated here: `ARCHITECTURE.md` §1, §2, §3 and §11 describe it, with
+[ADR-0024](../architecture/decisions/0024-face-data-disclosure-and-delete-switch.md) Amendment 1's
+*Built* note, [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md)
+Amendment 4's, [ADR-0022](../architecture/decisions/0022-people-criterion-anchored-to-a-photo.md)'s
+and [ADR-0023](../architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md) §3's.
+Per task, in one line each:
+- **S1** — the 24 keys the amendment does not govern, in all 17 locales; **S2** — the 18 privacy keys,
+  the approved English verbatim, the *face data* terms of *Open after S1 and C* reused.
+- **C** — the notices by cause through `albumStatusNoticeKind`, and the People entry in the Album
+  info dialog.
+- **A** — `ui/FaceDataViewModel.kt`; the Face data area and the Face licences row in Settings;
+  `ui/components/FaceDataDialogs.kt` (the disclosure in both modes, the Delete face data dialog, the
+  Face licences dialog); the disclosure hosted at `MainActivity`'s root; the app-open check and
+  start-up deletion; `supportsFacePipelineAbi` in `data/FaceCapability.kt`.
+- **B** — the People tab: `ui/PeoplePicker.kt`, `ui/components/FaceCrop.kt`, the chosen people and
+  `MAX_PEOPLE_PER_ALBUM` (8) in `AutomaticAlbumPickerState`, the match count and the Place and Date
+  counts through the evaluator's member set, `listFaceGroups` as the source, the `require` caught in
+  `createAutomaticAlbum`. Built as B1 and B2, two passes of the one task.
+
+**No schema change** in either database; no dependency, permission or preferences file.
+
+**The gate — the definition of done, once, over the integrated change, after the review's fixes**
+(Coder-owned; checked by the Planner against the progress note and the result XMLs, not by a run):
+`compileDebugKotlin` OK; the unit suite, 84 files, 1427 tests, 0 failures;
+`compileDebugAndroidTestKotlin` OK; a device was attached, the SM-G990B, so
+`connectedDebugAndroidTest` ran: 334 tests, 0 failures, 0 errors, 3 skipped — the three opt-in
+measurements, skipped by design. Per class: `SettingsScreenTest` 38, `FaceDataDialogsTest` 16,
+`NewAutomaticAlbumContentTest` 87, `PersonFaceOrientationDeviceTest` 1, `FolderListContentTest` 51,
+`AlbumDetailContentTest` 38, `AlbumInfoDialogTest` 15. The debug and release merged manifests
+byte-identical to 3.5's (debug md5 `8856dbd4b4257bd665c4593a325ba624`, release
+`043a521e4d0a25724364c8b8b6ea6f8d`); `app/schemas` unchanged. Lint does not run on this machine
+(`AGENTS.md`, *Running Gradle*), so no lint result is claimed. **Mutation checks**, each seen to fail
+its test and reverted: Task C, 6 or more; Task A, 14 unit and 1 device, plus 2 for the review's
+fixes; B1, 12; B2, 6; the picker's review fixes, 4 (S1, S3, S4, S6 of that review). The gate's report
+does not say whether Task C's two mutations recorded as not run on 2026-11-21 are among its six.
+This document does not record tracking state.
+
+**Review outcomes.** Two Reviewers; no hard violations. **Fixed, task A:** the cleanup sentence shown
+only when the deletion returned `scrubbed == false`, not when it threw; a `Throwable` caught at app
+open; the Face data row's minimum height. **Fixed, the picker:** the chosen people read from the
+draft; no transient count of 0 on the first chosen person; `togglePerson` requires equality with the
+listed summary; Coil's `Precision.INEXACT` on the crop request; the reveal effect keyed on
+`NOT_LOADED`; a reload on clear after a skipped reload; and a new device test,
+`PersonFaceOrientationDeviceTest`, a rotated JPEG's crop. **Judgement calls, left as built** and
+recorded in `ARCHITECTURE.md` §11: the cleanup sentence is also cleared on a rotation; the licence
+files' order is pinned only on the constant list; the no-arm64 test lives in two places, the
+ViewModel and the checker.
+
+**Not proven by it** — each 3.7's (items 17 to 24 under *3.2 to 3.8*) or debt in `ARCHITECTURE.md` §11:
+- **the native-speaker review** of the translated privacy text, before a release — priority the
+  disclosure's P1 to P5, the Delete face data dialog, the Face data row and the three people notices,
+  with the *face data* term per locale listed under *Open after S1 and C*;
+- string lengths: several locales' tile and notice strings run 74 to 85 characters against about 60,
+  unchecked at font scale 2.0;
+- the device-only checks of *Device-only checks* above that the gate did not run — 3.7's list;
+- **the UI vocabulary's edits to existing entries**, routed to the Designer and not yet made: the
+  Newer-app notice, the Album info dialog, the Status area (three pickers now), the New automatic
+  album screen (place, date and people) and Pick — tasks C and B only annotated them;
+- the three opt-in measurement tests, skipped in the gate by design.
+
 ### 3.2 to 3.8
 
 At the level of detail Stage 4's plan used for its later steps; each is refined when 3.1 has
@@ -3128,7 +3960,10 @@ settled what it depends on.
 - **3.6 — The UI.** The People criterion with its thumbnails, with no merge and no split (decision
   40); the notice of an unevaluatable people album, whose wording is open (decision 42); the
   disclosure, and the Settings switch; the Settings row showing the licence notices (E5); strings in
-  every shipped locale; vocabulary in-change.
+  every shipped locale; vocabulary in-change. Refined 2026-11-21 into its own section above, which
+  carries the five items below into its tasks: items 1 to 3 into Task A, item 4 into Task B (the
+  limit, 8, answered — D3), item 5 into Task C. Built and verified 2026-11-22 — all five items done
+  (*3.6 — Built and verified 2026-11-22*).
   - ~~**Added 2026-11-21 from 3.5** — left to 3.6 by *3.5*'s *status, causes and availability*:
     carrying `AlbumUnevaluatableCause` to `AlbumListItem` and branching the notice on it **before any
     build that can write a `people` clause ships** — until then every cause shows the Newer-app
@@ -3225,6 +4060,24 @@ settled what it depends on.
     16. on a phone without arm64-v8a, if one can be attached: a restored people album does not wait
         for ever once 3.6 has closed the gap (*3.6*, item 1) — it shows the device-incapable
         notice. If no such phone exists, say so; it is then proven by unit tests only.
+  - **Added 2026-11-22 from 3.6** — the device-only checks of *3.6*'s *Device-only checks* that its
+    gate did not run, on the SM-G990B unless said otherwise (*3.6 — Built and verified 2026-11-22*):
+    17. the New automatic album screen's tab labels at font scale 2.0 on a 360 dp width, in German
+        and Italian;
+    18. the tile and notice strings that run 74 to 85 characters in several locales against about
+        60 in English, at font scale 2.0 — the tile ellipsizes; shortening a translation is the
+        remedy, not a layout change;
+    19. the face crop's decode cost while scrolling 100 or more Person tiles;
+    20. the crop's sharpness for small faces — 21 of the 104 groups measured at 3.4 have no member
+        at least 60 px across;
+    21. Coil's disk-cache directory unchanged after the People picker renders (ADR-0024 §6) —
+        asserted on the request's policy by a test, never observed;
+    22. the Face licences dialog at font scale 2.0 and in landscape — a bounded height, its button
+        visible;
+    23. a tap outside the disclosure leaves it showing, on a device — pinned today by its
+        `DialogProperties` in a test only;
+    24. with items 10 and 16, on a phone without arm64-v8a if one can be attached: the capability
+        recorded incapable at app open, and the Face data area and the People tab not offered.
 - **3.8 — Close-out.** `ARCHITECTURE.md`, exit criteria checked against the repository,
   `/docs-audit`, archive.
 
@@ -3677,7 +4530,10 @@ delegation, in decision 46.
 ### D. Screen and navigation — block 3.6; raised by the Planner
 
 1. **D1 — Layout of the People criterion** on the New automatic album screen; decision 33 left it
-   to the ML stages' plans. Designer.
+   to the ML stages' plans. Designer. ✅ **Answered 2026-11-21 by the Designer: a third tab, People,
+   beside Place and Date** — no screen of its own and no navigation change, so D2 is not reopened (its
+   trigger 1 does not fire). The layout and the reasons are in *3.6 — The People criterion, the
+   disclosure and the switch*, *Decided at 3.6 — D1 and the People picker*.
 2. **D2 — ADR-0013's revisit:** does the people flow need a real back stack, as that ADR expects at
    Stage 3?
 
@@ -3704,6 +4560,9 @@ delegation, in decision 46.
      a People criterion inside the screen costs no navigation change; a screen of its own reopens
      D2.
 3. **D3 — How many people may one album hold?** *Raised by the Planner 2026-11-21, from 3.5;
+   ✅ **Answered 2026-11-21 by the maintainer: at most 8 people in one album, as recommended.** Built
+   as `MAX_PEOPLE_PER_ALBUM` in the picker, with the encoder's `require` caught in
+   `createAutomaticAlbum` as the backstop (*3.6*, Task B).
    blocks 3.6's picker; the maintainer's — a product choice.* The rule's 16 KiB cap holds about 8 to
    50 `people` clauses, depending on the anchor photos' name lengths. **Recommended: 8**, the most
    that always fits — the reasoning is in the handoff's *Next action: step 3.6* and *3.6*, item 4.

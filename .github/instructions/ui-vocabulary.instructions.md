@@ -126,6 +126,40 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
   `new_automatic_album_year_<year>`, `new_automatic_album_month_<1-12>` and
   `new_automatic_album_all_of_country` / `_region` / `_year`.
 
+  The **People picker** (a third tab, `new_automatic_album_people_tab`, after Place and Date; its grid
+  tagged `new_automatic_album_people_grid`) is offered only when face data is on and the device
+  capable; otherwise the screen has the two tabs above and no People entry point. It is a grid, not a
+  list, and it is not cross-filtered: it shows **Person tiles** in the order the index lists people
+  (most photos first), with no search, sort or filter. While it is offered, the **New automatic
+  album hint** before anything is chosen reads "Choose a place, a date, people, or any mix of them".
+  Its parts:
+  - The **Person tile** (`PersonTile`, tagged `new_automatic_album_person_<index>`, where the index is
+    the tile's position in the grid and never a group id or a URI): a grid cell like the **Folder
+    tile**, **Media tile** and **Album tile**, and deliberately not a "thumbnail", which already
+    names the **Folder thumbnail** and the **Album cover**; the image inside it is the *face crop*, a
+    circle cropped from one photo of the person at display time. Under it sit a small photo icon and
+    the number of photos the person is in. A tile has no name and no label: a person is only a face
+    and a count (albums.md §8 decision 40). The whole cell is one checkbox target. A chosen tile shows
+    a primary ring and a check badge at its top end (tagged `new_automatic_album_person_selected_<index>`),
+    with no dimming scrim, which would dim the face being recognised, unlike the **Media tile**'s check.
+    At the limit of eight chosen every unchosen tile is disabled and dimmed, with no click action;
+    chosen tiles stay enabled so that one can always be removed. Its accessibility description is
+    "Person N of M, K photos". Aliases: **person cell**, **face tile** (not preferred)
+  - The **People hint** (tagged `new_automatic_album_people_hint`), the first line of the grid after the
+    **Status area**: a polite live region saying "Pick the people who should all appear in the same
+    photo" with the limit, and, at the limit, why nothing more can be picked. Not the **New automatic
+    album hint**, which is the top slot's line.
+  - The **People chip** (tagged `new_automatic_album_people_chip`, the `People` icon), after the Place and
+    Date chips among the **choice chips**: one chip for all chosen people, labelled with their count
+    ("3 people"), whose press clears every chosen person. One person is removed by pressing its tile.
+  - The People picker's own states, each tagged: **People loading state**
+    (`new_automatic_album_people_loading`), **People empty state** (`new_automatic_album_people_empty`; with
+    the **Index band** hidden it carries a tonal Index now button, tagged
+    `new_automatic_album_people_index_now`, and with the band shown the band is the way to index) and
+    **People failed state** (`new_automatic_album_people_failed`, with **Retry**, tagged
+    `new_automatic_album_people_retry`). They are the tab's own: the screen-wide loading, failed and
+    waiting states above govern the Place and Date pickers and the match-count line, and do not gate this one.
+
   Each picker's list opens with the **Status area**, a collapsible region holding the **Index band**.
   It appears only once the picker is ready, at every drill level, and appears nowhere but these two
   pickers. Say "Status area" of the **New automatic album screen** in full: the **Media index area**
@@ -162,6 +196,13 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
     — never a percentage, never progress. Opening the screen never starts indexing. When nothing is
     indexed, or while indexing is running, a picker with nothing to list says so in its own wording
     under the same `new_automatic_album_place_empty` / `new_automatic_album_date_empty` tags.
+  - Added with the **People picker**: the **Status area** also opens the People grid, as its first
+    full-width item, with the same flag and the same **Index band**; only the band's Running text
+    differs there ("Reading your photos and videos, including finding faces. This can take a while."),
+    under the same tag `new_automatic_album_index_now`. The sentence above that says the area
+    "appears nowhere but these two pickers" is therefore stale: it is three pickers now. That edit,
+    and the matching ones in the **New automatic album screen** entry ("by place and date", "two
+    sections reached from tabs", the hint, the **choice chips**), are the Designer's.
   Aliases: **automatic album picker**, **automatic album creation screen**
 - **Settings screen** (`SettingsScreen`): App preferences, language, support, legal, and the tip
   jar. Reached from the **Main view bar Settings destination**, which stays visible and selected
@@ -379,6 +420,24 @@ Shared parts:
   In Album Detail View they stack as separate notices, the **Newer-app notice** first and the
   **Hidden-members notice** last. On the tile and row the **Newer-app notice** is also announced as
   the tile's state description, because its content description is the Album name alone.
+- **Status notice**: The one notice an Album can show about why its rule is not fully applied; the
+  **Newer-app notice** and the three below are its kinds, and an Album shows at most one. A waiting,
+  complete or manual Album shows none. Each has a short wording on the **Album tile** and **Album
+  row** (also their state description) and a full wording in Album Detail View; none has an action
+  and none names a person.
+- **Face-data-off notice** (tagged `album_people_face_data_off_notice`; an unevaluatable people
+  Album whose cause is face data being off): A **Status notice**, shown with the `FaceRetouchingOff`
+  icon. It says only the items added by hand are shown and that turning face data on in Settings
+  brings the rest back.
+- **Device-incapable notice** (tagged `album_people_device_incapable_notice`; cause: the device
+  cannot find people): A **Status notice**, shown with the `FaceRetouchingOff` icon. It says people
+  cannot be found on this phone and only the items added by hand are shown; it names no way out.
+- **Person-not-found notice** (tagged `album_people_anchor_not_found_notice`; cause: a person's
+  photo cannot be found): A **Status notice**, shown with the `PersonOff` icon. It says a person in
+  the Album cannot be found, perhaps because the photo they were chosen from is gone, and that the
+  Album fills in again if that photo returns, otherwise it should be created again.
+- The **Hidden-members notice** stacks below whichever **Status notice** is shown, in Album Detail
+  View and on the tile and row alike.
 - **Album info item** (tagged `album_info_button`): The last item of the **Browse top bar**'s
   Overflow menu in Album Detail View, labelled "Album info" and carrying the `Description` icon (not
   `Info`, which is the top bar's caption toggle). It is shown only once the Album is known and never
@@ -398,6 +457,11 @@ Shared parts:
   the other periods read "From …", "Until …" and "… – …". An unreadable rule shows the
   **Newer-app notice** wording (`album_info_unreadable`) and never the stored text. It describes
   the rule only; the rule cannot be edited from it (albums.md §8 decision 26).
+- **People entry** (tagged `album_info_people`): The entry of the **Album info dialog** for an
+  Automatic album whose rule has people, after Place and Date. A label "People" above a count
+  ("1 person", "3 people") and the line "Only photos that show all of them." It shows only the
+  count, never a person, and is present even when people are unavailable now; a people-only rule
+  still shows the Automatic album heading.
 - **Change album thumbnail item** (`R.string.menu_change_album_thumbnail`; the `Image` icon): The
   item of the **Browse top bar**'s Overflow menu in Album Detail View, placed after Change view type
   and before the **Album info item**. It enters the **Album cover picker**. It is shown only for an
@@ -470,6 +534,12 @@ Shared parts:
   OK, and shows each URL as tappable text, tagged `place_data_source_link` and
   `place_data_licence_link`. "GeoNames", "CC BY 4.0" and the URLs are never translated.
   Aliases: **attribution dialog**, **GeoNames notice**
+- **Face licences dialog** (`FaceLicencesDialog`, content tagged `face_licences_notice`, its list
+  `face_licences_list`): The notices for OpenCV, YuNet and SFace, opened from the **Face licences
+  row**. One translated sentence, then the five files under `assets/face/` (`NOTICE.txt`, the
+  OpenCV, SFace and YuNet licences, `THIRD_PARTY_NOTICES.txt`), each under its file name, verbatim
+  in monospace and never translated. It shows progress while it reads, a sentence if it cannot, and
+  closes with OK. A sibling of the **Place data dialog**. Alias: **face notices**
 - **Add excluded folder dialog** (`AddExcludedFolderDialog`): Excludes a folder by browsing to it
   from the Manage excluded screen.
 - **Album type dialog** (`AlbumTypeDialog`): Chooses between a **Manual album** and an
@@ -482,6 +552,20 @@ Shared parts:
 - **Rename album dialog** (`RenameAlbumDialog`): Changes an Album's name, never a folder or file.
 - **Delete album dialog** (`DeleteAlbumDialog`): Confirms deleting an Album and its references;
   the media files remain untouched.
+- **Delete face data dialog** (`DeleteFaceDataDialog`, content tagged `face_data_delete_dialog`,
+  buttons `face_data_delete_confirm` and `face_data_delete_cancel`): The one confirmation before face
+  data is switched off and deleted, opened by turning the **Face data row** off. Cancel, Back and a
+  tap outside change nothing and the switch stays on. A sibling of the **Delete album dialog**; the
+  **Face data disclosure**'s Turn off skips it.
+- **Face data disclosure** (`FaceDataDisclosureDialog`, content tagged `face_data_disclosure`): The
+  statement, titled "People in your photos", that faces are found and grouped on this phone, never
+  sent anywhere or backed up, and how to turn it off. It has two modes. The **disclosure**, hosted at
+  `MainActivity`'s root over every screen except the **Full-screen viewer**, where it waits, shows
+  once per installation, while face data is on and the device capable. Its buttons are OK
+  (`face_data_disclosure_ok`) and Turn off (`face_data_disclosure_turn_off`); neither Back nor a tap
+  outside closes it. Its **info mode**, opened from the **Face data info row**, has one Close
+  (`face_data_disclosure_close`) and no side effect. Aliases: **face data notice**, **people
+  disclosure**
 - **Add to album dialog** (`AddToAlbumDialog`): Chooses an Album for selected media, with an action
   to create a new Album.
 - **Delete confirmation**: The only gate before a delete. The media one shows the item count.
@@ -509,6 +593,21 @@ OK is pressed (ADR-0006).
   Terms. Its subtitle is the short credit, visible without a tap; tapping it opens the **Place data
   dialog**. It is the app's attribution surface for the GeoNames place data and must survive any
   reorganisation of Settings (ADR-0019 Amendment 1). Aliases: **GeoNames credit**, **attribution row**
+- **Face data area** (`FaceDataSettingsArea`, tagged `face_data_area`, heading "People"): The
+  Settings section under the **Media index area** and above App, with the **Face data row** and the
+  **Face data info row**. It is shown only while the device is known to be capable, whether face data
+  is on or off, and is absent otherwise. It is not the **Media index area**, which alone measures scan
+  progress, and it carries no figure.
+- **Face data row** (tagged `face_data_row`): The first row of the **Face data area**: a switch for
+  finding faces, the whole row being the control (`Role.Switch`). While deleting it is disabled with a
+  progress indicator and "Deleting face data…". After a deletion whose files could not be shown to be
+  scrubbed it adds a transient sentence under the row (tagged `face_data_cleanup_pending`) until
+  Settings is left. Turning it off opens the **Delete face data dialog**; turning it on needs none.
+- **Face data info row** (tagged `face_data_info_row`, "About face data"): The second row of the
+  **Face data area**; opens the **Face data disclosure** in its info mode.
+- **Face licences row** (tagged `face_licences_row`): The last row of the Legal section, after the
+  **Place data row**, subtitle "OpenCV, YuNet and SFace"; opens the **Face licences dialog**. Never
+  hidden, whatever the device or the setting.
 - **Tip jar**: The in-app purchase that supports the developer, driven by `BillingViewModel`.
   It is the app's only use of the network or a Play account.
 

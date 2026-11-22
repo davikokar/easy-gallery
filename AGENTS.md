@@ -193,7 +193,8 @@ the audit is for the rest.
 - **`GalleryViewModel` is the largest file in the app by a wide margin.** Treat that as a reason
   to extract, not a licence to add. The two established escapes are a new state holder like the
   three above, or a feature-scoped ViewModel — `CreateFolderViewModel`, `BillingViewModel`,
-  `AlbumsViewModel`, `FavouritesViewModel`, and `MediaIndexingViewModel` are the precedent. Albums
+  `AlbumsViewModel`, `FavouritesViewModel`, `MediaIndexingViewModel`, and `FaceDataViewModel` are
+  the precedent. Albums
   added **no album state** to `GalleryViewModel`; it only reuses the viewer delegate and the
   selection machinery. The media index added one delegate, `MediaIndexDateTakenState`, and nothing
   else. A state holder can also belong to a feature ViewModel: `AutomaticAlbumPickerState` is owned
@@ -202,7 +203,11 @@ the audit is for the rest.
   `AlbumsViewModel` holds a second `FolderViewPreferencesState` of its own, so `GalleryViewModel`
   gained nothing for them (ADR-0021). People albums added no state holder either: `AlbumsViewModel`
   owns their second shared flow, the face snapshot with the availability, beside the join (step
-  3.5).
+  3.5), and the People picker's list went into `AutomaticAlbumPickerState` (step 3.6). Face data's
+  switch, disclosure and app-open work are the opposite case: they belong to no album, so they are a
+  feature ViewModel of their own, `FaceDataViewModel`, which `MainActivity` holds and which reaches
+  the albums only by an availability epoch `MainActivity` forwards to
+  `AlbumsViewModel.refreshPeopleAvailability()` (step 3.6).
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -257,9 +262,11 @@ and backed up. Whether the face-data disclosure has been shown is **not** there,
 beside the capability record, and that file is excluded from backup in all four rules sections —
 the second preferences file with an `<exclude>`, after `media_index_run_state` (ADR-0018
 Amendment 7 §3). Since step 3.5, `AlbumsViewModel` **reads** the setting and the capability record,
-through `StoredPeopleAvailabilitySource`, to decide whether a people album can be evaluated; nothing
-in `ui/` writes either, marks the disclosure shown, or runs the capability check yet — step 3.6
-does.
+through `StoredPeopleAvailabilitySource`, to decide whether a people album can be evaluated. Since
+step 3.6, `FaceDataViewModel` **writes** them through the same two stores and adds no file: it
+persists the setting from the Face data row and the disclosure's Turn off, marks the disclosure shown
+only from the disclosure's OK or Turn off — never from switching on (ADR-0024 Amendment 1) — and
+runs the capability check at app open.
 
 ### The two databases
 
@@ -312,11 +319,12 @@ database is backed up (ADR-0014) while the index must not be.
   `MediaIndexingWorker`, and the repeat of the deletion at the start of every worker run while the
   setting is off. Step 3.4 built grouping: it runs after the face pass in the same hold of the Tier
   C lock, fills the face rows' `groupId` and `groupingVersion` with no schema change, and the store
-  has the People picker's query, `listFaceGroups`. Both passes are dormant until step 3.6 records
-  the disclosure as shown, and nothing in `ui/` calls the deletion or the picker query yet. Step
+  has the People picker's query, `listFaceGroups`. Step
   3.5 built the `people` clause and its evaluation, and the Tier C evaluation projection it reads
   — no schema change in either database; [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §3
-  and §6 say where.
+  and §6 say where. Step 3.6 opened the gates and built the UI, again with no schema change: the
+  disclosure records itself as shown, the People picker reads `listFaceGroups`, and
+  `FaceDataViewModel` calls the deletion from the switch and at app open, under the Tier C lock.
   A people rule's anchor (ADR-0022) is the one face-related
   thing in the album database, and it is not face data. Read them before adding a table to either
   database.

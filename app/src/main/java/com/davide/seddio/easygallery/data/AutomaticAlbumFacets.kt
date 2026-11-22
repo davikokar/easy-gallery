@@ -37,11 +37,16 @@ data class MonthFacet(val month: Int, val count: Int)
  * for cannot be written into a rule, so it is not listed; its items still count under the country.
  * Likewise a country that is not two upper-case letters, and an empty region code, name or place, are
  * not listed: a row like that must never be able to fail a clause's constructor in the screen.
+ *
+ * [peopleMemberUris], when not null, are the live URIs the chosen people make members (see [peopleMemberUris]); every
+ * list and the match count then count only those items, as each already follows the other dimension (ADR-0024
+ * Amendment 1 §6). Null is nobody chosen, which filters nothing and costs nothing per item.
  */
 class AutomaticAlbumFacets(
     private val join: MediaIndexLiveJoin,
     private val zone: ZoneId,
-    private val admin1NameOf: (countryCode: String, admin1Code: String) -> String?
+    private val admin1NameOf: (countryCode: String, admin1Code: String) -> String?,
+    private val peopleMemberUris: Set<String>? = null
 ) {
 
     /** Countries with places, counting only items in [time] when it is given. */
@@ -50,7 +55,9 @@ class AutomaticAlbumFacets(
         val counts = HashMap<String, Int>()
         for (joined in join.items) {
             val values = joined.location.placeValues ?: continue
-            if (isClauseCountry(values.countryCode) && joined.inDate(range)) counts.merge(values.countryCode, 1, Int::plus)
+            if (isClauseCountry(values.countryCode) && joined.inDate(range) && joined.inPeople()) {
+                counts.merge(values.countryCode, 1, Int::plus)
+            }
         }
         return counts.map { CountryFacet(it.key, it.value) }.sortedBy { it.countryCode }
     }
@@ -65,7 +72,7 @@ class AutomaticAlbumFacets(
         val placeCounts = HashMap<String, Int>()
         for (joined in join.items) {
             val values = joined.location.placeValues ?: continue
-            if (values.countryCode != countryCode || !joined.inDate(range)) continue
+            if (values.countryCode != countryCode || !joined.inDate(range) || !joined.inPeople()) continue
 
             all++
             if (values.regionCode != null) {
@@ -94,7 +101,7 @@ class AutomaticAlbumFacets(
         for (joined in join.items) {
             val values = joined.location.placeValues ?: continue
             val place = values.placeName?.takeIf { it.isNotEmpty() } ?: continue
-            if (values.countryCode == countryCode && values.regionCode == admin1Code && joined.inDate(range)) {
+            if (values.countryCode == countryCode && values.regionCode == admin1Code && joined.inDate(range) && joined.inPeople()) {
                 counts.merge(place, 1, Int::plus)
             }
         }
@@ -106,7 +113,9 @@ class AutomaticAlbumFacets(
         val counts = HashMap<Int, Int>()
         for (joined in join.items) {
             val localDate = joined.localDate() ?: continue
-            if (joined.inPlace(region) && localDate.year in WRITABLE_YEARS) counts.merge(localDate.year, 1, Int::plus)
+            if (joined.inPlace(region) && joined.inPeople() && localDate.year in WRITABLE_YEARS) {
+                counts.merge(localDate.year, 1, Int::plus)
+            }
         }
         return counts.map { YearFacet(it.key, it.value) }.sortedByDescending { it.year }
     }
@@ -116,16 +125,18 @@ class AutomaticAlbumFacets(
         val counts = HashMap<Int, Int>()
         for (joined in join.items) {
             val localDate = joined.localDate() ?: continue
-            if (localDate.year == year && joined.inPlace(region)) counts.merge(localDate.monthValue, 1, Int::plus)
+            if (localDate.year == year && joined.inPlace(region) && joined.inPeople()) {
+                counts.merge(localDate.monthValue, 1, Int::plus)
+            }
         }
         return counts.map { MonthFacet(it.key, it.value) }.sortedBy { it.month }
     }
 
     /** Items the combined choice would make members. No choice at all is not a rule and counts 0. */
     fun matchCount(region: AlbumRuleClause.Region?, time: AlbumRuleClause.Time?): Int {
-        if (region == null && time == null) return 0
+        if (region == null && time == null && peopleMemberUris == null) return 0
         val range = time?.toInstantRange(zone)
-        return join.items.count { it.inPlace(region) && it.inDate(range) }
+        return join.items.count { it.inPlace(region) && it.inDate(range) && it.inPeople() }
     }
 
     private fun Map<String, Int>.toPlaceFacets(): List<PlaceFacet> {
@@ -136,6 +147,10 @@ class AutomaticAlbumFacets(
         if (range == null) return true
         val state = date
         return state is DateTakenSortState.IndexedWithDate && range.contains(state.epochMillis)
+    }
+
+    private fun JoinedMedia.inPeople(): Boolean {
+        return peopleMemberUris == null || item.uri.toString() in peopleMemberUris
     }
 
     private fun JoinedMedia.inPlace(region: AlbumRuleClause.Region?): Boolean {
@@ -156,4 +171,26 @@ class AutomaticAlbumFacets(
         // What a region clause accepts; a row that fails it is never listed, so no clause can fail to build.
         fun isClauseCountry(code: String) = code.length == 2 && code.all { it in 'A'..'Z' }
     }
+}
+
+/**
+ * The live URIs of the items that every one of [people] makes a member, by the evaluator itself: a rule of the people
+ * clauses alone, over [join], so a person's match here is the match an album of that person would show, and an anchor
+ * that cannot be found, as for an album, makes the set empty. Members of the conjunction with a place and a date are
+ * the members of each clause, so intersecting this set with them gives the evaluator's member count for the whole rule.
+ * [faces] null is not loaded yet, which matches nothing. Availability is not asked: a picker offers people only when
+ * they are available.
+ */
+fun peopleMemberUris(
+    join: MediaIndexLiveJoin,
+    zone: ZoneId,
+    people: List<AlbumRuleClause.People>,
+    faces: FaceEvaluationSnapshot?
+): Set<String> {
+    if (people.isEmpty()) return emptySet()
+
+    val noManualMembers = AlbumMembershipResolution(emptyList(), emptyList(), emptyList(), emptyList(), emptySet(), emptyList())
+    val input = faces?.let { PeopleEvaluationInput(PeopleAvailability.AVAILABLE, it) }
+    val evaluation = AlbumRuleEvaluator.evaluate(AlbumRule.Evaluatable(people), join, noManualMembers, zone, input)
+    return evaluation.members.mapTo(HashSet()) { it.uri.toString() }
 }

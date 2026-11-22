@@ -164,3 +164,21 @@ otherwise run plain.
   gazetteer's linear-scan oracle is the example. Acceptable for oracles and test seams.
 - A device's real screen size matters: an item below the fold is not in the semantics tree in a
   usable state. Call `performScrollTo()` before asserting on anything low in a scrollable screen.
+- **To press Back on a Compose dialog, send the key; do not use `Espresso.pressBack()`.** On the
+  SM-G990B it intermittently fails with `RootViewWithoutFocusException`, because it waits for the
+  picked root to take window focus and a dialog window does not always take it. `waitForIdle()`,
+  then `InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)` —
+  `pressSystemBack()` in `FaceDataDialogsTest` is the example.
+- A `*Content` test that needs the screen to react to its own taps drives it through a small
+  harness that holds the state and re-implements the ViewModel's action — `PickerHarness` in
+  `NewAutomaticAlbumContentTest`, whose person toggle stops at `MAX_PEOPLE_PER_ALBUM` as the
+  ViewModel does. The harness's copy of the rule proves only what the screen draws for it; the rule
+  itself must also be pinned by a unit test of the real state holder, as
+  `AutomaticAlbumPickerStateTest` pins the cap, so the two cannot drift apart unnoticed.
+
+## Mutation checks
+
+- A mutation check edits production code by hand to prove a test fails. **Restore the file before
+  anything else runs**, and check that it is restored — `git diff` on the file, or its md5 against
+  the copy taken before — rather than trusting the editor. A mutant left behind reproduces real test
+  failures in the next run, which then read as a code defect: check for one before diagnosing.

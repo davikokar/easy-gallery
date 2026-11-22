@@ -30,6 +30,7 @@ class FaceCapabilityDeviceTest {
         val checker = FaceCapabilityChecker(
             store = InMemoryFaceDeviceStateStore(),
             key = FaceCapabilityKey(appVersionCode = 1L, pipelineVersion = FACE_PIPELINE_VERSION, buildFingerprint = Build.FINGERPRINT),
+            supportedAbis = Build.SUPPORTED_ABIS.toList(),
             pipelineLoader = { OpenCvFacePipeline.load(context) }
         )
 

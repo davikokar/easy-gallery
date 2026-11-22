@@ -6,12 +6,14 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import android.net.Uri
 import android.os.LocaleList
+import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumRule
 import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
+import com.davide.seddio.easygallery.data.AlbumUnevaluatableCause
 import com.davide.seddio.easygallery.data.FAVOURITES_OVERRIDE_KEY
 import com.davide.seddio.easygallery.data.FACE_GROUPING_VERSION
 import com.davide.seddio.easygallery.data.FACE_PIPELINE_VERSION
@@ -20,6 +22,7 @@ import com.davide.seddio.easygallery.data.FaceDetection
 import com.davide.seddio.easygallery.data.FaceEmbedding
 import com.davide.seddio.easygallery.data.FaceEvaluationSnapshot
 import com.davide.seddio.easygallery.data.FaceGroup
+import com.davide.seddio.easygallery.data.FaceGroupSummary
 import com.davide.seddio.easygallery.data.FaceIndexOutcome
 import com.davide.seddio.easygallery.data.FaceIndexWrite
 import com.davide.seddio.easygallery.data.FolderViewOverrides
@@ -52,6 +55,7 @@ import com.davide.seddio.easygallery.data.StoredMembership
 import com.davide.seddio.easygallery.data.StoredMembershipKind
 import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.albumOverrideKey
+import com.davide.seddio.easygallery.data.mediaIdentityOf
 import com.davide.seddio.easygallery.data.toMediaIdentity
 import io.mockk.every
 import io.mockk.mockk
@@ -1241,6 +1245,64 @@ class AlbumsViewModelTest {
     }
 
     @Test
+    fun `the cause of an unevaluatable album reaches the list item for each of the four causes`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val peopleId = albumStore.createAlbum("Her", 1_000L, peopleRuleText(anchor))
+        val newerId = albumStore.createAlbum("Future", 1_001L, UNKNOWN_VERSION_RULE)
+        val source = InMemoryPeopleAvailabilitySource(PeopleAvailability.FACE_DATA_OFF)
+        val viewModel = createViewModel(albumStore = albumStore, peopleAvailabilitySource = source)
+        viewModel.setAllMedia(listOf(anchor))
+        advanceUntilIdle()
+
+        assertEquals(AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_FACE_DATA_OFF, viewModel.album(peopleId).unevaluatableCause)
+        assertEquals(AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD, viewModel.album(newerId).unevaluatableCause)
+
+        source.availability = PeopleAvailability.DEVICE_INCAPABLE
+        viewModel.refreshPeopleAvailability()
+        advanceUntilIdle()
+
+        assertEquals(AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE, viewModel.album(peopleId).unevaluatableCause)
+        assertEquals(AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD, viewModel.album(newerId).unevaluatableCause)
+    }
+
+    @Test
+    fun `an anchor image with no face found carries the anchor not found cause`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val albumId = albumStore.createAlbum("Her", 1_000L, peopleRuleText(anchor))
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        viewModel.setAllMedia(listOf(anchor))
+        indexStore.indexFaces(anchor)
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.UNEVALUATABLE, viewModel.album(albumId).status)
+        assertEquals(AlbumUnevaluatableCause.ANCHOR_NOT_FOUND, viewModel.album(albumId).unevaluatableCause)
+    }
+
+    @Test
+    fun `a manual, waiting, and complete album carry no cause`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = InMemoryMediaIndexStore()
+        val anchor = mediaItem("content://media/external/images/media/1", "1.jpg")
+        val manualId = albumStore.createAlbum("Manual", 1_000L, null)
+        val waitingId = albumStore.createAlbum("Her", 1_001L, peopleRuleText(anchor))
+        val completeId = albumStore.createAlbum("June", 1_002L, JUNE_RULE)
+        indexStore.upsert(listOf(indexEntry(anchor, JUNE_15)))
+        val viewModel = createViewModel(albumStore = albumStore, mediaIndexStore = indexStore)
+        viewModel.setAllMedia(listOf(anchor))
+        advanceUntilIdle()
+
+        assertEquals(AlbumEvaluationStatus.MANUAL, viewModel.album(manualId).status)
+        assertEquals(AlbumEvaluationStatus.WAITING_ON_INDEX, viewModel.album(waitingId).status)
+        assertEquals(AlbumEvaluationStatus.COMPLETE, viewModel.album(completeId).status)
+        assertNull(viewModel.album(manualId).unevaluatableCause)
+        assertNull(viewModel.album(waitingId).unevaluatableCause)
+        assertNull(viewModel.album(completeId).unevaluatableCause)
+    }
+
+    @Test
     fun `only an album with a people clause subscribes to the face projection, and they share one subscription`() = runTest {
         val albumStore = InMemoryAlbumStore()
         val indexStore = CountingMediaIndexStore()
@@ -1272,6 +1334,256 @@ class AlbumsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(0, indexStore.faceProjectionSubscriptions)
+    }
+
+    // --- the People picker through the view model (plan 3.6, Task B) -------------------------------
+
+    @Test
+    fun `the picker lists the face groups in the store's order, reads them once, and anchors each at the face it shows`() = runTest {
+        val indexStore = CountingMediaIndexStore()
+        val photos = seedPickerLibrary(indexStore)
+        val viewModel = createViewModel(
+            mediaIndexStore = indexStore,
+            gazetteerNamesLoader = { pickerNames() },
+            peoplePickerOffered = { true }
+        )
+        viewModel.setAllMedia(photos)
+        val picker = viewModel.automaticAlbumPicker
+
+        picker.uiState.test {
+            picker.open("People")
+            picker.revealPeople()
+            picker.revealPeople()
+            val ready = awaitPickerState { it.people.status == PeopleListStatus.READY }
+
+            // Photos 1 to 3 hold the first person, photos 1 and 4 the second; the one-photo group is not offered.
+            assertEquals(listOf(3, 2), ready.people.groups.map { it.imageCount })
+            assertEquals(1, indexStore.faceGroupQueries)
+            assertEquals(indexStore.listFaceGroups(FACE_PIPELINE_VERSION, FACE_GROUPING_VERSION, 2), ready.people.groups)
+
+            val (first, second) = ready.people.groups
+            assertTrue(picker.togglePerson(second))
+            assertTrue(picker.togglePerson(first))
+            val both = awaitPickerState { it.people.chosenCount == 2 }
+            assertEquals(
+                listOf(peopleClause(photos[0], RIGHT_BOX), peopleClause(photos[0], LEFT_BOX)),
+                both.rule!!.clauses
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `People is offered as the injected check says, read afresh at each availability refresh`() = runTest {
+        val indexStore = InMemoryMediaIndexStore()
+        val photos = seedPickerLibrary(indexStore)
+        var offered = false
+        val viewModel = createViewModel(
+            mediaIndexStore = indexStore,
+            gazetteerNamesLoader = { pickerNames() },
+            peoplePickerOffered = { offered }
+        )
+        viewModel.setAllMedia(photos)
+        val picker = viewModel.automaticAlbumPicker
+
+        picker.uiState.test {
+            picker.open("People")
+            picker.revealPeople()
+            assertFalse(awaitPickerState { it.status == AutomaticAlbumPickerStatus.READY }.people.offered)
+            assertFalse(picker.togglePerson(indexStore.listFaceGroups(FACE_PIPELINE_VERSION, FACE_GROUPING_VERSION, 2).first()))
+
+            offered = true
+            viewModel.refreshPeopleAvailability()
+            awaitPickerState { it.people.offered }
+            picker.revealPeople()
+            val groups = awaitPickerState { it.people.status == PeopleListStatus.READY }.people.groups
+            assertTrue(picker.togglePerson(groups.first()))
+            awaitPickerState { it.people.chosenCount == 1 }
+
+            // The setting goes off, or the check ends incapable: the people and the list go.
+            offered = false
+            viewModel.refreshPeopleAvailability()
+            val dropped = awaitPickerState { !it.people.offered }
+            assertEquals(PeoplePickerUi(), dropped.people)
+            assertTrue(dropped.selection.people.isEmpty())
+            assertNull(dropped.rule)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the picker reads the face projection only while a person is chosen, and shares it with a people album`() = runTest {
+        val albumStore = InMemoryAlbumStore()
+        val indexStore = CountingMediaIndexStore()
+        val photos = seedPickerLibrary(indexStore)
+        val viewModel = createViewModel(
+            albumStore = albumStore,
+            mediaIndexStore = indexStore,
+            gazetteerNamesLoader = { pickerNames() },
+            peoplePickerOffered = { true }
+        )
+        viewModel.setAllMedia(photos)
+        val picker = viewModel.automaticAlbumPicker
+
+        picker.uiState.test {
+            picker.open("People")
+            picker.revealPeople()
+            picker.selectRegion(AlbumRuleClause.Region("IT"))
+            picker.selectTime(TimeSelection.Year(2025))
+            val groups = awaitPickerState { it.people.status == PeopleListStatus.READY && it.selection.time != null }.people.groups
+
+            // Open, place, date and the list loaded: the index's projection is read, the faces are not.
+            assertEquals(1, indexStore.projectionSubscriptions)
+            assertEquals(0, indexStore.faceProjectionSubscriptions)
+
+            picker.togglePerson(groups.first())
+            awaitPickerState { it.people.chosenCount == 1 }
+            assertEquals(1, indexStore.faceProjectionSubscriptions)
+
+            // A people album is another reader of the same subscription.
+            albumStore.createAlbum("Her", 1_000L, peopleRuleText(photos[0]))
+            advanceUntilIdle()
+            assertEquals(1, indexStore.faceProjectionSubscriptions)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the picker's match count is the member count of the album created from it, for people with place and date`() = runTest {
+        class Combo(val people: List<Int>, val region: AlbumRuleClause.Region?, val time: TimeSelection?, val expected: Int)
+
+        val indexStore = InMemoryMediaIndexStore()
+        val photos = seedPickerLibrary(indexStore)
+        val viewModel = createViewModel(
+            mediaIndexStore = indexStore,
+            gazetteerNamesLoader = { pickerNames() },
+            peoplePickerOffered = { true }
+        )
+        viewModel.setAllMedia(photos)
+        val picker = viewModel.automaticAlbumPicker
+        val june = TimeSelection.Month(2025, 6)
+        val combos = listOf(
+            Combo(listOf(0), null, null, 3),
+            Combo(listOf(0), AlbumRuleClause.Region("IT"), null, 2),
+            Combo(listOf(0), null, june, 2),
+            Combo(listOf(0, 1), null, null, 1),
+            Combo(listOf(0), AlbumRuleClause.Region("FR"), null, 1),
+            Combo(listOf(0, 1), AlbumRuleClause.Region("IT"), june, 1)
+        )
+
+        picker.uiState.test {
+            for ((index, combo) in combos.withIndex()) {
+                val name = "Combo $index"
+                picker.close()
+                picker.open(name)
+                picker.revealPeople()
+                val groups = awaitPickerState { it.name == name && it.people.status == PeopleListStatus.READY }.people.groups
+                for (person in combo.people) assertTrue(picker.togglePerson(groups[person]))
+                combo.region?.let { picker.selectRegion(it) }
+                combo.time?.let { picker.selectTime(it) }
+
+                val ui = awaitPickerState {
+                    it.name == name && it.people.chosenCount == combo.people.size && it.selection.region == combo.region &&
+                        it.selection.time == combo.time && it.content.matchCount == combo.expected && it.canCreate
+                }
+                assertTrue(viewModel.createAutomaticAlbum(ui.name, ui.rule!!))
+                advanceUntilIdle()
+
+                val album = viewModel.albums.value.first { it.name == name }
+                assertEquals(AlbumEvaluationStatus.COMPLETE, album.status)
+                assertEquals(combo.expected, album.resolvedMemberCount)
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `createAutomaticAlbum accepts eight people and refuses nine with nothing written`() = runTest {
+        every { application.getString(com.davide.seddio.easygallery.R.string.error_unknown) } returns "Unknown error"
+        val albumStore = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = albumStore)
+        val nine = (1..9).map { peopleClause(mediaItem("content://media/external/images/media/$it", "$it.jpg")) }
+
+        assertFalse(viewModel.createAutomaticAlbum("Nine", AlbumRule.Evaluatable(nine)))
+        assertEquals("Unknown error", viewModel.errorMessage.value)
+        // A place beside nine people is still nine people.
+        assertFalse(viewModel.createAutomaticAlbum("Nine in Italy", AlbumRule.Evaluatable(listOf(AlbumRuleClause.Region("IT")) + nine)))
+        advanceUntilIdle()
+        assertTrue(albumStore.observeAlbums().first().isEmpty())
+
+        assertTrue(viewModel.createAutomaticAlbum("Eight", AlbumRule.Evaluatable(nine.take(MAX_PEOPLE_PER_ALBUM))))
+        advanceUntilIdle()
+        assertEquals(listOf("Eight"), albumStore.observeAlbums().first().map { it.name })
+    }
+
+    @Test
+    fun `an oversized rule given to createAutomaticAlbum is refused, not thrown, and nothing is written`() = runTest {
+        every { application.getString(com.davide.seddio.easygallery.R.string.error_unknown) } returns "Unknown error"
+        val albumStore = InMemoryAlbumStore()
+        val viewModel = createViewModel(albumStore = albumStore)
+        // Eight anchors with long file names: under the people cap and over the encoder's 16 KiB.
+        val clauses = (1..MAX_PEOPLE_PER_ALBUM).map { index ->
+            AlbumRuleClause.People(
+                anchor = mediaIdentityOf("content://media/external/images/media/$index", "x".repeat(3_000) + index, 1L, 1L),
+                box = LEFT_BOX,
+                pipelineVersion = FACE_PIPELINE_VERSION
+            )
+        }
+
+        val accepted = viewModel.createAutomaticAlbum("Big", AlbumRule.Evaluatable(clauses))
+        advanceUntilIdle()
+
+        assertFalse(accepted)
+        assertEquals("Unknown error", viewModel.errorMessage.value)
+        assertTrue(albumStore.observeAlbums().first().isEmpty())
+    }
+
+    private suspend fun ReceiveTurbine<AutomaticAlbumPickerUi>.awaitPickerState(
+        predicate: (AutomaticAlbumPickerUi) -> Boolean
+    ): AutomaticAlbumPickerUi {
+        while (true) {
+            val item = awaitItem()
+            if (predicate(item)) return item
+        }
+    }
+
+    // Five photos in the index. The first person (a face in the left of photo 1) is in photos 1 to 3, the second (the
+    // right of photo 1) in photos 1 and 4, and photo 5 holds one face that is alone in its group.
+    private suspend fun seedPickerLibrary(indexStore: MediaIndexStore): List<MediaItem> {
+        val photos = (1..5).map { mediaItem("content://media/external/images/media/$it", "$it.jpg") }
+        val first = indexStore.indexPlacedFaces(photos[0], "IT", "16", "Florence", JUNE_15, LEFT_BOX, RIGHT_BOX)
+        val second = indexStore.indexPlacedFaces(photos[1], "IT", "16", "Pisa", JUNE_15, LEFT_BOX)
+        val third = indexStore.indexPlacedFaces(photos[2], "FR", "11", "Paris", JANUARY_15, LEFT_BOX)
+        val fourth = indexStore.indexPlacedFaces(photos[3], "IT", "16", "Florence", JANUARY_15, RIGHT_BOX)
+        val fifth = indexStore.indexPlacedFaces(photos[4], "IT", "16", "Pisa", JUNE_15, LEFT_BOX)
+        indexStore.writeFaceGroups(
+            listOf(
+                FaceGroup(first[0], listOf(first[0], second[0], third[0])),
+                FaceGroup(first[1], listOf(first[1], fourth[0])),
+                FaceGroup(fifth[0], listOf(fifth[0]))
+            ),
+            FACE_PIPELINE_VERSION,
+            FACE_GROUPING_VERSION
+        ) { true }
+        return photos
+    }
+
+    private suspend fun MediaIndexStore.indexPlacedFaces(
+        item: MediaItem,
+        country: String,
+        region: String,
+        place: String,
+        dateTakenEpochMillis: Long,
+        vararg boxes: FaceBox
+    ): List<Long> {
+        val row = placedEntry(item, country, region, place, dateTakenEpochMillis)
+        upsert(listOf(row))
+        val detections = boxes.map { FaceDetection(it, FaceEmbedding(floatArrayOf(1f, 0f, 0f))) }
+        writeFaceIndexResults(
+            listOf(FaceIndexWrite(row.toMediaIdentity(), FACE_PIPELINE_VERSION, FaceIndexOutcome.INDEXED, detections)),
+            faceDataEnabled = { true }
+        )
+        return listFaces(row.mediaUri).map { it.id }
     }
 
     private fun peopleClause(anchor: MediaItem, box: FaceBox = LEFT_BOX) =
@@ -1842,7 +2154,8 @@ class AlbumsViewModelTest {
             { projection, live -> MediaIndexLiveJoin.build(projection, live) },
         gazetteerNamesLoader: () -> GazetteerNames = { error("this test does not open the picker") },
         albumOverrideStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore(),
-        peopleAvailabilitySource: PeopleAvailabilitySource = InMemoryPeopleAvailabilitySource()
+        peopleAvailabilitySource: PeopleAvailabilitySource = InMemoryPeopleAvailabilitySource(),
+        peoplePickerOffered: () -> Boolean = { false }
     ): AlbumsViewModel {
         return AlbumsViewModel(
             application = application,
@@ -1858,7 +2171,8 @@ class AlbumsViewModelTest {
             gazetteerNamesLoader = gazetteerNamesLoader,
             localeProvider = { Locale.US },
             albumOverrideStore = albumOverrideStore,
-            peopleAvailabilitySource = peopleAvailabilitySource
+            peopleAvailabilitySource = peopleAvailabilitySource,
+            peoplePickerOffered = peoplePickerOffered
         )
     }
 
@@ -1920,6 +2234,18 @@ class AlbumsViewModelTest {
 
         override fun observeFaceEvaluationProjection(pipelineVersion: Int): Flow<FaceEvaluationSnapshot> {
             return delegate.observeFaceEvaluationProjection(pipelineVersion).onStart { faceProjectionSubscriptions += 1 }
+        }
+
+        var faceGroupQueries: Int = 0
+            private set
+
+        override suspend fun listFaceGroups(
+            pipelineVersion: Int,
+            groupingVersion: Int,
+            minimumImages: Int
+        ): List<FaceGroupSummary> {
+            faceGroupQueries += 1
+            return delegate.listFaceGroups(pipelineVersion, groupingVersion, minimumImages)
         }
     }
 

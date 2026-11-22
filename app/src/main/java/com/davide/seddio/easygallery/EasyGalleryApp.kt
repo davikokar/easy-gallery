@@ -117,6 +117,7 @@ class EasyGalleryApp : Application(), SingletonImageLoader.Factory {
         return FaceCapabilityChecker(
             store = faceDeviceStateStore,
             key = faceCapabilityKey(),
+            supportedAbis = Build.SUPPORTED_ABIS.toList(),
             pipelineLoader = ::loadFacePipeline
         )
     }

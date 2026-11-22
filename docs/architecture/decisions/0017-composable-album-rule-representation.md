@@ -776,6 +776,16 @@ with no schema change and the envelope still at version 1. Where the code is the
 - `People` and `Unevaluatable` redact `toString` (`Unevaluatable(raw=redacted, …)`), so neither an
   anchor's URI or name nor stored rule text reaches a log or a test failure message.
 
+### Built 2026-11-22 — step 3.6
+
+The notices now branch on the cause: one pure mapping, `albumStatusNoticeKind` in
+`ui/components/AlbumStatusNotices.kt`, picks one of four notices for the tile, the Album row and the
+Album Detail View, so the Newer-app notice is left to `RULE_NOT_UNDERSTOOD`. The People picker writes
+the clause, one `AlbumRuleClause.People.anchoredAt` per chosen person, at most `MAX_PEOPLE_PER_ALBUM`
+(8); `createAutomaticAlbum` refuses more and catches the encoder's `require` as a backstop.
+[ARCHITECTURE.md](../ARCHITECTURE.md) §3 describes both; the gate is in
+[albums-stage-3.md](../../design/albums-stage-3.md) *3.6 — Built and verified 2026-11-22*.
+
 ### References added by this amendment
 
 - [ADR-0022](0022-people-criterion-anchored-to-a-photo.md) — the anchor and its resolution

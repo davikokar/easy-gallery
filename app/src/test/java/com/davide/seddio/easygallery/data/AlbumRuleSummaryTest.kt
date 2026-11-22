@@ -290,4 +290,63 @@ class AlbumRuleSummaryTest {
             summarize(parsed)
         )
     }
+
+    @Test
+    fun `a people rule counts its people clauses and comes after places and dates`() {
+        val summary = summarize(
+            rule(
+                peopleClause("content://media/external/images/media/1", "secret-one.jpg"),
+                time("2025-01-01", "2025-12-31"),
+                peopleClause("content://media/external/images/media/2", "secret-two.jpg"),
+                AlbumRuleClause.Region(country = "FR"),
+                peopleClause("content://media/external/images/media/3", "secret-three.jpg")
+            )
+        )
+
+        assertEquals(
+            AlbumRuleSummary.Automatic(
+                listOf(
+                    AlbumRuleCondition.Place(PlaceScope.COUNTRY, "FR", listOf("France")),
+                    AlbumRuleCondition.Dates(DatePeriod.Year(2025)),
+                    AlbumRuleCondition.People(3)
+                )
+            ),
+            summary
+        )
+    }
+
+    @Test
+    fun `a people only rule is automatic with one person and a rule without people has no people condition`() {
+        val single = summarize(rule(peopleClause("content://media/external/images/media/1", "secret.jpg")))
+        val none = summarize(rule(time("2025-01-01", "2025-12-31")))
+
+        assertEquals(AlbumRuleSummary.Automatic(listOf(AlbumRuleCondition.People(1))), single)
+        assertTrue((none as AlbumRuleSummary.Automatic).conditions.none { it is AlbumRuleCondition.People })
+    }
+
+    @Test
+    fun `a people summary holds no anchor, uri, display name or box`() {
+        val summary = summarize(
+            rule(peopleClause("content://media/external/images/media/4242", "secret-name.jpg"))
+        ) as AlbumRuleSummary.Automatic
+        val people = summary.conditions.single() as AlbumRuleCondition.People
+
+        // The Compose compiler adds a synthetic $stable field to stable classes.
+        assertEquals(
+            listOf("count"),
+            AlbumRuleCondition.People::class.java.declaredFields.map { it.name }.filterNot { it.startsWith("$") }
+        )
+        assertEquals("People(count=1)", people.toString())
+        val text = summary.toString()
+        assertFalse(text.contains("4242"))
+        assertFalse(text.contains("secret-name"))
+        assertFalse(text.contains("content://"))
+        assertFalse(text.contains("0.5"))
+    }
+
+    private fun peopleClause(uri: String, displayName: String) = AlbumRuleClause.People(
+        anchor = mediaIdentityOf(uri, displayName, size = 10L, dateModified = 20L),
+        box = FaceBox(0f, 0f, 0.5f, 0.5f),
+        pipelineVersion = 1
+    )
 }

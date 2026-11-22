@@ -664,7 +664,7 @@ class MediaIndexingWorkerTest {
                 createFaceCapabilityChecker = {
                     capabilityChecks += 1
                     lockEvents += "capability locked=${faceLock.isLocked}"
-                    FaceCapabilityChecker(deviceState, CAPABILITY_KEY, { pipelineLoader() })
+                    FaceCapabilityChecker(deviceState, CAPABILITY_KEY, listOf(FACE_PIPELINE_ABI), { pipelineLoader() })
                 },
                 createFaceIndexPass = {
                     passesCreated += 1

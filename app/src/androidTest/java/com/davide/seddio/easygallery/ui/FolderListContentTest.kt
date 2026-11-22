@@ -512,7 +512,8 @@ class FolderListContentTest {
             storedMemberCount = 3,
             hiddenMemberCount = 0,
             storedMembershipCount = 3,
-            status = AlbumEvaluationStatus.MANUAL
+            status = AlbumEvaluationStatus.MANUAL,
+            unevaluatableCause = null
         )
 
         composeTestRule.setContent {
@@ -835,7 +836,8 @@ class FolderListContentTest {
                 storedMemberCount = index.toInt(),
                 hiddenMemberCount = 0,
                 storedMembershipCount = index.toInt(),
-                status = AlbumEvaluationStatus.MANUAL
+                status = AlbumEvaluationStatus.MANUAL,
+                unevaluatableCause = null
             )
         }
 
@@ -878,7 +880,8 @@ class FolderListContentTest {
                 storedMemberCount = index.toInt(),
                 hiddenMemberCount = 0,
                 storedMembershipCount = index.toInt(),
-                status = AlbumEvaluationStatus.MANUAL
+                status = AlbumEvaluationStatus.MANUAL,
+                unevaluatableCause = null
             )
         }
 
@@ -938,7 +941,8 @@ class FolderListContentTest {
             storedMemberCount = 5,
             hiddenMemberCount = 5,
             storedMembershipCount = 5,
-            status = AlbumEvaluationStatus.MANUAL
+            status = AlbumEvaluationStatus.MANUAL,
+            unevaluatableCause = null
         )
         val emptyAlbum = AlbumListItem(
             id = 10L,
@@ -951,7 +955,8 @@ class FolderListContentTest {
             storedMemberCount = 0,
             hiddenMemberCount = 0,
             storedMembershipCount = 0,
-            status = AlbumEvaluationStatus.MANUAL
+            status = AlbumEvaluationStatus.MANUAL,
+            unevaluatableCause = null
         )
 
         composeTestRule.setContent {
@@ -992,6 +997,103 @@ class FolderListContentTest {
     }
 
     @Test
+    fun albumsViewShowsFaceDataOffNoticeOnTileAndRow() {
+        assertPeopleNoticeOnTileAndRow(
+            AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_FACE_DATA_OFF,
+            "album_people_face_data_off_notice",
+            R.string.album_people_face_data_off_notice_short
+        )
+    }
+
+    @Test
+    fun albumsViewShowsDeviceIncapableNoticeOnTileAndRow() {
+        assertPeopleNoticeOnTileAndRow(
+            AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE,
+            "album_people_device_incapable_notice",
+            R.string.album_people_device_incapable_notice_short
+        )
+    }
+
+    @Test
+    fun albumsViewShowsPersonNotFoundNoticeOnTileAndRow() {
+        assertPeopleNoticeOnTileAndRow(
+            AlbumUnevaluatableCause.ANCHOR_NOT_FOUND,
+            "album_people_anchor_not_found_notice",
+            R.string.album_people_anchor_not_found_notice_short
+        )
+    }
+
+    @Test
+    fun albumsViewShowsNoNoticeForAWaitingPeopleAlbumOnTileAndRow() {
+        val album = albumItem(AlbumEvaluationStatus.WAITING_ON_INDEX, name = "Her", stored = 2, hidden = 0)
+        var albumsViewType by mutableStateOf(ViewType.GRID)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                albumsViewType = albumsViewType
+            )
+        }
+
+        listOf(ViewType.GRID, ViewType.LIST).forEach { viewType ->
+            albumsViewType = viewType
+            composeTestRule.waitForIdle()
+
+            composeTestRule.onNodeWithTag("album_tile_${album.id}").assertIsDisplayed()
+            STATUS_NOTICE_TAGS.forEach { tag ->
+                composeTestRule.onAllNodesWithTag(tag, useUnmergedTree = true).assertCountEquals(0)
+            }
+        }
+    }
+
+    // One setContent: the view type is switched by state, and the hidden-members notice must sit below the status notice.
+    private fun assertPeopleNoticeOnTileAndRow(cause: AlbumUnevaluatableCause, tag: String, shortText: Int) {
+        val album = albumItem(
+            status = AlbumEvaluationStatus.UNEVALUATABLE,
+            name = "Her",
+            resolved = 0,
+            stored = 3,
+            hidden = 3,
+            cause = cause
+        )
+        var albumsViewType by mutableStateOf(ViewType.GRID)
+
+        composeTestRule.setContent {
+            FolderListContentWrapper(
+                displayMode = DisplayMode.ALBUMS,
+                albums = listOf(album),
+                albumsViewType = albumsViewType
+            )
+        }
+
+        listOf(ViewType.GRID, ViewType.LIST).forEach { viewType ->
+            albumsViewType = viewType
+            composeTestRule.waitForIdle()
+
+            val notice = composeTestRule.onNodeWithTag(tag, useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertTextEquals(appContext.getString(shortText))
+            val hidden = composeTestRule.onNodeWithTag("album_hidden_items_notice", useUnmergedTree = true)
+                .assertIsDisplayed()
+            assertTrue(
+                "The hidden-members notice must sit below the status notice",
+                hidden.fetchSemanticsNode().boundsInRoot.top >= notice.fetchSemanticsNode().boundsInRoot.bottom - 1f
+            )
+            (STATUS_NOTICE_TAGS - tag).forEach { other ->
+                composeTestRule.onAllNodesWithTag(other, useUnmergedTree = true).assertCountEquals(0)
+            }
+
+            val config = composeTestRule.onNodeWithTag("album_tile_${album.id}").fetchSemanticsNode().config
+            assertEquals(
+                appContext.getString(shortText) + " " + appContext.getString(R.string.album_hidden_items_notice),
+                config[SemanticsProperties.StateDescription]
+            )
+            assertTrue(config[SemanticsProperties.ContentDescription].contains("Her"))
+        }
+    }
+
+    @Test
     fun albumsViewShowsNoNoticeAndNoStateDescriptionForAWaitingAlbumOnTileAndRow() {
         val album = albumItem(AlbumEvaluationStatus.WAITING_ON_INDEX, name = "Castles")
         var albumsViewType by mutableStateOf(ViewType.GRID)
@@ -1012,6 +1114,9 @@ class FolderListContentTest {
             listOf(
                 "album_rule_waiting_notice",
                 "album_rule_unevaluatable_notice",
+                "album_people_face_data_off_notice",
+                "album_people_device_incapable_notice",
+                "album_people_anchor_not_found_notice",
                 "album_hidden_items_notice"
             ).forEach { tag ->
                 composeTestRule.onAllNodesWithTag(tag, useUnmergedTree = true).assertCountEquals(0)
@@ -1073,7 +1178,10 @@ class FolderListContentTest {
         composeTestRule.onNodeWithTag("album_tile_22").assertIsDisplayed()
         listOf(
             "album_hidden_items_notice",
-            "album_rule_unevaluatable_notice"
+            "album_rule_unevaluatable_notice",
+            "album_people_face_data_off_notice",
+            "album_people_device_incapable_notice",
+            "album_people_anchor_not_found_notice"
         ).forEach { tag ->
             composeTestRule.onAllNodesWithTag(tag, useUnmergedTree = true).assertCountEquals(0)
         }
@@ -1143,7 +1251,9 @@ class FolderListContentTest {
         resolved: Int = 2,
         stored: Int = 0,
         hidden: Int = 0,
-        mediaCountsByType: Map<MediaType, Int> = countsOf(images = resolved)
+        mediaCountsByType: Map<MediaType, Int> = countsOf(images = resolved),
+        cause: AlbumUnevaluatableCause? =
+            if (status == AlbumEvaluationStatus.UNEVALUATABLE) AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD else null
     ) = AlbumListItem(
         id = id,
         name = name,
@@ -1155,7 +1265,8 @@ class FolderListContentTest {
         storedMemberCount = stored,
         hiddenMemberCount = hidden,
         storedMembershipCount = stored,
-        status = status
+        status = status,
+        unevaluatableCause = cause
     )
 
     @Composable
@@ -1278,4 +1389,11 @@ class FolderListContentTest {
             first.top < second.bottom &&
             first.bottom > second.top
     }
+
+    private val STATUS_NOTICE_TAGS = setOf(
+        "album_rule_unevaluatable_notice",
+        "album_people_face_data_off_notice",
+        "album_people_device_incapable_notice",
+        "album_people_anchor_not_found_notice"
+    )
 }

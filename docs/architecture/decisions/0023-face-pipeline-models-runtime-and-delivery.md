@@ -143,6 +143,14 @@ detection and an embedding to a valid result.**
 > weights instead. The detail is [albums-stage-3.md](../../design/albums-stage-3.md), *3.3*, *Settled
 > before 3.3*, issue 2.
 
+> **Note 2026-11-21 — [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) Amendment 1 §3,
+> adopted 2026-11-21, changes this checker.** With no `arm64-v8a` in the ABI list its caller passes,
+> it records *incapable* under the current key without loading anything; the worker and the app-open
+> check, run under the Tier C lock, record the same answer. Not built until step 3.6's task A.
+> *Built 2026-11-22, step 3.6:* `supportsFacePipelineAbi` in `data/FaceCapability.kt`, the ABI list
+> passed from `Build.SUPPORTED_ABIS`; `FaceDataViewModel` makes the same test first, only to skip the
+> lock. Not observed on a phone without arm64-v8a (step 3.7).
+
 ### 4. Where the pipeline runs
 
 **Inside the existing indexing worker, as a Tier C pass**, after Tier A and the place resolve pass, on

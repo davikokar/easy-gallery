@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -76,6 +77,7 @@ fun AlbumInfoDialog(
                         )
                         val places = summary.conditions.filterIsInstance<AlbumRuleCondition.Place>()
                         val dates = summary.conditions.filterIsInstance<AlbumRuleCondition.Dates>()
+                        val people = summary.conditions.filterIsInstance<AlbumRuleCondition.People>().firstOrNull()
                         if (places.isNotEmpty()) {
                             AlbumInfoEntry(
                                 label = stringResource(R.string.automatic_album_section_place),
@@ -88,6 +90,16 @@ fun AlbumInfoDialog(
                                 label = stringResource(R.string.automatic_album_section_date),
                                 values = dates.map { dateText(it.period, locale) },
                                 testTag = "album_info_date"
+                            )
+                        }
+                        if (people != null) {
+                            AlbumInfoEntry(
+                                label = stringResource(R.string.automatic_album_section_people),
+                                values = listOf(
+                                    pluralStringResource(R.plurals.album_info_people_count, people.count, people.count)
+                                ),
+                                note = stringResource(R.string.album_info_people_note),
+                                testTag = "album_info_people"
                             )
                         }
                     }
@@ -116,7 +128,7 @@ private fun AlbumInfoHeading(text: String, modifier: Modifier = Modifier) {
 
 // The label sits above its values so no per-locale "label: value" string is needed.
 @Composable
-private fun AlbumInfoEntry(label: String, values: List<String>, testTag: String) {
+private fun AlbumInfoEntry(label: String, values: List<String>, testTag: String, note: String? = null) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -130,6 +142,13 @@ private fun AlbumInfoEntry(label: String, values: List<String>, testTag: String)
         )
         values.forEach { value ->
             Text(text = value, style = MaterialTheme.typography.bodyLarge)
+        }
+        if (note != null) {
+            Text(
+                text = note,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

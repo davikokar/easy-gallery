@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,6 +83,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumRuleClause
+import com.davide.seddio.easygallery.data.FaceGroupSummary
+import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
 import com.davide.seddio.easygallery.data.placeChoiceLabel
 import com.davide.seddio.easygallery.ui.components.monthName
 import com.davide.seddio.easygallery.ui.components.monthYearText
@@ -91,11 +94,8 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 import java.text.NumberFormat
 import java.util.Locale
 
-private const val TAB_PLACE = 0
-private const val TAB_DATE = 1
-
 /**
- * The automatic branch of album creation: name the album, describe it by place and date, and see
+ * The automatic branch of album creation: name the album, describe it by place, date and people, and see
  * how many items that matches before it exists. The draft lives in `AlbumsViewModel`'s picker state;
  * nothing is written until Create (ADR-0016 Amendment 2).
  */
@@ -127,6 +127,10 @@ fun NewAutomaticAlbumScreen(
         picker.retryLoadingNames()
     }
 
+    // Leaving RUNNING reloads the People list, unless a person is chosen (plan 3.6, freshness).
+    val indexRunning = indexingState.workStatus == MediaIndexingWorkStatus.RUNNING
+    LaunchedEffect(indexRunning) { picker.onIndexingRunningChanged(indexRunning) }
+
     NewAutomaticAlbumContent(
         ui = ui.copy(name = name),
         indexBand = automaticAlbumIndexBand(indexingState),
@@ -141,6 +145,10 @@ fun NewAutomaticAlbumScreen(
         onBrowseRegion = picker::browseRegion,
         onBrowseYear = picker::browseYear,
         onRetryLoadingNames = picker::retryLoadingNames,
+        onTogglePerson = { person -> picker.togglePerson(person) },
+        onClearPeople = picker::clearPeople,
+        onRevealPeople = picker::revealPeople,
+        onRetryLoadingPeople = picker::retryLoadingPeople,
         onIndexNow = mediaIndexingViewModel::indexNow,
         onCreate = {
             ui.rule?.let { rule ->
@@ -170,12 +178,19 @@ fun NewAutomaticAlbumContent(
     onBrowseRegion: (String?) -> Unit,
     onBrowseYear: (Int?) -> Unit,
     onRetryLoadingNames: () -> Unit,
+    onTogglePerson: (FaceGroupSummary) -> Unit,
+    onClearPeople: () -> Unit,
+    onRevealPeople: () -> Unit,
+    onRetryLoadingPeople: () -> Unit,
     onIndexNow: () -> Unit,
     onCreate: () -> Unit,
     onCancel: () -> Unit
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    var selectedTab by rememberSaveable { mutableStateOf(TAB_PLACE) }
+    var savedTab by rememberSaveable { mutableStateOf(AUTOMATIC_ALBUM_TAB_PLACE) }
+    // A restored People tab is Place while People is not offered; read through this, never through savedTab.
+    val peopleOffered = ui.people.offered
+    val selectedTab = coerceAutomaticAlbumTab(savedTab, peopleOffered)
     // One flag for both pickers, above every drill level's list state, so it survives tab and level changes.
     var statusAreaExpanded by rememberSaveable { mutableStateOf(true) }
 
@@ -184,18 +199,22 @@ fun NewAutomaticAlbumContent(
     val placeDrilled = selection.browsedCountry != null
     val dateDrilled = selection.browsedYear != null
     // The top-bar icon follows the selected tab; X always closes. System Back also reaches the other tab's drill.
-    val canStepOut = isReady && if (selectedTab == TAB_PLACE) placeDrilled else dateDrilled
+    val canStepOut = isReady && when (selectedTab) {
+        AUTOMATIC_ALBUM_TAB_PLACE -> placeDrilled
+        AUTOMATIC_ALBUM_TAB_DATE -> dateDrilled
+        else -> false
+    }
     val canBackStepOut = isReady && (placeDrilled || dateDrilled)
     // The selected tab's drill goes first; the other tab's is shown rather than discarded by closing.
     val stepOut: () -> Unit = {
         val tab = when {
-            selectedTab == TAB_PLACE && placeDrilled -> TAB_PLACE
-            selectedTab == TAB_DATE && dateDrilled -> TAB_DATE
-            placeDrilled -> TAB_PLACE
-            else -> TAB_DATE
+            selectedTab == AUTOMATIC_ALBUM_TAB_PLACE && placeDrilled -> AUTOMATIC_ALBUM_TAB_PLACE
+            selectedTab == AUTOMATIC_ALBUM_TAB_DATE && dateDrilled -> AUTOMATIC_ALBUM_TAB_DATE
+            placeDrilled -> AUTOMATIC_ALBUM_TAB_PLACE
+            else -> AUTOMATIC_ALBUM_TAB_DATE
         }
-        selectedTab = tab
-        if (tab == TAB_PLACE) {
+        savedTab = tab
+        if (tab == AUTOMATIC_ALBUM_TAB_PLACE) {
             if (selection.browsedAdmin1 != null) onBrowseRegion(null) else onBrowseCountry(null)
         } else {
             onBrowseYear(null)
@@ -203,6 +222,12 @@ fun NewAutomaticAlbumContent(
     }
     BackHandler {
         if (canBackStepOut) stepOut() else onCancel()
+    }
+    // Every reveal asks; the state loads only the first time in a visit and ignores the rest. Keyed on the list being
+    // NOT_LOADED too, because a list dropped and offered again under a People tab that stayed selected needs asking again.
+    val peopleNotLoaded = ui.people.status == PeopleListStatus.NOT_LOADED
+    LaunchedEffect(selectedTab, peopleNotLoaded) {
+        if (selectedTab == AUTOMATIC_ALBUM_TAB_PEOPLE) onRevealPeople()
     }
 
     val nameError = when {
@@ -315,41 +340,57 @@ fun NewAutomaticAlbumContent(
                 ui = ui,
                 locale = locale,
                 onClearPlace = { onSelectRegion(null) },
-                onClearDate = { onSelectTime(null) }
+                onClearDate = { onSelectTime(null) },
+                onClearPeople = onClearPeople
             )
 
-            when (ui.status) {
-                AutomaticAlbumPickerStatus.LOADING_NAMES -> ProgressState(
-                    message = stringResource(R.string.automatic_album_loading),
-                    testTag = "new_automatic_album_loading",
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+            // The People tab's states are its own, so it is reachable before the names and the media are ready.
+            if (isReady || peopleOffered) {
+                PickerTabs(
+                    selectedTab = selectedTab,
+                    peopleOffered = peopleOffered,
+                    onSelect = { savedTab = it }
                 )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                if (selectedTab == AUTOMATIC_ALBUM_TAB_PEOPLE) {
+                    PeopleTab(
+                        people = ui.people,
+                        indexBand = indexBand,
+                        statusAreaExpanded = statusAreaExpanded,
+                        onToggleStatusArea = { statusAreaExpanded = !statusAreaExpanded },
+                        onIndexNow = onIndexNow,
+                        locale = locale,
+                        onTogglePerson = onTogglePerson,
+                        onRetry = onRetryLoadingPeople
+                    )
+                } else {
+                    when (ui.status) {
+                        AutomaticAlbumPickerStatus.LOADING_NAMES -> ProgressState(
+                            message = stringResource(R.string.automatic_album_loading),
+                            testTag = "new_automatic_album_loading",
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                AutomaticAlbumPickerStatus.WAITING_FOR_MEDIA -> ProgressState(
-                    message = stringResource(R.string.automatic_album_waiting_for_media),
-                    testTag = "new_automatic_album_waiting",
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                )
+                        AutomaticAlbumPickerStatus.WAITING_FOR_MEDIA -> ProgressState(
+                            message = stringResource(R.string.automatic_album_waiting_for_media),
+                            testTag = "new_automatic_album_waiting",
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                AutomaticAlbumPickerStatus.NAMES_FAILED -> FailedState(
-                    onRetry = onRetryLoadingNames,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                )
+                        AutomaticAlbumPickerStatus.NAMES_FAILED -> FailedState(
+                            message = stringResource(R.string.automatic_album_names_failed),
+                            testTag = "new_automatic_album_names_failed",
+                            retryTag = "new_automatic_album_retry",
+                            onRetry = onRetryLoadingNames,
+                            modifier = Modifier.fillMaxSize()
+                        )
 
-                AutomaticAlbumPickerStatus.READY -> {
-                    PickerTabs(selectedTab = selectedTab, onSelect = { selectedTab = it })
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        if (selectedTab == TAB_PLACE) {
+                        AutomaticAlbumPickerStatus.READY -> if (selectedTab == AUTOMATIC_ALBUM_TAB_PLACE) {
                             PlaceTab(
                                 ui = ui,
                                 indexBand = indexBand,
@@ -397,7 +438,9 @@ private fun StatusLine(ui: AutomaticAlbumPickerUi, nameError: String?) {
     } else if (ui.status == AutomaticAlbumPickerStatus.READY) {
         if (ui.rule == null) {
             Text(
-                text = stringResource(R.string.automatic_album_hint_choose),
+                text = stringResource(
+                    if (ui.people.offered) R.string.automatic_album_hint_choose_with_people else R.string.automatic_album_hint_choose
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = lineModifier.testTag("new_automatic_album_hint")
@@ -422,11 +465,13 @@ private fun ChoiceChips(
     ui: AutomaticAlbumPickerUi,
     locale: Locale,
     onClearPlace: () -> Unit,
-    onClearDate: () -> Unit
+    onClearDate: () -> Unit,
+    onClearPeople: () -> Unit
 ) {
     val region = ui.selection.region
     val time = ui.selection.time
-    if (region == null && time == null) return
+    val peopleCount = ui.selection.people.size
+    if (region == null && time == null && peopleCount == 0) return
 
     val placeLabel = region?.let { clause ->
         placeChoiceLabel(clause, ui.content.countries.firstOrNull { it.countryCode == clause.country }?.displayName)
@@ -460,6 +505,15 @@ private fun ChoiceChips(
                 clearDescription = stringResource(R.string.automatic_album_clear_date, timeLabel),
                 testTag = "new_automatic_album_date_chip",
                 onClear = onClearDate
+            )
+        }
+        if (peopleCount > 0) {
+            ChoiceChip(
+                icon = Icons.Default.People,
+                label = pluralStringResource(R.plurals.automatic_album_people_chip, peopleCount, peopleCount),
+                clearDescription = stringResource(R.string.automatic_album_clear_people),
+                testTag = "new_automatic_album_people_chip",
+                onClear = onClearPeople
             )
         }
     }
@@ -507,25 +561,34 @@ private fun ChoiceChip(
 }
 
 @Composable
-private fun PickerTabs(selectedTab: Int, onSelect: (Int) -> Unit) {
+private fun PickerTabs(selectedTab: Int, peopleOffered: Boolean, onSelect: (Int) -> Unit) {
     Row(modifier = Modifier
         .fillMaxWidth()
         .selectableGroup()
     ) {
         PickerTab(
             label = stringResource(R.string.automatic_album_section_place),
-            selected = selectedTab == TAB_PLACE,
+            selected = selectedTab == AUTOMATIC_ALBUM_TAB_PLACE,
             testTag = "new_automatic_album_place_tab",
             modifier = Modifier.weight(1f),
-            onClick = { onSelect(TAB_PLACE) }
+            onClick = { onSelect(AUTOMATIC_ALBUM_TAB_PLACE) }
         )
         PickerTab(
             label = stringResource(R.string.automatic_album_section_date),
-            selected = selectedTab == TAB_DATE,
+            selected = selectedTab == AUTOMATIC_ALBUM_TAB_DATE,
             testTag = "new_automatic_album_date_tab",
             modifier = Modifier.weight(1f),
-            onClick = { onSelect(TAB_DATE) }
+            onClick = { onSelect(AUTOMATIC_ALBUM_TAB_DATE) }
         )
+        if (peopleOffered) {
+            PickerTab(
+                label = stringResource(R.string.automatic_album_section_people),
+                selected = selectedTab == AUTOMATIC_ALBUM_TAB_PEOPLE,
+                testTag = "new_automatic_album_people_tab",
+                modifier = Modifier.weight(1f),
+                onClick = { onSelect(AUTOMATIC_ALBUM_TAB_PEOPLE) }
+            )
+        }
     }
 }
 
@@ -541,7 +604,8 @@ private fun PickerTab(
         modifier = modifier
             .heightIn(min = 48.dp)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .testTag(testTag),
+            .testTag(testTag)
+            .semantics { contentDescription = label },
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -549,7 +613,9 @@ private fun PickerTab(
             style = MaterialTheme.typography.titleSmall,
             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)
         )
         Box(
             modifier = Modifier
@@ -597,6 +663,7 @@ private fun PlaceTab(
                     StatusArea(
                         band = indexBand,
                         expanded = statusAreaExpanded,
+                        runningMessage = R.string.automatic_album_index_running,
                         onToggleExpanded = onToggleStatusArea,
                         onIndexNow = onIndexNow
                     )
@@ -758,6 +825,7 @@ private fun DateTab(
                     StatusArea(
                         band = indexBand,
                         expanded = statusAreaExpanded,
+                        runningMessage = R.string.automatic_album_index_running,
                         onToggleExpanded = onToggleStatusArea,
                         onIndexNow = onIndexNow
                     )
@@ -825,22 +893,24 @@ private fun DateTab(
     }
 }
 
-// The header is always there; collapsed, the band is not composed at all.
+// The header is always there; collapsed, the band is not composed at all. [runningMessage] is the tab's own text.
 @Composable
-private fun StatusArea(
+internal fun StatusArea(
     band: AutomaticAlbumIndexBand,
     expanded: Boolean,
+    runningMessage: Int,
     onToggleExpanded: () -> Unit,
-    onIndexNow: () -> Unit
+    onIndexNow: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .testTag("new_automatic_album_status_area")
     ) {
         StatusAreaHeader(expanded = expanded, onToggle = onToggleExpanded)
         if (expanded) {
-            IndexBand(band = band, onIndexNow = onIndexNow)
+            IndexBand(band = band, runningMessage = runningMessage, onIndexNow = onIndexNow)
         }
     }
 }
@@ -878,7 +948,7 @@ private fun StatusAreaHeader(expanded: Boolean, onToggle: () -> Unit) {
 
 // Shows the plain count of media not yet indexed; progress is measured only in Settings.
 @Composable
-private fun IndexBand(band: AutomaticAlbumIndexBand, onIndexNow: () -> Unit) {
+private fun IndexBand(band: AutomaticAlbumIndexBand, runningMessage: Int, onIndexNow: () -> Unit) {
     val rowModifier = Modifier
         .fillMaxWidth()
         .heightIn(min = 48.dp)
@@ -896,7 +966,7 @@ private fun IndexBand(band: AutomaticAlbumIndexBand, onIndexNow: () -> Unit) {
                 Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp)
                 }
-                IndexBandText(text = stringResource(R.string.automatic_album_index_running))
+                IndexBandText(text = stringResource(runningMessage))
             }
         }
 
@@ -1074,7 +1144,7 @@ private fun GroupHeader(text: String) {
 }
 
 @Composable
-private fun EmptyMessage(text: String, testTag: String) {
+internal fun EmptyMessage(text: String, testTag: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyLarge,
@@ -1088,7 +1158,7 @@ private fun EmptyMessage(text: String, testTag: String) {
 }
 
 @Composable
-private fun ProgressState(message: String, testTag: String, modifier: Modifier) {
+internal fun ProgressState(message: String, testTag: String, modifier: Modifier) {
     Column(
         modifier = modifier
             .testTag(testTag)
@@ -1108,18 +1178,24 @@ private fun ProgressState(message: String, testTag: String, modifier: Modifier) 
 }
 
 @Composable
-private fun FailedState(onRetry: () -> Unit, modifier: Modifier) {
+internal fun FailedState(
+    message: String,
+    testTag: String,
+    retryTag: String,
+    onRetry: () -> Unit,
+    modifier: Modifier
+) {
     val retryLabel = stringResource(R.string.action_retry)
 
     Column(
         modifier = modifier
-            .testTag("new_automatic_album_names_failed")
+            .testTag(testTag)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = stringResource(R.string.automatic_album_names_failed),
+            text = message,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
@@ -1129,7 +1205,7 @@ private fun FailedState(onRetry: () -> Unit, modifier: Modifier) {
         Button(
             onClick = onRetry,
             modifier = Modifier
-                .testTag("new_automatic_album_retry")
+                .testTag(retryTag)
                 .semantics { contentDescription = retryLabel }
         ) {
             Text(retryLabel)
@@ -1138,4 +1214,4 @@ private fun FailedState(onRetry: () -> Unit, modifier: Modifier) {
 }
 
 // Counts are for people, so they group thousands in the app's locale.
-private fun countText(count: Int, locale: Locale): String = NumberFormat.getIntegerInstance(locale).format(count)
+internal fun countText(count: Int, locale: Locale): String = NumberFormat.getIntegerInstance(locale).format(count)

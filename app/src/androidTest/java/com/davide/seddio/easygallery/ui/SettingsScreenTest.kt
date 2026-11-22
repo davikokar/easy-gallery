@@ -1,5 +1,8 @@
 package com.davide.seddio.easygallery.ui
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.davide.seddio.easygallery.data.MediaIndexingWorkStatus
@@ -23,6 +26,10 @@ class SettingsScreenTest {
     private val mediaIndexingViewModel: MediaIndexingViewModel = mockk(relaxed = true) {
         every { uiState } returns MutableStateFlow(indexingState())
     }
+    private val faceDataState = MutableStateFlow(FaceDataUiState())
+    private val faceDataViewModel: FaceDataViewModel = mockk(relaxed = true) {
+        every { uiState } returns faceDataState
+    }
 
     @Test
     fun settingsScreenDisplaysAllSections() {
@@ -30,7 +37,8 @@ class SettingsScreenTest {
             SettingsScreen(
                 viewModel = viewModel,
                 billingViewModel = billingViewModel,
-                mediaIndexingViewModel = mediaIndexingViewModel
+                mediaIndexingViewModel = mediaIndexingViewModel,
+                faceDataViewModel = faceDataViewModel
             )
         }
 
@@ -44,7 +52,8 @@ class SettingsScreenTest {
             SettingsScreen(
                 viewModel = viewModel,
                 billingViewModel = billingViewModel,
-                mediaIndexingViewModel = mediaIndexingViewModel
+                mediaIndexingViewModel = mediaIndexingViewModel,
+                faceDataViewModel = faceDataViewModel
             )
         }
 
@@ -70,7 +79,8 @@ class SettingsScreenTest {
             SettingsScreen(
                 viewModel = viewModel,
                 billingViewModel = billingViewModel,
-                mediaIndexingViewModel = mediaIndexingViewModel
+                mediaIndexingViewModel = mediaIndexingViewModel,
+                faceDataViewModel = faceDataViewModel
             )
         }
 
@@ -87,6 +97,7 @@ class SettingsScreenTest {
                 viewModel = viewModel,
                 billingViewModel = billingViewModel,
                 mediaIndexingViewModel = mediaIndexingViewModel,
+                faceDataViewModel = faceDataViewModel,
                 onContactSupportClick = onContactSupportClick
             )
         }
@@ -310,12 +321,274 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithTag("place_data_row").assertExists()
     }
 
+    @Test
+    fun faceDataAreaIsAbsentWhileTheCapabilityIsUnknown() {
+        faceDataState.value = FaceDataUiState(capability = FaceCapabilityStatus.UNKNOWN)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_area").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("face_data_row").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("face_data_info_row").assertDoesNotExist()
+    }
+
+    @Test
+    fun faceDataAreaIsAbsentOnAnIncapableDevice() {
+        faceDataState.value = FaceDataUiState(capability = FaceCapabilityStatus.INCAPABLE, enabled = true)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_area").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("face_data_row").assertDoesNotExist()
+    }
+
+    @Test
+    fun faceDataAreaIsPresentWhenCapableWithTheSettingOn() {
+        faceDataState.value = capableState(enabled = true)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_area").performScrollTo().assertExists()
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo().assertIsDisplayed().assertIsOn()
+        composeTestRule.onNodeWithTag("face_data_info_row").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun faceDataAreaIsPresentWhenCapableWithTheSettingOff() {
+        faceDataState.value = capableState(enabled = false)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo().assertIsDisplayed().assertIsOff()
+        composeTestRule.onNodeWithTag("face_data_info_row").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun faceDataRowIsASwitchRowWithTheStateSubtitle() {
+        faceDataState.value = capableState(enabled = true)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_row")
+            .performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
+            .assertTextContains("Face data")
+            .assertTextContains("Faces in your photos are found and grouped on this phone", substring = true)
+    }
+
+    @Test
+    fun faceDataRowSaysWhatOffMeans() {
+        faceDataState.value = capableState(enabled = false)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_row")
+            .performScrollTo()
+            .assertTextContains("Off. Faces are not looked for and no face data is kept.", substring = true)
+    }
+
+    @Test
+    fun faceDataSectionIsHeadedPeopleBetweenTheMediaIndexAreaAndApp() {
+        faceDataState.value = capableState(enabled = true)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_area").performScrollTo()
+        // Positions, not bounds: bounds are clipped to the scroll viewport, which hides whatever is scrolled out.
+        val indexNode = composeTestRule.onNodeWithTag("media_index_status_area").fetchSemanticsNode()
+        val areaNode = composeTestRule.onNodeWithTag("face_data_area").fetchSemanticsNode()
+        val indexBottom = indexNode.positionInRoot.y + indexNode.size.height
+        val areaTop = areaNode.positionInRoot.y
+        val areaBottom = areaTop + areaNode.size.height
+        val appTop = composeTestRule.onNodeWithText("App").fetchSemanticsNode().positionInRoot.y
+
+        composeTestRule.onNodeWithText("People").assertExists()
+        assertTrue(indexBottom <= areaTop)
+        assertTrue(areaBottom <= appTop)
+    }
+
+    @Test
+    fun turningFaceDataOffOpensTheDeleteDialogAndChangesNothingYet() {
+        faceDataState.value = capableState(enabled = true)
+        setSettingsContent()
+        composeTestRule.onNodeWithTag("face_data_delete_dialog").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithTag("face_data_delete_dialog").assertExists()
+        verify(exactly = 0) { faceDataViewModel.switchOff() }
+        verify(exactly = 0) { faceDataViewModel.switchOn() }
+        composeTestRule.onNodeWithTag("face_data_row").assertIsOn()
+    }
+
+    @Test
+    fun cancellingTheDeleteDialogLeavesTheSwitchOnAndCallsNothing() {
+        faceDataState.value = capableState(enabled = true)
+        setSettingsContent()
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithTag("face_data_delete_cancel").performClick()
+
+        composeTestRule.onNodeWithTag("face_data_delete_dialog").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo().assertIsOn()
+        verify(exactly = 0) { faceDataViewModel.switchOff() }
+        verify(exactly = 0) { faceDataViewModel.switchOn() }
+    }
+
+    @Test
+    fun confirmingTheDeleteDialogSwitchesFaceDataOff() {
+        faceDataState.value = capableState(enabled = true)
+        setSettingsContent()
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithTag("face_data_delete_confirm").performClick()
+
+        verify(exactly = 1) { faceDataViewModel.switchOff() }
+        composeTestRule.onNodeWithTag("face_data_delete_dialog").assertDoesNotExist()
+    }
+
+    @Test
+    fun switchingFaceDataOnNeedsNoDialog() {
+        faceDataState.value = capableState(enabled = false)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo().performClick()
+
+        verify(exactly = 1) { faceDataViewModel.switchOn() }
+        verify(exactly = 0) { faceDataViewModel.switchOff() }
+        composeTestRule.onNodeWithTag("face_data_delete_dialog").assertDoesNotExist()
+    }
+
+    @Test
+    fun whileDeletingTheRowIsDisabledAndSaysSo() {
+        faceDataState.value = capableState(enabled = false).copy(isDeleting = true)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_row")
+            .performScrollTo()
+            .assertIsNotEnabled()
+            .assertTextContains("Deleting face data", substring = true)
+        composeTestRule.onNodeWithTag("face_data_row").performClick()
+        verify(exactly = 0) { faceDataViewModel.switchOn() }
+        verify(exactly = 0) { faceDataViewModel.switchOff() }
+    }
+
+    @Test
+    fun theCleanupSentenceShowsOnlyAfterADeletionThatWasNotScrubbed() {
+        faceDataState.value = capableState(enabled = false)
+        setSettingsContent()
+        composeTestRule.onNodeWithTag("face_data_row").performScrollTo()
+        composeTestRule.onNodeWithTag("face_data_cleanup_pending").assertDoesNotExist()
+
+        faceDataState.value = capableState(enabled = false).copy(cleanupPending = true)
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("face_data_cleanup_pending").performScrollTo().assertIsDisplayed()
+            .assertTextContains("Face data is deleted. Cleaning up its files will finish the next time the app starts.")
+        composeTestRule.onNodeWithTag("face_data_row").assertIsOff()
+    }
+
+    @Test
+    fun theInfoRowOpensTheInfoModeWithASingleCloseAndNoSideEffect() {
+        faceDataState.value = capableState(enabled = true)
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_data_info_row").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithTag("face_data_disclosure").assertExists()
+        composeTestRule.onNodeWithTag("face_data_disclosure_close").assertExists()
+        composeTestRule.onNodeWithTag("face_data_disclosure_ok").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("face_data_disclosure_turn_off").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("face_data_disclosure_close").performClick()
+
+        composeTestRule.onNodeWithTag("face_data_disclosure").assertDoesNotExist()
+        verify(exactly = 0) { faceDataViewModel.acknowledgeDisclosure() }
+        verify(exactly = 0) { faceDataViewModel.turnOffFromDisclosure() }
+        verify(exactly = 0) { faceDataViewModel.switchOff() }
+        verify(exactly = 0) { faceDataViewModel.switchOn() }
+    }
+
+    @Test
+    fun theFaceLicencesRowIsPresentWhateverTheCapability() {
+        setSettingsContent()
+
+        FaceCapabilityStatus.entries.forEach { status ->
+            faceDataState.value = FaceDataUiState(capability = status)
+            composeTestRule.waitForIdle()
+
+            composeTestRule.onNodeWithTag("face_licences_row").performScrollTo().assertIsDisplayed()
+                .assertTextEquals("Face recognition licences", "OpenCV, YuNet and SFace")
+        }
+    }
+
+    @Test
+    fun theFaceLicencesRowIsTheLastLegalRowAfterThePlaceDataRow() {
+        setSettingsContent()
+
+        composeTestRule.onNodeWithTag("face_licences_row").performScrollTo()
+        val placeBottom = composeTestRule.onNodeWithTag("place_data_row").fetchSemanticsNode().boundsInRoot.bottom
+        val licencesTop = composeTestRule.onNodeWithTag("face_licences_row").fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue(placeBottom <= licencesTop)
+    }
+
+    @Test
+    fun theFaceLicencesRowOpensTheDialogWithTheFiveFilesInOrder() {
+        setSettingsContent()
+        composeTestRule.onNodeWithTag("face_licences_notice").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("face_licences_row").performScrollTo().performClick()
+
+        composeTestRule.onNodeWithTag("face_licences_notice").assertExists()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithTag("face_licences_list").fetchSemanticsNodes().isNotEmpty()
+        }
+        val names = listOf(
+            "NOTICE.txt",
+            "LICENSE-OpenCV-Apache-2.0.txt",
+            "LICENSE-SFace-Apache-2.0.txt",
+            "LICENSE-YuNet-MIT.txt",
+            "THIRD_PARTY_NOTICES.txt"
+        )
+        names.forEachIndexed { index, name ->
+            composeTestRule.onNodeWithTag("face_licences_list").performScrollToNode(hasText(name))
+            val top = composeTestRule.onNodeWithText(name).fetchSemanticsNode().boundsInRoot.top
+            names.forEachIndexed { other, otherName ->
+                val composed = composeTestRule.onAllNodes(hasText(otherName)).fetchSemanticsNodes()
+                if (other != index && composed.isNotEmpty()) {
+                    val otherTop = composed.first().boundsInRoot.top
+                    assertTrue("$otherName is ${if (other < index) "above" else "below"} $name", (other < index) == (otherTop < top))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun leavingSettingsDismissesTheCleanupSentence() {
+        val showSettings = mutableStateOf(true)
+        composeTestRule.setContent {
+            if (showSettings.value) {
+                SettingsScreen(
+                    viewModel = viewModel,
+                    billingViewModel = billingViewModel,
+                    mediaIndexingViewModel = mediaIndexingViewModel,
+                    faceDataViewModel = faceDataViewModel
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+        verify(exactly = 0) { faceDataViewModel.dismissCleanupNotice() }
+
+        showSettings.value = false
+        composeTestRule.waitForIdle()
+
+        verify(exactly = 1) { faceDataViewModel.dismissCleanupNotice() }
+    }
+
+    private fun capableState(enabled: Boolean) =
+        FaceDataUiState(capability = FaceCapabilityStatus.CAPABLE, enabled = enabled, disclosureShown = true)
+
     private fun setSettingsContent() {
         composeTestRule.setContent {
             SettingsScreen(
                 viewModel = viewModel,
                 billingViewModel = billingViewModel,
-                mediaIndexingViewModel = mediaIndexingViewModel
+                mediaIndexingViewModel = mediaIndexingViewModel,
+                faceDataViewModel = faceDataViewModel
             )
         }
     }

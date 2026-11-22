@@ -64,14 +64,17 @@ import com.davide.seddio.easygallery.ui.NewAlbumScreen
 import com.davide.seddio.easygallery.ui.NewAutomaticAlbumScreen
 import com.davide.seddio.easygallery.ui.FavouritesViewModel
 import com.davide.seddio.easygallery.ui.CreateFolderViewModel
+import com.davide.seddio.easygallery.ui.FaceDataViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
 import com.davide.seddio.easygallery.ui.MediaIndexingViewModel
+import com.davide.seddio.easygallery.ui.components.FaceDataDisclosureDialog
 import com.davide.seddio.easygallery.ui.components.MainViewBar
 import com.davide.seddio.easygallery.ui.components.ShownScreen
 import com.davide.seddio.easygallery.ui.components.resolveShownScreen
 import com.davide.seddio.easygallery.ui.components.selectedMainViewTab
 import com.davide.seddio.easygallery.ui.components.shouldShowMainViewBar
 import com.davide.seddio.easygallery.ui.components.toDisplayMode
+import com.davide.seddio.easygallery.ui.faceDataDisclosureDue
 import com.davide.seddio.easygallery.ui.theme.EasyGalleryTheme
 
 class MainActivity : ComponentActivity() {
@@ -82,6 +85,7 @@ class MainActivity : ComponentActivity() {
     private val createFolderViewModel: CreateFolderViewModel by viewModels()
     private val billingViewModel: BillingViewModel by viewModels()
     private val mediaIndexingViewModel: MediaIndexingViewModel by viewModels()
+    private val faceDataViewModel: FaceDataViewModel by viewModels()
     private var hasPermission by mutableStateOf(false)
 
     private val intentSenderLauncher = registerForActivityResult(
@@ -169,6 +173,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            // Face data's switch and its app-open check write no Tier C row, so no album would notice without this.
+            LaunchedEffect(Unit) {
+                faceDataViewModel.peopleAvailabilityEpoch.collect {
+                    albumsViewModel.refreshPeopleAvailability()
+                }
+            }
+
             EasyGalleryTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -188,6 +199,7 @@ class MainActivity : ComponentActivity() {
                     val displayMode by viewModel.displayMode.collectAsState()
                     val isThumbnailPickerMode by viewModel.isThumbnailPickerMode.collectAsState()
                     val isAlbumCoverPickerMode by albumsViewModel.isAlbumCoverPickerMode.collectAsState()
+                    val faceDataState by faceDataViewModel.uiState.collectAsState()
                     val selectedFolderPath = selectedFolder?.path
                     var isFavouritesSelected by rememberSaveable { mutableStateOf(false) }
                     var mediaPendingAddToAlbum by remember { mutableStateOf(emptyList<com.davide.seddio.easygallery.data.MediaItem>()) }
@@ -306,7 +318,8 @@ class MainActivity : ComponentActivity() {
                                         SettingsScreen(
                                             viewModel = viewModel,
                                             billingViewModel = billingViewModel,
-                                            mediaIndexingViewModel = mediaIndexingViewModel
+                                            mediaIndexingViewModel = mediaIndexingViewModel,
+                                            faceDataViewModel = faceDataViewModel
                                         )
                                     } else if (selectedFolder != null) {
                                         FolderDetailScreen(
@@ -462,6 +475,17 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    // Over every screen but the Full-screen viewer, where it waits; derived from the stores, so a
+                    // recreated Activity shows it again until one of its buttons is pressed.
+                    if (faceDataDisclosureDue(faceDataState, hasPermission, viewerOpen = selectedMedia != null)) {
+                        FaceDataDisclosureDialog(
+                            isInfoMode = false,
+                            onOk = faceDataViewModel::acknowledgeDisclosure,
+                            onTurnOff = faceDataViewModel::turnOffFromDisclosure,
+                            onClose = {}
+                        )
+                    }
+
                     if (shouldOfferManageMediaRationale) {
                         val notNowLabel = stringResource(R.string.manage_media_not_now)
                         val openSettingsLabel = stringResource(R.string.manage_media_open_settings)
@@ -499,6 +523,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         favouritesViewModel.refreshCapabilityState()
+        faceDataViewModel.onResume()
     }
 
     private fun checkPermissions() {
