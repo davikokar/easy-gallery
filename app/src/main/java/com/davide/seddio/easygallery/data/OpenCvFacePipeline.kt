@@ -264,6 +264,8 @@ class OpenCvFacePipeline private constructor(
                 throw FacePipelineUnavailableException()
             }
             Core.setNumThreads(OPENCV_THREADS)
+            // Native error text would reach logcat as a line outside the pass's fixed ones (ADR-0024 §6).
+            Core.setErrorVerbosity(false)
 
             val assets = context.applicationContext.assets
             val noConfig = MatOfByte()

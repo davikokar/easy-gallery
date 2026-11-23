@@ -199,7 +199,7 @@
     <string name="album_info_date_range">%1$s – %2$s</string>
     <string name="album_info_date_from">Ab %1$s</string>
     <string name="album_info_date_until">Bis %1$s</string>
-    <string name="automatic_album_section_people">Personen</string>
+    <string name="automatic_album_section_people">Leute</string>
     <string name="automatic_album_hint_choose_with_people">Wähle einen Ort, ein Datum, Personen oder eine beliebige Mischung daraus</string>
     <string name="automatic_album_people_hint">Wähle die Personen aus, die alle auf demselben Foto zu sehen sein sollen. Du kannst bis zu %1$d auswählen.</string>
     <string name="automatic_album_people_limit">Du hast die höchstmögliche Anzahl an Personen für ein Album gewählt (%1$d). Tippe auf eine Person, um sie zu entfernen.</string>

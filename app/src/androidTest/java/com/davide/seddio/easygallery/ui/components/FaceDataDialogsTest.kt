@@ -1,11 +1,13 @@
 package com.davide.seddio.easygallery.ui.components
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,9 +15,15 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
+import android.app.UiAutomation
+import android.content.res.Configuration
+import android.os.SystemClock
+import android.provider.Settings
 import android.view.KeyEvent
 import androidx.test.platform.app.InstrumentationRegistry
+import java.io.FileInputStream
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -30,6 +38,10 @@ class FaceDataDialogsTest {
     private var closes = 0
     private var confirms = 0
     private var cancels = 0
+
+    private companion object {
+        const val ROTATION_WAIT_MILLIS = 10_000L
+    }
 
     @Test
     fun disclosureModeShowsTheTitleAndFiveParagraphs() {
@@ -216,6 +228,68 @@ class FaceDataDialogsTest {
         FACE_LICENCE_FILE_NAMES.forEach { name ->
             composeTestRule.onNodeWithTag("face_licences_list").performScrollToNode(hasText(name))
             composeTestRule.onNodeWithText(name).assertExists()
+        }
+    }
+
+    // Plan 3.7, item 22: the dialog at the largest font scale, its height bounded by the window and its OK on screen once
+    // the longest notice has loaded. The rotation is set before the content, and frozen only for the test's length.
+    @Test
+    fun licencesDialogKeepsOkOnScreenAtLargestFontScaleInPortrait() {
+        assertLicencesDialogFitsTheScreenAtLargestFontScale(landscape = false)
+    }
+
+    @Test
+    fun licencesDialogKeepsOkOnScreenAtLargestFontScaleInLandscape() {
+        assertLicencesDialogFitsTheScreenAtLargestFontScale(landscape = true)
+    }
+
+    private fun assertLicencesDialogFitsTheScreenAtLargestFontScale(landscape: Boolean) {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val expectedOrientation = if (landscape) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT
+        // Freezing a rotation writes user_rotation, and unfreezing does not put it back.
+        val userRotationBefore = Settings.System.getInt(instrumentation.targetContext.contentResolver, "user_rotation", 0)
+        instrumentation.uiAutomation.setRotation(if (landscape) UiAutomation.ROTATION_FREEZE_90 else UiAutomation.ROTATION_FREEZE_0)
+        try {
+            val deadline = SystemClock.elapsedRealtime() + ROTATION_WAIT_MILLIS
+            while (instrumentation.targetContext.resources.configuration.orientation != expectedOrientation) {
+                if (SystemClock.elapsedRealtime() > deadline) throw AssertionError("ENVIRONMENT: the phone did not rotate to orientation $expectedOrientation")
+                SystemClock.sleep(100)
+            }
+            instrumentation.waitForIdleSync()
+            composeTestRule.waitForIdle()
+
+            var orientation = Configuration.ORIENTATION_UNDEFINED
+            composeTestRule.setContent {
+                orientation = LocalConfiguration.current.orientation
+                val density = LocalDensity.current
+                CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                    FaceLicencesDialog(onDismiss = { closes++ })
+                }
+            }
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithTag("face_licences_list").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.waitForIdle()
+
+            assertEquals("The dialog must be drawn in the orientation under test", expectedOrientation, orientation)
+            composeTestRule.onNodeWithText("Face recognition licences").assertIsDisplayed()
+            composeTestRule.onNodeWithText("OK").assertIsDisplayed()
+            val screen = instrumentation.targetContext.resources.displayMetrics
+            val dialog = composeTestRule.onNode(isDialog()).fetchSemanticsNode()
+            val ok = composeTestRule.onNodeWithText("OK").fetchSemanticsNode()
+            listOf("dialog" to dialog, "OK button" to ok).forEach { (name, node) ->
+                val top = node.positionOnScreen.y
+                val bottom = top + node.size.height
+                assertTrue("The $name must lie inside the ${screen.heightPixels} px high screen: top=$top bottom=$bottom", top >= 0f && bottom <= screen.heightPixels)
+                val left = node.positionOnScreen.x
+                assertTrue("The $name must lie inside the ${screen.widthPixels} px wide screen", left >= 0f && left + node.size.width <= screen.widthPixels)
+            }
+            assertEquals("OK must not have been pressed", 0, closes)
+        } finally {
+            instrumentation.uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
+            instrumentation.uiAutomation.executeShellCommand("settings put system user_rotation $userRotationBefore").use {
+                FileInputStream(it.fileDescriptor).readBytes()
+            }
         }
     }
 

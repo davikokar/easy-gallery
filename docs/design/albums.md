@@ -690,6 +690,11 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
    [ADR-0018](../architecture/decisions/0018-media-index-in-a-second-database.md) Amendment 5; both
    ~~proposed, awaiting the maintainer's approval~~ adopted 2026-11-19 (decision 47). The Data
    Safety question is recorded, not answered, in [albums-stage-3.md](albums-stage-3.md) step 3.1.
+   *2026-11-23:* the maintainer's position is recorded there — on-device face detection, embedding
+   and grouping is not collection, and Android Auto Backup of the album database is neither
+   collection nor sharing, provided the ML library sends no hidden telemetry and the backup rules
+   are clean. It is his reading, not quoted from Play's help text. The form is not yet submitted, and
+   its app-wide answers and the privacy policy's text are still open, so the question stays open.
 
 10. **The album database is included in Android auto-backup** (ADR-0014). `allowBackup` is already
     true and the backup rules are still the generated samples, so inclusion was going to happen by

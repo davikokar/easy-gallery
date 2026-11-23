@@ -218,7 +218,13 @@ pipeline parameter that may change.
   **Binding since this record's adoption, on any build that bumps the face-pipeline version:** it measures how many anchors still resolve
   between the old and the new pipeline on a real library, and states the figure, before it ships —
   the counterpart of the remap obligation ADR-0017 Amendment 2 puts on a dataset bump.
-- The other phone, the SM-G781B, at step 3.7 if it can be attached.
+- The other phone, the SM-G781B, at step 3.7 if it can be attached. ✅ **Verified 2026-11-22 on the
+  SM-G781B** (Android 13, API 33), with the debug build: `FaceDecodeOrientationDeviceTest`'s four
+  tests — orientation 1 as the control, then 3, 6 and 8 — passed, so the upright frame holds on that
+  phone as on the SM-G990B. Recorded with the capability check in
+  [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md)'s verify row 7 and in
+  [albums-stage-3.md](../../design/albums-stage-3.md), *3.7*, G1. It covers the decoder only: a face
+  pass and grouping on that phone were not run (*3.7*, L3).
 
 ## Questions for the maintainer — answered 2026-11-19
 

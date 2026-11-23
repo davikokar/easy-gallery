@@ -1,6 +1,13 @@
 package com.davide.seddio.easygallery.ui
 
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -8,7 +15,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -20,6 +29,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -1605,6 +1615,17 @@ class NewAutomaticAlbumContentTest {
         assertTrue("The last tile must end above the Create button: $tile vs $button", tile.bottom <= button.top)
     }
 
+    // Plan 3.7, item 17: the tab row with People offered, at the largest font scale in a 360 dp width.
+    @Test
+    fun tabLabelsAreNotTruncatedAtLargestFontScaleIn360DpInGerman() {
+        assertTabLabelsFitAtLargestFontScaleIn360Dp("de")
+    }
+
+    @Test
+    fun tabLabelsAreNotTruncatedAtLargestFontScaleIn360DpInItalian() {
+        assertTabLabelsFitAtLargestFontScaleIn360Dp("it")
+    }
+
     @Test
     fun theBadgeSitsAtTheEndEdgeInLeftToRight() {
         assertBadgeAtTheEndEdge(LayoutDirection.Ltr)
@@ -1873,6 +1894,66 @@ class NewAutomaticAlbumContentTest {
             "Expected the Create button not to overlap the last row after scrolling",
             boundsOverlap(lastTargetBounds!!, createButtonBounds!!)
         )
+    }
+
+    // Judged from each label's own text layout, not from a screenshot: one line, no ellipsis, inside its tab and the 360 dp.
+    private fun assertTabLabelsFitAtLargestFontScaleIn360Dp(languageTag: String) {
+        val localized = localizedContext(languageTag)
+        val labels = linkedMapOf(
+            "new_automatic_album_place_tab" to localized.getString(R.string.automatic_album_section_place),
+            "new_automatic_album_date_tab" to localized.getString(R.string.automatic_album_section_date),
+            "new_automatic_album_people_tab" to localized.getString(R.string.automatic_album_section_people)
+        )
+        assertTrue(
+            "The labels must be the ones of $languageTag, or the test proves nothing: $labels",
+            listOf(R.string.automatic_album_section_place, R.string.automatic_album_section_date, R.string.automatic_album_section_people)
+                .all { localized.getString(it) != appContext.getString(it) }
+        )
+        composeTestRule.setContent {
+            val base = LocalContext.current
+            val inLanguage = remember(base) {
+                object : ContextWrapper(base) {
+                    override fun getResources(): Resources = localized.resources
+                }
+            }
+            CompositionLocalProvider(
+                LocalContext provides inLanguage,
+                LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)
+            ) {
+                Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
+                    PickerHarness(peopleOffered = true, groups = people(3))
+                }
+            }
+        }
+
+        val width360 = with(composeTestRule.density) { 360.dp.toPx() }
+        val truncated = mutableListOf<String>()
+        labels.forEach { (tag, label) ->
+            composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
+            val tab = boundsOf(tag)
+            val text = composeTestRule
+                .onNode(hasText(label) and hasAnyAncestor(hasTestTag(tag)), useUnmergedTree = true)
+                .fetchSemanticsNode()
+            val layouts = mutableListOf<TextLayoutResult>()
+            composeTestRule.runOnUiThread { text.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts) }
+            val layout = layouts.firstOrNull() ?: throw AssertionError("No text layout for the $languageTag label of $tag")
+            val fitsItsTab = text.boundsInRoot.left >= tab.left && text.boundsInRoot.right <= tab.right
+            // hasVisualOverflow reads true on this phone for a centred label that is plainly shorter than its slot, so it is not used.
+            if (layout.lineCount != 1 || layout.isLineEllipsized(0) || !fitsItsTab || tab.right > width360 + 1f) {
+                truncated += "$label (lines=${layout.lineCount}, ellipsized=${layout.isLineEllipsized(0)}, " +
+                    "fitsItsTab=$fitsItsTab, tab=$tab, text=${text.boundsInRoot})"
+            }
+        }
+
+        assertTrue("Tab labels truncated or clipped at font scale 2.0 in 360 dp in $languageTag: $truncated", truncated.isEmpty())
+    }
+
+    private fun localizedContext(languageTag: String): Context {
+        val locale = Locale.forLanguageTag(languageTag)
+        val configuration = Configuration(appContext.resources.configuration)
+        configuration.setLocale(locale)
+        configuration.setLayoutDirection(locale)
+        return appContext.createConfigurationContext(configuration)
     }
 
     @Composable

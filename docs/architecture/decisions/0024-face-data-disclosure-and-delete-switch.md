@@ -156,6 +156,14 @@ In this order:
   id, a per-image face count, or a URI or file name with anything about faces. Exception messages from
   the face path are held to the same rule. Step 3.3 builds the test; the Reviewer checks every `Log`
   call in the face path.
+  *Note 2026-11-22, step 3.7 (G5a):* a native OpenCV error, provoked on the SM-G990B as a resize
+  assertion, prints at priority E in two places. `Core.setErrorVerbosity(false)`, called where the
+  pipeline loads, silences OpenCV's `cv::error()` line; it does not silence the JNI wrapper's
+  `org.opencv.imgproc` "caught cv::Exception" line, which carries OpenCV's assertion text and an
+  OpenCV source path — for the assertion provoked, no URI, box or embedding. That line is recorded as
+  known limit L10 ([albums-stage-3.md](../../design/albums-stage-3.md), *3.7*), pending the
+  maintainer's decision. The pass's own lines remain fixed. *2026-11-23:* the maintainer accepted L10
+  as a recorded limit, with no precondition checks (*Open at 3.7*, question 5).
 - **Never cached to disk.** A face thumbnail in the picker is cropped from the photo at display time
   and must not reach an image loader's disk cache. Step 3.6 verifies it.
 

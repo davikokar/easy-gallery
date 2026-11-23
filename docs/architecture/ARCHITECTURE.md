@@ -1448,30 +1448,45 @@ KSP.
   state, so each pass meets them again. The cost is a skipped candidate per GIF per run; a people
   album does not wait on one, because step 3.5 answers every item that is not an image as a settled
   no-match.
-- **Grouping has three ceilings, measured or estimated but not enforced** (step 3.4's review; the
-  figures are in [albums-stage-3.md](../design/albums-stage-3.md) *3.4 — Built and verified*).
+- **Grouping has two ceilings, measured but not enforced** (step 3.4's review, and step 3.7's G5c; the
+  figures are in [albums-stage-3.md](../design/albums-stage-3.md) *3.4 — Built and verified* and
+  *3.7*, G5c).
   *One giant component:* the per-component cap of 65,536 faces is an int-array limit, not a heap
   one, so a single component above roughly 10,500 faces fails with `OutOfMemoryError` rather than
   the fixed "too many" message. The data stays safe — nothing is written before the one transaction
   at the end, and the run fails with the worker's fixed message — but it fails every run. The
   synthetic components measured were at most 60 faces; the real 422-face library already had 88 in
-  one. A heap-based cap that fails with the fixed message is an open question for the maintainer.
+  one. ~~A heap-based cap that fails with the fixed message is an open question for the maintainer.~~
+  *2026-11-23:* accepted by the maintainer as debt, with no heap-based cap (*3.7*, L4).
   *The deadline covers the start only:* grouping starts within 8 minutes of the worker's start and
-  is not stopped after it, so after a face pass that used its 7-minute budget it has about 3 minutes
-  before WorkManager's ~10-minute stop. Scaled quadratically from the synthetic 20,000-face figure,
-  that fits about 37,000 faces, about 68,000 in a whole window; beyond that every run is cut and
-  writes nothing — safe, but the CPU is wasted on every run.
-  *The store's cost at scale is unmeasured:* the synthetic 10,000- and 20,000-face figures are the
-  grouping core alone; only the real 422-face run includes the paged read and the write, which at
-  10,000 faces is thousands of `UPDATE`s in one transaction. Step 3.7 measures a production-size
-  library.
+  is not stopped by the deadline after it, so after a face pass that used its 7-minute budget it has
+  about 3 minutes before WorkManager's ~10-minute stop. Through the real store, on synthetic faces on
+  the SM-G990B, grouping took 21.1 s at 10,000 faces, 75.7 s at 20,000 and 256.3 s at 37,000 —
+  quadratic — so it fits about **31,000 faces** after a full face pass and about **56,000** in a whole
+  window. It writes once, at the end, so a grouping cut by the stop writes nothing that run: between
+  those two figures no group appears or changes until the face pass's backlog is done and the pass
+  ends early; above about 56,000 every run is cut and no group ever appears — safe, but the CPU is
+  spent on every run. *Corrected 2026-11-22:* this entry's earlier estimate was scaled from the
+  grouping core alone and overstated both figures. ~~Accepting the limit is open for the maintainer~~
+  *2026-11-23:* accepted by the maintainer as a recorded limit, revisited on a real report (*3.7*, L11).
+  *The store's own cost is small:* the paged read and the one-transaction write together took 2.0 s
+  at 10,000 faces and 6.9 s at 37,000, under a tenth of the total; at 37,000 the Java heap rose about
+  81 MB against its 256 MB cap, so memory does not bind. A real library of that size, through the
+  worker, is unmeasured — the largest real one is 422 faces.
 - **The capability record catches a crash only by counting.** A start is recorded before the check
   and two unfinished starts read as incapable, so a device whose OpenCV build crashes natively in
   the self-test is caught; a crash that only some images provoke, on some vendor's build, is caught
   only per image, by the three-attempt bound (§6).
-- **OpenCV may log native errors itself.** Its `cv::error()` handler can print under its own logcat
-  tag, outside `FaceIndexLogLines`; whether such a line can carry face data is unchecked until step
-  3.7's logger check ([ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md) §6).
+- **OpenCV logs one line of its own on a native error.** `OpenCvFacePipeline.load()` calls
+  `Core.setErrorVerbosity(false)`, which silences OpenCV's `cv::error()` line; its Java wrapper still
+  logs "caught cv::Exception" under the tag `org.opencv.imgproc`, priority E, with OpenCV's assertion
+  text and an OpenCV source path, and no switch for it was found. Observed on the SM-G990B for one
+  provoked resize assertion, it held no URI, box or embedding; but OpenCV's value-printing checks can
+  put operand values in that text, and the line is outside `FaceIndexLogLines` and outside what the
+  logger test proves. ~~Whether to accept it is open for the maintainer~~ *2026-11-23:* accepted by
+  the maintainer as a recorded limit, with no precondition checks
+  ([ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md) §6, note of 2026-11-22;
+  [albums-stage-3.md](../design/albums-stage-3.md) *3.7*, L10).
 - **The face pipeline's build wiring has two app-wide edges.** `verifyFaceModelChecksums` is wired
   to every task whose name starts with `merge` and ends with `Assets`, so an AGP rename of those
   tasks would silently unhook it. And the `libc++_shared.so` excludes under the three non-arm64 ABIs
@@ -1480,8 +1495,12 @@ KSP.
   Central's own — lists 3,570,283 B for an AAR of 121,695,690 B; the AAR's `.sha1` and `.sha256`
   match. Nothing fails because of it; the project has no `verification-metadata.xml`, and adding one
   for this was judged out of proportion ([ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md)).
-- **The face models use most of their download budget.** The arm64 release adds 46,063,982 B
-  against ADR-0023's 50 MB, so a model or OpenCV upgrade must re-measure it; step 3.7 re-checks it.
+- **The face models use most of their download budget.** What they and OpenCV add to the arm64
+  download is 46,063,982 B against ADR-0023's 50 MB, unchanged since step 3.3; the whole arm64
+  download is 49,712,393 B (bundletool, 2026-11-22). A model or OpenCV upgrade must re-measure it.
+  The budget is worded as what the face path adds; read against the total, 287,607 B remain under
+  50,000,000 B. Which reading holds is open for the maintainer ([albums-stage-3.md](../design/albums-stage-3.md)
+  *3.7*, L12).
 - **Devices without arm64-v8a download the models and cannot use them.** The 36.1 MB of ONNX files
   are in the base APK on every ABI, while OpenCV's library ships for arm64-v8a only, so those
   devices pay the download and cannot run the pipeline. Since step 3.6 they are recorded incapable
@@ -1501,9 +1520,11 @@ KSP.
 - **The face evaluation query re-runs on index writes that are not face writes.** Its inner join
   to `media_index` makes Room invalidate it on Tier A and place writes too, so a people album is
   evaluated twice for such a batch, and the first Albums View emission waits for the first face
-  query, because the album list combines every album's flow. Over an indexing run that is about
-  batches × faces of work; unmeasured until step 3.7 runs a people album on screen through Tier A
-  and face-pass batches.
+  query, because the album list combines every album's flow. One run costs about 20 µs per face —
+  177 ms at 10,000 faces, 767 ms at 37,000 (step 3.7's G5c, synthetic). How often it runs during an
+  indexing run is not measured: the face pass writes once per image, so it is invalidated up to once
+  per image while something collects it, Room re-running the query once for the invalidations that
+  arrive while it runs.
 - **An oversized rule is refused, not thrown.** `AlbumRuleJson.encode` requires the document to fit
   the 16 KiB cap, which a people rule can reach with about 8 to 50 people depending on their anchors'
   escaped names. Since step 3.6 the picker stops at `MAX_PEOPLE_PER_ALBUM` (8, which fit even with
