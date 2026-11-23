@@ -166,6 +166,11 @@ In this order:
   as a recorded limit, with no precondition checks (*Open at 3.7*, question 5).
 - **Never cached to disk.** A face thumbnail in the picker is cropped from the photo at display time
   and must not reach an image loader's disk cache. Step 3.6 verifies it.
+  *Note 2026-11-23, step 3.7 (G8):* on the SM-G990B, Coil's disk-cache listing was unchanged after
+  the People tab was scrolled end to end, but the cache directory never existed, so the listing could
+  not have shown a write. The guarantee is the request's policy — `CachePolicy.DISABLED` in
+  `ui/components/PersonFaceImage.kt`, asserted by a test; the device reading is consistent with it
+  and adds nothing beyond it ([albums-stage-3.md](../../design/albums-stage-3.md), *3.7*, G8).
 
 ## Alternatives Considered
 

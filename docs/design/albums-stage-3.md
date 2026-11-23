@@ -227,7 +227,8 @@
     bound for the test process, which loads the pipeline three times. The second budgeted run took
     only what the first left. The 90 GIFs are skipped and stay pending on every pass, by design (E2);
     3.5 handles pending at evaluation. At that rate the production 7-minute budget fits about 2,800
-    images per run.
+    images per run. *(Superseded 2026-11-23 by step 3.7's G7, through the real worker: about 1,600
+    per run on the SM-G990B — *3.7*, G7; ADR-0023's row 6.)*
   - (f) **An OpenCV AAR anomaly:** Gradle's `.module` gives the AAR as 3,570,283 B; the real AAR is
     121,695,690 B. Maven Central's own `.module` carries the same stale figures, and its `.sha1` and
     `.sha256` match the cached AAR (sha256
@@ -597,8 +598,9 @@
   Planner. **On disk, checked with `git status`:** HEAD `fc63620`; uncommitted, the G2 tests, the two
   fixes, the vocabulary file (V1's), ADR-0022, ADR-0023, ADR-0024, `ARCHITECTURE.md` and this plan.
   *Corrected 2026-11-22, by a later Planner run:* ADR-0023's row 5 and ADR-0024 §6's note were not
-  yet on disk when this entry was written; that run added both, dated. ADR-0023's row 6 waits for G7,
-  and its *Built* section's last bullet, on `cv::error()`, is still unamended.
+  yet on disk when this entry was written; that run added both, dated. ~~ADR-0023's row 6 waits for G7,
+  and its *Built* section's last bullet, on `cv::error()`, is still unamended.~~ *Both done since:* the
+  *Built* bullet's dated note on 2026-11-23, and row 6 from G7 on 2026-11-23.
 - ~~**Next action: the maintainer's walkthrough, W1 to W7, on the SM-G990B** (*3.7*, (ii)), starting
   from the disclosure G6 left showing, **with an agent at the terminal** for G7 (during W3), G8
   (during W4) and G9 (after W5). He says "W3 done" and so on at each step, so that the agent takes its
@@ -621,7 +623,8 @@
   - **Still open among the agent items:** ~~G2's planned mutation per regular test is not in the
     reports the Planner has; the Coder states it, or runs it, before 3.8.~~ G2's planned mutation per
     regular test is **deferred until after W7** — it needs a connected run, which would wipe the
-    walkthrough's state — and is **M1** in 3.8's entry condition: the Coder runs it after W7. V1 is on disk, uncommitted;
+    walkthrough's state — and is **M1** in 3.8's entry condition: the Coder runs it after W7. ~~V1 is on disk, uncommitted;~~
+    *V1 is committed, in `94f8e9c` (2026-11-23);*
     its report is not part of this entry, and 3.8's entry condition 5 checks it.
   - **Then:** the Planner records W1 to W7 and G7 to G9 in *3.7*, and ADR-0023's row 6; the Coder runs
     M1; then 3.8, only when its ~~seven-part~~ eight-part entry condition holds.
@@ -642,12 +645,13 @@
   and L11 entries marked accepted. Planner, docs only; no code, no
   Gradle run. **On disk, by `git status`:** HEAD `fc63620`; uncommitted, the G2 tests, the two fixes,
   V1's vocabulary file, ADR-0022 to ADR-0024, `ARCHITECTURE.md`, [albums.md](albums.md) and this plan.
-- **Next action: still the maintainer's walkthrough, W1 to W7, on the SM-G990B** (*3.7*, (ii)), from
+- ~~**Next action: still the maintainer's walkthrough, W1 to W7, on the SM-G990B** (*3.7*, (ii)), from
   the disclosure G6 left showing, **with an agent at the terminal** for G7 (during W3), G8 (during W4)
   and G9 (after W5). He says "W3 done" and so on at each step; a step that fails stops the walkthrough
   there. W8 is optional, best done right after W5 (its note). **Then M1** — the Coder, a connected run
   on the SM-G990B. **Then G10** — L3 on the SM-G781B, only if the maintainer attaches it and its owner
-  agrees, and with the SM-G990B detached. **Then 3.8**, only when its eight-part entry condition holds.
+  agrees, and with the SM-G990B detached. **Then 3.8**, only when its eight-part entry condition holds.~~
+  Done 2026-11-23 — the entry below; the sub-items are kept as they were.
   - **State on the phone, as far as this plan knows:** the debug app on the SM-G990B (`RFCT703FBKR`),
     installed by G6, the media permissions granted, the disclosure showing — neither OK nor Turn off
     pressed, no index run started.
@@ -663,6 +667,123 @@
     *The Play Data Safety check*; ADR-0024 §6 and Amendment 1 §1 and §2; `AGENTS.md` *Running
     Gradle*; repo memory on `am instrument`, `run-as`, `clear_refs`, `ANDROID_SERIAL` and waking the
     phone.
+- **2026-11-23, later — step 3.7's device work done: W1 to W7, G7 to G9, M1, and G10 in part;
+  question 3 carried; two new limits.** Recorded under *3.7* from the maintainer's and the Coder's
+  reports; the Planner ran nothing. The maintainer had committed 3.7's tests, fixes and documents as
+  `94f8e9c` the same day. **Results:** W1 to W7 done, W8 skipped by his decision. G7 — the real
+  worker after the real disclosure: 1,002 images in 254.2 s, **253.7 ms per image with the screen
+  off**, about 2.25 times 3.4's figure, so **about 1,655 images per 7-minute run on this phone, not
+  2,800**; ADR-0023's row 6 amended. G8 — the disk cache unchanged, within a stated limit;
+  People-tab jank 8.30 % against Folders View's 3.52 %, no stutter seen, a polish candidate not
+  routed; 2 of 104 crops not recognisable. G9 — after a real deletion, `wal`, `normal`,
+  `secure_delete` 1, no face data. M1 — all nine regular new tests caught a named mutation, every
+  mutation reverted. G10 on the SM-G781B — capability and item 1's modes recorded (`wal`, `normal`);
+  the release build not checked, no signing key; the face pass stopped at thermal status 2; closed by
+  the maintainer as option A, L3 accepted as it stands. **Decisions:** question 3 carried past 3.8
+  (option B), which meets entry condition 6; "Leute" approved (option A), still on the
+  native-speaker review list. **New, for the maintainer:** L13, no thermal back-off; L14, the worker
+  measurement test's permission race (question 6); W4's count comparison not reported (question 7).
+  Also corrected: this handoff's V1 and row-6 lines, ADR-0023's row 7, and `ARCHITECTURE.md` §11's
+  journal-mode and face-data UI entries. Planner, docs only; no code, no Gradle run, no phone.
+  **On disk, by `git status`:** HEAD `94f8e9c`; uncommitted, this plan, ADR-0023 and
+  `ARCHITECTURE.md`.
+- ~~**Next action: the maintainer** — *Open at 3.7*, question 6 (L13 and L14: accepted or not) and
+  question 7 (W4's count on a device); then commit this run's documents. **Then the verification
+  phase** runs the definition of done once over the committed tree, with `adb devices` stated —
+  entry condition 4, which G3 no longer covers (its note). **Then the Planner** checks the eight
+  entry conditions against the repository and starts 3.8 only if all hold.~~ Questions 6 and 7
+  answered and the gate started, the entry below.
+  - ~~**Read first:** *3.8 — Close-out*; *3.7*'s (iii) and *Open at 3.7*; `AGENTS.md` *Definition of
+    done* and *Running Gradle*.~~
+- **2026-11-23, later still — *Open at 3.7* questions 6 and 7 answered; the gate running.** Question
+  6: **A** — L13 and L14 accepted, L13 revisited on a real report or a user complaint, L14's
+  test-side fix deferred; entry condition 3 now holds for L1 to L14. Question 7: **A**, done by the
+  maintainer by hand on the SM-G990B after a fresh debug install and a fresh face index (OK on the
+  disclosure, Index now, the People tab): one automatic album created from people tiles, the New
+  automatic album screen's match count and the album's member count the same. The figures, the tiles
+  and any place or date mix were not reported to the Planner. Recorded under W4 and against the exit
+  criterion *Count consistency*, whose wording a hand observation meets; no device test covers people
+  counts, a gap accepted with option A. Entry condition 2's W4 caveat is closed. Also brought up to
+  date: `ARCHITECTURE.md` §11 — L13 and L14 added, L12 marked accepted, and the face-data UI entry's
+  People tab label, Face licences dialog and outside-tap clauses struck as settled by G4, G6, W1 and
+  W2; this plan's L12 annotation, and L13's "production" corrected — Index now has no charging or
+  idle constraint, which leaves the acceptance as it was. Planner, docs only; no code, no Gradle run,
+  no phone. **On disk, by `git status` at the start of this run:** HEAD `94f8e9c`; uncommitted, this
+  plan, ADR-0023 and `ARCHITECTURE.md` from the previous run, which this run edited again. **Running
+  at this time:** the verification phase's definition-of-done gate over the committed tree — entry
+  condition 4; its result is in its own report and not claimed here.
+- ~~**Next action: record the gate, then review, then commit, then 3.8.**~~ *Items 1 and 2 done
+  2026-11-23, the entry below; the list is kept as it was.* In order:
+  1. **The gate's result** — entry condition 4. The next session reads the verification phase's
+     report and **records the gate's figures** in condition 4's annotation (*3.8 — Close-out*,
+     *Entry condition*). If it failed, the fix is a task of its own and the gate runs again.
+  2. **The Reviewer's pass over the 3.7 change** — not yet run. A finding that changes code or tests
+     sends the gate round again, so condition 4 is re-recorded.
+  3. **The maintainer's commit** of the documents on disk — entry condition 7.
+  4. **Then the Planner** checks the eight entry conditions against the repository and starts 3.8
+     only if all hold.
+  - **Nothing is open for the maintainer on *Open at 3.7*:** all seven questions are answered. His
+    parts before 3.8 are the commit, and the Reviewer's findings if any need his decision. Carried
+    past 3.8 and still his before the first Play release that ships the face pass: question 3's Play
+    Data Safety points 3 and 4 and the submission, and the native-speaker review, "Leute" on its list.
+  - **Read first:** *3.8 — Close-out*; *3.7*'s (iii); `AGENTS.md` *Definition of done*.
+- **2026-11-23, latest — the gate recorded; the Reviewer's pass applied to the documents.** The
+  gate over `94f8e9c` is recorded in 3.8's entry condition 4: unit and compile green; the first
+  connected run failed on two timeouts in `MediaIndexingWorkEnqueueTest`, a worker test 3.7 did not
+  touch, and the second was green — recorded as an intermittent flake. The Reviewer approved 3.7 with
+  changes; *Review of 3.7* records its test findings and what was and was not changed, and its
+  documentation findings are applied, dated, here, in `ARCHITECTURE.md` §6 and §11, ADR-0022's
+  *To verify*, ADR-0023 §5 and rows 5 and 6, ADR-0024 §6 and [albums.md](albums.md) §7 and §8
+  decision 9. Corrected among them: about 1,600 images per run, not 1,655; L11's 31,000 not reduced
+  by Tier A. Planner, docs only; no code, no Gradle run, no phone. **On disk at this entry:** HEAD
+  `94f8e9c`; uncommitted, these documents and — **being applied at this time** by the Coder — the
+  review's fixes to four test files under `app/src/androidTest`, not verified.
+- ~~**Next action: the gate once more, then the commit, then 3.8.**~~ *Item 1 done 2026-11-23, final,
+  the entry below; the list is kept as it was.* In order:
+  1. **The verification phase runs the definition of done once over the final tree**, after the
+     Coder's review fixes, with `adb devices` stated, and its figures are recorded in 3.8's entry
+     condition 4.
+  2. **The maintainer commits** the documents and the test fixes — entry condition 7, checked with
+     `git status`.
+  3. **The Planner** checks the eight entry conditions against the repository and starts 3.8 only
+     if all hold.
+  - **Read first:** *3.8 — Close-out*; *Review of 3.7*; `AGENTS.md` *Definition of done*.
+- **2026-11-23, final — the final gate and the re-review recorded.** The definition of done ran once
+  over the final tree — HEAD `94f8e9c` plus the Reviewer's four test fixes and the documents — on the
+  SM-G990B, the only device attached, and passed: 84 classes and 1427 unit tests, 28 classes and 346
+  connected test cases, 0 failures, 0 errors, the same six opt-in skips; `MediaIndexingWorkEnqueueTest`
+  3 of 3, the first gate's flake not recurring; the merged manifests and `app/schemas` unchanged;
+  `git diff HEAD -- app/src/main` empty. Recorded in 3.8's entry condition 4, now met, with the
+  earlier gate history kept there; G3's note annotated. The Reviewer re-reviewed the four fixes:
+  **approve**, 0 blocker, 0 major, 0 minor; its four optional cleanups **deferred**, with the reason,
+  under *Review of 3.7*, and the earlier findings marked fixed there. The lines above that say the
+  gate must run again, and the 1,655 figure in the 2026-11-23 *later* entry, are dated history and
+  left as they were. Also: [albums.md](albums.md) §7's Stage 3 row. Planner, docs only; no code, no
+  Gradle run, no phone. **On disk, by `git status` at this entry:** HEAD `94f8e9c`; uncommitted, the
+  four test files and the six documents listed under *Next action* below.
+- **Next action: the maintainer's commit, then 3.8.** In order:
+  1. **The maintainer commits** exactly these ten files, and nothing under `app/src/main` — there is
+     no change there. Its code and tests are the tree the final gate ran over; only documents were
+     edited after it, so a code or test edit before the commit would send the gate round again.
+     - `app/src/androidTest/java/com/davide/seddio/easygallery/ui/components/FaceDataDialogsTest.kt`
+     - `app/src/androidTest/java/com/davide/seddio/easygallery/data/FaceNativeErrorLogDeviceTest.kt`
+     - `app/src/androidTest/java/com/davide/seddio/easygallery/data/MediaIndexTierCScaleDeviceTest.kt`
+     - `app/src/androidTest/java/com/davide/seddio/easygallery/ui/NewAutomaticAlbumContentTest.kt`
+     - `docs/architecture/ARCHITECTURE.md`
+     - `docs/architecture/decisions/0022-people-criterion-anchored-to-a-photo.md`
+     - `docs/architecture/decisions/0023-face-pipeline-models-runtime-and-delivery.md`
+     - `docs/architecture/decisions/0024-face-data-disclosure-and-delete-switch.md`
+     - `docs/design/albums-stage-3.md`
+     - `docs/design/albums.md`
+  2. **Then the Planner** checks the eight entry conditions against the repository — `git status`,
+     `git log` and `git ls-files`, not this document — and, only if all hold, starts 3.8's steps in
+     order. Condition 7 is the one open.
+  - **Nothing else is open for the maintainer before 3.8.** The four deferred cleanups are optional
+    and not a condition. Carried past 3.8 and still his before the first Play release that ships the
+    face pass: question 3's Play Data Safety points 3 and 4 and the submission, and the native-speaker
+    review, "Leute" on its list.
+  - **Read first:** *3.8 — Close-out*, its entry condition and its steps; *Review of 3.7*;
+    `AGENTS.md` *Documentation*.
 - ~~**Next action: step 3.5 — the `people` clause and evaluation.** Owner: the Planner refines it into
   a step plan, as 3.2 to 3.4 were; then the Coder builds it.~~ Refined 2026-11-21 — the *Next action:
   step 3.5, Task 1* entry above.
@@ -1247,8 +1368,8 @@ step is refined when it starts.
 | **3.4** | Clustering and the person record | ~~⬜ Not started~~ ~~🔶 In progress — refined 2026-11-20 into *3.4 — Clustering and the person record*;~~ ~~ready to build: no schema change, so no amendment to approve; Task 1 waits on nothing, Task 2 on the maintainer's acceptance of the budget~~ ~~Task 1 ✅ built and verified 2026-11-20; the budget accepted, components first~~ ~~and ADR-0018 Amendment 8 adopted the same day (decision 50), so there is a schema change after all — `Migration(6, 7)`, in Task 3; Task 2 next, waiting on nothing~~ ~~adopted the same day (decision 50); Task 2 ✅ built and verified 2026-11-20, and on its measurement ADR-0018 Amendment 8 reversed before it was built (decision 50, amended) — no schema change, the index stays at version 6; Task 2b next, waiting on nothing~~ ✅ Built and verified 2026-11-21 — refined 2026-11-20; the budget accepted with components first (decision 50); ADR-0018 Amendment 8 adopted and reversed before it was built (decision 50, amended), so no schema change and the index stays at version 6; Tasks 1, 2, 2b, 3, 4, 5 and task P done; the gate and the device results are under *3.4 — Built and verified 2026-11-21* |
 | **3.5** | The `people` clause and evaluation | ~~⬜ Not started — refined 2026-11-21 into *3.5 — The people clause and its evaluation*, ready to build: Tasks 1 to 3, sequential, then verification and task P; nothing waits on the maintainer~~ ✅ Built and verified 2026-11-21 — refined the same day; Tasks 1, 2, 3, the verification phase and task P done; no schema change in either database, no string; the gate and the review's dispositions are under *3.5 — Built and verified 2026-11-21* |
 | **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ~~⬜ Not started — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, waiting on the maintainer's approval of ADR-0024 Amendment 1 for tasks S2, A and B; tasks S1 and C ready to build.~~ ~~🔶 In progress — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2): **S1 and C built and verified; S2, A and B ready to build**, S2 next.~~ ✅ Built and verified 2026-11-22 — refined and approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2); tasks S1, C, S2, A and B, the verification phase and task P done; no schema change in either database; the gate, the review's dispositions and what is not proven are under *3.6 — Built and verified 2026-11-22*. D1 answered by the Designer (a third tab), D3 by the maintainer (8 people) |
-| **3.7** | Device verification and installed-app walkthrough | ~~⬜ Not started — next~~ 🔶 In progress — refined 2026-11-22 into *3.7 — Device verification and the installed-app walkthrough*: agent items G1 to G9, the maintainer's walkthrough W1 to W8, known limits ~~L1 to L9~~ L1 to L12. **G1 ✅ done 2026-11-22** — the capability check on the SM-G781B (ADR-0023 verify item 7); ~~G2 next~~ **G2 to G6 ✅ done 2026-11-22** — G2's planned mutation check deferred until after W7 as M1; **the maintainer's walkthrough W1 to W7 next**, with G7 at W3, G8 at W4 and G9 after W5. **2026-11-23:** *Open at 3.7* answered — L1 to L12 accepted; L3 accepted to run as **G10**, after M1; question 3's position given, the form not submitted |
-| **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ⬜ Not started — starts only when the ~~seven~~ eight conditions of *3.8 — Close-out*, *Entry condition*, hold |
+| **3.7** | Device verification and installed-app walkthrough | ~~⬜ Not started — next~~ ~~🔶 In progress~~ ✅ Done 2026-11-23 — its final gate and the re-review are at the end of this cell; its commit is 3.8's entry condition 7, the maintainer's. Refined 2026-11-22 into *3.7 — Device verification and the installed-app walkthrough*: agent items G1 to G9 (G10 added 2026-11-23), the maintainer's walkthrough W1 to W8, known limits ~~L1 to L9~~ ~~L1 to L12~~ L1 to L14. **G1 ✅ done 2026-11-22** — the capability check on the SM-G781B (ADR-0023 verify item 7); ~~G2 next~~ **G2 to G6 ✅ done 2026-11-22** — G2's planned mutation check deferred until after W7 as M1; **the maintainer's walkthrough W1 to W7 next**, with G7 at W3, G8 at W4 and G9 after W5. **2026-11-23:** *Open at 3.7* answered — L1 to L12 accepted; L3 accepted to run as **G10**, after M1; question 3's position given, the form not submitted. **2026-11-23, later:** W1 to W7 ✅ (W8 skipped by the maintainer), G7 to G9 ✅, M1 ✅, G10 🔶 partial and closed as option A; question 3 carried past 3.8 (option B); new limits L13 and L14 pending his acceptance; the definition of done to run again over the committed tree. **2026-11-23, later still:** questions 6 and 7 answered (A, A) — L13 and L14 accepted, W4's count observed equal by hand on the SM-G990B; the definition of done running over the committed tree, its figures to be recorded under 3.8's entry condition 4. **2026-11-23, latest:** the gate ran over `94f8e9c` — the first connected run failed on two worker-test timeouts, recorded as an intermittent flake, and the second was green; the Reviewer approved with changes (*Review of 3.7*); its test fixes are in the working tree, so ~~**the gate runs once more over the final tree**~~ the gate runs once more over the final tree (3.8's entry condition 4). **2026-11-23, final:** the gate ran once more over the final tree — `94f8e9c` plus the four test fixes and the documents — and passed, the flake not recurring; the Reviewer re-reviewed the fixes and approved, four optional cleanups deferred (*Review of 3.7*). Nothing of 3.7 is left but the maintainer's commit |
+| **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ⬜ Not started — starts only when the ~~seven~~ eight conditions of *3.8 — Close-out*, *Entry condition*, hold. *2026-11-23, final:* 1 to 6 and 8 met; 7 waits on the maintainer's commit |
 
 ### 3.0 — Feasibility spike
 
@@ -1378,6 +1499,9 @@ the Planner confirmed the exit criteria below against them. D1 stays open for th
 
 #### The Play Data Safety check — recorded 2026-11-18, not answered
 
+*Carried past 3.8 by the maintainer, 2026-11-23 (option B) — the* Carried *bullet at the end of this
+section. The heading is kept as it was, so that links to it hold.*
+
 Not an ADR: it is a declaration about the shipped app, not a choice of structure. **Nothing here
 asserts the answer.** Decision 9 says on-device inference "generally" is not collection; that is a
 belief to check, not a finding.
@@ -1417,7 +1541,9 @@ first thing the maintainer confirms in the console's help text.
   each with its pipeline or grouping version (`media_index_face`); per image, an outcome
   (`media_index_face_state`) and a retry count (`media_index_face_attempt`). The People picker's
   crops are cut from the photo at display time and never reach Coil's disk cache
-  (`ui/components/PersonFaceImage.kt`, `CachePolicy.DISABLED`; G8 checks it on the device).
+  (`ui/components/PersonFaceImage.kt`, `CachePolicy.DISABLED`; ~~G8 checks it on the device~~
+  *checked at G8, 2026-11-23:* the policy holds; the device listing could not show a write, Coil's
+  disk-cache directory never having existed).
   `face_device_state` holds whether the disclosure was shown and the capability record;
   `app_settings` holds the switch, one boolean.
 - **None of it leaves the device, and the face pass uses no network.** The models are in the APK
@@ -1426,8 +1552,10 @@ first thing the maintainer confirms in the console's help text.
   library and the tip jar, not from the face path. No analytics, crash-reporting or advertising SDK
   is a dependency (`gradle/libs.versions.toml` and `app/build.gradle.kts`, read 2026-11-22). The
   face path logs only `FaceIndexLogLines`' fixed lines, counts and no face data, enforced by a unit
-  test — and logcat stays on the device in any case. **Open:** whether native OpenCV prints under
-  `cv::error()` is G5a's.
+  test — and logcat stays on the device in any case. ~~**Open:** whether native OpenCV prints under
+  `cv::error()` is G5a's.~~ *Observed 2026-11-22 (G5a):* a native OpenCV error prints one line
+  outside those fixed lines, under `org.opencv.imgproc` — OpenCV's assertion text and source path,
+  for the assertion provoked no face data; accepted 2026-11-23 as known limit L10.
 - **Excluded from backup.** `media_index.db` with its `-wal`, `-shm` and `-journal`, and
   `face_device_state.xml`, are excluded in all four sections — `backup_rules.xml`, and
   `data_extraction_rules.xml`'s cloud backup, device transfer and cross-platform transfer (read
@@ -1511,8 +1639,13 @@ in [albums.md](albums.md) §8 — or he declares it carried (*Open at 3.7*, ques
   the form is not yet submitted.**
 - **State: position given 2026-11-23; submission and points 3–4 outstanding.** It closes when the
   maintainer submits the form and the outcome is recorded here and in [albums.md](albums.md) §8 — or
-  he declares it carried (*Open at 3.7*, question 3). Until one of those, 3.8's entry condition 6 is
-  not met.
+  he declares it carried (*Open at 3.7*, question 3). ~~Until one of those, 3.8's entry condition 6 is
+  not met.~~ *Met the same day, by the carrying below.*
+- **Carried past 3.8 — the maintainer's decision, 2026-11-23 (option B)**, as Stage 2 carried its Play
+  Console declaration. It stays a pre-release item: points 3 and 4 — the app-wide answers, and the
+  externally hosted privacy policy describing on-device face grouping and the Face data switch — and
+  the submission remain open before the first Play release that ships the face pass. Entry condition
+  6 is met by this declaration; the exit criterion below is carried, not met.
 
 This step also confirms or changes the exit criteria below.
 
@@ -2287,6 +2420,8 @@ state.
   in the process, on a throwaway in-memory index, screen off, USB charging, thermal status 1 before
   and after — **not through the worker**, whose pass the disclosure gate keeps dormant until 3.6.
   The 2,800 images per 7-minute run that follow from the mean are arithmetic, not a measurement.
+  *(Superseded 2026-11-23 by step 3.7's G7, through the real worker: about 1,600 per run on the
+  SM-G990B — *3.7*, G7; ADR-0023's row 6.)*
 - **The release build**, its arm64 APKs installed through bundletool on the phone, logs
   `face capability checked capable=true`, once `app/proguard-face.pro` keeps
   `org.opencv.core.CvException`, which R8 had removed.
@@ -3003,9 +3138,11 @@ once on the phone afterwards, passed. **Judgement calls on Task 5's test, accept
 - the heap ceiling: one connected component of about 10,500 faces fails with `OutOfMemoryError`, not
   the fixed "too many" message, and nothing enforces a limit before it — a heap-based cap is open for
   the maintainer (`ARCHITECTURE.md` §11);
-- the deadline, checked only at the start: after a face pass that used its 7-minute budget, about
+- the deadline, checked only at the start: after a face pass that used its 7-minute budget, ~~about
   37,000 faces fit before WorkManager's stop, about 68,000 in a whole window — quadratic arithmetic
-  from the 20,000-face figure, not a measurement; beyond that every run is cut and writes nothing;
+  from the 20,000-face figure, not a measurement~~ *(corrected 2026-11-22 by step 3.7's G5c, through
+  the real store: about 31,000 and about 56,000 — *3.7*, G5c and L11)*; beyond that every run is cut
+  and writes nothing;
 - the GIFs, still pending (3.5), and the worker through the real disclosure (3.7 item 5).
 
 ### 3.5 — The people clause and its evaluation — refined 2026-11-21
@@ -4252,6 +4389,16 @@ Planning only: no code, no Gradle run by the Planner.
   2026-11-22 until after W7:** the planned mutation per regular test needs a connected run, which
   uninstalls the app and would wipe the disclosure state the walkthrough starts from. It is not
   dropped: it is **M1** in 3.8's entry condition.
+  ✅ **M1 done 2026-11-23** (3.8's entry condition 8), by the Coder on the SM-G990B after W7: all
+  nine regular new tests failed under a named mutation and passed restored. In
+  `MediaIndexDatabase.kt`: **A** `secure_delete` off; **B** the WAL never checkpointed (`'wal'` →
+  `true`); **C** truncate/delete → `false`; **D** `else` → `true`. In the strings: **E** `values-de`
+  back to "Personen"; **F** `values-it` "Persone riconosciute". In `FaceDataDialogs.kt`: **G**
+  `requiredHeight(4000.dp)`. Every mutation reverted; `git status` and `git diff` empty at the end;
+  a clean confirmation run of `MediaIndexSqliteDeviceTest`, `NewAutomaticAlbumContentTest` and
+  `FaceDataDialogsTest` together, 112 tests, 0 failures. **Caveat:** G was caught at the
+  title-displayed assertion — a dialog taller than the window — not at the later screen-bounds
+  assertions, and no mutation aimed at those was tried.
 - **G3 — the definition of done, once, over G2.** The verification phase owns it: `AGENTS.md` steps
   1 to 5, `adb devices` deciding step 4; the merged manifests byte-identical to 3.6's (debug md5
   `8856dbd4b4257bd665c4593a325ba624`, release `043a521e4d0a25724364c8b8b6ea6f8d`); `git status
@@ -4268,6 +4415,17 @@ Planning only: no code, no Gradle run by the Planner.
   md5s unchanged (debug `8856dbd4b4257bd665c4593a325ba624`, release
   `043a521e4d0a25724364c8b8b6ea6f8d`); `app/schemas` unchanged. Recorded from the Coder's report;
   the Planner ran nothing.
+  🔶 **Run again 2026-11-23 over the committed tree, `94f8e9c`** — 3.8's entry condition 4, which
+  holds the figures: green on a second connected run after the first failed on two timeouts in
+  `MediaIndexingWorkEnqueueTest`, a worker test 3.7 did not touch — **an intermittent flake,
+  recorded as such, not a pass without qualification.** The Reviewer's test fixes came after it
+  (*Review of 3.7*), so it ~~**runs once more over the final tree.**~~ runs once more over the final
+  tree.
+  ✅ **Ran once more 2026-11-23 over the final tree** — `94f8e9c` plus the Reviewer's four test fixes
+  and the documents, the tree as it is to be committed — on the SM-G990B: green, 1427 unit tests and
+  346 connected test cases, 0 failures, the same six opt-in skips; `MediaIndexingWorkEnqueueTest` 3 of
+  3, the flake not recurring. The figures are in 3.8's entry condition 4, for which this is the run
+  that counts. Recorded from the verification phase's report; the Planner ran nothing.
 - **G4 — what G3's run records, and one landscape run.** *Recommended: all now — cheap.*
   - **Items 1 to 3.** `MediaIndexSqliteDeviceTest` records this phone's `journal_mode`,
     `locking_mode`, `auto_vacuum` and `secure_delete` as `MediaIndexDatabase` opens the index, and
@@ -4306,7 +4464,8 @@ Planning only: no code, no Gradle run by the Planner.
       `automatic_album_section_people` in `values-de` is now "Leute" (informal; "Menschen" is as long
       as "Personen"). The same key labels the People entry of the Album info dialog, which now reads
       "Leute" too. Both German tests pass. **"Leute" joins the native-speaker review list** — it is
-      informal, and German says "Personen" everywhere else.
+      informal, and German says "Personen" everywhere else. *2026-11-23:* **approved by the
+      maintainer (option A)**; still on the native-speaker review list.
     - **Item 22** — the Face licences dialog keeps OK on screen at font scale 2.0, in portrait and in
       landscape: 2 of 2.
 - **G5 — the opt-in runs**, each `connectedDebugAndroidTest` with a class filter and its opt-in
@@ -4387,6 +4546,8 @@ Planning only: no code, no Gradle run by the Planner.
       faces, one 0.8 s query after another. Nothing collects it with the screen off, so W3 cannot
       show it. Left to L5, or to the maintainer's eye at W4 if he wants it watched. *2026-11-22:*
       **item 15's emission count stays open** — to G7 if it can be counted there, otherwise L5.
+      *2026-11-23:* not countable from outside the process at G7, so **L5**; and G7's 253.7 ms per
+      image puts the upper bound at about ~~1,655~~ 1,600 re-runs in a full-budget run, not 2,800.
   - **G5d, item 8 — ADR-0023 verify item 5's re-check.** The release bundle measured with bundletool,
     `get-size total` for arm64-v8a. Nothing in the models or OpenCV has changed since 3.3, so it should
     read 49,613,983 B, +46,063,982 B; a different figure is the finding. **Exit:** within the 50 MB
@@ -4435,6 +4596,38 @@ Planning only: no code, no Gradle run by the Planner.
   `FaceIndexLogLines`; the figures recorded here and in ADR-0023's row 6. *Recommended: now — logcat
   only.* *Added 2026-11-22:* item 15's emission count, if it can be counted from outside the process
   during this run; nothing collects the projection with the screen off, so otherwise it stays L5.
+  ✅ **Done 2026-11-23, at W3** — the real worker after the real disclosure, Index now, screen off,
+  USB at 100 %. Worker 11:32:33 to 11:36:57, **264.2 s**: Tier A and places about 9.2 s (334 rows
+  placed); **the face pass 254.2 s for 1,002 images** — `indexed=1002 failed=0 skipped=90` (the
+  GIFs), stop `COMPLETED`, **mean 253.7 ms per image**, timed from the `capability checked` line;
+  grouping stop `GROUPED`, at most 735 ms. Budget `facePassBudgetMillis=420000`, 60.5 % used — so
+  **about ~~1,655~~ 1,600 images per 7-minute window on this phone**. *Corrected 2026-11-23 at
+  review:* 1,655 divided the whole 420 s by the mean, but the budget is counted from the worker's
+  start (`FaceIndexPass`), so on a backlog run the face pass has about 420 − 9.2 s after Tier A and
+  places — about 1,619 images at 253.7 ms; counted from the worker's start, this run used about
+  62.7 % of the budget. Thermal status 0 throughout (AP peak
+  38.7 °C while the screen was briefly on, battery 34.0, skin 33.7); battery 100 %, charging; no
+  process death. `VmHWM` 480,228 → 551,016 kB at the start of the face phase — a lifetime
+  high-water mark: *deviation*, it could not be reset under `run-as`; peak sampled `VmRSS` 386,204 kB.
+  Every `FaceIndexPass` line was one of the fixed forms; 0 lines under `cv::error()` and
+  `org.opencv.imgproc`; the only E and W lines were unrelated (ExifInterface,
+  WindowOnBackDispatcher, a libc property, a GC histogram). **The exit holds.**
+  - **Slower than measured before.** 3.4's Task 5 ran the same 1,002 images through the worker in
+    113.2 s, about 113 ms per image (grouping 292 ms): this run is about 2.25 times slower per image,
+    with the screen off; 3.3's in-process figure was 150.7 ms. **So the 2,800-images-per-run
+    projection no longer holds on this phone: about ~~1,655~~ 1,600 per window.** A larger library takes more
+    runs; nothing fails. Recorded in ADR-0023's row 6.
+    **The cause of the slowdown is not established** (raised at review, 2026-11-23). Known: the same
+    phone and the same 1,002 images; G7 ran the installed app's worker from Index now, screen off,
+    thermal status 0, charging at 100 %; 3.4's Task 5 ran the worker from an instrumented test,
+    thermal status 0, charging; 3.3's in-process run was screen off at thermal status 1. **Not
+    known:** 3.4 Task 5's screen state, which its record does not give, and any other difference
+    between the runs, none having been compared. Each figure is one run, so G7's is the only
+    measurement of the rate L11 now uses.
+  - **Item 15's emission count** was not countable from outside the process: it stays **L5**.
+  - **Settings' Media index label** after the run showed the later periodic no-op run — "Last
+    indexed 12:09", "Waiting for conditions" — which overwrote the Index now run's label:
+    `media_index_run_state` holds the last run's outcome, so the label described the later run.
 - **G8 — at W4: items 19 and 21.** Coil's disk-cache directory (`cache/image_cache` by Coil's
   default; the Coder confirms it against `EasyGalleryApp`) listed through `run-as`, names and sizes
   only, with the New automatic album screen open on its Place tab, and again after the People grid
@@ -4443,12 +4636,45 @@ Planning only: no code, no Gradle run by the Planner.
   (item 21; ADR-0024 §6); the jank figures recorded beside the baseline. A difference in the listing
   stops 3.7. Jank well above the baseline, or stutter the maintainer sees, is a finding routed to the
   Designer and the Coder, not fixed in 3.7 unless he asks. *Recommended: now — cheap.*
+  ✅ **Done 2026-11-23, at W4, with one limit stated.**
+  - **Item 21 — passes, within a limit.** The listing was identical at all three readings, but no
+    `cache/image_cache` directory ever existed, so the listing alone could not have shown a cache
+    write. The guarantee is the request's policy — `diskCachePolicy(CachePolicy.DISABLED)` in
+    `ui/components/PersonFaceImage.kt`, line 64 at `94f8e9c`, asserted by an existing test; the
+    device reading is consistent with it and adds nothing beyond it.
+  - **Item 19 — a recorded finding.** `dumpsys gfxinfo`, a scroll of Folders View's grid as the
+    baseline against a scroll of the People tab:
+
+    | Scroll | Frames | Janky | 50th | 90th | 95th | 99th | Missed Vsync | High input latency |
+    |---|---|---|---|---|---|---|---|---|
+    | Folders View (baseline) | 540 | 19 (3.52 %) | 8 ms | 10 ms | 13 ms | 85 ms | 8 | 1038 |
+    | People tab | 265 | 22 (8.30 %) | 7 ms | 15 ms | 26 ms | 150 ms | 8 | 412 |
+
+    The cost is on the UI thread — 20 slow-UI-thread frames, GPU 99th percentile 6 ms. The sample is
+    small: 104 tiles, about 3 frames behind the 99th percentile, and the first-render burst may be in
+    the window. **The maintainer saw no stutter.** By the exit criterion it is a finding, not fixed in
+    3.7, and **not routed**, since he did not ask: a **polish candidate** — prefetching, or smaller
+    crops.
+  - **Item 20 — by the maintainer's eye, 2 of the 104 Person tiles seen are not recognisable.** 3.4
+    measured 21 of 104 groups with no member at least 60 px across, so this is much better than
+    feared. He reported W4 done and asked for no remedy, so no new decision.
 - **G9 — after W5: item 1, read after a real deletion.** `MediaIndexSqliteDeviceTest`'s read-only
   method through `am instrument`, on the production index the walkthrough has just deleted from: the
   modes it committed under, and its Tier C row count. **Exit:** modes recorded, beside G4's; 0 Tier C
   rows; `PERSIST` or `exclusive` goes to the maintainer as in G4. *Recommended: now — cheap.*
+  ✅ **Done 2026-11-23, after W5.** `MediaIndexSqliteDeviceTest#theProductionIndexModesAreRecorded`
+  through `am instrument`, with `mediaIndexExpectNoFaceData=true`: `journal_mode` `wal`,
+  `locking_mode` `normal`, `auto_vacuum` 1, `secure_delete` 1, `hasFaceData=false` — G4's modes, **no
+  `PERSIST` and no `exclusive`**, and no Tier C row. No `media_index.db-journal`; `media_index.db-wal`
+  0 bytes. The app's `firstInstallTime` unchanged: only the test APK was installed, and then removed.
+  **The `face data deletion ran scrubbed=` line is not in the log, by design:** `FaceIndexPass.kt`
+  logs it only for the worker's repeat deletion (line 329 at `94f8e9c`); the Settings switch calls
+  `deleteAllFaceData()` from `FaceDataViewModel` (line 166), which logs nothing. So W5's scrubbed
+  result was not read from outside; W5 showed no cleanup sentence, which shows only when a deletion
+  reports not scrubbed.
 - **G10 — after M1: L3 on the SM-G781B. Added 2026-11-23, the maintainer's answer to *Open at 3.7*
-  question 1.** ⏳ **Accepted to run, not yet run.** Item 7's release-build capability check and a
+  question 1.** ~~⏳ **Accepted to run, not yet run.**~~ 🔶 **Run in part 2026-11-23; closed by the
+  maintainer as option A, below.** Item 7's release-build capability check and a
   face pass, item 14's grouping and the worker, and item 1's modes, on that phone — as L3 describes.
   **Only if the phone is attached and its owner agrees, which the maintainer owns.** **After W7 and M1
   on the SM-G990B, never before:** the two phones must not both be attached for a connected run, and
@@ -4456,17 +4682,62 @@ Planning only: no code, no Gradle run by the Planner.
   and in ADR-0023's verify table where a row covers them; `PERSIST` or `exclusive` goes to the
   maintainer as in G4. **If the maintainer does not attach it,** G10 is recorded as not run and L3
   falls back to accepted (question 4).
+  **Run 2026-11-23 on the SM-G781B** — Android 13, API 33, arm64-v8a, 5,763,308 kB RAM; 5,081 images
+  and 412 videos in `MediaStore`:
+  - **Done:** `FaceCapabilityDeviceTest` 2 of 2, `FaceDecodeOrientationDeviceTest` 4 of 4 and
+    `MediaIndexSqliteDeviceTest` 5 of 5 — one connected run, 11 tests, 0 failures. Its log:
+    `abi=arm64 runsArm64=true capable=true`, `embeddingSize=128`. **Item 1's modes for that phone's
+    production index:** `journal_mode` `wal`, `locking_mode` `normal`, `auto_vacuum` 1,
+    `secure_delete` 1, `lowRamDevice=false` — **no `PERSIST` and no `exclusive`**, so no revisit;
+    under a forced `TRUNCATE` a deletion reported scrubbed, and the `PERSIST` control reported not
+    scrubbed.
+  - **Not done (a) — the release build.** `app/build.gradle.kts` has no `signingConfig`, and the only
+    release APK on disk, `app-release-unsigned.apk` of 2026-11-10, predates OpenCV and is not
+    installable. Nothing was signed and no key invented: **item 7's release part needs the signing
+    key.**
+  - **Not done (b) — the face pass, grouping and worker figures.**
+    `FaceGroupingWorkerMeasurementDeviceTest` first failed with its `ENVIRONMENT` message: `MediaStore`
+    returned no live items to the app's process, because under a Gradle connected run on a fresh
+    install the runtime permission grant had not reached `MediaStore` in the already-running process
+    — a race on the test's side, not an app defect; with the permissions granted beforehand it ran.
+    On that retry Tier A indexed 5,493 items in about 59 s and the face pass began (`capable=true`);
+    75 s into it the phone reached **thermal status 2** (AP 41.6 °C, battery 38.1, skin 40.4;
+    battery 64 %, charging; screen awake — it had started warm, at thermal status 1 and skin
+    38.0 °C), and the run was stopped under the brief's own safety rule. `VmRSS` 381–408 MB;
+    `VmHWM` 523,156 kB, the test process included. No face-pass figure. Thermal status stayed at 2
+    at idle afterwards, so the heat was not the app's load alone. `FaceIndexPassMeasurementDeviceTest`
+    was not run. **New limits from it: L13 and L14**, ~~pending the maintainer~~ accepted by him
+    2026-11-23, later still (question 6).
+  - **(c) Unexplained, read-only:** the first connected run's production-modes line read
+    `hasFaceData=true`; three later runs read `false`. The cause is not identified.
+  - **Afterwards:** the app and test packages uninstalled — the connected run wipes the app's data,
+    so any face data indexed there is gone; no signing created; no repository change; no face data
+    left the phone. **Read in the repository:** `app/src/main` has no reference to the thermal status
+    or `PowerManager` — the face pass has no thermal back-off (L13).
+  - **The maintainer's decision, 2026-11-23 — option A:** accept L3 as it stands — the capability
+    and item 1 recorded, the face pass's cost on a 2020 phone left unknown, the thermal observation
+    recorded — with no retry.
 
 #### (ii) The walkthrough — the maintainer, by hand, on the installed debug app on the SM-G990B
 
 From G6's state, the agent at the terminal for G7 to G9. He records each step's outcome here, or
 tells the Planner, who does. A step that fails stops the walkthrough at that step.
+*Outcomes recorded 2026-11-23 by the Planner, from the maintainer's report: W1 to W7 done, no step
+failed, no defect found; W8 skipped by his decision.*
 - **W1 — the disclosure at first open.** The title and five paragraphs as approved (ADR-0024
   Amendment 1 §5); Back does nothing; OK closes it. **Exit:** it closes, and no indexing run starts
   by itself (Amendment 1 §1) — Settings' Media index area shows none running.
+  ✅ **Done 2026-11-23, from a fresh state:** the disclosure had already been answered overnight on
+  this install, so the app's data was reset with `pm clear` first — no albums or results were lost.
+  The disclosure matched the approved text; Back and a tap outside left it showing (as at G6); OK
+  closed it; no indexing started by itself.
 - **W2 — Settings.** The Face data area with its switch on; the Face licences row opens the dialog
   with the licence texts; turned to landscape, its OK still visible. **Exit:** as described.
+  ✅ **Done 2026-11-23** — the Face data area, the Face data info row, and the Face licences row and
+  its dialog, landscape included, as specified; no deviation reported.
 - **W3 — Index now with the screen off** (G7 measures). **Exit:** Settings shows the run finished.
+  ✅ **Done 2026-11-23** — G7's figures. Settings afterwards showed the later periodic no-op run's
+  label, which had overwritten the Index now run's (G7).
 - **W4 — the People tab** (G8 measures). On the New automatic album screen the People tab shows
   unlabelled thumbnails sorted by photo count, most first; scroll the whole grid fast (item 19); look
   at the tiles of small faces (item 20) and note how many are not recognisable. Choose one or two
@@ -4474,30 +4745,60 @@ tells the Planner, who does. A step that fails stops the walkthrough at that ste
   the screen showed (count consistency, on a device); the Album info dialog lists the People entry;
   the small faces judged acceptable — if not, a remedy is a new decision, since the 60 px
   representative of ADR-0018 Amendment 8 was reversed for fixing 1 of 22 (decision 50, amended).
+  ✅ **Done 2026-11-23, by the maintainer's report, with its count check not reported.** The People
+  tab showed 104 people, the last 11 visible with 2 photos each; 2 of the 104 crops not recognisable
+  (G8, item 20); no stutter seen (G8, item 19). He created an album with people. **Match count not
+  reported:** neither the count the screen showed nor the album's member count was given, so the
+  exit's count consistency is **not confirmed on a device**. An agent cannot read either from outside
+  the process — both are in the UI, and the database stays on the phone (decision 9). Unit tests
+  cover the count equality. The Album info dialog was not reported separately. *Open at 3.7*,
+  question 7.
+  ✅ **Count consistency observed on a device by hand, 2026-11-23, later still** (question 7, option
+  A). On the SM-G990B, after a fresh debug install and a fresh face index — OK on the disclosure,
+  Index now, the People tab — the maintainer created one automatic album from people tiles: the
+  match count the New automatic album screen showed and the created album's member count were the
+  same. **Not reported to the Planner:** the count itself, which tiles were chosen, and whether a
+  place or a date was mixed in — so this is one album, one combination, by eye. No automated device
+  test covers people counts (`RegionAlbumEvaluationDeviceTest` covers place and date only); that gap
+  is accepted with option A. The JVM half stands on the unit tests named under the exit criterion
+  *Count consistency*.
 - **W5 — Delete face data.** In Settings, switch face data off. **Exit:** a confirmation dialog asks
   first (E8); after Delete, no cleanup sentence shows — it shows only when the deletion reported not
   scrubbed, which is then recorded; the people album shows the people-unavailable notice, not
   waiting and not the Newer-app wording, and is neither deleted nor rewritten (Album info shows the
   same people); the People tab is not offered. **G9 runs here.**
+  ✅ **Done 2026-11-23, no deviation reported** — the Delete face data dialog asked first; no cleanup
+  sentence; the people-unavailable notice; the album kept; no People tab. G9 ran here.
 - **W6 — back on.** Force-stop and reopen the app — face data off, so the start-up deletion runs —
   then switch face data on. **Exit:** no crash; no second disclosure (E10); after Index now, the people
   album finds its people through their anchors and shows the members and count of W4.
+  ✅ **Done 2026-11-23, no deviation reported.** G9's instrumentation run force-stopped the app,
+  standing in for the force-stop. Reopened with face data off, no crash; switching on showed no
+  second disclosure; the album found its people again. Its count against W4's was not reported
+  (question 7).
 - **W7 — Turn off from the disclosure.** The agent clears the app's data (`pm clear` — the albums
   go with it) and grants the media permissions; the app opened, the disclosure shows; Turn off.
   **Exit:** face data off in Settings; the People tab not offered; switching face data on shows no
   disclosure, since Turn off marked it shown (Amendment 1 §1 and §2); Index now then indexes faces.
+  ✅ **Done 2026-11-23, no deviation reported** — `pm clear`, a fresh disclosure, Turn off; no People
+  tab; switching on showed no disclosure; Index now.
 - **W8 — optional: the long strings.** App language German, then Italian, at the phone's largest
   font: the New automatic album tab row (item 17, beside G4's test) and the people notices on an
   album tile (item 18, L6). **Exit:** what ellipsizes, noted for the native-speaker review.
   *Added 2026-11-23:* item 18 needs a people album with a notice on its tile, and W7's `pm clear`
   deletes the albums. So do W8 right after W5, while W4's album shows the people-unavailable notice;
   or, after W7, recreate a people album and bring it to a notice first.
+  ⏭ **Skipped 2026-11-23 by the maintainer's decision, as recommended:** the tab row at font scale
+  2.0 in German is covered by tests (G4, item 17); item 18 was not observed on a device and stays
+  **L6**.
 
 #### (iii) Known limits — recorded, not run
 
 Each is the maintainer's to accept (*Open at 3.7* below), and each that stays true is in
 `ARCHITECTURE.md` §11 after 3.8. **Accepted 2026-11-23 by the maintainer, L1 to L12** (question 4);
-L3 is also accepted to run, as G10.
+L3 is also accepted to run, as G10. *Added 2026-11-23, from G10:* **L13 and L14, ~~pending his
+acceptance~~** (question 6) — question 4's answer does not cover them. **Accepted 2026-11-23, later
+still (question 6, option A)**, so all fourteen are accepted.
 - **L1 — items 10, 16 and 24 on a phone without arm64-v8a.** None is available. Proven by unit
   tests — `supportsFacePipelineAbi`, `FaceDataViewModel`, `PeopleAvailability` — and the test's
   branch in part by G5e (done 2026-11-22: the "library missing" path, on a 32-bit install).
@@ -4512,6 +4813,10 @@ L3 is also accepted to run, as G10.
   1's modes on that phone are not read either; `MediaIndexSqliteDeviceTest` runs there unchanged, in
   the same session. *2026-11-23:* **accepted to run, not yet run** — G10, after W7 and M1, if the
   maintainer attaches the phone and its owner agrees; otherwise L3 stands accepted (questions 1 and 4).
+  *2026-11-23, later:* **G10 ran in part** — the capability and item 1's modes recorded on the
+  SM-G781B; the release build (no signing key), the face pass, grouping and the worker not measured,
+  the face pass stopped at thermal status 2. **Accepted as it stands by the maintainer (option A),
+  with no retry.** New from it: L13 and L14.
 - **L4 — item 13, one giant connected component.** About 10,500 faces in one component fails with
   `OutOfMemoryError`, not the fixed message (3.4's Task 1: the Java heap at 233 of 256 MB at 10,000).
   The largest real component measured is 88. *Recommended: accept as debt, no heap-based cap now*
@@ -4522,7 +4827,8 @@ L3 is also accepted to run, as G10.
   2026-11-22 by G5c:* the grouping, the store's read and write, one projection emission and the
   picker's query are measured at 10,000, 20,000 and 37,000 synthetic faces. What stays unmeasured is a
   real library at that size through the worker and its real window, and how often the projection
-  emits during Index now — by reading, up to once per image written (G5c).
+  emits during Index now — by reading, up to once per image written (G5c). *2026-11-23:* G7 could
+  not count the emissions from outside the process; this stays.
 - **L6 — item 18, the long translations on an album tile.** The tile ellipsizes by design; the Album
   row and Album Detail View wrap. The remedy is a shorter translation, at the native-speaker review.
   *Recommended: accept; W8 notes which.*
@@ -4535,7 +4841,7 @@ L3 is also accepted to run, as G10.
   from outside the process; its unit test stands. *Recommended: accept.*
 - **L9 — F1's residual,** how an API 36.1 device reads the fourth rules section: no such device.
   *Recommended: accept; it blocks nothing* (*Open questions* F1).
-- **L10 — one OpenCV line on a native error. Added 2026-11-22, from G5a; pending the maintainer.**
+- **L10 — one OpenCV line on a native error. Added 2026-11-22, from G5a; ~~pending the maintainer~~.**
   A native OpenCV error prints one line under `org.opencv.imgproc`, priority E — the Java wrapper's
   "caught cv::Exception", with OpenCV's assertion text and an OpenCV source path — which
   `Core.setErrorVerbosity(false)` does not silence and for which no Java-side switch was found. For
@@ -4549,12 +4855,16 @@ L3 is also accepted to run, as G10.
   3.7*, question 5). *Accepted 2026-11-23 as a recorded limit; no precondition checks.*
 - **L11 — grouping's capacity in one worker run. Added 2026-11-22, from G5c.** Grouping fits about
   31,000 faces after a face pass that used its full 7-minute budget, and about 56,000 in a whole
-  window — on the SM-G990B; less on a slower phone (L3), and less again by whatever Tier A and the
-  place pass took first. It writes once, at the end, and is not resumable (*3.4*, *Where it runs*;
+  window — on the SM-G990B; less on a slower phone (L3)~~, and less again by whatever Tier A and the
+  place pass took first~~. *Corrected 2026-11-23 at review:* the face pass's 420 s budget is counted
+  from the worker's start (`FaceIndexPass`), so a full-budget pass ends about 420 s in and grouping
+  always has about 180 s: what Tier A and the place pass take comes out of the face pass's images,
+  and out of the whole-window figure, not out of the 31,000. It writes once, at the end, and is not resumable (*3.4*, *Where it runs*;
   ADR-0023 §4's *Built* note), so a grouping cut by WorkManager's stop writes nothing that run.
   - **Up to about 31,000 faces:** it fits, whatever the face pass did.
   - **About 31,000 to 56,000:** every run whose face pass uses its whole budget — every run while the
-    pass has a backlog, at about 2,800 images a run — is cut and spends its remaining minutes for
+    pass has a backlog, at about ~~2,800~~ ~~1,655~~ 1,600 images a run (the SM-G990B, screen off — G7,
+    2026-11-23) — is cut and spends its remaining minutes for
     nothing. Once the backlog is done the pass ends early, grouping starts sooner and fits, and the
     groups appear. So *3.4*'s "nothing waits for ever" holds, but no group appears, and none changes,
     until the backlog is done.
@@ -4570,6 +4880,25 @@ L3 is also accepted to run, as G10.
   Neither says decimal or binary. *Recommended: accept, reading "50 MB" as 50,000,000 B and the budget
   as the record words it — what the face path adds — with the total recorded beside it at every
   re-check, since nothing else in the app has a size budget; the maintainer confirms the reading.*
+  *Accepted 2026-11-23 as recommended, with that reading (question 4).*
+- **L13 — the face pass and grouping have no thermal back-off. Added 2026-11-23, from G10; ~~pending
+  the maintainer~~.** Nothing in `app/src/main` reads the thermal status or `PowerManager`. On the
+  SM-G781B a face pass reached thermal status 2 75 s in, while charging with the screen on after a
+  warm start (G10); on the SM-G990B thermal status stayed 0 throughout a full run (G7). Production
+  runs charging and idle with the screen off (WorkManager's constraints), the opposite of G10's
+  conditions. *Recommended: accept, and revisit on a real report or a user complaint.* If it bites,
+  the options are: read the thermal status between pages and stop the pass as a budget stop does —
+  a small Coder change, with a note in ADR-0018 or ADR-0023 — or lower the per-run budget.
+  *Accepted 2026-11-23, later still (question 6, option A):* revisited on a real report or a user
+  complaint. *Corrected the same day:* "production" above is the periodic job; Index now carries no
+  charging or idle constraint (`ARCHITECTURE.md` §11, the indexing job's two API-level limits), so a
+  user-started run can meet G10's conditions. The acceptance and its trigger are unchanged by it.
+- **L14 — `FaceGroupingWorkerMeasurementDeviceTest` fails on a fresh install under a Gradle connected
+  run. Added 2026-11-23, from G10; ~~pending the maintainer~~.** On the SM-G781B it failed with its
+  `ENVIRONMENT` message: the permission grant had not reached `MediaStore` in the already-running
+  process. A test-side race, not an app defect; the test is opt-in. Run it with the permissions
+  granted beforehand, through `am instrument`. *Recommended: accept; the test-side fix deferred.*
+  *Accepted 2026-11-23, later still (question 6, option A), the test-side fix deferred.*
 
 #### Also in 3.7 — not a device check
 
@@ -4581,9 +4910,13 @@ L3 is also accepted to run, as G10.
   3.3, by G3's md5s.~~ For the maintainer to answer before the first Play release that ships the Tier
   C pass; the exit criterion needs the answer recorded, or carried (*Open at 3.7*, question 3).
   *2026-11-23:* points 1 and 2 resolved by the maintainer's position, recorded under *The Play Data
-  Safety check*; points 3 and 4 still open; the form not submitted.
+  Safety check*; points 3 and 4 still open; the form not submitted. *2026-11-23, later:* **carried
+  past 3.8 by the maintainer (option B)** — *Open at 3.7*, question 3.
 - **V1 — the UI vocabulary's edits to existing entries. Designer.** Routed since 3.6 (*3.6 — Built
-  and verified 2026-11-22*, *Not proven by it*); 3.8's entry condition 5.
+  and verified 2026-11-22*, *Not proven by it*); 3.8's entry condition 5. ✅ **Committed in
+  `94f8e9c`, 2026-11-23** — the Newer-app notice, the Album info dialog's People entry, the Status
+  area, the New automatic album screen and Pick, checked with `git show`; read by the Planner for
+  presence, not reviewed as the Designer's work.
 
 #### Open at 3.7 — for the maintainer
 
@@ -4595,7 +4928,8 @@ L3 is also accepted to run, as G10.
    provided the phone is attached and its owner agrees, which the maintainer owns. Scheduled after W7
    and M1 on the SM-G990B, as **G10**: the two phones must not both be attached for a connected run,
    and it wipes that phone's app data. Accepted to run, not yet run; if he does not attach it, L3
-   falls back to accepted.
+   falls back to accepted. *2026-11-23, later:* **G10 ran in part, and the maintainer closed it as
+   option A** — L3 accepted as it stands, no retry (G10).
 2. **A heap-based cap on one giant component (L4)**, open since 3.4. *Recommended: no cap now;
    accepted as debt, revisited on a real report.* **Added 2026-11-22 — grouping's time capacity
    (L11):** about 31,000 faces after a full-budget face pass, about 56,000 in a whole window. The
@@ -4604,8 +4938,9 @@ L3 is also accepted to run, as G10.
      31,000 faces groups wait for the face backlog; above 56,000 they never appear, and each run
      spends its remaining window on a grouping that writes nothing. *Recommended:* the largest real
      library is 422 faces, and 31,000 faces is about 74,000 photos at its density.
-   - (b) **Make grouping resumable.** 97 % of its time at 37,000 is the all-pairs search for
-     components; its state between runs is a union-find over every face and a cursor into the pairs.
+   - (b) **Make grouping resumable.** 97 % of its time at 37,000 is ~~the all-pairs search for
+     components~~ compute — the all-pairs search for components, the linkage and the medoid together,
+     which G5c did not time apart *(corrected 2026-11-23 at review)*; its state between runs is a union-find over every face and a cursor into the pairs.
      Persisting it is a new table, `Migration(6, 7)` and an ADR-0018 amendment, ADR-0023 §4's "not
      resumable part-way" amended, a decision in [albums.md](albums.md) §8, and a restart rule for
      faces added or deleted meanwhile. Any size then finishes, over several runs.
@@ -4628,7 +4963,11 @@ L3 is also accepted to run, as G10.
    given; submission and points 3–4 outstanding.** The maintainer's position, resolving P1's points 1
    and 2, is recorded under *The Play Data Safety check*. Points 3 and 4 are open, the form is not
    submitted, and the question is not declared carried — so it is **not yet answered** in the sense
-   3.8's entry condition 6 needs.
+   3.8's entry condition 6 needs. **Answered 2026-11-23, later: B — carried past 3.8**, as Stage 2
+   carried its Play Console declaration. It stays a pre-release item: points 3 and 4 — the app-wide
+   answers, and the externally hosted privacy policy describing on-device face grouping and the Face
+   data switch — stay open, with the submission, before the first Play release that ships the face
+   pass. By that declaration 3.8's entry condition 6 is met.
 4. **The known limits ~~L1 to L9~~ L1 to L12, accepted** (L10 to L12 added 2026-11-22). *Recommended:
    all, as recommended for each.* **Answered 2026-11-23: L1 to L12 accepted.**
 5. **The `org.opencv.imgproc` line (L10)**, added 2026-11-22: accept it as a recorded limit, or add
@@ -4636,33 +4975,188 @@ L3 is also accepted to run, as G10.
    names OpenCV's source and assertion, not face data; a precondition check cannot cover every
    assertion. Choosing the checks is a Coder task in the face path, then G5a and G3 again.
    **Answered 2026-11-23: L10 accepted as a recorded limit; no precondition checks.**
+6. **L13 and L14, accepted?** Added 2026-11-23 from G10; question 4's answer named L1 to L12 and does
+   not extend to them. L13: the face pass and grouping have no thermal back-off. L14: the opt-in
+   worker measurement test's permission race on a fresh install. *Recommended: accept both — L13
+   revisited on a real report or a user complaint, L14's test-side fix deferred.* ~~**Open.**~~
+   **Answered 2026-11-23, later still: A — both accepted,** L13 revisited on a real report or a user
+   complaint, L14's test-side fix deferred. With question 4's answer, L1 to L14 are accepted, and
+   3.8's entry condition 3 is met.
+7. **W4's count on a device.** The Stage 3 exit criterion *Count consistency* asks for the screen's
+   count and the evaluator's member count to agree "on the JVM and on a device"; W4's comparison was
+   not reported, and no device test covers people counts — `RegionAlbumEvaluationDeviceTest` checks
+   place and date only (read 2026-11-23). The options:
+   - (a) **he reads the two numbers on the phone:** a people album created on the New automatic album
+     screen, the count it showed beside the album's member count. Face data is on after W7.
+     *Recommended* — cheap, and it needs nothing to leave the phone;
+   - (b) **accept the unit tests for it,** the device half recorded as not observed — a departure
+     from the criterion's wording, only his to declare, stated in [albums.md](albums.md) §7 at
+     close;
+   - (c) **a Coder task, an opt-in device test** in the shape of `RegionAlbumEvaluationDeviceTest`
+     for people, over the app's real index — then the definition of done again.
+
+   ~~**Open.**~~ 3.8's step 2 checks this criterion and cannot mark it met without one of the three.
+   **Answered and closed 2026-11-23, later still: A** — done by the maintainer by hand on the
+   SM-G990B, after a fresh debug install and a fresh face index: one album created from people tiles,
+   the screen's match count and the album's member count the same. The figures, the tiles and any
+   place or date mixed in were not reported. Recorded under W4 and against the exit criterion.
+
+#### Review of 3.7 — 2026-11-23
+
+The Reviewer's pass over 3.7's change — the code and tests at `94f8e9c`, and the documents on disk.
+**Verdict on the code and tests: approve with changes** — 0 blocker, 0 major, 4 minor, and nits. Its
+documentation findings are applied, dated, in this plan, `ARCHITECTURE.md`, [albums.md](albums.md)
+and ADRs 0022 to 0024; its one major, the gate's evidence, is 3.8's entry condition 4 — *met
+2026-11-23, final*. *After the fixes:* **approve** — the re-review at the end of this section.
+- **Changed — the Coder, tests only:**
+  - the Face licences dialog's landscape run in `FaceDataDialogsTest` now puts
+    `accelerometer_rotation` back as well as `user_rotation` (minor);
+  - `FaceNativeErrorLogDeviceTest` waits for a deterministic logcat marker instead of a fixed sleep,
+    and filters by the app's pid (minor); its silent-mode check asserts only that `cv::error()` stays
+    silent, where it contradicted the accepted L10 (minor);
+  - `MediaIndexTierCScaleDeviceTest` fails with an `ENVIRONMENT` message when no size finished (nit);
+  - `NewAutomaticAlbumContentTest`'s environment failure carries the `ENVIRONMENT` prefix (nit).
+
+  ~~**Applied in the working tree, to be verified by the second gate (entry condition 4); not yet
+  committed.** That they pass is not claimed here.~~ ✅ **Fixed 2026-11-23 — verified by the final
+  gate and approved by the re-review:** the `accelerometer_rotation` restore; the native-error race,
+  and the silent-mode check's contradiction with L10; the scale test's `ENVIRONMENT` failure;
+  `NewAutomaticAlbumContentTest`'s `ENVIRONMENT` prefix. The final gate ran over them (3.8's entry
+  condition 4) and the phone read `accelerometer_rotation` 1 and `user_rotation` 0 after it. In the
+  working tree, **not yet committed** — 3.8's entry condition 7.
+- **Not changed, with the reason:**
+  - `MediaIndexSqliteDeviceTest`'s hidden-API reflection branch below API 35, which the SM-G990B (API
+    36) does not exercise (minor): answered by evidence — the SM-G781B, API 33, ran all five of its
+    tests, the reader-blocked checkpoint test included, green on 2026-11-23 (G10);
+  - `theProductionIndexModesAreRecorded` is not opt-in and creates the production index file in every
+    connected run (nit): accepted — it only reads, and the app's own first open does the same.
+- **Re-review of the four test fixes — 2026-11-23.** **Verdict: approve** — 0 blocker, 0 major,
+  0 minor; four optional cleanups. **All four deferred:** applying any of them changes tests again,
+  which would need another gate over the final tree, and the remediation is capped at two rounds —
+  the review and this one. They are candidates for a later change, not a condition of 3.8:
+  - (a) `FaceDataDialogsTest.kt`, the licences tests' `finally` (about lines 291 to 296): one failed
+    restore step — an exception in `setRotation(UNFREEZE)` or in the first `settings put` — can skip
+    the other restore. The cleanup: each step in `runCatching`, the first failure rethrown after
+    all have run.
+  - (b) `MediaIndexTierCScaleDeviceTest.kt` (about line 78): the new `ENVIRONMENT` failure message
+    omits the size and the reason, and could label a real out-of-memory or stop result at 10,000
+    faces as an environment problem. The cleanup: size and reason in the message, and `ENVIRONMENT`
+    only when the monitor set an abort reason.
+  - (c) `FaceNativeErrorLogDeviceTest.kt`: the logged field `ownProcess` is now always true, and
+    `linesAfterMarker` and the KDoc describe a narrower set after the pid filter than they say.
+  - (d) `FaceDataDialogsTest.kt`: `Settings.System.ACCELEROMETER_ROTATION` is read through the
+    constant but written as the literal `accelerometer_rotation` — the same string.
 
 ### 3.8 — Close-out — refined 2026-11-22
 
 **Entry condition — all ~~seven~~ eight hold (M1 added 2026-11-22), checked by the Planner against this document and the
 repository, not against reports, before any of 3.8 starts:**
+*2026-11-23, final:* 1 to 6 and 8 met; 7 not held until the maintainer's commit. 3.8 not started.
 1. Every agent item G1 to G9 is ✅ with its figures recorded under *3.7 — Device verification and
    the installed-app walkthrough*, or moved to the known limits by the maintainer. *2026-11-23:* G10,
    added after M1, is either run and recorded, or recorded as not run because the SM-G781B was not
-   attached — L3 then standing accepted. Either settles it for this condition.
+   attached — L3 then standing accepted. Either settles it for this condition. ✅ *Met 2026-11-23,
+   later:* G1 to G9 ✅ with their figures; G10 run in part and recorded, closed by the maintainer as
+   option A.
 2. The walkthrough W1 to W7 is done, each step's outcome recorded; every defect it found is fixed by
-   its own task and checked again at the step that found it.
+   its own task and checked again at the step that found it. ✅ *Met 2026-11-23, later:* W1 to W7
+   done and recorded, no defect found; W8 skipped. W4's count comparison was not reported — recorded
+   as such; it bears on the exit criterion *Count consistency*, question 7, not on this condition.
+   *2026-11-23, later still:* that caveat is closed — W4's count observed equal by hand on the
+   SM-G990B (question 7, option A).
 3. The known limits ~~L1 to L9~~ L1 to L12 (three added 2026-11-22) are accepted by the maintainer,
-   with the date. ✅ *Met 2026-11-23: all twelve accepted (Open at 3.7, question 4).*
+   with the date. ✅ *Met 2026-11-23: all twelve accepted (Open at 3.7, question 4).* *2026-11-23,
+   later:* L13 and L14 were added from G10 after that answer; this condition is not extended to them
+   by default, but they are open until he answers question 6. ✅ *Met for L1 to L14, 2026-11-23,
+   later still:* L13 and L14 accepted (question 6, option A).
 4. The definition of done has passed once over the final tree — after the last code or test change
-   of 3.7 — with `adb devices` checked and stated (G3, or its re-run).
-5. The Designer's edits to the UI vocabulary's existing entries are made (V1).
+   of 3.7 — with `adb devices` checked and stated (G3, or its re-run). ⏳ *Not met 2026-11-23,
+   later:* G3 ran on 2026-11-22 over the then-uncommitted tree; the maintainer then edited
+   `MediaIndexSqliteDeviceTest.kt` and `MediaIndexTierCScaleDeviceTest.kt` before committing
+   `94f8e9c`, and M1's clean run covered three classes only. Both files are new in that commit, so
+   `git log -p` cannot show what changed after G3. **A full re-run over the committed tree is
+   required** — the verification phase's. ⏳ *2026-11-23, later still — pending on this one run
+   only:* the verification phase's definition-of-done gate over the committed tree (HEAD `94f8e9c`)
+   was running while this was written. Its result is in its own report and is not claimed here.
+   **Next session: record the gate's figures here** — the commit it ran over, `adb devices` as
+   stated, `testDebugUnitTest`'s classes, tests and failures (with `LocaleResourceParityTest` re-run,
+   as G3 noted), and `connectedDebugAndroidTest`'s cases, failures, errors and skips — or, if it
+   failed, the failure, whose fix is a task of its own followed by the gate again.
+   🔶 *2026-11-23, latest — passed once over `94f8e9c`, with a flake; to be re-run once after the
+   review's fixes.* From the verification phase's report, recorded by the Planner, who ran nothing:
+   over the committed tree at `94f8e9c`, on the SM-G990B, the only device `adb devices` listed.
+   `compileDebugKotlin` OK; `testDebugUnitTest` after a forced `cleanTestDebugUnitTest`: 84 classes,
+   1427 tests, 0 failures (`LocaleResourceParityTest` 11, `BackupRulesParityTest` 9);
+   `compileDebugAndroidTestKotlin` OK. `connectedDebugAndroidTest`, **first run failed:** 346 test
+   cases, 2 failures, both in `MediaIndexingWorkEnqueueTest` —
+   `indexNowRunsWorkerToSuccessAndPreservesOrGrowsIndexRows` (`MediaIndexingWorkEnqueueTest.kt:153`)
+   and `permissionDeniedRunDoesNotAdvanceWatermarksAndLaterGrantedRunIndexes` (`:300`), both "Timed
+   out waiting for … work to finish"; BUILD FAILED in 11m12s. That class alone then passed, 3 of 3,
+   in 54 s. **Second full run green:** 346 test cases, 0 failures, 0 errors, 6 skipped — the same six
+   opt-in tests as G3 — BUILD SUCCESSFUL in 7m46s. The merged manifests' md5s unchanged (debug
+   `8856dbd4b4257bd665c4593a325ba624`, release `043a521e4d0a25724364c8b8b6ea6f8d`); `app/schemas`
+   unchanged. **The two timeouts are an intermittent flake in a worker test 3.7 did not touch,
+   recorded as a finding, not as a pass without qualification;** no fix is planned for it here.
+   ~~⏳ **Not met:**~~ the Reviewer's four test fixes (*Review of 3.7*) are a test change after this gate,
+   so by this condition's own rule **the gate runs once more over the final tree** — the
+   verification phase's. **Record that second run's figures here**, with the commit or working tree
+   it ran over and `adb devices` as stated; if the worker-test timeouts recur, that is recorded with
+   this run's, as a finding.
+   ✅ *Met 2026-11-23, final — this is the run that counts for this condition;* the two above are
+   kept as history. From the verification phase's report, recorded by the Planner, who ran nothing.
+   The definition of done ran once over the final tree — HEAD `94f8e9c` plus the Reviewer's four test
+   fixes and the documents, uncommitted: the tree as it is to be committed (condition 7) — on the
+   SM-G990B, the only device attached (`adb devices -l`: `RFCT703FBKR device product:r9qxxx
+   model:SM_G990B`). `compileDebugKotlin` OK, all up to date. `cleanTestDebugUnitTest
+   compileDebugUnitTestKotlin testDebugUnitTest`: 84 classes, 1427 tests, 0 failures, 0 errors,
+   0 skipped (`LocaleResourceParityTest` 11, `BackupRulesParityTest` 9).
+   `compileDebugAndroidTestKotlin` OK, up to date — the test files had been compiled by the earlier
+   targeted runs after their last edit. `connectedDebugAndroidTest`, the full suite once: BUILD
+   SUCCESSFUL in 7m12s, 28 classes, 346 test cases, 0 failures, 0 errors, 6 skipped — the same six
+   opt-in tests: `FaceGroupingMeasurementDeviceTest`, `FaceGroupingWorkerMeasurementDeviceTest`,
+   `FaceIndexPassMeasurementDeviceTest`, `FaceFavouriteToggleDeviceTest`,
+   `FaceNativeErrorLogDeviceTest`, `MediaIndexTierCScaleDeviceTest`. `MediaIndexingWorkEnqueueTest`
+   3 of 3: the first gate's flake did not recur — which does not withdraw it as a finding. The merged
+   manifests' md5s unchanged (debug `8856dbd4b4257bd665c4593a325ba624`, release
+   `043a521e4d0a25724364c8b8b6ea6f8d`); `app/schemas` unchanged; `git diff HEAD -- app/src/main`
+   empty — the review's fixes changed no production code. After the suite the phone read
+   `accelerometer_rotation` 1 and `user_rotation` 0: the licences tests left them as they were. The
+   connected run installed and uninstalled the app; it is not installed now, its data wiped.
+   `lintDebug` is not part of this — it does not run on this machine (`AGENTS.md`, *Running Gradle*).
+5. The Designer's edits to the UI vocabulary's existing entries are made (V1). ✅ *Met 2026-11-23:*
+   committed in `94f8e9c` (V1).
 6. The maintainer's answers to *Open at 3.7* are recorded — question 3 answered, or its carrying
    declared by him. *2026-11-23:* questions 1, 2, 4 and 5 answered and recorded. Question 3:
-   **position given 2026-11-23; submission and points 3–4 outstanding.** **Not yet met** — it is met
-   when he says the form is submitted and its outcome is recorded, or declares the question carried.
+   **position given 2026-11-23; submission and points 3–4 outstanding.** ~~**Not yet met** — it is met
+   when he says the form is submitted and its outcome is recorded, or declares the question carried.~~
+   ✅ *Met 2026-11-23, later:* he declared question 3 carried past 3.8 (option B). Questions 6 and 7,
+   added later the same day, are open; they bear on condition 3 and on the exit criteria, not on
+   this one as worded. *2026-11-23, later still:* both answered, A and A; all seven questions are
+   answered.
 7. 3.7's tests and any fix are committed; checked with `git status` and `git ls-files`, never asserted
-   in a document.
+   in a document. *2026-11-23:* held at `94f8e9c` — the working tree clean before this run's
+   documents; it holds again only once they are committed. ⏳ *2026-11-23, later still:* not held —
+   `git status` at the start of this run showed the plan, ADR-0023 and `ARCHITECTURE.md` uncommitted
+   from the previous run, and this run edited the plan and `ARCHITECTURE.md` again. It holds once the
+   maintainer has committed them, checked with `git status`.
+   ⏳ *2026-11-23, final — not held; the only condition open.* `git status` at this entry: HEAD
+   `94f8e9c`; uncommitted, the four test files —
+   `app/src/androidTest/java/com/davide/seddio/easygallery/ui/components/FaceDataDialogsTest.kt`,
+   `app/src/androidTest/java/com/davide/seddio/easygallery/data/FaceNativeErrorLogDeviceTest.kt`,
+   `app/src/androidTest/java/com/davide/seddio/easygallery/data/MediaIndexTierCScaleDeviceTest.kt`,
+   `app/src/androidTest/java/com/davide/seddio/easygallery/ui/NewAutomaticAlbumContentTest.kt` — and
+   six documents: `ARCHITECTURE.md`, ADR-0022, ADR-0023, ADR-0024, this plan and
+   [albums.md](albums.md). It holds once the maintainer has committed exactly those, `git status`
+   clean afterwards. **The commit contains no change under `app/src/main`** — none exists,
+   `git diff HEAD -- app/src/main` empty — and its code and tests are the tree the final gate ran
+   over (condition 4); only documents were edited after it. A code or test edit before the commit
+   would send the gate round again.
 8. **M1 — G2's planned mutations**, added 2026-11-22, deferred from G2 until after W7: one planned
    mutation per regular new test — `MediaIndexSqliteDeviceTest`, and the new methods in
    `FaceDataDialogsTest` and `NewAutomaticAlbumContentTest` — each seen to fail it and each reverted,
    `git diff app/src/main` empty afterwards. Run by the Coder after W7, never before: it needs a
-   connected run, which uninstalls the app. Recorded under G2 with each mutation named.
+   connected run, which uninstalls the app. Recorded under G2 with each mutation named. ✅ *Met
+   2026-11-23* — G2's M1 note.
 
 **Then, in order — Planner:**
 1. `ARCHITECTURE.md`: §11 brought to what 3.7 settled and left — each accepted limit present, each
@@ -4769,7 +5263,8 @@ settled what it depends on.
        deletion's result depends on the modes it committed under; 🔶 **the SM-G990B done 2026-11-22**
        (*3.7*, G4: `wal`, `normal`, no `PERSIST`, no `exclusive`; a forced rollback journal scrubbed),
        read again after the walkthrough's real deletion at G9; the SM-G781B's not read (L3); Room's
-       low-RAM choice unreachable (L7);
+       low-RAM choice unreachable (L7); ✅ *2026-11-23:* G9 read the same modes after W5's real
+       deletion, with no Tier C row, and G10 read `wal` and `normal` on the SM-G781B;
     2. the platform's real SQLite defaults — `auto_vacuum`, the journal mode, and `secure_delete`
        reading back as on — rather than Robolectric's; ✅ **done 2026-11-22** on the SM-G990B — G4;
     3. a checkpoint blocked by a real concurrent reader is reported incomplete, and a repeat
@@ -4784,14 +5279,17 @@ settled what it depends on.
     5. ADR-0023 verify item 6 again, **through the real worker**, once 3.6 shows the disclosure:
        Index now with the screen off, under the production budget — images processed, wall time,
        mean per image, peak RSS, thermal status before and after, charging or not. 3.3 measured it
-       only in the process, on a throwaway in-memory index;
+       only in the process, on a throwaway in-memory index; ✅ **done 2026-11-23** — G7: 1,002 images
+       in 254.2 s, 253.7 ms per image, 0 failed, thermal status 0, charging; ADR-0023's row 6;
     6. whether OpenCV's native errors print under logcat's `cv::error()` tag while one occurs —
        outside the pass's fixed lines, so ADR-0024 §6's logger rule decides it.
        `Core.setErrorVerbosity(false)` is the likely switch; read in code only, never observed;
        ✅ **observed 2026-11-22** — G5a: it silences `cv::error()`, and one `org.opencv.imgproc` line
-       remains (L10, for the maintainer);
+       remains (L10, ~~for the maintainer~~ accepted by him 2026-11-23);
     7. the release build's capability, and a face pass, on at least one non-Samsung arm64 phone if
-       one is available, as well as on the SM-G781B (A4);
+       one is available, as well as on the SM-G781B (A4); *2026-11-23:* on the SM-G781B the debug
+       build's capability only (G1, G10) — the release build needs the signing key and the face pass
+       stopped at thermal status 2; L3 accepted as it stands; no non-Samsung phone (L2);
     8. the download budget, re-checked with bundletool after any model or OpenCV change: 3.3 measured
        +46,063,982 B against 50 MB, little headroom (ADR-0023 verify item 5); ✅ **re-checked
        2026-11-22** — G5d: total 49,712,393 B, +98,410 B of app code; ADR-0023's row 5; L12;
@@ -4815,15 +5313,17 @@ settled what it depends on.
         56,000 in a whole window (L11);
     13. one giant connected component against the heap ceiling — about 10,500 faces fails with
         `OutOfMemoryError`, not the fixed message — unless the maintainer has chosen a heap-based
-        cap by then (`ARCHITECTURE.md` §11);
-    14. grouping, and the worker run with it, on the SM-G781B (A4) — 3.4 ran on the SM-G990B only.
+        cap by then (`ARCHITECTURE.md` §11); *accepted as debt 2026-11-23, no heap-based cap (L4);*
+    14. grouping, and the worker run with it, on the SM-G781B (A4) — 3.4 ran on the SM-G990B only;
+        *2026-11-23:* not measured — G10 stopped at thermal status 2 before grouping; L3 accepted as
+        it stands.
   - **Added 2026-11-21 from 3.5** — what *3.5 — Built and verified 2026-11-21* could not prove:
     15. item 11 extended to evaluation: with a people album on screen, the face projection re-runs
         as a full snapshot on every Tier A and face-pass batch — measured at a production-size
         library, its time per emission and how often it emits during an Index now run; ~~🔶~~ ✅ **time
         per emission measured 2026-11-22** — G5c: 177, 410 and 767 ms at 10,000, 20,000 and 37,000
         faces; **how often it emits during an Index now run stays open** — to G7 if it can be counted
-        there, otherwise L5;
+        there, otherwise L5; *2026-11-23:* not countable at G7 — L5;
     16. on a phone without arm64-v8a, if one can be attached: a restored people album does not wait
         for ever once 3.6 has closed the gap (*3.6*, item 1) — it shows the device-incapable
         notice. If no such phone exists, say so; it is then proven by unit tests only.
@@ -4833,12 +5333,15 @@ settled what it depends on.
         and Italian; ✅ **done 2026-11-22** — G4: Italian fits; German fixed by "Leute";
     18. the tile and notice strings that run 74 to 85 characters in several locales against about
         60 in English, at font scale 2.0 — the tile ellipsizes; shortening a translation is the
-        remedy, not a layout change;
-    19. the face crop's decode cost while scrolling 100 or more Person tiles;
+        remedy, not a layout change; *2026-11-23:* not observed — W8 skipped; L6;
+    19. the face crop's decode cost while scrolling 100 or more Person tiles; ✅ **measured
+        2026-11-23** — G8: 8.30 % janky frames against Folders View's 3.52 %, no stutter seen; a polish
+        candidate;
     20. the crop's sharpness for small faces — 21 of the 104 groups measured at 3.4 have no member
-        at least 60 px across;
+        at least 60 px across; ✅ **judged 2026-11-23** — G8: 2 of 104 not recognisable;
     21. Coil's disk-cache directory unchanged after the People picker renders (ADR-0024 §6) —
-        asserted on the request's policy by a test, never observed;
+        asserted on the request's policy by a test, never observed; ✅ **2026-11-23** — G8: unchanged,
+        within a limit — the directory never existed;
     22. the Face licences dialog at font scale 2.0 and in landscape — a bounded height, its button
         visible; ✅ **done 2026-11-22** — G4, portrait and landscape;
     23. a tap outside the disclosure leaves it showing, on a device — pinned today by its
@@ -4867,6 +5370,17 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
   people + region + time rule**, with several people meaning all of them.
 - **Count consistency:** the count the screen shows for the chosen people, with the other choices,
   equals the evaluator's member count for the rule it would write, on the JVM and on a device.
+  *Evidence recorded 2026-11-23, later still, for 3.8's step 2 to check:* **on the JVM**, the unit
+  tests `AutomaticAlbumFacetsTest` ("the match count equals the evaluator's member count for every
+  mix of people, place and date"), `AutomaticAlbumPickerStateTest` ("the match count is the
+  evaluator's member count for people alone, with a place, a date, and all three") and
+  `AlbumsViewModelTest` ("the picker's match count is the member count of the album created from it,
+  for people with place and date"); **on a device, observed by hand** — the maintainer, on the
+  SM-G990B, one people album, the screen's count and the album's member count the same, the figures,
+  tiles and any place or date mix not reported (*3.7*, W4; *Open at 3.7*, question 7). The wording
+  says "on a device", not "by a device test", so a hand observation meets it as written. **Accepted
+  gap:** no automated device test covers people counts — `RegionAlbumEvaluationDeviceTest` covers
+  place and date only.
 - An item not yet face-indexed leaves the album waiting on the index, never a settled no-match; an
   item whose inference failed is neither pending work nor covered (§6).
 - After a restore or a full re-index, a `people` clause finds each person through its anchor, one
@@ -4899,7 +5413,7 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
     §6 decides, adopted 2026-11-19). The anchor in the album database is not face data (decision 9's 2026-11-17
     clarification), and nothing else face-related is written there. *2026-11-22, step 3.7's G5a:* a
     native OpenCV error still prints one line of OpenCV's own under `org.opencv.imgproc`, outside the
-    pass's logger — L10, pending the maintainer.
+    pass's logger — L10, ~~pending the maintainer~~ accepted by him 2026-11-23 as a recorded limit.
 - The Play Data Safety question of decision 9 is answered and recorded. *Status 2026-11-20:* **not
   answered.** This line is what closing the stage requires, not a statement that it is met. The
   question is recorded under *3.1*, *The Play Data Safety check*, and is the maintainer's, before the
@@ -4907,6 +5421,9 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
   prepared there (P1); **still not answered.** *2026-11-23:* the maintainer's position recorded there —
   on-device processing and the album database's Auto Backup are neither collection nor sharing —
   resolving P1's points 1 and 2; points 3 and 4 open, the form not submitted: **still not met.**
+  *2026-11-23, later:* **carried past 3.8 by the maintainer (option B)**, as Stage 2 carried its Play
+  Console declaration — so it is carried, not met; points 3 and 4 and the submission stay a
+  pre-release item (*The Play Data Safety check*).
 - The index database reaches its new version through a real migration, every schema JSON is
   committed, and the index is still excluded from backup, checked against the rules files.
   *2026-11-19, step 3.2: version 5 through `Migration(4, 5)`; the rules files exclude the file and
@@ -4923,8 +5440,10 @@ on 2026-11-18 by decisions 44–46 (delegated) where those settle a figure or a 
 - The face models **and the OpenCV runtime** add at most 50 MB to the app's download size (A3;
   decision 45 counts the runtime), measured on the release bundle's arm64-v8a delivery once ~~the
   trimmed build lands~~ OpenCV lands (untrimmed, E3), not estimated. *2026-11-22, step 3.7's G5d:*
-  they add +46,063,982 B, unchanged; the whole arm64 download is 49,712,393 B — which of the two "50
-  MB" bounds is L12's question for the maintainer.
+  they add +46,063,982 B, unchanged; the whole arm64 download is 49,712,393 B — ~~which of the two "50
+  MB" bounds is L12's question for the maintainer.~~ *2026-11-23:* L12 accepted — the budget is what
+  the face path adds, 3,936,018 B under 50,000,000 B, with the total recorded beside it at every
+  re-check (ADR-0023's row 5).
 - ~~Below the threshold set at 3.1, the People criterion is not offered on the New automatic album
   screen; an existing people album on such a device is unevaluatable, never hidden or deleted —
   the second half to be confirmed at 3.1 (A4).~~ Where the face pipeline fails its capability

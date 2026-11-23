@@ -246,10 +246,12 @@ class FaceDataDialogsTest {
     private fun assertLicencesDialogFitsTheScreenAtLargestFontScale(landscape: Boolean) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val expectedOrientation = if (landscape) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT
-        // Freezing a rotation writes user_rotation, and unfreezing does not put it back.
-        val userRotationBefore = Settings.System.getInt(instrumentation.targetContext.contentResolver, "user_rotation", 0)
-        instrumentation.uiAutomation.setRotation(if (landscape) UiAutomation.ROTATION_FREEZE_90 else UiAutomation.ROTATION_FREEZE_0)
+        // Freezing a rotation writes user_rotation and turns auto-rotate off, and unfreezing neither puts user_rotation back nor leaves auto-rotate off.
+        val resolver = instrumentation.targetContext.contentResolver
+        val userRotationBefore = Settings.System.getInt(resolver, "user_rotation", 0)
+        val autoRotateBefore = Settings.System.getInt(resolver, Settings.System.ACCELEROMETER_ROTATION, 0)
         try {
+            instrumentation.uiAutomation.setRotation(if (landscape) UiAutomation.ROTATION_FREEZE_90 else UiAutomation.ROTATION_FREEZE_0)
             val deadline = SystemClock.elapsedRealtime() + ROTATION_WAIT_MILLIS
             while (instrumentation.targetContext.resources.configuration.orientation != expectedOrientation) {
                 if (SystemClock.elapsedRealtime() > deadline) throw AssertionError("ENVIRONMENT: the phone did not rotate to orientation $expectedOrientation")
@@ -287,8 +289,10 @@ class FaceDataDialogsTest {
             assertEquals("OK must not have been pressed", 0, closes)
         } finally {
             instrumentation.uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
-            instrumentation.uiAutomation.executeShellCommand("settings put system user_rotation $userRotationBefore").use {
-                FileInputStream(it.fileDescriptor).readBytes()
+            listOf("user_rotation" to userRotationBefore, "accelerometer_rotation" to autoRotateBefore).forEach { (setting, value) ->
+                instrumentation.uiAutomation.executeShellCommand("settings put system $setting $value").use {
+                    FileInputStream(it.fileDescriptor).readBytes()
+                }
             }
         }
     }

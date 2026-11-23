@@ -1905,7 +1905,7 @@ class NewAutomaticAlbumContentTest {
             "new_automatic_album_people_tab" to localized.getString(R.string.automatic_album_section_people)
         )
         assertTrue(
-            "The labels must be the ones of $languageTag, or the test proves nothing: $labels",
+            "ENVIRONMENT: the labels must be the ones of $languageTag, or the test proves nothing: $labels",
             listOf(R.string.automatic_album_section_place, R.string.automatic_album_section_date, R.string.automatic_album_section_people)
                 .all { localized.getString(it) != appContext.getString(it) }
         )

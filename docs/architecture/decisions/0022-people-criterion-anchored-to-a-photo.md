@@ -224,7 +224,8 @@ pipeline parameter that may change.
   phone as on the SM-G990B. Recorded with the capability check in
   [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md)'s verify row 7 and in
   [albums-stage-3.md](../../design/albums-stage-3.md), *3.7*, G1. It covers the decoder only: a face
-  pass and grouping on that phone were not run (*3.7*, L3).
+  pass and grouping on that phone were ~~not run~~ not measured (*3.7*, L3) — *2026-11-23:* G10
+  started a face pass there and stopped it at thermal status 2, with no figures (*3.7*, G10).
 
 ## Questions for the maintainer — answered 2026-11-19
 

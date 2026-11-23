@@ -38,7 +38,8 @@ import org.junit.runner.RunWith
  * `-Pandroid.testInstrumentationRunnerArguments.mediaIndexTierCScale=true`; [SIZES_ARGUMENT] (comma-separated, default
  * `10000,20000,37000`) narrows it. Numbers and fixed words only, tag [TAG]: nothing here is face data, and the files
  * are deleted afterwards. It asserts that each set was grouped completely; the figures are judged by the reader, and a
- * run that does not finish is recorded as such and stops the sequence rather than failing the test.
+ * run that does not finish is recorded as such and stops the sequence rather than failing the test, unless the first
+ * size does not finish: then nothing was measured and the test fails as an environment problem.
  */
 @RunWith(AndroidJUnit4::class)
 class MediaIndexTierCScaleDeviceTest {
@@ -65,13 +66,16 @@ class MediaIndexTierCScaleDeviceTest {
                 "facePassPageSize=$FACE_PASS_PAGE_SIZE groupingPageSize=$FACE_GROUPING_PAGE_SIZE"
         )
 
+        var finished = 0
         for (size in sizes.sorted()) {
             val outcome = measure(app, size)
             if (outcome != "ok") {
                 Log.w(TAG, "sequence stopped after size=$size reason=$outcome")
                 break
             }
+            finished++
         }
+        if (finished == 0) throw AssertionError("ENVIRONMENT: the first size did not finish, so nothing was measured or asserted")
     }
 
     // Returns "ok", or the reason the run stopped before the grouping finished.

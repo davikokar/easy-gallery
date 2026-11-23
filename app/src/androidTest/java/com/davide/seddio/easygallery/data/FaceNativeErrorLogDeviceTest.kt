@@ -28,8 +28,10 @@ import org.junit.runner.RunWith
  *
  * Opt-in: skipped unless the instrumentation argument [OPT_IN_ARGUMENT] is `true`, e.g.
  * `-Pandroid.testInstrumentationRunnerArguments.faceNativeErrorLog=true`. It records what logcat holds and does not
- * judge it, unless [EXPECT_ARGUMENT] is `silent` (the run after a fix, which then fails on any line). What it logs,
- * under [TAG]: a count, then the priority, the process and the length of each line.
+ * judge it, unless [EXPECT_ARGUMENT] is `silent` (the run after a fix, which then fails on any `cv::error()` line;
+ * the JNI wrapper's `org.opencv.imgproc` line stays, ADR-0024 §6, and is counted and logged only). Only this process's
+ * lines between a start and an end marker are counted. What it logs, under [TAG]: a count, then the priority, the
+ * process and the length of each line.
  */
 @RunWith(AndroidJUnit4::class)
 class FaceNativeErrorLogDeviceTest {
@@ -51,7 +53,7 @@ class FaceNativeErrorLogDeviceTest {
                 throw AssertionError("ENVIRONMENT: the OpenCV library is not in this process, so no native error can be provoked.")
             }
             val marker = UUID.randomUUID().toString().take(8)
-            Log.i(TAG, "marker=$marker")
+            Log.i(TAG, "start=$marker")
 
             val failure = pipeline.use { runCatching { it.analyse(Uri.fromFile(image).toString()) }.exceptionOrNull() }
 
@@ -62,9 +64,9 @@ class FaceNativeErrorLogDeviceTest {
                 FacePipelineFailure.INFERENCE,
                 refusal.failure
             )
-            // logd takes lines asynchronously: wait before concluding that nothing was printed.
-            SystemClock.sleep(SETTLE_MILLIS)
-            val lines = logcatAfter(marker)
+            // Lines of one process reach logd in order, so the end marker's arrival means every earlier line of this process is in.
+            Log.i(TAG, "end=$marker")
+            val lines = logcatBetweenMarkers(marker)
             val cvLines = lines.filter { it.tag == CV_ERROR_TAG }
             val otherOpenCvLines = lines.filter { it.tag != CV_ERROR_TAG && it.message.contains("OpenCV(") }
 
@@ -79,9 +81,9 @@ class FaceNativeErrorLogDeviceTest {
                     "cvErrorLine index=$index priority=${line.priority} ownProcess=${line.pid == Process.myPid()} length=${line.message.length}"
                 )
             }
+            // The JNI wrapper's line under org.opencv.imgproc survives Core.setErrorVerbosity(false), the accepted limit L10, so it is not asserted.
             if (arguments.getString(EXPECT_ARGUMENT) == "silent") {
                 assertEquals("Nothing may print under $CV_ERROR_TAG once the pipeline silences it", 0, cvLines.size)
-                assertEquals("Nothing from OpenCV may print under another tag either", 0, otherOpenCvLines.size)
             }
         } finally {
             image.delete()
@@ -100,16 +102,26 @@ class FaceNativeErrorLogDeviceTest {
     private class LogLine(val pid: Int, val priority: String, val tag: String, val message: String)
 
     // threadtime: "11-21 10:12:13.123  1234  5678 I Tag: message". A tag may hold colons, so it is cut at the last ": " that starts the message.
-    private fun logcatAfter(marker: String): List<LogLine> {
-        val all = shell("logcat -d -v threadtime").lines()
-        val markerIndex = all.indexOfLast { it.contains("marker=$marker") }
-        check(markerIndex >= 0) { "The marker $marker is not in logcat" }
-        return all.drop(markerIndex + 1).mapNotNull { line ->
-            val head = HEAD.find(line) ?: return@mapNotNull null
-            val rest = line.substring(head.range.last + 1)
-            val split = rest.indexOf(": ")
-            if (split < 0) return@mapNotNull null
-            LogLine(head.groupValues[1].toInt(), head.groupValues[3], rest.substring(0, split).trim(), rest.substring(split + 2))
+    // Polls until the end marker is in logcat, then returns this process's lines between the two markers.
+    private fun logcatBetweenMarkers(marker: String): List<LogLine> {
+        val deadline = SystemClock.elapsedRealtime() + MARKER_WAIT_MILLIS
+        while (true) {
+            val all = shell("logcat -d -v threadtime").lines()
+            val endIndex = all.indexOfLast { it.contains("$TAG: end=$marker") }
+            val startIndex = all.indexOfLast { it.contains("$TAG: start=$marker") }
+            if (endIndex >= 0 && startIndex in 0 until endIndex) {
+                return all.subList(startIndex + 1, endIndex).mapNotNull { line ->
+                    val head = HEAD.find(line) ?: return@mapNotNull null
+                    val rest = line.substring(head.range.last + 1)
+                    val split = rest.indexOf(": ")
+                    if (split < 0) return@mapNotNull null
+                    LogLine(head.groupValues[1].toInt(), head.groupValues[3], rest.substring(0, split).trim(), rest.substring(split + 2))
+                }.filter { it.pid == Process.myPid() }
+            }
+            if (SystemClock.elapsedRealtime() > deadline) {
+                throw AssertionError("ENVIRONMENT: the markers of $marker did not both reach logcat within $MARKER_WAIT_MILLIS ms (start at $startIndex, end at $endIndex)")
+            }
+            SystemClock.sleep(MARKER_POLL_MILLIS)
         }
     }
 
@@ -126,7 +138,8 @@ class FaceNativeErrorLogDeviceTest {
 
         // Above FACE_DETECT_LONG_SIDE, so that the pipeline scales it, and a width of one, so that the scaled width is zero.
         const val TALL_HEIGHT = 1_000
-        const val SETTLE_MILLIS = 2_000L
+        const val MARKER_WAIT_MILLIS = 10_000L
+        const val MARKER_POLL_MILLIS = 100L
         const val MAX_LINES_LOGGED = 5
 
         // "11-21 10:12:13.123  1234  5678 I " up to the tag.
