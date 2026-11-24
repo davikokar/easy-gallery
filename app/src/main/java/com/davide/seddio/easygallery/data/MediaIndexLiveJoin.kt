@@ -40,11 +40,15 @@ val LocationState.placeValues: PlaceValues?
         LocationState.NotIndexed -> null
     }
 
-/** One live item with what the index says about its date and its place. */
+/**
+ * One live item with what the index says about its date and its place. [indexedIdentity] is the stored URI and healing
+ * triple of the index row that won the item, null when no row reached it; it is the key of the item's Tier C data.
+ */
 data class JoinedMedia(
     val item: MediaItem,
     val date: DateTakenSortState,
-    val location: LocationState
+    val location: LocationState,
+    val indexedIdentity: MediaIdentity?
 )
 
 /**
@@ -67,10 +71,29 @@ fun locationStateOf(row: MediaIndexEvaluationProjection): LocationState {
  * The index evaluation projection joined to live media, one [JoinedMedia] per live item in live order
  * (ADR-0020). Built once per emission and shared by every album's evaluation and by the picker.
  */
-class MediaIndexLiveJoin(val items: List<JoinedMedia>) {
+class MediaIndexLiveJoin internal constructor(
+    val items: List<JoinedMedia>,
+    private val builtLookup: LiveMediaLookup?
+) {
+
+    constructor(items: List<JoinedMedia>) : this(items, null)
 
     // The join is shared by albums and the picker, which compute on different threads.
     val liveMedia: List<MediaItem> by lazy { items.map { it.item } }
+
+    /** The one lookup of a stored identity over this join's live media, the join's own key; anchors resolve through it. */
+    val lookup: LiveMediaLookup by lazy {
+        builtLookup ?: LiveMediaLookup(liveMedia, ::canonicalMediaStoreUriForJoin)
+    }
+
+    private val itemsByLiveUri: Map<String, JoinedMedia> by lazy {
+        val byUri = HashMap<String, JoinedMedia>(items.size)
+        items.forEach { byUri.putIfAbsent(it.item.uri.toString(), it) }
+        byUri
+    }
+
+    /** The first joined item with this live URI, or null. */
+    fun joinedItemOf(liveItem: MediaItem): JoinedMedia? = itemsByLiveUri[liveItem.uri.toString()]
 
     companion object {
 
@@ -96,12 +119,12 @@ class MediaIndexLiveJoin(val items: List<JoinedMedia>) {
                 val uri = item.uri.toString()
                 val row = direct[uri] ?: healed[uri]
                 if (row == null) {
-                    JoinedMedia(item, DateTakenSortState.NotIndexed, LocationState.NotIndexed)
+                    JoinedMedia(item, DateTakenSortState.NotIndexed, LocationState.NotIndexed, indexedIdentity = null)
                 } else {
-                    JoinedMedia(item, dateStateOf(row), locationStateOf(row))
+                    JoinedMedia(item, dateStateOf(row), locationStateOf(row), indexedIdentity = row.identity)
                 }
             }
-            return MediaIndexLiveJoin(items)
+            return MediaIndexLiveJoin(items, lookup)
         }
 
         private fun dateStateOf(row: MediaIndexEvaluationProjection): DateTakenSortState {

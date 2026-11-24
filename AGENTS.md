@@ -28,7 +28,8 @@ short commit messages.
   deliberately not migrated.
 - **Dependency injection:** none. Components are instantiated directly so tests can pass fakes.
 - **Image loading:** Coil 3 (`coil-compose`, `-gif`, `-video`, `-network-okhttp`)
-- **Video playback:** AndroidX Media3 ExoPlayer, pinned at **1.5.0**
+- **Video playback:** AndroidX Media3 ExoPlayer, **pinned** at the version in
+  `gradle/libs.versions.toml`; that version governs which video-control APIs exist
 - **Database:** Room, processed by KSP. This needs `android.disallowKotlinSourceSets=false` in
   `gradle.properties`, because the project uses AGP 9's built-in Kotlin and applies no
   `kotlin-android` plugin. Removing that line breaks the build with an error that never mentions
@@ -39,12 +40,18 @@ short commit messages.
   the **merged** manifest that the source manifest does not declare, one of which the source
   manifest removes again; see *What to ask before doing*.
 - **Async:** Kotlin Coroutines + Flow
+- **Face pipeline:** OpenCV's published Android library (`org.opencv:opencv`), used only by the
+  media index's face pass, with two ONNX models bundled under `app/src/main/assets/face/`
+  (ADR-0023). Its version is fingerprinted by `FACE_PIPELINE_VERSION`, so an upgrade is a pipeline
+  change, not a bump. It ships for arm64-v8a only, by `packaging.jniLibs` excludes and never by
+  `abiFilters`; the build wiring — the model checksum task and `app/proguard-face.pro`, the
+  release keep rule R8 needs — is in [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §10.
 - **Build:** Gradle (Kotlin DSL, `.gradle.kts`). **Every version lives in
   `gradle/libs.versions.toml` and `app/build.gradle.kts` — read them rather than restating one
   here.**
-- **SDK:** minSdk 28, targetSdk 36, compileSdk 36.1
-- **Tests:** JUnit4, MockK, Turbine, coroutines-test, and Robolectric for the `data/`
-  Android-boundary tests, plus `room-testing` with `inMemoryDatabaseBuilder` for the DAO and
+- **SDK:** read `defaultConfig` and `compileSdk` in `app/build.gradle.kts`
+- **Tests:** JUnit4, MockK, Turbine, coroutines-test, and Robolectric for the Android-boundary
+  tests (mostly in `data/`), plus `room-testing` with `inMemoryDatabaseBuilder` for the DAO and
   `work-testing` for `MediaIndexingWorker` (unit); Compose UI test + Espresso (instrumented)
 
 ## Module / package layout
@@ -91,7 +98,6 @@ rather than nobody's.
 | [docs/architecture/decisions/](docs/architecture/decisions/) | Planner | routed | never edited; superseded by a new ADR, or amended in place when only a detail changed |
 | [docs/design/albums.md](docs/design/albums.md) | Planner | routed | a stage changes status, a decision is taken, a question is answered |
 | [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) | Planner | routed | paused; updated only when the pause is lifted or a resume trigger changes |
-| [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md) | Planner | routed | a step changes status, a question is answered, or a session learns something that changes the next one; archived when Stage 3 closes |
 | [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md) | Planner | routed | a step changes status or a question is answered; archived when editing ships |
 | [.github/instructions/ui-vocabulary.instructions.md](.github/instructions/ui-vocabulary.instructions.md) | Designer | **in-change** | you add, rename, or remove a named screen, view, area, or control |
 | [.github/instructions/tests.instructions.md](.github/instructions/tests.instructions.md) | Planner | routed | a test convention or tool changes |
@@ -153,23 +159,21 @@ the audit is for the rest.
   same rules as the ADRs and the overview; everyone else reports drift rather than editing it.
   The album vocabulary used to live there and moved into the UI vocabulary instructions when
   Stage 1's screens landed.
-- **The epic is specified in two documents while a stage is being built, not one.** The stage in
+- **While a stage is being built, the epic is specified in two documents, not one.** A stage in
   progress has its own shorter-lived plan beside the epic document, holding that stage's steps,
   their exit criteria, and the handoff block telling the next session where to start. Read it as
   well whenever your work is part of that stage. It is Planner-owned and routed like the epic
   itself, and it is archived when the stage closes — or paused, if the stage stops before it
   closes — under the rule in the
   [architecture documentation instructions](.github/instructions/architecture-docs.instructions.md).
-  No stage is in progress. Stage 4 (content albums) is paused after its feasibility spike; its plan
-  [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) is kept to resume from. Stage 3
-  (people albums) is next and has a draft plan,
-  [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md), which starts with a feasibility
-  spike; the stage moves to In progress when its first binding deliverable lands, under
-  [albums.md](docs/design/albums.md) §7's rule, and a spike's figures are not one, as recorded for
-  Stage 4. Rule editing is not a stage and has a plan of its own,
-  [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md). Stage
-  2's plan, [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md), is archived and not
-  maintained.
+  §7 of [albums.md](docs/design/albums.md) names the stage in progress, if any, and links to its
+  plan, to any paused stage plan, and to plans for epic work that is not a stage; read the one your
+  task belongs to. Stage 4's plan, [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md),
+  is paused and kept to resume from. Rule editing is not a stage and has a plan of its own,
+  [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md). The plans of Stage 2,
+  [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md), and Stage 3,
+  [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md), are archived: build history,
+  not maintained, and never the place to learn where the epic stands.
 - For tests — unit **and** instrumented — follow
   [the test conventions](.github/instructions/tests.instructions.md).
 - Tracked files have mixed line endings and there is no `.gitattributes`. Match the file you are
@@ -184,17 +188,24 @@ the audit is for the rest.
   (per-view display preferences), `FolderViewPreferencesState` (per-folder overrides), and
   `MediaViewerState` (transient full-screen viewer state). Put new state in the narrowest of
   those that fits, not in the ViewModel body.
-- **`GalleryViewModel` is the largest file in the app by a wide margin.** Treat that as a reason
-  to extract, not a licence to add. The two established escapes are a new state holder like the
+- **`GalleryViewModel` is the central hub and is already one of the largest files in the app.**
+  Treat that as a reason to extract, not a licence to add. The two established escapes are a new state holder like the
   three above, or a feature-scoped ViewModel — `CreateFolderViewModel`, `BillingViewModel`,
-  `AlbumsViewModel`, `FavouritesViewModel`, and `MediaIndexingViewModel` are the precedent. Albums
+  `AlbumsViewModel`, `FavouritesViewModel`, `MediaIndexingViewModel`, and `FaceDataViewModel` are
+  the precedent. Albums
   added **no album state** to `GalleryViewModel`; it only reuses the viewer delegate and the
   selection machinery. The media index added one delegate, `MediaIndexDateTakenState`, and nothing
   else. A state holder can also belong to a feature ViewModel: `AutomaticAlbumPickerState` is owned
   by `AlbumsViewModel` rather than being a sixth ViewModel, because the picker's counts must read
   the same join as the albums they create. Per-album display overrides are the same case:
   `AlbumsViewModel` holds a second `FolderViewPreferencesState` of its own, so `GalleryViewModel`
-  gained nothing for them (ADR-0021).
+  gained nothing for them (ADR-0021). People albums added no state holder either: `AlbumsViewModel`
+  owns their second shared flow, the face snapshot with the availability, beside the join, and the
+  People picker's list went into `AutomaticAlbumPickerState`. Face data's
+  switch, disclosure and app-open work are the opposite case: they belong to no album, so they are a
+  feature ViewModel of their own, `FaceDataViewModel`, which `MainActivity` holds and which reaches
+  the albums only by an availability epoch `MainActivity` forwards to
+  `AlbumsViewModel.refreshPeopleAvailability()`.
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -216,16 +227,18 @@ file-wide, so folder and album overrides sharing a file would reset each other (
 
 | File | Holds | Store |
 |---|---|---|
-| `app_settings` | language override; the `MediaStore.getVersion()` watermark | `LocaleHelper`, `MediaStoreVersionStore` |
+| `app_settings` | language override; the `MediaStore.getVersion()` watermark; the face-data setting `face_data_enabled` | `LocaleHelper`, `MediaStoreVersionStore`, `FaceDataSettingStore` |
 | `display_preferences` | per-view `ViewPreferences` | `DisplayPreferencesStore` |
 | `folder_preferences` | pinned and excluded folder paths | `FolderPreferencesStore` |
 | `folder_display_preferences` | per-folder preference overrides | `FolderViewPreferencesStore` |
 | `album_display_preferences` | per-album and Favourites preference overrides | `FolderViewPreferencesStore`, owned by `AlbumsViewModel` |
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
 | `media_index_run_state` | last indexing run's outcome, timestamps, counters | `MediaIndexRunStateStore` |
+| `face_device_state` | whether the face-data disclosure was shown; the capability record | `FaceDeviceStateStore` |
 
-Every store is an interface with a `SharedPreferences*` production implementation and an
-`InMemory*` implementation for tests. Add both when you add a store.
+Every store except `LocaleHelper`, which predates the rule and is an `object`, is an interface with
+a `SharedPreferences*` production implementation and an `InMemory*` implementation for tests. Add
+both when you add a store.
 
 The album watermark shares `app_settings` deliberately, to avoid opening a preferences file for one
 scalar. Another scalar may join it; **anything structured must not** — that rule is about
@@ -237,9 +250,22 @@ index database (ADR-0018 Amendment 1).
 was challenged on the same test that moved the watermark and **kept in `SharedPreferences`**: it is
 a fixed set of flat scalars, and unlike the watermark it is not bookkeeping the index's correctness
 depends on — losing it costs a blank label, not a wrong index. ADR-0018 Amendment 2 records the
-reasoning. It is also the only preferences file carrying an `<exclude>` in the backup rules, and it
+reasoning. It is also excluded from backup, and it
 deliberately holds **no** liveness flag — "is indexing running" comes from WorkManager, because a
 persisted one survives process death and disables the Index now action forever.
+
+ADR-0024 placed two pieces of face-data state, each with a `SharedPreferences*` and an `InMemory*`
+store. The face-data setting is a scalar in `app_settings`, on by default
+and backed up. Whether the face-data disclosure has been shown is **not** there, because
+`app_settings` is backed up and the disclosure is per installation: it lives in `face_device_state`
+beside the capability record, and that file is excluded from backup in all four rules sections —
+the second preferences file with an `<exclude>`, after `media_index_run_state` (ADR-0018
+Amendment 7 §3). `AlbumsViewModel` **reads** the setting and the capability record, through
+`StoredPeopleAvailabilitySource`, to decide whether a people album can be evaluated.
+`FaceDataViewModel` **writes** them through the same two stores and adds no file: it
+persists the setting from the Face data row and the disclosure's Turn off, marks the disclosure shown
+only from the disclosure's OK or Turn off — never from switching on (ADR-0024 Amendment 1) — and
+runs the capability check at app open.
 
 ### The two databases
 
@@ -253,10 +279,14 @@ database is backed up (ADR-0014) while the index must not be.
 - Access goes through a store interface — `AlbumStore`, `MediaIndexStore`, and
   `MediaIndexWatermarkStore` — each with a `Room*` implementation for production and an
   `InMemory*` one for tests, the same shape as the preference stores. DAO-level tests use
-  `inMemoryDatabaseBuilder`.
-- **One database does not mean one table.** The album database holds two tables; the index
-  database holds two as well, having gained the per-volume delta watermark table through a real
-  `Migration(1, 2)`. A watermark is index metadata — recomputable, worthless without the index,
+  `inMemoryDatabaseBuilder`. Tier C face data has no store of its own: it is on `MediaIndexStore`,
+  because its rows change in the same transaction as the image row they describe (ADR-0018
+  Amendment 5).
+- **One database does not mean one table.** The `entities` list of each `@Database` says which
+  tables it holds. The index database gained the per-volume delta watermark table through a real
+  `Migration(1, 2)`, the two Tier C tables through `Migration(4, 5)`, and the Tier C attempt table
+  through `Migration(5, 6)` (ADR-0018 Amendment 7). A watermark is index
+  metadata — recomputable, worthless without the index,
   already excluded from backup — so it belongs with the data it describes rather than in
   `app_settings`. ADR-0018 Amendment 1 records that.
 - **The index has migrated more than once, and never destructively.** Its second migration,
@@ -265,7 +295,9 @@ database is backed up (ADR-0014) while the index must not be.
   delta detection never re-extracts unchanged media, and a migration was the cheap exact repair —
   ADR-0018 Amendment 3 records why. A third, `Migration(3, 4)`, adds the place resolver's version
   marker (ADR-0018 Amendment 4); a bump of `PLACE_RESOLVER_VERSION` re-resolves rows without
-  another migration. Each database's current version is its `@Database` annotation;
+  another migration. A fourth, `Migration(4, 5)`, creates the Tier C tables empty (ADR-0018
+  Amendment 5), and a fifth, `Migration(5, 6)`, the attempt table (Amendment 7). Each database's
+  current version is its `@Database` annotation;
   read it there rather than from a document.
 - Every schema change needs a version bump and a new JSON under `app/schemas/`, which is
   committed — and so does a data migration, which bumps the version even when the schema is
@@ -278,6 +310,15 @@ database is backed up (ADR-0014) while the index must not be.
   `AlbumMembership.kt`. An index row is the opposite case — a cache, deleted rather than retained
   when its media is gone (ADR-0020). Favourites are in **neither** database — they are a
   `MediaStore` column (ADR-0011), unavailable below API 30.
+- **Face data is Tier C of the index database, and its rules are in ADRs.** ADR-0018 Amendments
+  5–7 put it there, say what deleting it removes, and add the attempt table and the setting read
+  inside the write's transaction; ADR-0024 says when it is deleted and that it never enters a
+  backup or a log; ADR-0023 fixes the models and runtime; ADR-0022 anchors a people rule to a
+  photo. [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §3, §6, §10 and §11 say where the
+  code is and what is still owed; the archived
+  [Stage 3 plan](docs/design/albums-stage-3.md) is the build history. A people rule's anchor is
+  the one face-related thing in the album database, and it is not face data. Read them before
+  adding a table to either database.
 
 ### Strings and localisation
 
@@ -314,7 +355,11 @@ database is backed up (ADR-0014) while the index must not be.
 Before claiming a task is complete:
 
 1. Code compiles: `./gradlew compileDebugKotlin`
-2. Unit tests compile and pass: `./gradlew compileDebugUnitTestKotlin testDebugUnitTest`
+2. Unit tests compile and pass: `./gradlew compileDebugUnitTestKotlin testDebugUnitTest`.
+   Tests that read `res/`, `assets/face/` or the version catalogue directly
+   (`LocaleResourceParityTest`, `BackupRulesParityTest`, `ThirdPartyNoticesTest`,
+   `FacePipelineVersionTest`) do not make those files inputs of `testDebugUnitTest`, so after a
+   change to such files alone run `cleanTestDebugUnitTest` first, and say so in the gate report.
 3. Instrumented tests compile: `./gradlew compileDebugAndroidTestKotlin`
 4. Instrumented tests **run, if a device is attached**. Check with `adb devices`. If one is
    listed, `./gradlew connectedDebugAndroidTest` is part of done. If none is, step 3 stands as
@@ -363,14 +408,21 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   assumption. When none is listed, `compileDebugAndroidTestKotlin` is the fallback, not the
   ceiling. Claim device-verified behaviour only for what you actually ran and observed, and say
   which of the two you did.
+- `adb` is not necessarily on `PATH` in a fresh Git Bash. Use `"$ANDROID_HOME/platform-tools/adb"`,
+  or export `PATH="$ANDROID_HOME/platform-tools:$PATH"` once with the SDK path above.
+  `command not found` is not "no device".
 - `connectedDebugAndroidTest` uninstalls the app and wipes its data when it finishes, so reinstall
   with `:app:installDebug` and re-grant the media permissions before using the app by hand.
+  A single instrumented class runs with
+  `-Pandroid.testInstrumentationRunnerArguments.class=<fqcn>`; when the app's data must survive,
+  use `:app:installDebugAndroidTest` and `adb shell am instrument` instead — the details are in
+  the [test conventions](.github/instructions/tests.instructions.md).
 - Git Bash rewrites `/sdcard/...` arguments to `adb` unless `MSYS_NO_PATHCONV=1` is set.
 
 ## What to ask before doing
 
-- Adding a new third-party dependency, or upgrading a pinned one (notably media3 1.5.0, which
-  governs what video-control APIs exist).
+- Adding a new third-party dependency, or upgrading a pinned one (notably media3, whose pinned
+  version governs what video-control APIs exist).
 - Adding a new Android permission or `<queries>` entry. **A dependency can do this without the
   source manifest changing**, and the approval of the dependency is not approval of the
   permissions it merges in. WorkManager is the worked example and the reason this sentence exists:
@@ -378,7 +430,9 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   to the merged manifest at Stage 2 step 2.4, unexamined, until
   [docs/design/albums.md](docs/design/albums.md) §10 question 6 settled them after the fact — one
   removed, three kept. Check the merged manifest, not
-  `app/src/main/AndroidManifest.xml`, when a dependency lands.
+  `app/src/main/AndroidManifest.xml`, when a dependency lands. OpenCV was checked that way before
+  anything else at step 3.3, and its merged manifests came out byte-identical (ADR-0023, verify
+  item 4).
 - Introducing a new architectural pattern not described above, or contradicting an active ADR.
 - Adding `android:configChanges` to `MainActivity` — ADR-0002 forbids it.
 
@@ -395,7 +449,7 @@ radius is wider than the diff looks:
 
 Repository memory lives at `/memories/repo/easy-gallery-exploration.md`. It is a long log of
 traps this codebase has already cost someone a session: the viewer/`SaveableStateHolder`
-regression, media3 1.5.0's missing Compose controls, the `PlayerView` touch-dispatch dead end,
+regression, the pinned media3's missing Compose controls, the `PlayerView` touch-dispatch dead end,
 locale decimal separators, per-folder override layering order, and more. Read the sections
 relevant to your task **before** starting, and append a short note when you learn something that
 would have saved you time.

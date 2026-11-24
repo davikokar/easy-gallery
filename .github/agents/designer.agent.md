@@ -15,11 +15,13 @@ Own the design outcome while collaborating with implementation agents. Escalate 
 This is **Easy Gallery**, an Android image and video gallery app built with Jetpack Compose and
 Material 3. The brand colour is `BrandBlue` (`0xFF017DDF`), pinned in both the light and dark
 schemes. Media is a live `MediaStore` query the app never copies; what it owns is two small Room
-databases — albums (ADR-0009) and the media index (ADR-0018), which has no user-visible surface
-yet. Read these before designing anything:
+databases — albums (ADR-0009) and the media index (ADR-0018), whose own controls are the Settings
+screen's **Media index area** and the New automatic album screen's **Index band**, and, for its
+face data, the Settings screen's **Face data area**, and whose data
+sorts by date taken and fills automatic albums. Read these before designing anything:
 
 1. `AGENTS.md` — tech stack, package layout, and the localisation rules you must design within.
-2. `.github/instructions/ui-vocabulary.instructions.md` — the canonical names for the five main
+2. `.github/instructions/ui-vocabulary.instructions.md` — the canonical names for the main
    views and every screen, area, and control. Use them in your output; do not invent parallel
    vocabulary.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview, including why Folders View and
@@ -32,14 +34,12 @@ yet. Read these before designing anything:
    differently, and that dropdown leading icons must carry no tint and a null content
    description.
 5. `docs/design/albums.md` — the albums epic, if your work touches albums or favourites. Check its
-   §7 progress table first: most of it is **not implemented**. The **Planner owns it** — do not
+   §7 progress table first: do not assume any part of it is implemented. The **Planner owns it** — do not
    edit it; report anything your design contradicts.
-6. The plan for the stage in progress, if your work belongs to it. §7 of `albums.md` says which
-   stage is current and links to its plan — no stage is in progress; Stage 4's plan,
-   `docs/design/albums-stage-4.md`, is paused; Stage 3 is next, with a draft plan at
-   `docs/design/albums-stage-3.md`; and rule editing, not a stage, has its own plan at
-   `docs/design/albums-rule-editing.md` — and that
-   plan, not the epic document, holds the step you are designing for and its exit criteria. The
+6. The plan for the stage in progress, if your work belongs to it. §7 of `albums.md` names the
+   stage in progress, if any, and links to its plan, to any paused stage plan, and to plans for
+   epic work that is not a stage; read the one your work belongs to. That plan, not the epic
+   document, holds the step you are designing for and its exit criteria. The
    **Planner owns it too**; report drift rather than editing it.
 
 You are a subagent and start with no memory of earlier phases. Spend the time to read.

@@ -258,4 +258,37 @@ class AlbumRuleStorageTest {
         assertEquals(UnevaluatableReason.UNKNOWN_DATASET, parsed.reason)
         assertRuleUntouched(albumId, raw)
     }
+
+    private fun peopleRule(displayName: String) = AlbumRule.Evaluatable(
+        listOf(
+            AlbumRuleClause.Time(LocalDate.of(2025, 1, 1), null),
+            AlbumRuleClause.People(
+                anchor = mediaIdentityOf("content://media/external/images/media/1234", displayName, 2_345_678L, 1_700_000_000L),
+                box = FaceBox(1f / 3f, 0.1f, 2f / 3f, 0.9f),
+                pipelineVersion = 1
+            )
+        )
+    )
+
+    @Test
+    fun `a people rule is stored byte for byte and reads back equal`() = runTest {
+        val rule = peopleRule("Z\u00fcrich \"Old\" \\ \uD83D\uDE00.jpg")
+        val encoded = AlbumRuleJson.encode(rule)
+
+        val albumId = store.createAlbum(name = "Alice", createdAt = 13L, rule = encoded)
+
+        assertEquals(encoded, rawRuleColumn(albumId))
+        assertEquals(rule, AlbumRuleJson.parse(storedAlbum(albumId).rule))
+    }
+
+    @Test
+    fun `a people rule is byte identical after any store operation`() = runTest {
+        val encoded = AlbumRuleJson.encode(peopleRule("IMG_0001.jpg"))
+        val albumId = store.createAlbum(name = "Alice", createdAt = 14L, rule = encoded)
+
+        exerciseStore(albumId)
+
+        assertRuleUntouched(albumId, encoded)
+        assertEquals(peopleRule("IMG_0001.jpg"), AlbumRuleJson.parse(storedAlbum(albumId).rule))
+    }
 }

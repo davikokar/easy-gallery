@@ -20,7 +20,10 @@ sealed interface AlbumRule {
      * never be rewritten, trimmed or re-encoded (ADR-0017). There is deliberately no way to encode
      * one: [AlbumRuleJson.encode] takes [Evaluatable] only.
      */
-    data class Unevaluatable(val raw: String, val reason: UnevaluatableReason) : AlbumRule
+    data class Unevaluatable(val raw: String, val reason: UnevaluatableReason) : AlbumRule {
+        // The text of an unreadable people rule names its anchor photo (ADR-0024 §6).
+        override fun toString(): String = "Unevaluatable(raw=redacted, reason=$reason)"
+    }
 }
 
 sealed interface AlbumRuleClause {
@@ -59,6 +62,36 @@ sealed interface AlbumRuleClause {
             require(dataset == PLACE_RESOLVER_VERSION) { "dataset must be the current resolver version" }
         }
     }
+
+    /**
+     * One person, named by a face in an anchor photo (ADR-0022 §1). [pipelineVersion] is informational: it is
+     * the version the [box] was found under and is never compared. An anchor names a file and where a face is
+     * in it, so nothing here prints and no check message names a value (ADR-0024 §6).
+     */
+    data class People(
+        val anchor: MediaIdentity,
+        val box: FaceBox,
+        val pipelineVersion: Int
+    ) : AlbumRuleClause {
+        init {
+            require(pipelineVersion >= 1) { "pipelineVersion must be at least 1" }
+            require(anchor.mediaUri.isNotEmpty()) { "the anchor needs a URI" }
+            require(anchor.healingKey.displayName.isNotEmpty()) { "the anchor needs a display name" }
+        }
+
+        override fun toString(): String = "People(redacted)"
+
+        companion object {
+            /** The face the picker showed, copied as it was read: identity, box and pipeline version only. */
+            fun anchoredAt(representative: FaceGroupRepresentative): People {
+                return People(
+                    anchor = representative.identity,
+                    box = representative.box,
+                    pipelineVersion = representative.pipelineVersion
+                )
+            }
+        }
+    }
 }
 
 // The stored form is a four-digit year, so only these years can be written and read back.
@@ -89,5 +122,8 @@ enum class UnevaluatableReason {
 
     /** A well-formed region clause stamped with a dataset other than the current one. */
     UNKNOWN_DATASET,
+    INVALID_ANCHOR,
+    INVALID_PIPELINE_VERSION,
+    INVALID_FACE_BOX,
     UNEXPECTED_ERROR
 }

@@ -380,7 +380,7 @@ class AutomaticAlbumFacetsTest {
         clauses: List<AlbumRuleClause>,
         requirePositive: Boolean = true
     ) {
-        val members = AlbumRuleEvaluator.evaluate(AlbumRule.Evaluatable(clauses), join, emptyList(), zone).members
+        val members = AlbumRuleEvaluator.evaluate(AlbumRule.Evaluatable(clauses), join, emptyList(), zone, people = null).members
         // MockK keeps every recorded toString() call; thousands of evaluations over ~800 mocks fill the test heap.
         clearAllMocks(answers = false)
         assertEquals("entry for $clauses in $zone", members.size, shown)
@@ -460,6 +460,191 @@ class AutomaticAlbumFacetsTest {
         return MediaIndexLiveJoin.build(rows, live)
     }
 
+    // --- the chosen people (ADR-0024 Amendment 1 §6) --------------------------------------------
+
+    @Test
+    fun `the people members are what the evaluator makes members of the people clauses alone`() {
+        val library = peopleLibrary()
+
+        assertEquals(uris(1, 2, 3, 5), peopleMemberUris(library.join, UTC, listOf(library.personA), library.faces))
+        assertEquals(uris(1, 3, 4), peopleMemberUris(library.join, UTC, listOf(library.personB), library.faces))
+        // Two people are one conjunction: the same photo holds both.
+        assertEquals(uris(1, 3), peopleMemberUris(library.join, UTC, listOf(library.personA, library.personB), library.faces))
+        assertTrue(peopleMemberUris(library.join, UTC, emptyList(), library.faces).isEmpty())
+    }
+
+    @Test
+    fun `an anchor that is not found or faces not loaded make no members`() {
+        val library = peopleLibrary()
+        val wrongBox = library.personA.copy(box = BOX_B)
+
+        assertTrue(peopleMemberUris(library.join, UTC, listOf(wrongBox), library.faces).isEmpty())
+        // One person not found empties the album whatever the others are, as the evaluator does.
+        assertTrue(peopleMemberUris(library.join, UTC, listOf(library.personA, wrongBox), library.faces).isEmpty())
+        assertTrue(peopleMemberUris(library.join, UTC, listOf(library.personA), faces = null).isEmpty())
+    }
+
+    @Test
+    fun `the match count equals the evaluator's member count for every mix of people, place and date`() {
+        val library = peopleLibrary()
+        val peopleChoices = listOf(
+            listOf(library.personA),
+            listOf(library.personB),
+            listOf(library.personA, library.personB),
+            emptyList()
+        )
+        val regions = listOf(
+            null,
+            AlbumRuleClause.Region("IT"),
+            AlbumRuleClause.Region("IT", "16", "Tuscany"),
+            AlbumRuleClause.Region("IT", "16", "Tuscany", "Florence"),
+            AlbumRuleClause.Region("FR")
+        )
+        val times = listOf(null, year(2025), month(2025, 6), year(2024))
+
+        var compared = 0
+        for (people in peopleChoices) for (region in regions) for (time in times) {
+            val clauses = listOfNotNull(region, time) + people
+            if (clauses.isEmpty()) continue
+
+            val shown = peopleFacets(library, people).matchCount(region, time)
+
+            assertEquals("people=${people.size} region=$region time=$time", evaluatorCount(library, clauses), shown)
+            compared++
+        }
+        assertEquals(4 * 5 * 4 - 1 - 0, compared)
+    }
+
+    @Test
+    fun `people alone make a rule with a count, and nobody chosen alone is still no rule`() {
+        val library = peopleLibrary()
+
+        assertEquals(4, peopleFacets(library, listOf(library.personA)).matchCount(region = null, time = null))
+        assertEquals(0, peopleFacets(library, emptyList()).matchCount(region = null, time = null))
+    }
+
+    @Test
+    fun `the country list follows the chosen people and each count is the evaluator's`() {
+        val library = peopleLibrary()
+        val everyone = facets(library.join).countries(time = null)
+        assertEquals(listOf(CountryFacet("FR", 1), CountryFacet("IT", 6)), everyone)
+
+        val withA = peopleFacets(library, listOf(library.personA)).countries(time = null)
+
+        assertEquals(listOf(CountryFacet("IT", 4)), withA)
+        for (entry in withA) {
+            assertEquals(entry.count, evaluatorCount(library, listOf(AlbumRuleClause.Region(entry.countryCode), library.personA)))
+        }
+        assertEquals(
+            listOf(CountryFacet("IT", 3)),
+            peopleFacets(library, listOf(library.personA)).countries(year(2025))
+        )
+    }
+
+    @Test
+    fun `a country's regions and places follow the chosen people and each count is the evaluator's`() {
+        val library = peopleLibrary()
+        val withA = peopleFacets(library, listOf(library.personA))
+
+        val italy = withA.country("IT", time = null)
+
+        assertEquals(4, italy.allCount)
+        assertEquals(
+            listOf(RegionFacet("07", "Lazio", 1), RegionFacet("16", "Tuscany", 3)),
+            italy.regions
+        )
+        for (region in italy.regions) {
+            val clause = AlbumRuleClause.Region("IT", region.admin1Code, region.admin1Name)
+            assertEquals(region.count, evaluatorCount(library, listOf(clause, library.personA)))
+        }
+        assertEquals(listOf(PlaceFacet("Florence", 2), PlaceFacet("Pisa", 1)), withA.places("IT", "16", time = null))
+        assertEquals(0, withA.country("FR", time = null).allCount)
+        assertEquals(
+            listOf(PlaceFacet("Florence", 1)),
+            peopleFacets(library, listOf(library.personA, library.personB)).places("IT", "16", time = month(2025, 6))
+        )
+    }
+
+    @Test
+    fun `the years and months follow the chosen people and each count is the evaluator's`() {
+        val library = peopleLibrary()
+        assertEquals(
+            listOf(YearFacet(2025, 6), YearFacet(2024, 1)),
+            facets(library.join).years(region = null)
+        )
+
+        val withA = peopleFacets(library, listOf(library.personA))
+        val years = withA.years(region = null)
+        val months = withA.months(2025, region = null)
+
+        assertEquals(listOf(YearFacet(2025, 3), YearFacet(2024, 1)), years)
+        assertEquals(listOf(MonthFacet(1, 1), MonthFacet(6, 2)), months)
+        for (entry in years) {
+            assertEquals(entry.count, evaluatorCount(library, listOf(year(entry.year), library.personA)))
+        }
+        for (entry in months) {
+            assertEquals(entry.count, evaluatorCount(library, listOf(month(2025, entry.month), library.personA)))
+        }
+        // Both dimensions at once: the place's years, filtered by the person.
+        assertEquals(
+            listOf(YearFacet(2025, 3)),
+            withA.years(AlbumRuleClause.Region("IT", "16", "Tuscany"))
+        )
+    }
+
+    // Two people photographed in Florence, Pisa, Paris and Rome; a sixth photo has no face and a seventh no face state.
+    private class PeopleLibrary(
+        val join: MediaIndexLiveJoin,
+        val faces: FaceEvaluationSnapshot,
+        val personA: AlbumRuleClause.People,
+        val personB: AlbumRuleClause.People
+    )
+
+    private fun peopleLibrary(): PeopleLibrary {
+        class Shot(val live: MediaItem, val row: MediaIndexEvaluationProjection, val faces: List<FaceEvaluationFace>?)
+
+        fun shot(id: Int, date: Long, country: String, region: String, place: String, vararg groups: Long?): Shot {
+            val live = liveItem(id)
+            val faces = groups.mapIndexed { index, group ->
+                val box = if (group == GROUP_A) BOX_A else BOX_B
+                FaceEvaluationFace(id * 10L + index, box, group, FACE_GROUPING_VERSION)
+            }
+            return Shot(live, row(live, date, true, country, region, place, PLACE_RESOLVER_VERSION), faces)
+        }
+
+        val shots = listOf(
+            shot(1, JUNE_10, "IT", "16", "Florence", GROUP_A, GROUP_B),
+            shot(2, JUNE_10, "IT", "16", "Florence", GROUP_A),
+            shot(3, JANUARY_10, "IT", "16", "Pisa", GROUP_A, GROUP_B),
+            shot(4, JUNE_10, "FR", "11", "Paris", GROUP_B),
+            shot(5, DECEMBER_2024, "IT", "07", "Rome", GROUP_A),
+            shot(6, JUNE_10, "IT", "16", "Florence"),
+            // Indexed, with no face state yet: unsettled, so never a member.
+            shot(7, JUNE_10, "IT", "16", "Florence").let { Shot(it.live, it.row, null) }
+        )
+        val join = MediaIndexLiveJoin.build(shots.map { it.row }, shots.map { it.live })
+        val images = shots.filter { it.faces != null }.map { FaceEvaluationImage(it.row.identity, FaceIndexOutcome.INDEXED, it.faces!!) }
+
+        fun person(shot: Shot, box: FaceBox) =
+            AlbumRuleClause.People(shot.live.toMediaIdentity(), box, FACE_PIPELINE_VERSION)
+        return PeopleLibrary(join, FaceEvaluationSnapshot(images), person(shots[1], BOX_A), person(shots[3], BOX_B))
+    }
+
+    private fun peopleFacets(library: PeopleLibrary, people: List<AlbumRuleClause.People>) =
+        AutomaticAlbumFacets(
+            library.join,
+            UTC,
+            { country, code -> NAMES["$country.$code"] },
+            if (people.isEmpty()) null else peopleMemberUris(library.join, UTC, people, library.faces)
+        )
+
+    private fun evaluatorCount(library: PeopleLibrary, clauses: List<AlbumRuleClause>): Int {
+        val input = PeopleEvaluationInput(PeopleAvailability.AVAILABLE, library.faces)
+        return AlbumRuleEvaluator.evaluate(AlbumRule.Evaluatable(clauses), library.join, emptyList(), UTC, input).members.size
+    }
+
+    private fun uris(vararg ids: Int) = ids.mapTo(HashSet()) { "content://media/external/images/media/$it" }
+
     private fun facets(
         join: MediaIndexLiveJoin,
         zone: ZoneId = UTC,
@@ -471,10 +656,12 @@ class AutomaticAlbumFacetsTest {
     private fun item(id: Int, dateTaken: Long?, location: LocationState) = JoinedMedia(
         item = liveItem(id),
         date = if (dateTaken == null) DateTakenSortState.IndexedWithoutDate else DateTakenSortState.IndexedWithDate(dateTaken),
-        location = location
+        location = location,
+        indexedIdentity = null
     )
 
-    private fun unreached(id: Int) = JoinedMedia(liveItem(id), DateTakenSortState.NotIndexed, LocationState.NotIndexed)
+    private fun unreached(id: Int) =
+        JoinedMedia(liveItem(id), DateTakenSortState.NotIndexed, LocationState.NotIndexed, indexedIdentity = null)
 
     private fun resolved(country: String, region: String? = null, place: String? = null) =
         LocationState.Resolved(PlaceValues(country, region, place))
@@ -513,6 +700,12 @@ class AutomaticAlbumFacetsTest {
         val TOKYO: ZoneId = ZoneId.of("Asia/Tokyo")
         val NEW_YORK: ZoneId = ZoneId.of("America/New_York")
         val JUNE_10 = Instant.parse("2025-06-10T12:00:00Z").toEpochMilli()
+        val JANUARY_10 = Instant.parse("2025-01-10T12:00:00Z").toEpochMilli()
+        val DECEMBER_2024 = Instant.parse("2024-12-10T12:00:00Z").toEpochMilli()
+        const val GROUP_A = 100L
+        const val GROUP_B = 200L
+        val BOX_A = FaceBox(0.1f, 0.1f, 0.3f, 0.3f)
+        val BOX_B = FaceBox(0.6f, 0.6f, 0.8f, 0.8f)
         val NAMES = mapOf("IT.16" to "Tuscany", "IT.07" to "Lazio", "FR.11" to "Ile-de-France")
 
         fun liveItem(id: Int): MediaItem {

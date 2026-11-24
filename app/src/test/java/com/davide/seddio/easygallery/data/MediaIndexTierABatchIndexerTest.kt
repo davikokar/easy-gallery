@@ -294,6 +294,64 @@ class MediaIndexTierABatchIndexerTest {
     }
 
     @Test
+    fun `indexDelta keeps the tier c rows of a reselected row whose healing triple is unchanged and drops a changed file's`() = runTest {
+        val store = InMemoryMediaIndexWatermarkStore(
+            mapOf(PRIMARY to MediaIndexVolumeWatermark(version = "v1", generation = 5L, dateModifiedWatermarkSeconds = null))
+        )
+        val snapshot = MediaStoreVolumeSnapshot(
+            apiBranch = MediaStoreDeltaApiBranch.API_30_PLUS,
+            observedVolumes = listOf(
+                ObservedMediaStoreVolume(volumeName = PRIMARY, version = "v1", generation = 9L)
+            ),
+            presentVolumes = setOf(PRIMARY),
+            knownButUnavailableVolumes = emptySet()
+        )
+        val detector = MediaIndexDeltaDetector(
+            watermarkStore = store,
+            snapshotProvider = FixedSnapshotProvider(snapshot)
+        )
+        val unchangedUri = "content://media/external/images/media/11"
+        val changedUri = "content://media/external/images/media/12"
+        val rowProvider = FixedRowDeltaProvider(
+            mapOf(PRIMARY to listOf(observedRow(unchangedUri, generation = 8L), observedRow(changedUri, generation = 8L)))
+        )
+        val repository = FakeMediaRepository().apply {
+            mediaItems = listOf(media(unchangedUri), media(changedUri))
+        }
+        // media() reports photo.jpg, 300 bytes, modified at 200: the first stored row matches it, the second is stale.
+        val unchangedRow = storedRow(unchangedUri, size = 300L)
+        val changedRow = storedRow(changedUri, size = 111L)
+        val indexStore = InMemoryMediaIndexStore().apply {
+            upsert(listOf(unchangedRow, changedRow))
+            writeFaceIndexResults(
+                listOf(unchangedRow, changedRow).map {
+                    FaceIndexWrite(it.toMediaIdentity(), 1, FaceIndexOutcome.INDEXED, listOf(faceDetection()))
+                },
+                faceDataEnabled = { true }
+            )
+        }
+        val indexer = MediaIndexTierABatchIndexer(
+            mediaRepository = repository,
+            mediaIndexStore = indexStore,
+            deltaDetector = detector,
+            rowDeltaProvider = rowProvider,
+            reconciler = MediaIndexReconciler(indexStore),
+            extractor = ConstantExtractor(),
+            chunkSize = 10
+        )
+
+        val result = indexer.indexDelta(sdkInt = 30)
+
+        assertEquals(2, result.indexedRows)
+        assertEquals(1234L, indexStore.getByMediaUri(unchangedUri)?.capturedDateTakenEpochMillis)
+        assertEquals(FaceIndexState(unchangedUri, 1, FaceIndexOutcome.INDEXED), indexStore.getFaceIndexState(unchangedUri))
+        assertEquals(1, indexStore.listFaces(unchangedUri).size)
+        assertEquals(300L, indexStore.getByMediaUri(changedUri)?.size)
+        assertNull(indexStore.getFaceIndexState(changedUri))
+        assertEquals(0, indexStore.listFaces(changedUri).size)
+    }
+
+    @Test
     fun `indexDelta carries derived place fields over from a row stored under a per-volume spelling`() = runTest {
         val store = InMemoryMediaIndexWatermarkStore(
             mapOf(PRIMARY to MediaIndexVolumeWatermark(version = "v1", generation = 5L, dateModifiedWatermarkSeconds = null))
@@ -750,6 +808,30 @@ class MediaIndexTierABatchIndexerTest {
             generationModified = generation,
             dateModifiedSeconds = generation
         )
+    }
+
+    private fun storedRow(mediaUri: String, size: Long): MediaIndexEntry {
+        return MediaIndexEntry(
+            mediaUri = mediaUri,
+            displayName = "photo.jpg",
+            size = size,
+            dateModified = 200L,
+            volumeName = PRIMARY,
+            generationAdded = 1L,
+            generationModified = 2L,
+            capturedDateTakenEpochMillis = null,
+            capturedLatitude = null,
+            capturedLongitude = null,
+            capturedWidth = null,
+            capturedHeight = null,
+            derivedCountryCode = null,
+            derivedRegionCode = null,
+            derivedPlaceName = null
+        )
+    }
+
+    private fun faceDetection(): FaceDetection {
+        return FaceDetection(FaceBox(0.1f, 0.1f, 0.5f, 0.5f), FaceEmbedding(floatArrayOf(1f, 2f, 3f)))
     }
 
     private fun media(mediaUri: String): MediaItem {

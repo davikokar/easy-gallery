@@ -5,7 +5,7 @@ import java.time.format.DateTimeParseException
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Reads and writes the `albums.rule` document of ADR-0017 and its Amendments 1 and 2.
+ * Reads and writes the `albums.rule` document of ADR-0017 and its Amendments 1, 2 and 4.
  *
  * Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is
  * approved. Anything this reader does not fully understand becomes [AlbumRule.Unevaluatable];
@@ -16,12 +16,15 @@ object AlbumRuleJson {
     // Bounds the cost of reading a document that arrived from backup. A real rule is under 200 chars.
     const val MAX_DOCUMENT_LENGTH = 16 * 1024
 
-    // Root object = 1, "all" = 2, clause = 3. Anything deeper is not a rule this build can read.
+    // Root object = 1, "all" = 2, clause = 3, people box = 4. Anything deeper is not a rule this build can read.
     const val MAX_DEPTH = 8
 
     private val DATE_SHAPE = Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")
     private val TIME_CLAUSE_KEYS = setOf("type", "from", "to")
     private val REGION_CLAUSE_KEYS = setOf("type", "dataset", "country", "admin1", "admin1Name", "place")
+    private val PEOPLE_CLAUSE_KEYS =
+        setOf("type", "pipeline", "uri", "displayName", "size", "dateModified", "box")
+    private val FACE_BOX_KEYS = setOf("left", "top", "right", "bottom")
     private val COUNTRY_SHAPE = Regex("[A-Z]{2}")
     private val INTEGER_SHAPE = Regex("-?[0-9]+")
     private const val HEX_DIGITS = "0123456789abcdef"
@@ -60,6 +63,19 @@ object AlbumRuleJson {
                         clause.admin1Name?.let { appendStringField("admin1Name", it) }
                         clause.place?.let { appendStringField("place", it) }
                         append('}')
+                    }
+                    is AlbumRuleClause.People -> {
+                        append("{\"type\":\"people\",\"pipeline\":").append(clause.pipelineVersion)
+                        appendStringField("uri", clause.anchor.mediaUri)
+                        appendStringField("displayName", clause.anchor.healingKey.displayName)
+                        append(",\"size\":").append(clause.anchor.healingKey.size)
+                        append(",\"dateModified\":").append(clause.anchor.healingKey.dateModified)
+                        // Float.toString is locale-free and reads back to the same float.
+                        append(",\"box\":{\"left\":").append(clause.box.left.toString())
+                        append(",\"top\":").append(clause.box.top.toString())
+                        append(",\"right\":").append(clause.box.right.toString())
+                        append(",\"bottom\":").append(clause.box.bottom.toString())
+                        append("}}")
                     }
                 }
             }
@@ -127,8 +143,66 @@ object AlbumRuleJson {
         return when (type) {
             "time" -> interpretTimeClause(clause)
             "region" -> interpretRegionClause(clause)
+            "people" -> interpretPeopleClause(clause)
             else -> fail(UnevaluatableReason.UNKNOWN_CLAUSE_TYPE)
         }
+    }
+
+    private fun interpretPeopleClause(clause: RuleJsonObject): AlbumRuleClause {
+        val fields = clause.fields
+        if (fields.keys.any { it !in PEOPLE_CLAUSE_KEYS }) fail(UnevaluatableReason.UNKNOWN_CLAUSE_FIELD)
+
+        val uri = readAnchorText(fields["uri"])
+        val displayName = readAnchorText(fields["displayName"])
+        val size = readAnchorLong(fields["size"])
+        val dateModified = readAnchorLong(fields["dateModified"])
+
+        // A newer pipeline's version is accepted: it is informational, never compared (ADR-0022 §1).
+        val pipelineToken = (fields["pipeline"] as? RuleJsonNumber)?.text
+        val pipeline = pipelineToken?.takeIf { INTEGER_SHAPE.matches(it) }?.toIntOrNull()
+        if (pipeline == null || pipeline < 1) fail(UnevaluatableReason.INVALID_PIPELINE_VERSION)
+
+        val box = readFaceBox(fields["box"])
+
+        return AlbumRuleClause.People(
+            anchor = mediaIdentityOf(uri, displayName, size, dateModified),
+            box = box,
+            pipelineVersion = pipeline
+        )
+    }
+
+    private fun readAnchorText(value: Any?): String {
+        val text = value as? String ?: fail(UnevaluatableReason.INVALID_ANCHOR)
+        if (text.isEmpty()) fail(UnevaluatableReason.INVALID_ANCHOR)
+        return text
+    }
+
+    private fun readAnchorLong(value: Any?): Long {
+        val token = (value as? RuleJsonNumber)?.text ?: fail(UnevaluatableReason.INVALID_ANCHOR)
+        if (!INTEGER_SHAPE.matches(token)) fail(UnevaluatableReason.INVALID_ANCHOR)
+        return token.toLongOrNull() ?: fail(UnevaluatableReason.INVALID_ANCHOR)
+    }
+
+    // Checked on the Floats FaceBox holds, so two edges equal after rounding are rejected here, not thrown by FaceBox.
+    private fun readFaceBox(value: Any?): FaceBox {
+        val box = value as? RuleJsonObject ?: fail(UnevaluatableReason.INVALID_FACE_BOX)
+        if (box.fields.keys.any { it !in FACE_BOX_KEYS }) fail(UnevaluatableReason.UNKNOWN_CLAUSE_FIELD)
+
+        val left = readFaceBoxEdge(box.fields["left"])
+        val top = readFaceBoxEdge(box.fields["top"])
+        val right = readFaceBoxEdge(box.fields["right"])
+        val bottom = readFaceBoxEdge(box.fields["bottom"])
+        if (left >= right || top >= bottom) fail(UnevaluatableReason.INVALID_FACE_BOX)
+
+        return FaceBox(left, top, right, bottom)
+    }
+
+    private fun readFaceBoxEdge(value: Any?): Float {
+        val token = (value as? RuleJsonNumber)?.text ?: fail(UnevaluatableReason.INVALID_FACE_BOX)
+        // Adding 0f turns -0.0f, which -0, -0.0 and -1e-50 read as, into +0.0f, so equal boxes are equal and encode alike.
+        val edge = token.toFloat() + 0f
+        if (!edge.isFinite() || edge < 0f || edge > 1f) fail(UnevaluatableReason.INVALID_FACE_BOX)
+        return edge
     }
 
     private fun interpretRegionClause(clause: RuleJsonObject): AlbumRuleClause {

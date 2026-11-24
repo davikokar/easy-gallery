@@ -35,7 +35,8 @@ class AlbumListFilteringTest {
             storedMemberCount = counts.values.sum(),
             hiddenMemberCount = 0,
             storedMembershipCount = counts.values.sum(),
-            status = AlbumEvaluationStatus.MANUAL
+            status = AlbumEvaluationStatus.MANUAL,
+            unevaluatableCause = null
         )
     }
 

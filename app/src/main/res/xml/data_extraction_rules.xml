@@ -8,12 +8,24 @@
         <exclude domain="database" path="media_index.db"/>
         <exclude domain="database" path="media_index.db-wal"/>
         <exclude domain="database" path="media_index.db-shm"/>
+        <exclude domain="database" path="media_index.db-journal"/>
         <exclude domain="sharedpref" path="media_index_run_state.xml"/>
+        <exclude domain="sharedpref" path="face_device_state.xml"/>
     </cloud-backup>
     <device-transfer>
         <exclude domain="database" path="media_index.db"/>
         <exclude domain="database" path="media_index.db-wal"/>
         <exclude domain="database" path="media_index.db-shm"/>
+        <exclude domain="database" path="media_index.db-journal"/>
         <exclude domain="sharedpref" path="media_index_run_state.xml"/>
+        <exclude domain="sharedpref" path="face_device_state.xml"/>
     </device-transfer>
+    <cross-platform-transfer platform="ios">
+        <exclude domain="database" path="media_index.db"/>
+        <exclude domain="database" path="media_index.db-wal"/>
+        <exclude domain="database" path="media_index.db-shm"/>
+        <exclude domain="database" path="media_index.db-journal"/>
+        <exclude domain="sharedpref" path="media_index_run_state.xml"/>
+        <exclude domain="sharedpref" path="face_device_state.xml"/>
+    </cross-platform-transfer>
 </data-extraction-rules>

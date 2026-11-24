@@ -72,11 +72,8 @@ class MediaIndexReconciler(
                     volumeName = healedVolume
                 )
 
-                // Store API only exposes delete-by-uri plus upsert, so rewrite is non-atomic.
-                // ADR-0020 treats index rows as a recomputable cache: if a crash lands between
-                // these calls, the cost is re-extraction, not user-data loss.
-                mediaIndexStore.deleteByMediaUri(row.mediaUri)
-                mediaIndexStore.upsert(listOf(rewritten))
+                // One transaction: the row moves and its Tier C rows follow it (ADR-0018 Amendment 5).
+                mediaIndexStore.healMediaUri(row.mediaUri, rewritten)
                 rewrites += MediaIndexUriRewrite(
                     fromMediaUri = row.mediaUri,
                     toMediaUri = rewritten.mediaUri,

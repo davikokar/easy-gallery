@@ -12,14 +12,33 @@ enum class AlbumEvaluationStatus {
     /** The live media is not supplied yet, or some live item the rule could match is not indexed. */
     WAITING_ON_INDEX,
 
-    /** The stored rule is not understood by this build; the rule contributes nothing. */
+    /**
+     * The rule contributes nothing: this build does not understand it, or a `people` clause cannot be evaluated here.
+     * [AlbumRuleEvaluation.unevaluatableCause] says which. The members are the additions minus the exclusions.
+     */
     UNEVALUATABLE
 }
 
+/** Why an evaluation is [AlbumEvaluationStatus.UNEVALUATABLE] (ADR-0017 Amendment 4). */
+enum class AlbumUnevaluatableCause {
+    RULE_NOT_UNDERSTOOD,
+    PEOPLE_UNAVAILABLE_FACE_DATA_OFF,
+    PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE,
+    ANCHOR_NOT_FOUND
+}
+
+/** [unevaluatableCause] is non-null exactly when [status] is [AlbumEvaluationStatus.UNEVALUATABLE]. */
 data class AlbumRuleEvaluation(
     val members: List<MediaItem>,
-    val status: AlbumEvaluationStatus
-)
+    val status: AlbumEvaluationStatus,
+    val unevaluatableCause: AlbumUnevaluatableCause?
+) {
+    init {
+        require((status == AlbumEvaluationStatus.UNEVALUATABLE) == (unevaluatableCause != null)) {
+            "an evaluation has a cause exactly when it is unevaluatable"
+        }
+    }
+}
 
 /**
  * Pure album evaluation: `(rule matches ∪ additions) − exclusions` (ADR-0012), with every shown
@@ -33,15 +52,19 @@ object AlbumRuleEvaluator {
      * [AlbumEvaluationStatus.COMPLETE]. Manual and unevaluatable albums never depend on the index,
      * so they keep their own status in that case. Orphan and healing write-back stays with
      * [AlbumMembership.resolve].
+     *
+     * [people] is what a `people` clause reads; a rule without one never consults it. Null with a `people` clause is
+     * not loaded yet, which waits and is never unevaluatable.
      */
     fun evaluate(
         rule: AlbumRule?,
         join: MediaIndexLiveJoin?,
         memberships: List<StoredMembership>,
-        zone: ZoneId
+        zone: ZoneId,
+        people: PeopleEvaluationInput?
     ): AlbumRuleEvaluation {
-        if (join == null) return evaluateWithoutJoin(rule)
-        return evaluate(rule, join, AlbumMembership.resolve(memberships, join.liveMedia), zone)
+        if (join == null) return evaluateWithoutJoin(rule, people)
+        return evaluate(rule, join, AlbumMembership.resolve(memberships, join.liveMedia), zone, people)
     }
 
     /**
@@ -52,25 +75,48 @@ object AlbumRuleEvaluator {
         rule: AlbumRule?,
         join: MediaIndexLiveJoin?,
         manual: AlbumMembershipResolution,
-        zone: ZoneId
+        zone: ZoneId,
+        people: PeopleEvaluationInput?
     ): AlbumRuleEvaluation {
-        if (join == null) return evaluateWithoutJoin(rule)
+        if (join == null) return evaluateWithoutJoin(rule, people)
 
         return when (rule) {
-            null -> AlbumRuleEvaluation(manual.albumItems, AlbumEvaluationStatus.MANUAL)
-            is AlbumRule.Unevaluatable ->
-                AlbumRuleEvaluation(manual.albumItems, AlbumEvaluationStatus.UNEVALUATABLE)
-            is AlbumRule.Evaluatable -> evaluateRule(rule, join, manual, zone)
+            null -> AlbumRuleEvaluation(manual.albumItems, AlbumEvaluationStatus.MANUAL, null)
+            is AlbumRule.Unevaluatable -> unevaluatable(manual.albumItems, AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD)
+            is AlbumRule.Evaluatable -> {
+                val unavailable = peopleUnavailableCause(rule, people)
+                if (unavailable != null) unevaluatable(manual.albumItems, unavailable) else evaluateRule(rule, join, manual, zone, people)
+            }
         }
     }
 
-    private fun evaluateWithoutJoin(rule: AlbumRule?): AlbumRuleEvaluation {
-        val status = when (rule) {
-            null -> AlbumEvaluationStatus.MANUAL
-            is AlbumRule.Unevaluatable -> AlbumEvaluationStatus.UNEVALUATABLE
-            is AlbumRule.Evaluatable -> AlbumEvaluationStatus.WAITING_ON_INDEX
+    // Unavailability needs no media, so it is told before the join is.
+    private fun evaluateWithoutJoin(rule: AlbumRule?, people: PeopleEvaluationInput?): AlbumRuleEvaluation {
+        return when (rule) {
+            null -> AlbumRuleEvaluation(emptyList(), AlbumEvaluationStatus.MANUAL, null)
+            is AlbumRule.Unevaluatable -> unevaluatable(emptyList(), AlbumUnevaluatableCause.RULE_NOT_UNDERSTOOD)
+            is AlbumRule.Evaluatable -> {
+                val unavailable = peopleUnavailableCause(rule, people)
+                if (unavailable != null) {
+                    unevaluatable(emptyList(), unavailable)
+                } else {
+                    AlbumRuleEvaluation(emptyList(), AlbumEvaluationStatus.WAITING_ON_INDEX, null)
+                }
+            }
         }
-        return AlbumRuleEvaluation(members = emptyList(), status = status)
+    }
+
+    private fun unevaluatable(members: List<MediaItem>, cause: AlbumUnevaluatableCause): AlbumRuleEvaluation {
+        return AlbumRuleEvaluation(members, AlbumEvaluationStatus.UNEVALUATABLE, cause)
+    }
+
+    private fun peopleUnavailableCause(rule: AlbumRule.Evaluatable, people: PeopleEvaluationInput?): AlbumUnevaluatableCause? {
+        if (people == null || rule.clauses.none { it is AlbumRuleClause.People }) return null
+        return when (people.availability) {
+            PeopleAvailability.AVAILABLE -> null
+            PeopleAvailability.FACE_DATA_OFF -> AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_FACE_DATA_OFF
+            PeopleAvailability.DEVICE_INCAPABLE -> AlbumUnevaluatableCause.PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE
+        }
     }
 
     // Per item, each clause answers match or no match and settled or not (ADR-0017 Amendment 2).
@@ -78,9 +124,38 @@ object AlbumRuleEvaluator {
         rule: AlbumRule.Evaluatable,
         join: MediaIndexLiveJoin,
         manual: AlbumMembershipResolution,
-        zone: ZoneId
+        zone: ZoneId,
+        people: PeopleEvaluationInput?
     ): AlbumRuleEvaluation {
-        val tests = rule.clauses.map { it.toTest(zone) }
+        val tests = ArrayList<ClauseTest>(rule.clauses.size)
+        for (clause in rule.clauses) {
+            when (clause) {
+                is AlbumRuleClause.Time -> {
+                    val range = clause.toInstantRange(zone)
+                    tests += ClauseTest { joined -> timeAnswer(range, joined.date) }
+                }
+                is AlbumRuleClause.Region -> tests += ClauseTest { joined -> regionAnswer(clause, joined.location) }
+                is AlbumRuleClause.People -> {
+                    // One anchor not found makes the album unevaluatable even while another waits.
+                    when (val resolution = resolveAnchor(clause, join, people?.faces)) {
+                        AnchorResolution.NotFound ->
+                            return unevaluatable(manual.albumItems, AlbumUnevaluatableCause.ANCHOR_NOT_FOUND)
+                        AnchorResolution.Waiting -> tests += ClauseTest { ClauseAnswer.UNSETTLED_NO_MATCH }
+                        is AnchorResolution.Group -> {
+                            // Group resolution implies the snapshot was supplied.
+                            val faces = checkNotNull(people).faces
+                            tests += ClauseTest { joined ->
+                                when (peopleItemAnswer(resolution.groupId, joined, join, faces)) {
+                                    PeopleItemAnswer.MATCH -> ClauseAnswer.MATCH
+                                    PeopleItemAnswer.SETTLED_NO_MATCH -> ClauseAnswer.SETTLED_NO_MATCH
+                                    PeopleItemAnswer.UNSETTLED -> ClauseAnswer.UNSETTLED_NO_MATCH
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         val excludedUris = manual.resolvedExclusions.mapTo(HashSet()) { it.resolvedMediaUri }
         val addedUris = manual.resolvedAdditions.mapTo(HashSet()) { it.resolvedMediaUri }
 
@@ -121,17 +196,7 @@ object AlbumRuleEvaluator {
         } else {
             AlbumEvaluationStatus.COMPLETE
         }
-        return AlbumRuleEvaluation(members = members.values.toList(), status = status)
-    }
-
-    private fun AlbumRuleClause.toTest(zone: ZoneId): ClauseTest {
-        return when (this) {
-            is AlbumRuleClause.Time -> {
-                val range = toInstantRange(zone)
-                ClauseTest { joined -> timeAnswer(range, joined.date) }
-            }
-            is AlbumRuleClause.Region -> ClauseTest { joined -> regionAnswer(this, joined.location) }
-        }
+        return AlbumRuleEvaluation(members = members.values.toList(), status = status, unevaluatableCause = null)
     }
 
     private fun timeAnswer(range: InstantRange, date: DateTakenSortState): ClauseAnswer {

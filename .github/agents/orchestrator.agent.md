@@ -135,19 +135,17 @@ gate's owner. See *Build Serialization* below.
 
 ### Step 4: Verify
 Verification is its own phase and runs **alone**, after all implementation phases are finished.
-Delegate it to Coder with this brief: run the checks from `AGENTS.md`
-(`compileDebugKotlin`, `compileDebugUnitTestKotlin`, `testDebugUnitTest`,
-`compileDebugAndroidTestKotlin`, and `connectedDebugAndroidTest` if `adb devices` lists one),
+Delegate it to Coder with this brief: run the checks from `AGENTS.md` *Definition of done*,
 inspect the integrated change, and report results without broadening the task. State in the brief
 that **this phase owns the definition-of-done gate**, so the agent knows nothing earlier ran it and
 nothing later will. A phase may report device-verified behaviour only when it names the connected
 run that produced it.
 
 ### Step 5: Document
-If the change hit any trigger in `.github/instructions/architecture-docs.instructions.md` —
-a new state holder, preference store, navigation branch, main view, `data/` file, tech-stack
-dependency, or a new ADR — delegate the overview update to **Planner**, scoping it to
-`docs/architecture/ARCHITECTURE.md`.
+If the change hit any trigger in `.github/instructions/architecture-docs.instructions.md`,
+delegate the overview update to **Planner**, scoping it to
+`docs/architecture/ARCHITECTURE.md`. If the change altered a project-wide fact, the Planner also
+walks `AGENTS.md`'s documentation map, `.github/agents/*.agent.md` included.
 
 This runs **after** verification, not before: the overview describes what actually landed, so
 updating it from the plan would document something that may not have been built. It is also why
@@ -193,7 +191,9 @@ overview needed updating — saying "nothing triggered" counts, saying nothing d
 This is a Gradle project. Concurrent `./gradlew` invocations contend on the Gradle daemon and the
 project lock, and the resulting failure is indistinguishable from a real build failure.
 
-- **Only the verification phase runs Gradle**, and it runs alone.
+- **During a parallel phase, no implementation agent runs Gradle; the verification phase runs it
+  alone.** A sole implementer may run compile and unit tests (*Who runs the definition-of-done
+  gate*), and Reviewer re-runs only when the evidence fails.
 - State this in the brief of every parallel implementation task: "Do not run Gradle; a later
   verification phase owns the build."
 - An implementation agent that reports "build clean" during a parallel phase either disobeyed or
@@ -215,10 +215,9 @@ project lock, and the resulting failure is indistinguishable from a real build f
   decided.
 - An implementation agent that reports the overview is now stale has done the right thing. Route
   the edit; do not ask it to fix the file itself.
-- Where an epic has a plan for the stage in progress — no stage is in progress; Stage 4's plan,
-  `docs/design/albums-stage-4.md`, is paused; Stage 3 is next, with a draft plan at
-  `docs/design/albums-stage-3.md`; and rule editing, not a stage, has its own plan at
-  `docs/design/albums-rule-editing.md` — it is Planner-owned and routed exactly like the epic document,
+- Where an epic has a plan for the stage in progress or for work that is not a stage — §7 of
+  `albums.md` names the stage in progress, if any, and links to its plan, to any paused stage plan,
+  and to plans for epic work that is not a stage — it is Planner-owned and routed exactly like the epic document,
   and it carries the handoff block the next session starts from. Route its update to the Planner in
   Step 5, alongside the overview, whenever a phase finished a step or learned something that
   changes the next one.
@@ -254,8 +253,9 @@ be sequential:
 - `app/src/main/java/com/davide/seddio/easygallery/ui/GalleryViewModel.kt` — almost any state change
 - `app/src/main/java/com/davide/seddio/easygallery/MainActivity.kt` — any new destination, since
   navigation is a branch chain there
-- `app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt` — shared by
-  Folders View, Timeline View, and Folder Detail View
+- `app/src/main/java/com/davide/seddio/easygallery/ui/components/SearchTopBar.kt` — the
+  browse-mode top bar of every view except the viewer: three call sites, in `FolderListScreen.kt`
+  (Folders, Timeline and Albums View), `FolderDetailScreen.kt` and `AlbumDetailScreen.kt`
 - `app/src/main/java/com/davide/seddio/easygallery/ui/components/MediaSelectionTopBar.kt` — two
   call sites; a signature change breaks both
 - `app/src/main/AndroidManifest.xml` — any permission or `<queries>` change

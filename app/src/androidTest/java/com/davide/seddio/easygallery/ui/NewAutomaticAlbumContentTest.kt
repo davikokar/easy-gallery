@@ -1,6 +1,13 @@
 package com.davide.seddio.easygallery.ui
 
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -8,7 +15,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -20,6 +29,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -28,6 +38,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
 import java.io.StringReader
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -1231,6 +1242,483 @@ class NewAutomaticAlbumContentTest {
         composeTestRule.runOnIdle { assertEquals(1, taps) }
     }
 
+    // ---- People tab (plan 3.6, D1) ----
+
+    @Test
+    fun peopleTabIsAbsentWhenPeopleIsNotOffered() {
+        composeTestRule.setContent { PickerHarness(groups = people(3)) }
+
+        composeTestRule.onNodeWithTag("new_automatic_album_place_tab").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_tab").assertCountEquals(0)
+        composeTestRule.onNodeWithTag("new_automatic_album_hint")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_hint_choose))
+    }
+
+    @Test
+    fun peopleTabComesAfterPlaceAndDateWhenOffered() {
+        composeTestRule.setContent { PickerHarness(peopleOffered = true, groups = people(3)) }
+
+        val place = boundsOf("new_automatic_album_place_tab")
+        val date = boundsOf("new_automatic_album_date_tab")
+        val people = boundsOf("new_automatic_album_people_tab")
+        assertTrue("Place, Date, People left to right: $place $date $people", place.left < date.left && date.left < people.left)
+        composeTestRule.onNodeWithTag("new_automatic_album_hint")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_hint_choose_with_people))
+
+        composeTestRule.onNodeWithTag("new_automatic_album_people_tab").performClick()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_people_tab").assertIsSelected()
+        composeTestRule.onNodeWithTag("new_automatic_album_place_tab").assertIsNotSelected()
+        composeTestRule.onNodeWithTag("new_automatic_album_people_grid").assertIsDisplayed()
+    }
+
+    @Test
+    fun aSavedPeopleTabIsPlaceWhenPeopleIsNoLongerOffered() {
+        var offered by mutableStateOf(true)
+        val restoration = StateRestorationTester(composeTestRule)
+        restoration.setContent { PickerHarness(peopleOffered = offered, groups = people(3)) }
+        openPeopleTab()
+        composeTestRule.onNodeWithTag("new_automatic_album_people_grid").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { offered = false }
+
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_tab").assertCountEquals(0)
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_grid").assertCountEquals(0)
+        composeTestRule.onNodeWithTag("new_automatic_album_place_tab").assertIsSelected()
+        composeTestRule.onNodeWithTag("new_automatic_album_country_IT").assertIsDisplayed()
+
+        restoration.emulateSavedInstanceStateRestore()
+
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_tab").assertCountEquals(0)
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_grid").assertCountEquals(0)
+        composeTestRule.onNodeWithTag("new_automatic_album_place_tab").assertIsSelected()
+    }
+
+    @Test
+    fun revealingThePeopleTabAsksForThePeopleOnlyThen() {
+        var reveals = 0
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, groups = people(2), onRevealPeople = { reveals++ })
+        }
+
+        composeTestRule.onNodeWithTag("new_automatic_album_date_tab").performClick()
+        composeTestRule.runOnIdle { assertEquals(0, reveals) }
+
+        openPeopleTab()
+
+        composeTestRule.runOnIdle { assertTrue("The reveal must be reported", reveals >= 1) }
+    }
+
+    @Test
+    fun aPeopleListDroppedUnderTheOpenPeopleTabAsksForTheRevealAgain() {
+        var reveals = 0
+        var status by mutableStateOf(PeopleListStatus.READY)
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, peopleStatus = status, groups = people(2), onRevealPeople = { reveals++ })
+        }
+        openPeopleTab()
+        composeTestRule.runOnIdle { assertTrue("The first reveal must be reported", reveals >= 1) }
+        val asked = reveals
+
+        // The tab stays selected while the state drops the list (offered off, then on, between two recompositions).
+        composeTestRule.runOnIdle { status = PeopleListStatus.NOT_LOADED }
+
+        composeTestRule.runOnIdle { assertTrue("A dropped list must be asked for again", reveals > asked) }
+    }
+
+    @Test
+    fun peopleTabIsReachableWhileTheNamesAreStillLoading() {
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, groups = people(2), status = AutomaticAlbumPickerStatus.LOADING_NAMES)
+        }
+
+        composeTestRule.onNodeWithTag("new_automatic_album_loading").assertIsDisplayed()
+        openPeopleTab()
+        composeTestRule.onNodeWithTag("new_automatic_album_people_grid").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_loading").assertCountEquals(0)
+
+        composeTestRule.onNodeWithTag("new_automatic_album_place_tab").performClick()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_loading").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_grid").assertCountEquals(0)
+    }
+
+    @Test
+    fun tilesAreInTheListsOrderWithTagsByPositionAndTheirPhotoCounts() {
+        val groups = people(5)
+        composeTestRule.setContent { PickerHarness(peopleOffered = true, groups = groups) }
+        openPeopleTab()
+
+        groups.indices.forEach { composeTestRule.onNodeWithTag(personTag(it)).assertIsDisplayed() }
+        for (index in 0 until groups.size - 1) {
+            val first = boundsOf(personTag(index))
+            val next = boundsOf(personTag(index + 1))
+            assertTrue(
+                "Tile $index must come before tile ${index + 1} in reading order: $first $next",
+                first.top < next.top || (first.top == next.top && first.left < next.left)
+            )
+        }
+        val format = NumberFormat.getIntegerInstance(appContext.resources.configuration.locales[0])
+        groups.forEachIndexed { index, group ->
+            composeTestRule
+                .onNode(
+                    hasText(format.format(group.imageCount)) and hasAnyAncestor(hasTestTag(personTag(index))),
+                    useUnmergedTree = true
+                )
+                .assertIsDisplayed()
+            composeTestRule.onAllNodesWithTag("new_automatic_album_person_${group.groupId}", useUnmergedTree = true)
+                .assertCountEquals(0)
+        }
+    }
+
+    @Test
+    fun statusAreaThenTheHintThenTheTilesFillThePeopleGrid() {
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, groups = people(3), indexBand = notIndexedBand())
+        }
+        openPeopleTab()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_status_toggle").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("new_automatic_album_index_band").assertIsDisplayed()
+        assertTrue(rowTop("new_automatic_album_status_toggle") < rowTop("new_automatic_album_index_band"))
+        assertTrue(rowTop("new_automatic_album_index_band") < rowTop("new_automatic_album_people_hint"))
+        assertTrue(rowTop("new_automatic_album_people_hint") < rowTop(personTag(0)))
+        composeTestRule.onNodeWithTag("new_automatic_album_people_hint")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_people_hint, MAX_PEOPLE_PER_ALBUM))
+        assertEquals(
+            LiveRegionMode.Polite,
+            composeTestRule.onNodeWithTag("new_automatic_album_people_hint").fetchSemanticsNode().config
+                .getOrNull(SemanticsProperties.LiveRegion)
+        )
+    }
+
+    @Test
+    fun theStatusAreaOnThePeopleTabHasItsOwnRunningText() {
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, groups = people(3), indexBand = AutomaticAlbumIndexBand.Running)
+        }
+        openPeopleTab()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_index_now")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_people_index_running))
+    }
+
+    @Test
+    fun tappingATileSelectsItWithABadgeAndTappingAgainDeselectsIt() {
+        val groups = people(3)
+        var toggled = emptyList<Long>()
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, groups = groups, onPersonToggled = { toggled = toggled + it.groupId })
+        }
+        openPeopleTab()
+
+        composeTestRule.onNodeWithTag(personTag(1)).assertIsOff()
+        assertBadgeCount(1, 0)
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_chip").assertCountEquals(0)
+
+        composeTestRule.onNodeWithTag(personTag(1)).performClick()
+
+        composeTestRule.onNodeWithTag(personTag(1)).assertIsOn()
+        composeTestRule.onNodeWithTag(personTag(0)).assertIsOff()
+        assertBadgeCount(1, 1)
+        assertBadgeCount(0, 0)
+        composeTestRule.onNodeWithTag("new_automatic_album_people_chip").assertExists()
+        composeTestRule.runOnIdle { assertEquals(listOf(groups[1].groupId), toggled) }
+
+        composeTestRule.onNodeWithTag(personTag(1)).performClick()
+
+        composeTestRule.onNodeWithTag(personTag(1)).assertIsOff()
+        assertBadgeCount(1, 0)
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_chip").assertCountEquals(0)
+        composeTestRule.runOnIdle { assertEquals(listOf(groups[1].groupId, groups[1].groupId), toggled) }
+    }
+
+    @Test
+    fun theNinthTileIsDisabledAtTheLimitWithTheLimitHintAndFreesUpWhenOneIsRemoved() {
+        val groups = people(9)
+        var toggles = 0
+        composeTestRule.setContent {
+            PickerHarness(
+                peopleOffered = true,
+                groups = groups,
+                initialSelection = AutomaticAlbumSelection(people = groups.take(MAX_PEOPLE_PER_ALBUM)),
+                onPersonToggled = { toggles++ }
+            )
+        }
+        openPeopleTab()
+        val grid = composeTestRule.onNodeWithTag("new_automatic_album_people_grid")
+        composeTestRule.onNodeWithTag("new_automatic_album_people_hint")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_people_limit, MAX_PEOPLE_PER_ALBUM))
+
+        grid.performScrollToNode(hasTestTag(personTag(8)))
+        composeTestRule.onNodeWithTag(personTag(8)).assertIsNotEnabled().assertHasNoClickAction()
+        composeTestRule.onNodeWithTag(personTag(8)).performTouchInput { click() }
+        composeTestRule.runOnIdle { assertEquals(0, toggles) }
+        assertBadgeCount(8, 0)
+
+        grid.performScrollToNode(hasTestTag(personTag(0)))
+        composeTestRule.onNodeWithTag(personTag(0)).assertIsEnabled().assertIsOn()
+        composeTestRule.onNodeWithTag(personTag(0)).performClick()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_people_hint")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_people_hint, MAX_PEOPLE_PER_ALBUM))
+        grid.performScrollToNode(hasTestTag(personTag(8)))
+        composeTestRule.onNodeWithTag(personTag(8)).assertIsEnabled().assertIsOff()
+    }
+
+    @Test
+    fun thePeopleChipShowsTheCountAndClearsEveryChosenPerson() {
+        val groups = people(3)
+        composeTestRule.setContent {
+            PickerHarness(
+                peopleOffered = true,
+                groups = groups,
+                initialSelection = AutomaticAlbumSelection(people = groups)
+            )
+        }
+        openPeopleTab()
+
+        val chip = composeTestRule.onNodeWithTag("new_automatic_album_people_chip")
+        chip.assertContentDescriptionEquals(appContext.getString(R.string.automatic_album_clear_people))
+        composeTestRule
+            .onNode(
+                hasText(appContext.resources.getQuantityString(R.plurals.automatic_album_people_chip, 3, 3)) and
+                    hasAnyAncestor(hasTestTag("new_automatic_album_people_chip")),
+                useUnmergedTree = true
+            )
+            .assertExists()
+        composeTestRule.onNodeWithTag("new_automatic_album_match_count").assertExists()
+        (0 until 3).forEach { assertBadgeCount(it, 1) }
+
+        chip.performClick()
+
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_chip").assertCountEquals(0)
+        composeTestRule.onAllNodesWithTag("new_automatic_album_match_count").assertCountEquals(0)
+        composeTestRule.onNodeWithTag("new_automatic_album_hint")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_hint_choose_with_people))
+        (0 until 3).forEach {
+            composeTestRule.onNodeWithTag(personTag(it)).assertIsOff()
+            assertBadgeCount(it, 0)
+        }
+    }
+
+    @Test
+    fun createFollowsTheChosenPeopleAndReportsOneAnchoredClausePerPerson() {
+        val groups = people(3)
+        var created: AlbumRule.Evaluatable? = null
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, groups = groups, onCreate = { _, rule -> created = rule })
+        }
+        openPeopleTab()
+        composeTestRule.onNodeWithTag("new_automatic_album_create_button").assertIsNotEnabled().assertHasNoClickAction()
+
+        composeTestRule.onNodeWithTag(personTag(2)).performClick()
+        composeTestRule.onNodeWithTag(personTag(0)).performClick()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_create_button").assertIsEnabled().performClick()
+        composeTestRule.runOnIdle {
+            assertEquals(
+                listOf(
+                    AlbumRuleClause.People.anchoredAt(groups[2].representative),
+                    AlbumRuleClause.People.anchoredAt(groups[0].representative)
+                ),
+                created?.clauses
+            )
+        }
+    }
+
+    @Test
+    fun theTabFollowsItsOwnStatus() {
+        var status by mutableStateOf(PeopleListStatus.NOT_LOADED)
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, peopleStatus = status, groups = people(2))
+        }
+        openPeopleTab()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_people_loading").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.automatic_album_people_loading)).assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_grid").assertCountEquals(0)
+
+        composeTestRule.runOnIdle { status = PeopleListStatus.LOADING }
+        composeTestRule.onNodeWithTag("new_automatic_album_people_loading").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { status = PeopleListStatus.READY }
+        composeTestRule.onNodeWithTag("new_automatic_album_people_grid").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_loading").assertCountEquals(0)
+
+        composeTestRule.runOnIdle { status = PeopleListStatus.EMPTY }
+        composeTestRule.onNodeWithTag("new_automatic_album_people_empty")
+            .assertTextEquals(appContext.getString(R.string.automatic_album_people_empty))
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_grid").assertCountEquals(0)
+
+        composeTestRule.runOnIdle { status = PeopleListStatus.FAILED }
+        composeTestRule.onNodeWithTag("new_automatic_album_people_failed").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.automatic_album_people_failed)).assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_empty").assertCountEquals(0)
+    }
+
+    @Test
+    fun retryOnTheFailedPeopleTabCallsBack() {
+        var retries = 0
+        composeTestRule.setContent {
+            PickerHarness(peopleOffered = true, peopleStatus = PeopleListStatus.FAILED, onRetryPeople = { retries++ })
+        }
+        openPeopleTab()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_people_retry").performClick()
+
+        composeTestRule.runOnIdle { assertEquals(1, retries) }
+    }
+
+    @Test
+    fun theEmptyPeopleTabOffersIndexNowOnlyWhileTheBandIsHidden() {
+        var band by mutableStateOf<AutomaticAlbumIndexBand>(AutomaticAlbumIndexBand.Hidden)
+        var taps = 0
+        composeTestRule.setContent {
+            PickerHarness(
+                peopleOffered = true,
+                peopleStatus = PeopleListStatus.EMPTY,
+                indexBand = band,
+                onIndexNow = { taps++ }
+            )
+        }
+        openPeopleTab()
+
+        composeTestRule.onNodeWithTag("new_automatic_album_people_empty").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_status_area").assertCountEquals(0)
+        composeTestRule.onNodeWithTag("new_automatic_album_people_index_now").assertIsDisplayed().performClick()
+        composeTestRule.runOnIdle { assertEquals(1, taps) }
+
+        composeTestRule.runOnIdle { band = notIndexedBand(count = 4) }
+
+        composeTestRule.onNodeWithTag("new_automatic_album_people_empty").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("new_automatic_album_status_area").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("new_automatic_album_index_now").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("new_automatic_album_people_index_now").assertCountEquals(0)
+    }
+
+    @Test
+    fun theLastTileClearsTheCreateButtonAtLargeFontScale() {
+        val groups = people(40)
+        composeTestRule.setContent {
+            AtFontScale(2f) { PickerHarness(peopleOffered = true, groups = groups) }
+        }
+        openPeopleTab()
+
+        val lastTag = personTag(groups.lastIndex)
+        composeTestRule.onNodeWithTag("new_automatic_album_people_grid").performScrollToNode(hasTestTag(lastTag))
+        composeTestRule.waitForIdle()
+
+        val tile = boundsOf(lastTag)
+        val button = boundsOf("new_automatic_album_create_button")
+        assertTrue("The last tile must end above the Create button: $tile vs $button", tile.bottom <= button.top)
+    }
+
+    // Plan 3.7, item 17: the tab row with People offered, at the largest font scale in a 360 dp width.
+    @Test
+    fun tabLabelsAreNotTruncatedAtLargestFontScaleIn360DpInGerman() {
+        assertTabLabelsFitAtLargestFontScaleIn360Dp("de")
+    }
+
+    @Test
+    fun tabLabelsAreNotTruncatedAtLargestFontScaleIn360DpInItalian() {
+        assertTabLabelsFitAtLargestFontScaleIn360Dp("it")
+    }
+
+    @Test
+    fun theBadgeSitsAtTheEndEdgeInLeftToRight() {
+        assertBadgeAtTheEndEdge(LayoutDirection.Ltr)
+    }
+
+    @Test
+    fun theBadgeSitsAtTheEndEdgeInRightToLeft() {
+        assertBadgeAtTheEndEdge(LayoutDirection.Rtl)
+    }
+
+    @Test
+    fun aTileIsOneCheckboxDescribedByItsPositionAndPhotoCountWithNoIdentifiers() {
+        val groups = people(3)
+        composeTestRule.setContent {
+            PickerHarness(
+                peopleOffered = true,
+                groups = groups,
+                initialSelection = AutomaticAlbumSelection(people = listOf(groups[1]))
+            )
+        }
+        openPeopleTab()
+
+        val config = composeTestRule.onNodeWithTag(personTag(1)).assertIsOn().fetchSemanticsNode().config
+        val expected = appContext.resources.getQuantityString(
+            R.plurals.automatic_album_person_description,
+            groups[1].imageCount,
+            2,
+            3,
+            groups[1].imageCount
+        )
+        val description = config[SemanticsProperties.ContentDescription].joinToString(" ")
+        assertTrue("Expected \"$expected\" in \"$description\"", description.contains(expected))
+        assertEquals(Role.Checkbox, config.getOrNull(SemanticsProperties.Role))
+        assertFalse("No URI in the description", description.contains("content:") || description.contains("media/"))
+        assertFalse("No group id in the description", description.contains(groups[1].groupId.toString()))
+        assertFalse("No group id in the tag", config.getOrNull(SemanticsProperties.TestTag).orEmpty().contains(groups[1].groupId.toString()))
+    }
+
+    private fun person(index: Int, photos: Int = 100 - index * 3) = FaceGroupSummary(
+        groupId = 9000L + index * 7L,
+        imageCount = photos,
+        newestDateTakenEpochMillis = null,
+        representative = FaceGroupRepresentative(
+            identity = MediaIdentity(
+                "content://media/external/images/media/${5000 + index}",
+                MediaHealingKey("person$index.jpg", 1L, 1L)
+            ),
+            box = FaceBox(0.25f, 0.25f, 0.5f, 0.5f),
+            pipelineVersion = 1
+        )
+    )
+
+    // Photo counts fall with the index, as the real list's do.
+    private fun people(count: Int) = (0 until count).map { person(it) }
+
+    private fun personTag(index: Int) = "new_automatic_album_person_$index"
+
+    private fun openPeopleTab() {
+        composeTestRule.onNodeWithTag("new_automatic_album_people_tab").performClick()
+    }
+
+    private fun assertBadgeCount(index: Int, expected: Int) {
+        composeTestRule
+            .onAllNodesWithTag("new_automatic_album_person_selected_$index", useUnmergedTree = true)
+            .assertCountEquals(expected)
+    }
+
+    private fun assertBadgeAtTheEndEdge(direction: LayoutDirection) {
+        val groups = people(3)
+        composeTestRule.setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                PickerHarness(
+                    peopleOffered = true,
+                    groups = groups,
+                    initialSelection = AutomaticAlbumSelection(people = listOf(groups[0]))
+                )
+            }
+        }
+        openPeopleTab()
+
+        val tile = boundsOf(personTag(0))
+        val badge = composeTestRule
+            .onNodeWithTag("new_automatic_album_person_selected_0", useUnmergedTree = true)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        if (direction == LayoutDirection.Ltr) {
+            assertTrue("The badge belongs right of centre: $badge in $tile", badge.center.x > tile.center.x)
+        } else {
+            assertTrue("The badge belongs left of centre: $badge in $tile", badge.center.x < tile.center.x)
+        }
+        assertTrue("The badge belongs in the top half: $badge in $tile", badge.center.y < tile.center.y)
+    }
+
     // The real content builder over a real join, driven by the picker's own actions, so counts really cross-filter.
     @Composable
     private fun PickerHarness(
@@ -1243,7 +1731,13 @@ class NewAutomaticAlbumContentTest {
         onIndexNow: () -> Unit = {},
         onCreate: (String, AlbumRule.Evaluatable) -> Unit = { _, _ -> },
         onCancel: () -> Unit = {},
-        onRetry: () -> Unit = {}
+        onRetry: () -> Unit = {},
+        peopleOffered: Boolean = false,
+        peopleStatus: PeopleListStatus = PeopleListStatus.READY,
+        groups: List<FaceGroupSummary> = emptyList(),
+        onPersonToggled: (FaceGroupSummary) -> Unit = {},
+        onRevealPeople: () -> Unit = {},
+        onRetryPeople: () -> Unit = {}
     ) {
         var name by remember { mutableStateOf(initialName) }
         var selection by remember { mutableStateOf(initialSelection) }
@@ -1260,7 +1754,8 @@ class NewAutomaticAlbumContentTest {
             selection = selection,
             content = content,
             rule = rule,
-            canCreate = rule != null && AlbumNaming.isAvailable(name.trim(), existingNames)
+            canCreate = rule != null && AlbumNaming.isAvailable(name.trim(), existingNames),
+            people = PeoplePickerUi(peopleOffered, peopleStatus, groups, selection.people)
         )
 
         NewAutomaticAlbumContent(
@@ -1274,6 +1769,19 @@ class NewAutomaticAlbumContentTest {
             onBrowseRegion = { selection = selection.copy(browsedAdmin1 = it) },
             onBrowseYear = { selection = selection.copy(browsedYear = it) },
             onRetryLoadingNames = onRetry,
+            onTogglePerson = { person ->
+                val chosen = selection.people
+                selection = when {
+                    chosen.any { it.groupId == person.groupId } ->
+                        selection.copy(people = chosen.filterNot { it.groupId == person.groupId })
+                    chosen.size >= MAX_PEOPLE_PER_ALBUM -> selection
+                    else -> selection.copy(people = chosen + person)
+                }
+                onPersonToggled(person)
+            },
+            onClearPeople = { selection = selection.copy(people = emptyList()) },
+            onRevealPeople = onRevealPeople,
+            onRetryLoadingPeople = onRetryPeople,
             onIndexNow = onIndexNow,
             onCreate = { rule?.let { onCreate(name, it) } },
             onCancel = onCancel
@@ -1304,6 +1812,10 @@ class NewAutomaticAlbumContentTest {
             onBrowseRegion = {},
             onBrowseYear = {},
             onRetryLoadingNames = {},
+            onTogglePerson = {},
+            onClearPeople = {},
+            onRevealPeople = {},
+            onRetryLoadingPeople = {},
             onIndexNow = {},
             onCreate = {},
             onCancel = {}
@@ -1343,7 +1855,7 @@ class NewAutomaticAlbumContentTest {
         } else {
             DateTakenSortState.IndexedWithDate(Instant.parse(dateTaken).toEpochMilli())
         }
-        return JoinedMedia(item, date, location)
+        return JoinedMedia(item, date, location, indexedIdentity = null)
     }
 
     private fun assertCanScrollLastItemAboveCreateButton(containerTag: String, targetTag: String) {
@@ -1382,6 +1894,66 @@ class NewAutomaticAlbumContentTest {
             "Expected the Create button not to overlap the last row after scrolling",
             boundsOverlap(lastTargetBounds!!, createButtonBounds!!)
         )
+    }
+
+    // Judged from each label's own text layout, not from a screenshot: one line, no ellipsis, inside its tab and the 360 dp.
+    private fun assertTabLabelsFitAtLargestFontScaleIn360Dp(languageTag: String) {
+        val localized = localizedContext(languageTag)
+        val labels = linkedMapOf(
+            "new_automatic_album_place_tab" to localized.getString(R.string.automatic_album_section_place),
+            "new_automatic_album_date_tab" to localized.getString(R.string.automatic_album_section_date),
+            "new_automatic_album_people_tab" to localized.getString(R.string.automatic_album_section_people)
+        )
+        assertTrue(
+            "ENVIRONMENT: the labels must be the ones of $languageTag, or the test proves nothing: $labels",
+            listOf(R.string.automatic_album_section_place, R.string.automatic_album_section_date, R.string.automatic_album_section_people)
+                .all { localized.getString(it) != appContext.getString(it) }
+        )
+        composeTestRule.setContent {
+            val base = LocalContext.current
+            val inLanguage = remember(base) {
+                object : ContextWrapper(base) {
+                    override fun getResources(): Resources = localized.resources
+                }
+            }
+            CompositionLocalProvider(
+                LocalContext provides inLanguage,
+                LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)
+            ) {
+                Box(modifier = Modifier.width(360.dp).fillMaxHeight()) {
+                    PickerHarness(peopleOffered = true, groups = people(3))
+                }
+            }
+        }
+
+        val width360 = with(composeTestRule.density) { 360.dp.toPx() }
+        val truncated = mutableListOf<String>()
+        labels.forEach { (tag, label) ->
+            composeTestRule.onNodeWithTag(tag).assertIsDisplayed()
+            val tab = boundsOf(tag)
+            val text = composeTestRule
+                .onNode(hasText(label) and hasAnyAncestor(hasTestTag(tag)), useUnmergedTree = true)
+                .fetchSemanticsNode()
+            val layouts = mutableListOf<TextLayoutResult>()
+            composeTestRule.runOnUiThread { text.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts) }
+            val layout = layouts.firstOrNull() ?: throw AssertionError("No text layout for the $languageTag label of $tag")
+            val fitsItsTab = text.boundsInRoot.left >= tab.left && text.boundsInRoot.right <= tab.right
+            // hasVisualOverflow reads true on this phone for a centred label that is plainly shorter than its slot, so it is not used.
+            if (layout.lineCount != 1 || layout.isLineEllipsized(0) || !fitsItsTab || tab.right > width360 + 1f) {
+                truncated += "$label (lines=${layout.lineCount}, ellipsized=${layout.isLineEllipsized(0)}, " +
+                    "fitsItsTab=$fitsItsTab, tab=$tab, text=${text.boundsInRoot})"
+            }
+        }
+
+        assertTrue("Tab labels truncated or clipped at font scale 2.0 in 360 dp in $languageTag: $truncated", truncated.isEmpty())
+    }
+
+    private fun localizedContext(languageTag: String): Context {
+        val locale = Locale.forLanguageTag(languageTag)
+        val configuration = Configuration(appContext.resources.configuration)
+        configuration.setLocale(locale)
+        configuration.setLayoutDirection(locale)
+        return appContext.createConfigurationContext(configuration)
     }
 
     @Composable

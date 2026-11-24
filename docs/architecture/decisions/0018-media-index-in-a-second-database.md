@@ -4,6 +4,12 @@
 - Date: 2026-10-08
 - Decision makers: Easy Gallery project maintainer
 
+> ~~**Amendment 8 (2026-11-20), at the end of this record, is adopted and not yet built.** The `Active`
+> status above covers the Decision and Amendments 1–8. Remove this note when step 3.4 has built it.~~
+> **Amendment 8 was reversed on 2026-11-20, the day it was adopted, before anything of it was built**
+> — see its *Reversed* note at the end of this record. The `Active` status above covers the Decision
+> and Amendments 1–7; Amendment 8 is kept as history only. The index stays at version 6.
+
 ## Context
 
 Stage 2 builds the media index ([albums.md](../../design/albums.md) §6): per-item facts computed in
@@ -518,3 +524,813 @@ thing: computed by a resolver that is no longer the current one.
   dataset stamp, and the rule that an unusable asset stamps nothing
 - [docs/design/albums-stage-2.md](../../design/albums-stage-2.md) step 2.6, and the review notes
   under 2.5 that name the permanent-waiting and false-complete failures
+
+## Amendment 5 — 2026-11-18 — Tier C: face data in the index, and the index reaches version 5 (adopted 2026-11-19)
+
+> **Adopted 2026-11-19, when the maintainer approved it.** Drafted by the Planner as step 3.1 of
+> [albums-stage-3.md](../../design/albums-stage-3.md), and labelled *proposed* in this record until
+> then, because the instructions' status vocabulary has no state for a draft; this record's own
+> status was `Active` throughout, for the Decision and Amendments 1–4, and now covers this
+> amendment too. Nothing below was built before adoption; step 3.2 builds it.
+>
+> **Its question was answered by the maintainer on 2026-11-19, as recommended**
+> ([albums.md](../../design/albums.md) §8 decision 47). ~~That settles the question; it does not
+> approve the amendment, which stays proposed until he does.~~ He approved it separately, the same
+> day.
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–4. It
+is an amendment rather than a new ADR for Amendment 1's reason: the Decision put Tier C in this
+database from the start, for the backup collision it names, and what follows applies Amendment 1's
+precedent — bump, migrate, commit the JSON. The figures and choices it relies on are
+[albums.md](../../design/albums.md) §8 decisions 9, 40, 45 and 46, and the face pipeline is
+[ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md).
+
+### What Tier C stores
+
+Three kinds of row, in tables of their own. Their names and columns are step 3.2's; what each holds
+is decided here.
+
+1. **A face-indexing state per image** — one row per image the Tier C pass has processed, keyed by
+   the image's index-row key. It holds the **face-pipeline version** that processed it and the
+   **outcome**: faces stored (possibly none at or above the cut-off), or **failed**.
+2. **A face** — one row per face at or above the 40 px cut-off (decision 46): its image's key, its
+   **box** in the upright frame as fractions of the photo's width and height (the same frame as an
+   anchor, [ADR-0022](0022-people-criterion-anchored-to-a-photo.md)), its **embedding** as the
+   recogniser outputs it, and its **group**, null until grouping has run.
+3. **Grouping bookkeeping** — enough to tell whether every stored face has been grouped under the
+   current grouping parameters (the threshold of decision 45), and to keep a group's id stable for
+   the picker's last tie-break (decision 46) within one grouping. Whether per-group summaries (image
+   count, most recent photo, medoid face) are stored or computed on read is step 3.4's.
+
+**Nothing else.** No crop, no thumbnail and no person name is stored anywhere. Faces under the cut-off
+are not stored at all: they are never grouped, offered or matched (decision 46), so keeping them would
+be face data with no use.
+
+> **Step 3.2, 2026-11-19:** two tables, `media_index_face_state` and `media_index_face`. The third
+> kind of row, grouping bookkeeping, is a grouping version on each face rather than a table of its
+> own; per-group summaries stay step 3.4's. The schema and its reasons are in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.2 — Tier C schema and store*.
+
+> ~~**Amendment 8, 2026-11-20:** a face row also holds its box's short side in pixels of the decoded
+> frame, 0 meaning unknown, so that a group's representative can prefer a face at least 60 px across.
+> "Nothing else" above still holds: it is a fact about a stored face, not a crop.~~ **Reversed the same
+> day, before it was built** (Amendment 8's *Reversed* note): no pixel size is stored; the list above
+> is again the whole of a face row.
+
+> **Built 2026-11-21, by step 3.4** ([albums-stage-3.md](../../design/albums-stage-3.md), *3.4 —
+> Built and verified*). Grouping fills the face row's two grouping columns and adds nothing else:
+> `groupId` is the face id of the group's representative — the plain medoid, ties to the lower face
+> id — and `groupingVersion` is `FACE_GROUPING_VERSION`, 1, naming the algorithm, the cut and the
+> representative rule. Per-group summaries are **computed on read** by the People picker's query,
+> not stored, so there is no third kind of row. **No schema change:** the index stays at version 6;
+> Amendment 8, which would have added a column, was reversed before it was built and stays below as
+> annotated history.
+
+### Two stamps, by the captured/derived split
+
+The Decision split captured EXIF facts from the place codes derived from them, so that the cheap half
+could be recomputed without the files. Tier C has the same two halves, and versions them separately:
+
+- **Captured: detection and embedding**, stamped with the **face-pipeline version**. It covers the
+  detector and recogniser weights, the decode and detection sizes, the detector's score threshold and
+  the 40 px cut-off ([ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) owns the constant).
+  A bump makes every image pending again — a file open and inference per image, the expensive kind of
+  re-index.
+- **Derived: grouping**, stamped with a **grouping version** covering the threshold and the
+  algorithm. A bump regroups the stored embeddings with **no file I/O and no inference**.
+
+### Per-image states, so that "waiting on the index" is decidable
+
+For a live **image** (decision 40: videos are never face-indexed; ~~GIFs — see the question below~~
+nor are GIFs — the question below, answered 2026-11-19):
+
+| State | Means | For a `people` clause |
+|---|---|---|
+| **Pending** | no state row; or its pipeline version is not the current one; or a face of it is not yet grouped under the current grouping version | unsettled — waiting on the index |
+| **Done, faces** | current state row, its faces grouped | match or settled no-match, by group |
+| **Done, none** | current state row, no face at or above the cut-off | settled no-match |
+| **Failed** | inference declined or failed on this image | settled no-match: **neither pending nor covered**, §6's third state |
+
+- **Failed is stored as absent, never as a guess**, as §6 rules for every tier. It is not retried
+  until the pipeline version changes.
+- **What counts as failed.** A failure a retry could cure — the worker stopped, cancelled, or out of
+  memory — writes nothing, so the image stays pending. But an image that fails that way on every
+  attempt would keep albums waiting for ever, the permanent-waiting failure Amendment 4 names; so
+  after a bounded number of attempts it is recorded as failed. The bound and how attempts are counted
+  are step 3.3's.
+- **A video or GIF has no state row and is never pending.** Counting it as pending would keep every
+  people album waiting for ever.
+
+> **Built 2026-11-21, by step 3.4, for the grouping half of *Pending*.** Grouping is needed when a
+> face at the current pipeline version has no grouping version or another one, or a `groupId` naming
+> no face at that version — a representative deleted, or dropped by a changed healing triple; a
+> deleted face that was not a representative does not make grouping needed. Faces at another
+> pipeline version are ignored. How a `people` clause reads these states per image is step 3.5's.
+
+> **Built 2026-11-21, by step 3.5** ([albums-stage-3.md](../../design/albums-stage-3.md), *3.5 —
+> Built and verified 2026-11-21*). The per-image read is `observeFaceEvaluationProjection`: one Room
+> query, the face state inner-joined to `media_index` and left-joined to its faces at the asked
+> pipeline version, with **no embedding**; it re-emits on face writes and on group-only writes. **No
+> schema change:** the index stays at version 6.
+
+### Keeping Tier C true to the image it describes
+
+These are Amendment 4's rules for its marker, applied to Tier C:
+
+- ~~**Tier A re-extracting an image** — the file changed — **makes its Tier C state pending.** The
+  faces of a changed file may have changed too.~~
+
+  > **Reversed 2026-11-20 — see Amendment 6 below.** A re-extraction is not evidence that the file
+  > changed. Tier C is now dropped only when the row's healing triple changed; an unchanged triple
+  > keeps it. The bullet is struck rather than deleted because its reason — a changed file's faces
+  > may have changed — still stands; what was wrong is the test for a changed file.
+- **A reconciler heal rewrites the key** on the image's Tier C rows, in the same transaction as the
+  image row, and keeps them: a heal is a move, not a change of content. *Amended 2026-11-20
+  (Amendment 6): kept only while the healed row's healing triple equals the moved row's, which every
+  heal the reconciler makes satisfies.*
+- **Reconciliation deleting an image row deletes its Tier C rows** with it, in the same transaction.
+  They are a cache ([ADR-0020](0020-automatic-albums-resolve-against-live-media.md)), and an
+  unmounted volume keeps them, by ADR-0020 clause 4.
+- **Writes are conditional.** The periodic run and Index now can overlap (Amendment 4). A Tier C
+  result is written only if the image row is still the one it was computed from, and grouping must
+  not run twice at once. The mechanism is steps 3.3 and 3.4's; the requirement is fixed here.
+
+  > **Built 2026-11-21, by step 3.4, for grouping.** Grouping runs in the worker after the face
+  > pass, inside the same hold of the Tier C lock, so it never runs twice at once. It writes every
+  > group in one transaction, only to faces still at the pipeline version it read, and reads the
+  > face-data setting inside that transaction (Amendment 7 §4); a face added since the read keeps a
+  > null grouping version, so the next run groups again.
+
+### The migration
+
+**`Migration(4, 5)` creates the Tier C tables, empty, and changes no existing table.** Every image
+therefore starts pending, which is true. It is registered beside the three earlier migrations with no
+destructive fallback, the index reaches version 5, and `5.json` is exported and must be committed by
+the change that produces it. The version actually reached is the `@Database` annotation's.
+
+### Backup
+
+~~**No rule changes.**~~ **One rule added at step 3.2 — the note below.** The Tier C tables are in `media_index.db`, which `backup_rules.xml` and both
+sections of `data_extraction_rules.xml` already exclude, with its `-wal` and `-shm` files. The stage's
+exit criteria check the rules files rather than assume them, and if step 3.2's deletion (below)
+introduces any other sidecar file, that file needs the same three exclusions.
+
+> **Step 3.2, 2026-11-19 — `media_index.db-journal` excluded as well.** The deletion added no file,
+> but the re-check found one already possible: Room's automatic journal mode is a rollback journal
+> on a low-RAM device, which leaves `media_index.db-journal`, and one left hot by a crash holds
+> pages — face data, now — as they were before the transaction. It gained the same exclusion in all
+> three places, `<exclude>` only. Recorded in [albums-stage-3.md](../../design/albums-stage-3.md),
+> *3.2 — Tier C schema and store*.
+
+> **2026-11-24, step 3.8's documentation audit — the places are four; see Amendment 7 §2.**
+> `data_extraction_rules.xml` now has a third section, `<cross-platform-transfer platform="ios">`,
+> so "three exclusions" and "all three places" above read as four: any new sidecar needs four
+> exclusions. `face_device_state.xml` joined all four, and `BackupRulesParityTest` holds the four
+> sets equal.
+
+### Deleting face data
+
+[ADR-0024](0024-face-data-disclosure-and-delete-switch.md) decides when face data is deleted. What a
+deletion removes, and how, is decided here:
+
+- **Every Tier C row** — faces, per-image states and grouping bookkeeping — in **one transaction**.
+  Tier A rows, the place columns and the delta watermarks are untouched.
+- **Not by deleting the database file.** The Decision's *Positive* consequences, and
+  [albums.md](../../design/albums.md) §8 decision 20, foresaw the switch deleting the whole file.
+  That would also throw away Tier A, and re-reading every file's EXIF to rebuild it buys nothing for
+  privacy. The forecast is not followed, deliberately.
+- **No deleted face data may survive in the file.** SQLite leaves deleted rows' bytes in free pages
+  and in the write-ahead log until they are reused or checkpointed. Step 3.2 chooses the mechanism —
+  for example a checkpoint and `VACUUM` after the delete, or `secure_delete` on the connection — and a
+  test proves the result.
+- **Idempotent.** Deleting when nothing is stored does nothing; a deletion interrupted by process death
+  is a rolled-back transaction, and ADR-0024 repeats it at the next start.
+- **The run-state file holds no Tier C figure.** Any Tier C figure Settings shows is computed from the
+  Tier C tables, so a deletion clears it with nothing else to touch. That keeps Amendment 2's file free
+  of anything face-derived; Amendment 2's note that the switch "should clear it for tidiness" no
+  longer applies.
+
+> **Step 3.2, 2026-11-19 — the mechanism chosen: `secure_delete`, then a `TRUNCATE` checkpoint.**
+> `PRAGMA secure_delete = 1` is set whenever the index opens, so every Tier C delete or update zeroes
+> the old bytes, and again as the deletion transaction's first statement, where it must read back as
+> on or nothing is deleted. After the commit, `PRAGMA wal_checkpoint(TRUNCATE)` empties the
+> write-ahead log; a reader still holding the old snapshot leaves it incomplete, the deletion reports
+> that, and the caller repeats it. `VACUUM` was rejected: it rewrites all of Tier A on every
+> switch-off, builds its copy in RAM on Android, and one cut short is recovered only by another full
+> vacuum. `MediaIndexFaceDataScrubTest` proves the result under Robolectric; what only a device can
+> show is the stage plan's step 3.7. Recorded in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.2 — Tier C schema and store*.
+
+> **Amended 2026-11-20 — see Amendment 6 below.** The note above covers the write-ahead log only.
+> With a rollback journal the checkpoint is a no-op that reads as success, so the result said
+> scrubbed whatever the journal mode; a mode that keeps page copies after commit now reports not
+> scrubbed.
+
+### Alternatives considered
+
+- **Tier C columns on the existing image row**, as Amendment 4 did for its marker. Cheaper by one
+  table. Rejected: a deletion would then be an update across every Tier A row, a face count would sit
+  beside EXIF facts that are not face data, and every Tier A writer would have one more set of fields
+  to carry or silently reset — the negative Amendment 4 already records for one field.
+- **Deleting the whole index file** for the switch. Rejected above.
+- **Storing faces under the cut-off** for a later change of cut-off. Rejected: that change is a
+  pipeline-version bump, which re-detects anyway.
+- **Storing the face crop** for the picker. Rejected: a crop is face data, and the picker can crop
+  the photo at display time from the stored box.
+
+### Consequences
+
+**Positive**
+
+- "Waiting on the index" is decidable per image, and a people album cannot wait on an item that will
+  never change.
+- A threshold change regroups without touching a file.
+- Deleting face data is a contained operation that leaves Tier A alone.
+
+**Negative**
+
+- ~~Three more tables~~ Two more tables (step 3.2, 2026-11-19), one more migration, two more stamps to carry, and every Tier A writer must now
+  also make Tier C pending ~~on re-extraction~~ when a re-extraction changes the healing triple
+  (Amendment 6, 2026-11-20).
+- A pipeline-version bump re-detects every image — of the order of minutes per thousand photos on the
+  one phone measured, in the foreground ([albums-stage-3.md](../../design/albums-stage-3.md),
+  *Spike outcome*).
+- Embeddings make the index file larger; it stays out of backup, so only the device pays.
+
+### Question for the maintainer — answered 2026-11-19
+
+> **Answered by the maintainer on 2026-11-19**, in his words "go with the recommendations". The
+> question is left as it was put, because its reasons are the record of why.
+
+1. **GIFs.** The spike excluded GIFs and the stage plan lists them as out of scope "by decision", but
+   no recorded decision says the app's Tier C pass skips them. *Proposed: images only, no GIFs* — an
+   animated GIF's first frame is rarely a good face, and it keeps the pass to what the spike measured.
+   ~~Confirm?~~ ✅ **Answered 2026-11-19: images only, no GIFs, as recommended.** The Tier C pass
+   skips GIFs, which is now the recorded decision the question found missing. (Group E's E2 in
+   [albums-stage-3.md](../../design/albums-stage-3.md).)
+
+### References
+
+- [docs/design/albums.md](../../design/albums.md) §6 (the third state), §8 decisions 9, 20, 40, 45
+  and 46
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md) steps 3.2 to 3.4
+- [ADR-0022](0022-people-criterion-anchored-to-a-photo.md), [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md),
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md)
+- [ADR-0017](0017-composable-album-rule-representation.md) Amendment 4 — how a `people` clause reads
+  these states
+- `data/MediaIndexDatabase.kt`, `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`
+
+## Amendment 6 — 2026-11-20 — Tier C survives a re-extraction of an unchanged file, and a rollback journal that keeps page copies is not scrubbed
+
+> **Accepted by the maintainer on 2026-11-20**, as the resolution the Reviewer of step 3.2 suggested
+> for two of his findings ([albums.md](../../design/albums.md) §8 decision 48). Written by the
+> Planner. Nothing below is built yet: the *3.2 follow-up* in
+> [albums-stage-3.md](../../design/albums-stage-3.md) builds it.
+
+> **Built 2026-11-20**, as the *3.2 follow-up* briefed it, and verified by the definition of done —
+> the gate is in [albums-stage-3.md](../../design/albums-stage-3.md), *3.2 follow-up*, *Built and
+> verified*. §1 is `MediaIndexStore.kt`'s one private test, `keepsTierC`, on the healing key, used by
+> `upsert` and `healMediaUri` in both stores; §2 is `deletionIsScrubbed` and the two mode reads in
+> `MediaIndexDatabase.kt`, which `RoomMediaIndexStore.deleteAllFaceData` applies to the connection
+> it deleted on. Nothing above was rewritten. **Not proven by it:** each phone's real journal and
+> locking modes, and so whether *Revisit when* below has fired; that a favourite toggle advances
+> `generationModified` and leaves Tier C intact — still expected, not observed; `exclusive` locking
+> at runtime, which only the pure mapping covers; and a URI written twice in one `upsert` call, whose
+> order can only drop Tier C, never keep it wrongly. The first two are step 3.7's.
+
+> **Verified 2026-11-22, by step 3.7, on the SM-G990B (API 36) only** — recorded 2026-11-24 by
+> step 3.8's documentation audit. A favourite toggle advanced the image's generation and left its
+> Tier C rows intact (`FaceFavouriteToggleDeviceTest`), so §1's premise is observed, not only
+> expected. The production index read `journal_mode` `wal` and `locking_mode` `normal`
+> (`MediaIndexSqliteDeviceTest`), so *Revisit when* below did not fire on that phone; the SM-G781B,
+> read on 2026-11-23, gave `wal` and `normal` too. Other devices are unobserved. Recorded in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.7*, G4, G5b, G9 and G10.
+
+This amendment **reverses one rule of Amendment 5**, adopted the day before — the first bullet of
+*Keeping Tier C true* — and **qualifies** what its *Deleting face data* lets a deletion report. Both
+places are annotated above and left intact. Everything else in Amendment 5 continues to govern: the
+tables, the two stamps, the per-image states, the conditional write, `secure_delete` and the
+checkpoint. It is an amendment rather than a superseding ADR for the reason ADR-0007 Amendment 2
+gives when it reverses a point of its Amendment 1: the structural decision has not stopped applying,
+and what changes is one invalidation condition and the meaning of one returned flag.
+
+### 1. Tier C is dropped by a changed file, not by a re-extraction
+
+**What was wrong.** Amendment 5 read "Tier A re-extracts an image" as "the file changed". Tier A
+does not re-extract only changed files. On API 30+ it selects rows by `MediaStore`'s generation
+(Amendment 1), which `MediaStore` advances on any update to a row, metadata-only ones included — a
+favourite toggle is a write to `IS_FAVORITE` ([ADR-0011](0011-favourites-backed-by-mediastore.md))
+and is expected to advance it, **not verified on a device** *(verified 2026-11-22 on the SM-G990B
+only — see the note under the Built note above)*. And a volume whose `MediaStore` version
+changes is reselected in full. Step 3.2 built the rule as written — `MediaIndexStore.upsert` drops the
+Tier C rows of every URI it writes — so each favourite toggle would send that image through detection
+and embedding again, and a version resync would delete every face on the volume: of the order of
+minutes per thousand photos on the one phone measured
+([albums-stage-3.md](../../design/albums-stage-3.md), *Spike outcome*), with every people album
+waiting until the pass caught up.
+
+**Decision.**
+- When an index row is written over a stored row at the same URI, that image's Tier C rows are
+  dropped in the same transaction **if and only if the incoming row's healing triple —
+  `displayName`, `size`, `dateModified`, the one `MediaIdentity` of `data/MediaIdentity.kt` — differs
+  from the stored row's.** With the triple unchanged, its state and faces stay exactly as they were,
+  pipeline and grouping versions included, while the Tier A columns are rewritten as before.
+- A written URI with no stored row has no Tier C to keep, and any found under it are dropped, as
+  before.
+- **The pipeline-version rule does not change.** The row write never reads or writes a pipeline
+  version. A state stamped with an older one is pending by Amendment 5's table whether or not Tier A
+  touched the row; an unchanged-triple re-extraction leaves it pending, and the Tier C pass's next
+  write replaces it. A changed triple drops it, which is pending too. The grouping version likewise.
+- **A heal applies the same test.** `healMediaUri` re-keys and keeps the moved Tier C rows only when
+  the healed row's triple equals the stored source row's; otherwise the target ends with no Tier C
+  rows, its own included, as before. The reconciler heals only through the healing triple, so every
+  heal it makes passes. The test is there so that one rule holds for every path that writes a row,
+  in the store rather than in its callers. *This point is the Planner's, 2026-11-20, from the
+  Reviewer's finding on a test that heals with a changed name; the maintainer did not rule on it and
+  can reverse it.*
+
+**Why the triple.** It is the app's single definition of "the same file", and
+[ADR-0020](0020-automatic-albums-resolve-against-live-media.md) forbids a second. Tier C already uses
+it the other way round: a face result is written only while the row still has the identity it was
+computed from. Using it to invalidate as well means one test decides both whether a result may be
+written and whether a stored one is still true.
+
+**What it costs.**
+- An edit that keeps the name, the byte size and the modification second keeps its old faces. That
+  is the blind spot membership healing ([ADR-0010](0010-album-membership-dual-key-identity.md)) and
+  the conditional write already accept. Not measured.
+- A rename drops Tier C although the pixels did not change, because the name is in the triple: one
+  image's inference again. Accepted rather than comparing two of the three fields, which would be a
+  second definition of identity.
+
+**Alternatives considered.**
+- **Keep the rule, and have Tier A skip a metadata-only change.** Rejected: Tier A could only tell
+  the cases apart by comparing the same triple, and it would change Tier A's selection, which
+  Amendment 1 governs, to fix a Tier C cost.
+- **A content hash per image.** Rejected: a full file read per re-extracted image is the cost this
+  amendment removes.
+
+### 2. What a deletion may report as scrubbed
+
+**What was wrong.** Step 3.2 sets `secure_delete` rather than assuming it, but left the journal mode
+of a non-WAL database to the platform: Room uses a rollback journal on a low-RAM device, and the
+framework then applies its configured default, `TRUNCATE` on AOSP. Outside WAL,
+`wal_checkpoint(TRUNCATE)` is a no-op whose first column reads 0, so the deletion reported scrubbed
+whatever the rollback mode was. SQLite's documentation is explicit about the mode that matters: under
+`PERSIST` the journal is not deleted at commit, only its header is zeroed, so the pages the deletion
+changed — the face rows as they were — stay in `media_index.db-journal`. `journal_size_limit` bounds
+how much is kept, not whether. `secure_delete` zeroes the database file's pages, not the journal's
+copies of them.
+
+**Decision.** `deleteAllFaceData` reads the journal mode, and the locking mode, of the connection its
+transaction ran on, and reports scrubbed only as this table allows:
+
+| `journal_mode` | Scrubbed when | Why |
+|---|---|---|
+| `wal` | the `TRUNCATE` checkpoint's first column is 0 — unchanged | the log is emptied and truncated |
+| `delete` | the locking mode is `normal` | the journal is deleted at commit |
+| `truncate` | the locking mode is `normal` | the journal is truncated to zero length at commit |
+| `memory`, `off` | always | no journal file is written |
+| `persist` | never | the header is zeroed, the page copies are kept |
+| anything else | never | fail closed |
+
+The locking-mode condition is there because SQLite documents that in `exclusive` locking mode a
+rollback journal may also remain after commit. Android does not open its databases that way, so it
+costs nothing where it is not needed.
+
+- **Not scrubbed is a result, not an error.** The rows are deleted and committed either way. A thrown
+  error would tell the caller nothing was deleted, and on a device whose journal mode never changes a
+  deletion that refused to run would never delete at all — face data kept for good, which is worse
+  than page copies left in a private file that later transactions overwrite. A `secure_delete` that
+  does not read back still stops the deletion, as step 3.2 built it: that is a setting the next
+  attempt makes again, where a journal mode is the platform's and is the same on every attempt.
+- **What the caller does with not scrubbed** is what step 3.2 already said for a blocked checkpoint:
+  the face data is deleted as far as the app is concerned and the switch stays off, and the deletion
+  is repeated at each later process start while face data is off — not only while a Tier C row
+  exists, which is the narrower condition
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §3 states and is annotated there. On a
+  `PERSIST` device every repeat reports not scrubbed again; that is accepted, below. How Settings
+  presents it, if at all, is step 3.6's.
+- **No journal mode is set when the database opens.** Considered and rejected: the mode is Room's
+  and the platform's choice, made per device and applied to every connection the framework opens, so
+  an override would change every index write on that device to fix a property needed only at
+  switch-off, would have to be re-applied for each connection, and would still need this check at the
+  deletion — as `secure_delete` is set at open and checked again. SQLite also refuses a journal-mode
+  change inside a transaction, so it cannot be pinned to the write connection the way `secure_delete`
+  is. No device is known to use `PERSIST`.
+
+**Revisit when** a device is found whose index uses `PERSIST`, or `exclusive` locking: step 3.7
+records each phone's actual modes. Leaving the mode alone would then be a new decision, not a
+detail — switching that connection out of `PERSIST` for the deletion is the obvious candidate.
+
+### Consequences
+
+**Positive**
+
+- A metadata-only change that leaves the triple alone — a favourite toggle is expected to, not
+  verified *(verified 2026-11-22 on the SM-G990B only — see the note under the Built note above)* —
+  no longer costs a face pass; a version resync no longer deletes face data.
+- A deletion's scrubbed result is true of the files on every journal mode SQLite has, and false
+  rather than optimistic for one it does not recognise.
+
+**Negative**
+
+- Stale faces after an edit that keeps the triple, as above.
+- A deletion on a `PERSIST` device never reports scrubbed, and the residue stays until later
+  transactions overwrite the journal.
+- One more pragma read per deletion, and one more stored-row read per row written, inside the
+  transaction that already writes it.
+
+### References
+
+- [docs/design/albums.md](../../design/albums.md) §8 decision 48
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md), *3.2 — Tier C schema and store*:
+  *Reviewed* and *3.2 follow-up*; step 3.7
+- [ADR-0010](0010-album-membership-dual-key-identity.md), [ADR-0011](0011-favourites-backed-by-mediastore.md),
+  [ADR-0020](0020-automatic-albums-resolve-against-live-media.md),
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §3
+- SQLite, *PRAGMA Statements*: `journal_mode`, `journal_size_limit`, `wal_checkpoint`,
+  `secure_delete` — read 2026-11-20
+- `data/MediaIndexStore.kt`, `data/MediaIndexDatabase.kt`, `data/MediaIdentity.kt`,
+  `data/MediaIndexTierAIndexer.kt`
+
+## Amendment 7 — 2026-11-20 — Step 3.3's storage: attempts in Tier C and version 6, a per-installation preferences file, a fourth backup section (adopted 2026-11-20)
+
+> **Adopted 2026-11-20, when the maintainer approved it**, together with the dated notes it carries
+> in [ADR-0014](0014-album-database-included-in-auto-backup.md),
+> [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) and
+> [ADR-0024](0024-face-data-disclosure-and-delete-switch.md). Drafted by the Planner at step 3.3's
+> refinement ([albums-stage-3.md](../../design/albums-stage-3.md), *3.3 — Face detection and
+> embedding*), and labelled *proposed* in this record until then, as Amendment 5 was, because the
+> instructions' status vocabulary has no state for a draft; this record's `Active` status covered
+> the Decision and Amendments 1–6 throughout, and now covers this amendment too. **Nothing below was
+> built before adoption.** Step 3.3's Task 1 builds §1 to §5; it waited for approval because §1 is a
+> migration and §3 a new preferences file, and once either has run on a device it is undone only by
+> another change. The marker that stood under the record's title while this was proposed was removed
+> on adoption.
+>
+> **Written late** — kept on adoption as the record of how this amendment came to be. The refinement of 2026-11-20 cited this amendment before it existed; this text
+> is what that refinement decided, with its reasons. It adds to the plan only in three places: §1
+> makes the bound precise and says which stops clear an attempt, and §2 names the malformed reading
+> as F1's residual risk. The plan was updated to match.
+>
+> **Built 2026-11-20**, as step 3.3's Task 1 briefed it, and verified with the rest of step 3.3 by
+> the definition of done — the gate is in [albums-stage-3.md](../../design/albums-stage-3.md),
+> *3.3*, *Built and verified*. §1: `media_index_face_attempt`, `MIGRATION_5_6` and `6.json`, the
+> bound as `FACE_ATTEMPT_BOUND`, in `data/MediaIndexEntities.kt`, `data/MediaIndexDatabase.kt` and
+> `data/FaceIndexPass.kt`. §2 and §3: the fourth section and `face_device_state.xml` in
+> `res/xml/backup_rules.xml` and `data_extraction_rules.xml`, held to one set by
+> `BackupRulesParityTest`; the store is `data/FaceDeviceStateStore.kt`. §4: `writeFaceIndexResults`
+> and `recordFaceIndexAttempt` in `data/MediaIndexStore.kt`, both reading the setting inside their
+> transaction. §5: `FaceDataStartupDeletion` in `data/FaceIndexPass.kt`, run first by
+> `MediaIndexingWorker`. The pass these serve is dormant until step 3.6 records the disclosure as
+> shown. F1's residual is unchanged.
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–6. It
+is an amendment rather than a new ADR for Amendment 1's reason: the index is still the one database
+for Tier C, and what follows applies existing rules — Amendment 5's Tier C lifecycle, Amendment 2's
+line between the index and a preferences file, the Decision's backup exclusion — to what step 3.3
+needs. It answers what Amendment 5 left to 3.3 (the bound, and how attempts are counted), what
+[ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §3 and
+[ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §2 left to 3.3 (where per-installation
+state lives), and open question F1 (a fourth backup section). What is not here — the pass's
+parameters, its budget, its order in the worker, the Tier C lock, the capability record's details —
+is the plan's, under *Decided at 3.3*, and reversible there.
+
+### 1. Attempts are counted in a third Tier C table, and the index reaches version 6
+
+**Why attempts must be persisted.** Amendment 5 says a failure a retry could cure writes nothing,
+and an image that fails that way every time is recorded failed after a bounded number of attempts.
+The failures that need the bound are the ones that end the process — a crash in OpenCV's native code
+([ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md), *Negative*), or running out of
+memory — after which nothing can be written. So an attempt is counted **before** the work it counts,
+and only a persisted count survives to the next run.
+
+**Decision.**
+- **A table, `media_index_face_attempt`:** one row per image with an attempt under way or cut short —
+  the image's index-row key, the pipeline version, and a count. Nothing else, and no face data.
+- **Recorded before the image is decoded**, in its own transaction, and only while the index row
+  still has the identity the pass read — the same condition as a result write. Under another
+  pipeline version the count restarts at 1.
+- **Cleared** by the image's result write, in the same transaction, and by every stop the image is not
+  to blame for: cancellation, face data switched off, the pass's time budget, a missing permission, and
+  a file that cannot be opened, which reconciliation will deal with. It stays counted only when the
+  attempt ends with the process, or with an exception the pass does not handle.
+- **The bound is three.** An image is decoded at most three times under one pipeline version; a
+  candidate found with three attempts already recorded is written failed without being decoded.
+  *Why three:* a failed image is not retried until the pipeline version changes (Amendment 5), so a
+  bound of one would lose the faces of an image that only met a bad moment — memory pressure from
+  another app — for good; and because the pass resumes in URI order, an image that kills the process
+  is met again first in the next run, holding back every image after it, so each extra attempt costs
+  one more lost run. Three is the Planner's choice, not a measurement.
+- **Every Tier C rule applies to it:** dropped with the image's other Tier C rows on a changed healing
+  triple (Amendment 6), re-keyed by a heal, deleted with its row by reconciliation, emptied by the
+  face-data deletion in the same transaction, and counted by "is there face data". *Why:* an attempt
+  for a changed file is an attempt on a different file, and one kept across a deletion would carry a
+  switched-off past into the next switch-on. It is not face data — no embedding, crop or group — and
+  is kept with Tier C for its lifecycle, not its content.
+- **Why a table of its own.** Not an outcome on `media_index_face_state`: Amendment 5's table defines
+  pending as no state row or an old version, so a state row for an image in progress would make every
+  reader of states exclude it. Not a column on the image row: rejected in Amendment 5 for every Tier C
+  field. Not a preferences file: it is per image, and the index's correctness depends on it — it is
+  what separates waiting from failed — which is Amendment 2's test for the index database.
+- **`Migration(5, 6)` creates the table, empty, and changes nothing else**, registered beside the four
+  earlier migrations with no destructive fallback; its SQL is `6.json`'s, as `Migration(4, 5)`'s is
+  `5.json`'s. The index reaches version 6, and `6.json` is committed by the change that produces it.
+  The version reached is the `@Database` annotation's.
+
+### 2. A fourth backup section — open question F1
+
+**What was read**, on Android's Auto Backup page on 2026-11-19 and again on 2026-11-20: Android 16
+QPR2 (API 36.1) added `<cross-platform-transfer platform="ios">` to `data_extraction_rules.xml`; a
+transfer mode with no rules "is fully enabled for all content except for `no-backup` and `cache`
+directories"; and the section must contain `<platform-specific-params>` naming the app on the other
+platform, whose ids "guarantee that data is only transferred *to* the specified app". This app has no
+iOS counterpart and its file has no such section.
+
+**Not established:** whether a transfer to iOS happens at all for an app with no section, and how a
+36.1 device reads a section without the params — ignored, honoured, or treated as malformed.
+
+**Decision — conservatively:** the section is added, holding **the same `<exclude>` lines as the
+other two**, no `<include>` and no `<platform-specific-params>`. *Why:* [albums.md](../../design/albums.md)
+§8 decision 9's "never enters a backup" cannot rest on an unverified reading of the platform. An
+exclusion in a mode that never runs is inert; a missing one in a mode that does run sends face data
+to another device. No params, because there is no iOS app to name, and invented ids would declare one.
+`<exclude>` only, as [ADR-0014](0014-album-database-included-in-auto-backup.md) requires. "Three
+places", in this record and in ADR-0014 and ADR-0024 §6, becomes **four**: `backup_rules.xml` and the
+three sections of `data_extraction_rules.xml`. It lands in Task 1, so it ships with the change that
+first writes face data.
+
+**Residual, open:** the malformed reading is the one case in which the section would be worse than
+none, and no 36.1 device is available here — the SM-G990B runs 36.0. Removing the doubt by
+construction, by moving `media_index.db` to the no-backup directory that every mode excludes, would
+be a change of its own and a new amendment. *Recommended: not now; revisit if a 36.1 device is found
+to misread the section.* It is the maintainer's to confirm and blocks nothing
+([albums-stage-3.md](../../design/albums-stage-3.md), F1).
+
+### 3. Per-installation face state is a preferences file, `face_device_state`, excluded from backup
+
+**Decision.** A new preferences file, `face_device_state`, holds two things: whether the face-data
+disclosure has been shown ([ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §2), and the
+capability check's persisted result
+([ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §3). It is excluded from backup in all
+four places, `<exclude>` only. The face-data setting stays where ADR-0024 §1 put it: a scalar in
+`app_settings`, backed up. What the capability record holds is the plan's (*Settled before 3.3*,
+issue 2).
+
+*Why a preferences file and not this database* — Amendment 2's two tests, in order. It is not
+structured: a flag and a few scalars. And the index's correctness does not depend on it: a lost flag
+shows the disclosure again, a lost record repeats the check. Inside the database it would cost a
+migration for three scalars, and inside Tier C the face-data deletion would empty it and bring the
+disclosure back on switching on again, against ADR-0024 question 4.
+
+*Why not `app_settings`:* it is backed up, and both values belong to this installation. A restored
+"shown" would skip the disclosure on a new phone, where face indexing starts again from nothing
+(ADR-0024 question 1); a restored capability record is another device's answer. *Why not
+`media_index_run_state`:* one store per file, and that file reports on a job.
+
+*What it costs:* an `AGENTS.md` call-out, not an approval — a row in *Preference stores*, and both a
+`SharedPreferences*` and an `InMemory*` store.
+
+### 4. A Tier C result write reads the setting inside its transaction
+
+`writeFaceIndexResults` takes the face-data setting as a parameter and reads it inside its
+transaction; with the setting off it writes nothing and returns 0. *Why in the store:* ADR-0024 §3
+makes the setting a backstop "in the same transaction", and a store rule holds for every writer, not
+only the pass. It is a backstop and not the guarantee, because a `SharedPreferences` read is not part
+of the SQLite transaction; the guarantee is ordering — the switch persists *off*, then waits for the
+pass — which the plan builds as a process-wide lock and step 3.6 uses.
+
+### 5. The start-up deletion — what the caller does with its result
+
+Amendment 6 §2 said a deletion that is not scrubbed is a result, repeated at each process start while
+face data is off. **Decision**, splitting the caller between steps 3.3 and 3.6:
+- **The worker runs it first, before Tier A, whenever the setting reads off** — not only when a Tier C
+  row exists (ADR-0024 §3 as Amendment 6 annotates it). Step 3.6 adds the same call at app open.
+- **Not scrubbed:** no retry within the run, nothing persisted, nothing shown by 3.3. Whether Settings
+  presents it is 3.6's.
+- **A thrown error** — `secure_delete` not reading back, an SQLite error — is caught, never fails the
+  run or stops Tier A, and is repeated at the next start. *Why:* failing the run for a face-data
+  problem would also stop region and time albums from being indexed, and the repeat at start-up is
+  already what ADR-0024 §3 relies on.
+- **It logs at most that it ran and whether it scrubbed** — no count and no exception message
+  (ADR-0024 §6).
+
+### 6. URI spellings — not a defect, and where the invariant lives
+
+Tier C keys, and Amendment 6's test, match URIs exactly, so two spellings of one image in the index
+would give it two face results. **Checked in the code on 2026-11-20: no install holds two** — every
+production writer stores the `content://media/external/…` spelling, which the row-delta provider
+canonicalises at the source; the evidence is in the plan (*Settled before 3.3*, issue 1).
+**Decision: nothing is built.** The invariant is the provider's, not the store's: tests seed
+per-volume spellings on purpose, and enforcing one in `upsert` would break them for no production
+case. *Recorded here* so that it is not "fixed" in the store later. If a writer ever stores another
+spelling, the repair is Amendment 3's kind: a data migration to the canonical one.
+
+### Still open, and not this amendment's
+
+- **F1's residual**, §2 — the maintainer's; blocks nothing.
+- ~~**F2, the OpenCV version** — [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md)'s;
+  blocks step 3.3's Task 2, not Task 1 and not this amendment.~~ **Answered 2026-11-20 by the
+  maintainer: 4.13.0**, the build the spike measured — recorded in ADR-0023 §2.
+- **ADR-0023's verify items** 1, 2, 4, 5, 6 and 8 at step 3.3, and 7 at 3.7 — unchanged.
+
+### Consequences
+
+**Positive**
+
+- An image that kills the process cannot keep people albums waiting for ever, nor hold back the rest
+  of the library for more than three runs.
+- Face data is excluded from every transfer mode Android documents, whatever the answer to F1.
+- The disclosure and the capability answer are true of the device they are on.
+
+**Negative**
+
+- One more table, one more migration, and a write per image before its decode.
+- A second excluded preferences file, and a fourth place in which every exclusion must be written
+  correctly — a mistake still invisible except to a reading of the XML, or to the test the plan adds.
+- An image that fails three times through bad luck is failed until the next pipeline-version bump.
+
+### References
+
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md), *3.3 — Face detection and
+  embedding*: *Settled before 3.3* and *Decided at 3.3*; open questions F1 and F2
+- [docs/design/albums.md](../../design/albums.md) §8 decision 9
+- [ADR-0014](0014-album-database-included-in-auto-backup.md),
+  [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §3,
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §1–§3 and §6 — each with a dated note
+  pointing here
+- <https://developer.android.com/identity/data/autobackup> — *Configure Cross-Platform Transfers*,
+  read 2026-11-20
+- `data/MediaIndexStore.kt`, `data/MediaIndexDatabase.kt`, `data/MediaIndexingWork.kt`,
+  `res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`
+
+## Amendment 8 — 2026-11-20 — ~~Each face's pixel size is stored, so that a group's representative is a usable face, and the index reaches version 7~~ (adopted 2026-11-20; **reversed 2026-11-20, before anything was built**)
+
+> **Reversed 2026-11-20, by the maintainer — his words "let's go with your recommendations", given to
+> the Planner's recommendation after reading the measurement below.** Step 3.4's Task 2 built §3's
+> size-aware representative in `data/FaceGrouping.kt` and measured it on the SM-G990B over the real
+> library ([albums-stage-3.md](../../design/albums-stage-3.md), *3.4*, Task 2): **21 of the 104
+> offered groups have no member at least 60 px across**, so the rule has nothing better to choose for
+> them, and it fixes **1 of the 22** representatives under 60 px — 83 of 104 offered representatives
+> are at least 60 px with the rule, 82 of 104 with the plain medoid; the median stays 108 px and the
+> smallest 40 px. A permanent schema change — a seventh index version, a sixth migration and a column
+> on every face — is not worth one thumbnail.
+>
+> **What was built and what was not.** No `Migration(6, 7)`, no column and no `7.json` were ever
+> built; the index stays at **version 6**, and no install holds a row this amendment describes. The
+> size-aware rule exists only in Task 2's uncommitted `data/FaceGrouping.kt`, and step 3.4's Task 2b
+> removes it. *Removed: step 3.4 was built and verified on 2026-11-21 with the plain medoid, no
+> size-aware code in `app/src/`, and the index at version 6 (Amendment 5's Built notes).*
+>
+> **What remains of it: nothing.** A group's representative is its plain **medoid**, ties within the
+> tolerance to the lower face id, as Task 1 built; `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS` (60) and the
+> unknown-size rule (§2) are dropped with the column; `FACE_GROUPING_VERSION` stays 1 (§3's bump to 2
+> named a rule that no longer exists). Small thumbnails — 22 of 104 under 60 px — are accepted as the
+> picker's behaviour for now ([albums.md](../../design/albums.md) §8 decision 50, amended the same
+> day); a different fix would be a new decision. The headings and decisions below are struck rather
+> than deleted because their reasoning is the record of why a size was wanted and why it was dropped.
+
+> **Adopted 2026-11-20, on the maintainer's approval** — his words "Let's go with your
+> recommendations", given to the Planner's recommendation of option (i) once step 3.4's Task 1 had
+> measured the representatives: a `Migration(6, 7)`, an amendment to this record, and a
+> representative that prefers a face at least 60 px across ([albums.md](../../design/albums.md) §8
+> decision 50). Written by the Planner the same day, after the approval and from the recommendation
+> as it was put. The column, the rule for existing rows and the grouping-version bump below are the
+> Planner's within that approval, each with its reason; **the maintainer can reverse any of them** —
+> as a text edit until step 3.4's Task 3 has run the migration on a device, and only by another
+> change after. ~~This record's `Active` status covers the Decision and Amendments 1–8. **Nothing below
+> is built yet:** Task 2 builds §3, Task 3 builds §1, §2 and §5
+> ([albums-stage-3.md](../../design/albums-stage-3.md), *3.4*, *Tasks*).~~ *Reversed the same day,
+> above: Task 2 built §3 and Task 2b removes it; §1, §2 and §5 were never built. Task 2b removed it
+> before step 3.4 was verified on 2026-11-21.*
+
+This amendment **adds** to the record; it corrects nothing in the Decision or in Amendments 1–7. It is
+an amendment rather than a new ADR for Amendment 1's reason: the index is still the one database for
+Tier C, and what follows applies Amendment 1's precedent — bump, migrate, commit the JSON — to one more
+fact on Amendment 5's face row. It reverses a choice of the plan's, not of a record: step 3.4's
+refinement had decided on no migration and the plain medoid as representative.
+
+### What was measured
+
+Step 3.4's Task 1 on the SM-G990B, over the real library — 422 faces, 104 groups with at least two
+distinct images: **22 of the 104 representatives**, each its group's medoid, have a face **under
+60 px** on the shorter side of the decoded frame; 35 are under 80 px, the median is 108 px and the
+smallest 40 px. The plan had said that more than a few would put a stored size to the maintainer; 22
+is a fifth of the picker. The spike's rule — the medoid among members at least 60 px across — had been
+set aside at the refinement only because no size was stored: a stored box is in fractions of the
+upright frame ([ADR-0022](0022-people-criterion-anchored-to-a-photo.md) §1), the decoded size is not
+kept, and Tier A's EXIF width and height are often absent and not upright.
+
+### ~~1. One column on the face row: the box's short side in pixels~~ (reversed; never built)
+
+~~**Decision.**~~ *Withdrawn:* `media_index_face` gains **`boxShortSidePx INTEGER NOT NULL DEFAULT 0`**: the shorter of
+the box's width and height **as detected**, in pixels of the upright decoded frame (long side at most
+`FACE_DECODE_LONG_SIDE`), before the box is clamped to the frame, rounded down. The Tier C pass writes
+it with the face, from the `RawFace` it already holds, and nothing else writes it. A stored face is at
+least `FACE_MIN_SIDE_PIXELS` (40) on both sides, so every real value is at least 40 and **0 means
+unknown**.
+
+*Why per face, and not the decoded width and height per image* — which is the more primitive fact:
+- **The same measure as the cut-off.** Decision 46's 40 px cut-off is judged on the detected box in
+  the decoded frame, unclamped (`faceDetectionOf`). A stored fraction times the decoded size gives the
+  box after clamping, which is smaller for a face cut by the image's edge, so 60 would be judged on
+  another measure than 40.
+- **What its reader needs.** Grouping reads faces by id, ids and embeddings; one integer from the same
+  row joins nothing. Width and height on `media_index_face_state` would need a join by image key for
+  every face, and two columns on every processed image, most of which have no face.
+- **An integer, rounded down**, because both thresholds are whole pixels: ⌊x⌋ ≥ 60 exactly when
+  x ≥ 60.
+- Nothing else needs the decoded size: step 3.6's crop decodes the image at display time and knows
+  its size then. If something later does, it is a column added then.
+
+ADR-0022 is unchanged: an anchor stores a box in fractions, and the pixel size never enters the album
+database.
+
+### ~~2. Rows written before it: unknown, and never treated as large~~ (reversed; never built)
+
+~~**Decision.**~~ *Withdrawn:* `Migration(6, 7)` adds the column with its default and changes nothing else — no row
+deleted, no state or attempt cleared, `FACE_PIPELINE_VERSION` unchanged. A face written by a build at
+index version 6 reads 0, unknown, and **unknown counts as under 60 px**: the representative rule (§3)
+passes over it, and a group with no face known to be at least 60 px falls back to its medoid — the rule
+Task 1 measured, so no group is worse off than before this amendment. Such a face gains a size only
+when it is detected again: when its file changes (Amendment 6) or at the next pipeline-version bump.
+
+*Why not force those faces to be detected again:*
+- **No install holds them.** The only install is the dev phone (the plan's *The dev-device route*), on
+  which no face data is persisted: the pass is dormant until step 3.6's disclosure, and 3.3's and
+  3.4's measurements ran on in-memory indexes or delete what they wrote. The rule is for a build that
+  had faces, and for such a build the cost of the fallback is a medoid thumbnail, not a wrong one.
+- **Clearing Tier C inside a migration would delete face data outside the deletion's guarantees.**
+  `secure_delete` is set when the index opens (Amendment 5, *Deleting face data*); a migration's
+  `DELETE` may run before that, leaving the old bytes in free pages that no later switch-off scrubs.
+- **A pipeline-version bump would misname the change.** The pipeline computes the same boxes and
+  embeddings; a bump would decode every image again to choose among faces already stored.
+
+### ~~3. The representative rule that uses it~~ (reversed; built by Task 2, removed by Task 2b)
+
+~~**Decision.**~~ *Withdrawn — the representative is the plain medoid:* A group's representative is its **medoid** — the member whose summed cosine distance to
+the other members is smallest, a tie within the medoid tolerance going to the lower face id — **unless
+the medoid's short side is under 60 px**. Then it is the member with the smallest summed distance among
+those whose short side is at least 60 px, ties as before: the first usable face in medoid order. If no
+member is at least 60 px, or none is known, it is the medoid. The sums stay over the whole group, so
+the representative is the usable face most typical of the whole group, not of the usable ones. The
+60 px threshold is a named constant beside the grouping cut, `FACE_REPRESENTATIVE_MIN_SIDE_PIXELS`.
+
+- *Why 60:* it is the spike's rule, which the approval restores. The 40 px cut-off decides whether a
+  face can be matched at all; 60 px is about whether a thumbnail cropped from it is recognisable. It is
+  a judgement, not a measurement of recognisability.
+- **Membership is unchanged** — which faces form a group never depends on size; only which member
+  stands for it.
+- ~~**`FACE_GROUPING_VERSION` becomes 2.**~~ *Reversed: it stays 1.* `groupId` is the representative's face id (the plan's
+  *Decided at 3.4*), so a changed representative rule changes stored group ids, and the constant names
+  that rule. Version 1 named the plain medoid Task 1 built; no build has written it, grouping not being
+  wired, so the bump regroups nothing and keeps the constant meaning what it names. The component split
+  of decision 50 changes how groups are computed and not what — the same groups and representatives —
+  so it bumps nothing by itself.
+
+### ~~4. Every existing rule applies, unchanged~~ (moot: nothing is stored)
+
+- **Recomputable cache.** It is derived from the face's detection and recomputed by detecting again.
+- **Deletion.** It lives on face rows, so `deleteAllFaceData`, which deletes those rows under
+  `secure_delete`, removes it with nothing else to touch; a changed healing triple drops it with its
+  face (Amendment 6); a heal keeps it with the face's id; reconciliation deletes it with the image.
+- **Backup.** The index database is excluded in all four places (Amendment 7 §2); there is no new file.
+- **Writes and logs.** It is written in the face's own write, under Amendment 7 §4's setting read, and
+  is never logged ([ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §6).
+
+### ~~5. The migration~~ (reversed; never built — the index stays at version 6)
+
+`Migration(6, 7)` is `ALTER TABLE media_index_face ADD COLUMN boxShortSidePx INTEGER NOT NULL DEFAULT 0`,
+its SQL `7.json`'s, registered beside the five earlier migrations with no destructive fallback. The
+entity declares the same default, so that Room's validation of the migrated schema matches. ~~The index
+reaches version 7, read from the `@Database` annotation; `7.json` is committed by the change that
+produces it.~~ *Reversed: no migration, no `7.json`; the index stays at version 6.*
+
+### Consequences
+
+*As adopted, and moot since the reversal; the reversal's own cost is the Reversed note's — 22 of 104
+thumbnails under 60 px, accepted.*
+
+**Positive**
+
+- ~~Where a group has a usable face, the picker shows it — the 22 groups in 104 measured, at most.~~
+  Measured by Task 2: 1 of the 22.
+- Groups are unchanged, and no image is decoded again.
+
+**Negative**
+
+- ~~A seventh version and a sixth migration, for one integer per face.~~
+- ~~A face stored before version 7 is unknown until detected again, and its group keeps the medoid.~~
+- 60 px is a judgement; a thumbnail at 60 px may still be hard to recognise.
+
+### References
+
+- [docs/design/albums-stage-3.md](../../design/albums-stage-3.md), *3.4 — Clustering and the person
+  record*: *Decided at 3.4* and *Tasks*
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 46 and 50
+- [ADR-0022](0022-people-criterion-anchored-to-a-photo.md) §1,
+  [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md) §5,
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) §6
+- `data/FaceGrouping.kt`, `data/FaceIndexPass.kt`, `data/MediaIndexEntities.kt`,
+  `data/MediaIndexDatabase.kt`

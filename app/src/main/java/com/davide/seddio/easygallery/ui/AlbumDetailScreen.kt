@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -70,6 +69,7 @@ import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumRule
 import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleSummary
+import com.davide.seddio.easygallery.data.AlbumUnevaluatableCause
 import com.davide.seddio.easygallery.data.FAVOURITES_OVERRIDE_KEY
 import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.GazetteerAssets
@@ -97,7 +97,9 @@ import com.davide.seddio.easygallery.ui.components.MediaPropertiesDialog
 import com.davide.seddio.easygallery.ui.components.PreferenceContainer
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
 import com.davide.seddio.easygallery.ui.components.ThumbnailPickerTopBar
+import com.davide.seddio.easygallery.ui.components.albumStatusNoticeKind
 import com.davide.seddio.easygallery.ui.components.setImageAsWallpaper
+import com.davide.seddio.easygallery.ui.components.spec
 import com.davide.seddio.easygallery.ui.components.shareMedia
 import com.davide.seddio.easygallery.ui.components.supportsWallpaper
 import com.davide.seddio.easygallery.ui.theme.AppBackground
@@ -224,6 +226,7 @@ fun AlbumDetailScreen(
         } else {
             album?.status ?: AlbumEvaluationStatus.MANUAL
         },
+        unevaluatableCause = if (isFavouritesAlbum) null else album?.unevaluatableCause,
         albumRuleSummary = albumRuleSummary,
         preferences = preferences,
         searchQuery = searchQuery,
@@ -347,6 +350,7 @@ fun AlbumDetailContent(
     media: List<MediaItem>,
     hiddenMemberCount: Int,
     evaluationStatus: AlbumEvaluationStatus,
+    unevaluatableCause: AlbumUnevaluatableCause?,
     albumRuleSummary: AlbumRuleSummary?,
     preferences: ViewPreferences,
     searchQuery: String,
@@ -654,11 +658,12 @@ fun AlbumDetailContent(
                 .fillMaxSize()
                 .background(AppBackground)
         ) {
-            if (evaluationStatus == AlbumEvaluationStatus.UNEVALUATABLE) {
+            val statusNotice = albumStatusNoticeKind(evaluationStatus, unevaluatableCause).spec()
+            if (statusNotice != null) {
                 AlbumNoticeBand(
-                    icon = Icons.Default.SystemUpdate,
-                    text = stringResource(R.string.album_rule_unevaluatable_notice),
-                    testTag = "album_rule_unevaluatable_notice"
+                    icon = statusNotice.icon,
+                    text = stringResource(statusNotice.fullTextRes),
+                    testTag = statusNotice.testTag
                 )
             }
             if (hiddenMemberCount > 0) {

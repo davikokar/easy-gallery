@@ -12,16 +12,22 @@ import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
 import com.davide.seddio.easygallery.data.AlbumMembership
 import com.davide.seddio.easygallery.data.AlbumNaming
 import com.davide.seddio.easygallery.data.AlbumRule
+import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleEvaluator
 import com.davide.seddio.easygallery.data.AlbumRuleJson
 import com.davide.seddio.easygallery.data.AlbumStore
+import com.davide.seddio.easygallery.data.AlbumUnevaluatableCause
 import com.davide.seddio.easygallery.data.AndroidMediaStoreVersionProvider
+import com.davide.seddio.easygallery.data.FACE_GROUPING_VERSION
+import com.davide.seddio.easygallery.data.FACE_PIPELINE_VERSION
+import com.davide.seddio.easygallery.data.FaceEvaluationSnapshot
 import com.davide.seddio.easygallery.data.FolderViewOverrides
 import com.davide.seddio.easygallery.data.FolderViewPreferencesStore
 import com.davide.seddio.easygallery.data.GazetteerAssets
 import com.davide.seddio.easygallery.data.GazetteerNames
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.InMemoryMediaIndexStore
+import com.davide.seddio.easygallery.data.InMemoryPeopleAvailabilitySource
 import com.davide.seddio.easygallery.data.MediaIndexEvaluationProjection
 import com.davide.seddio.easygallery.data.MediaIndexLiveJoin
 import com.davide.seddio.easygallery.data.MediaIndexStore
@@ -32,6 +38,8 @@ import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.MembershipOrphanStateChange
 import com.davide.seddio.easygallery.data.MembershipUriRewrite
 import com.davide.seddio.easygallery.data.OverridablePreference
+import com.davide.seddio.easygallery.data.PeopleAvailabilitySource
+import com.davide.seddio.easygallery.data.PeopleEvaluationInput
 import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 import com.davide.seddio.easygallery.data.RoomAlbumStore
 import com.davide.seddio.easygallery.data.SharedPreferencesFolderViewPreferencesStore
@@ -55,12 +63,14 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -78,7 +88,9 @@ data class AlbumListItem(
     /** Stored additions that did not resolve to a live item; rule matches never count. */
     val hiddenMemberCount: Int,
     val storedMembershipCount: Int,
-    val status: AlbumEvaluationStatus
+    val status: AlbumEvaluationStatus,
+    /** Non-null exactly when [status] is [AlbumEvaluationStatus.UNEVALUATABLE]. */
+    val unevaluatableCause: AlbumUnevaluatableCause?
 )
 
 /** [membershipId] is null for a rule match that has no addition row. */
@@ -113,7 +125,21 @@ class AlbumsViewModel @JvmOverloads constructor(
     },
     // Its own file: clear(group) is file-wide, so albums must not share the folder overrides' file (ADR-0021).
     albumOverrideStore: FolderViewPreferencesStore =
-        SharedPreferencesFolderViewPreferencesStore(application, ALBUM_DISPLAY_PREFERENCES_FILE)
+        SharedPreferencesFolderViewPreferencesStore(application, ALBUM_DISPLAY_PREFERENCES_FILE),
+    // Read-only: the setting and the persisted capability record. The check that writes the record is 3.6's.
+    private val peopleAvailabilitySource: PeopleAvailabilitySource =
+        (application as? EasyGalleryApp)?.createPeopleAvailabilitySource() ?: InMemoryPeopleAvailabilitySource(),
+    // Whether the picker offers its People tab: setting on and capable, where evaluation also accepts unknown.
+    // Read at each refresh, from the same stores, so this ViewModel need not know FaceDataViewModel.
+    private val peoplePickerOffered: () -> Boolean = {
+        (application as? EasyGalleryApp)?.let { app ->
+            isPeoplePickerOffered(
+                faceDataEnabled = app.faceDataSettingStore.isEnabled(),
+                capability = app.faceDeviceStateStore.capabilityState(),
+                currentKey = app.faceCapabilityKey().asStoredKey()
+            )
+        } ?: false
+    }
 ) : AndroidViewModel(application) {
 
     private data class ComputedAlbum(
@@ -128,6 +154,7 @@ class AlbumsViewModel @JvmOverloads constructor(
         val hiddenMemberCount: Int,
         val storedMembershipCount: Int,
         val status: AlbumEvaluationStatus,
+        val unevaluatableCause: AlbumUnevaluatableCause?,
         // Null for a manual album; an unevaluatable rule keeps its raw text, which only the summary may read.
         val rule: AlbumRule?,
         val additionIdsByUri: Map<String, List<Long>>,
@@ -150,7 +177,8 @@ class AlbumsViewModel @JvmOverloads constructor(
                 storedMemberCount = storedMemberCount,
                 hiddenMemberCount = hiddenMemberCount,
                 storedMembershipCount = storedMembershipCount,
-                status = status
+                status = status,
+                unevaluatableCause = unevaluatableCause
             )
         }
     }
@@ -166,6 +194,7 @@ class AlbumsViewModel @JvmOverloads constructor(
     // Null until MediaStore has been read once; a rule album is then WAITING_ON_INDEX, not empty.
     private val _allMedia = MutableStateFlow<List<MediaItem>?>(null)
     private val _mediaVersionEpoch = MutableStateFlow(0L)
+    private val _peopleAvailabilityEpoch = MutableStateFlow(0L)
     private val _selectedAlbumId = MutableStateFlow<Long?>(null)
     private val _albumSelectionId = MutableStateFlow<Long?>(null)
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -211,6 +240,30 @@ class AlbumsViewModel @JvmOverloads constructor(
             replay = 1
         )
 
+    // The face snapshot and the availability a people clause reads. Collected only while an album with a people clause
+    // or a picker with a person chosen needs it, so nobody else pays for face writes. The availability is read on every
+    // emission and refresh, never cached.
+    private val peopleInput: Flow<PeopleEvaluationInput> = combine(
+        mediaIndexStore.observeFaceEvaluationProjection(FACE_PIPELINE_VERSION),
+        _peopleAvailabilityEpoch
+    ) { snapshot, _ ->
+        PeopleEvaluationInput(peopleAvailabilitySource.read(), snapshot)
+    }.flowOn(evaluationDispatcher)
+        .shareIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000, replayExpirationMillis = 0),
+            replay = 1
+        )
+
+    // The picker's two people inputs. The offer is a fresh read on every availability refresh; the snapshots are
+    // peopleInput's own, so a picker with a person chosen and a people album share one subscription.
+    private val peoplePickerOfferedFlow: Flow<Boolean> = _peopleAvailabilityEpoch
+        .map { peoplePickerOffered() }
+        .flowOn(evaluationDispatcher)
+    private val pickerFaceSnapshots: Flow<FaceEvaluationSnapshot> = peopleInput
+        .map { it.faces }
+        .distinctUntilChanged { old, new -> old === new }
+
     // Re-runs on albums, memberships, live media (app open) and every index store emission (after a batch).
     private val computedAlbums: StateFlow<List<ComputedAlbum>> =
         combine(albumStore.observeAlbums(), _mediaVersionEpoch) { albums, _ -> albums }
@@ -255,7 +308,12 @@ class AlbumsViewModel @JvmOverloads constructor(
         zoneProvider = zoneProvider,
         localeProvider = localeProvider,
         namesLoader = gazetteerNamesLoader,
-        workDispatcher = evaluationDispatcher
+        workDispatcher = evaluationDispatcher,
+        peopleOffered = peoplePickerOfferedFlow,
+        faceSnapshots = pickerFaceSnapshots,
+        peopleLoader = {
+            mediaIndexStore.listFaceGroups(FACE_PIPELINE_VERSION, FACE_GROUPING_VERSION, PEOPLE_PICKER_MINIMUM_IMAGES)
+        }
     )
 
     init {
@@ -287,6 +345,11 @@ class AlbumsViewModel @JvmOverloads constructor(
                 }
             }
         }
+    }
+
+    /** Re-reads the face-data setting and the capability record; switching face data on or the check finishing writes no Tier C row. */
+    fun refreshPeopleAvailability() {
+        _peopleAvailabilityEpoch.update { it + 1 }
     }
 
     fun selectAlbum(albumId: Long?) {
@@ -406,13 +469,22 @@ class AlbumsViewModel @JvmOverloads constructor(
 
     /**
      * Writes the album row with [rule] encoded and no membership rows: the members are whatever the rule
-     * matches (ADR-0016 Amendment 2). Returns false, and sets [errorMessage], when the name is blank or taken.
+     * matches (ADR-0016 Amendment 2). Returns false, and sets [errorMessage], when the name is blank or taken,
+     * when the rule names more than [MAX_PEOPLE_PER_ALBUM] people, or when the encoder refuses it as too long;
+     * nothing is written then. The picker stops short of both limits, so these are backstops.
      */
     fun createAutomaticAlbum(name: String, rule: AlbumRule.Evaluatable): Boolean {
         val sanitizedName = sanitizeName(name)
         if (!validateAlbumName(sanitizedName, ignoreAlbumId = null)) return false
 
-        val encodedRule = AlbumRuleJson.encode(rule)
+        if (rule.clauses.count { it is AlbumRuleClause.People } > MAX_PEOPLE_PER_ALBUM) return rejectRule()
+
+        // The encoder's 16 KiB bound is a `require`; a stored people anchor carries a file name, so it can be reached.
+        val encodedRule = try {
+            AlbumRuleJson.encode(rule)
+        } catch (refused: IllegalArgumentException) {
+            return rejectRule()
+        }
         viewModelScope.launch {
             albumStore.createAlbum(
                 name = sanitizedName,
@@ -668,12 +740,18 @@ class AlbumsViewModel @JvmOverloads constructor(
         val rule = AlbumRuleJson.parse(album.rule)
         if (rule == null) {
             return combine(memberships, _allMedia) { currentMemberships, media ->
-                computeAlbum(album, currentMemberships, rule = null, join = null, liveMedia = media)
+                computeAlbum(album, currentMemberships, rule = null, join = null, liveMedia = media, people = null)
+            }
+        }
+
+        if (rule is AlbumRule.Evaluatable && rule.clauses.any { it is AlbumRuleClause.People }) {
+            return combine(memberships, liveJoin, peopleInput) { currentMemberships, join, people ->
+                computeAlbum(album, currentMemberships, rule, join, liveMedia = join?.liveMedia, people = people)
             }
         }
 
         return combine(memberships, liveJoin) { currentMemberships, join ->
-            computeAlbum(album, currentMemberships, rule, join, liveMedia = join?.liveMedia)
+            computeAlbum(album, currentMemberships, rule, join, liveMedia = join?.liveMedia, people = null)
         }
     }
 
@@ -683,7 +761,8 @@ class AlbumsViewModel @JvmOverloads constructor(
         memberships: List<StoredMembership>,
         rule: AlbumRule?,
         join: MediaIndexLiveJoin?,
-        liveMedia: List<MediaItem>?
+        liveMedia: List<MediaItem>?,
+        people: PeopleEvaluationInput?
     ): ComputedAlbum {
         val resolution = AlbumMembership.resolve(memberships, liveMedia.orEmpty())
 
@@ -692,9 +771,10 @@ class AlbumsViewModel @JvmOverloads constructor(
             additionIdsByUri.getOrPut(resolved.resolvedMediaUri) { mutableListOf() } += resolved.membershipId
         }
 
-        val evaluation = rule?.let { AlbumRuleEvaluator.evaluate(it, join, resolution, zoneProvider()) }
+        val evaluation = rule?.let { AlbumRuleEvaluator.evaluate(it, join, resolution, zoneProvider(), people) }
         val items = evaluation?.members ?: resolution.albumItems
         val status = evaluation?.status ?: AlbumEvaluationStatus.MANUAL
+        val unevaluatableCause = evaluation?.unevaluatableCause
 
         val members = items.map { item ->
             AlbumDetailMember(
@@ -726,12 +806,18 @@ class AlbumsViewModel @JvmOverloads constructor(
             hiddenMemberCount = storedMemberCount - resolution.resolvedAdditions.size,
             storedMembershipCount = memberships.size,
             status = status,
+            unevaluatableCause = unevaluatableCause,
             rule = rule,
             additionIdsByUri = additionIdsByUri,
             // Before MediaStore is read every row looks unresolved; writing that back would be false.
             uriRewrites = if (liveMedia == null) emptyList() else resolution.uriRewrites,
             orphanStateChanges = if (liveMedia == null) emptyList() else resolution.orphanStateChanges
         )
+    }
+
+    private fun rejectRule(): Boolean {
+        _errorMessage.value = localizedString(R.string.error_unknown)
+        return false
     }
 
     private fun validateAlbumName(name: String, ignoreAlbumId: Long?): Boolean {

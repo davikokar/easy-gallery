@@ -80,6 +80,10 @@ on `Unevaluatable`; none of them throws.
 > **Amended 2026-11-11.** Amendment 2 below fixes the `region` clause's fields, the dataset stamp
 > that keeps its codes meaningful, the obligation a later dataset change carries, and how a clause
 > that cannot yet be settled is evaluated. The text above is unchanged.
+>
+> **Amended 2026-11-19.** Amendment 4 below, drafted 2026-11-18 and adopted 2026-11-19, fixes the
+> `people` clause and two causes of unevaluatable found at evaluation, on a rule this build
+> understands, and widens the never-rewritten rule to such clauses. The text above is unchanged.
 
 ## Alternatives Considered
 
@@ -568,3 +572,230 @@ showing the album's waiting state again later needs no change here.
 ### References added by this amendment
 
 - [docs/design/albums.md](../../design/albums.md) §8 decisions 22 and 29
+
+## Amendment 4 — 2026-11-18 — The `people` clause, and two causes of unevaluatable on a rule this build understands (adopted 2026-11-19)
+
+> **Adopted 2026-11-19, when the maintainer approved it.** Drafted by the Planner as step 3.1 of
+> [albums-stage-3.md](../../design/albums-stage-3.md), and labelled *proposed* in this record until
+> then, because the instructions' status vocabulary has no state for a draft; this record's own
+> status was `Active` throughout, for the Decision and Amendments 1–3, and now covers this
+> amendment too.
+>
+> **2026-11-19:** this amendment raises none of step 3.1's questions itself. The one it depends on,
+> E1 — no write-back of a healed anchor, [ADR-0022](0022-people-criterion-anchored-to-a-photo.md)
+> question 1 — was answered by the maintainer as recommended, which confirms *Never rewritten*
+> below as written ([albums.md](../../design/albums.md) §8 decision 47). ~~The amendment still stays
+> proposed until he approves it.~~ He approved it separately, the same day.
+
+This amendment **adds** to the Decision and to Amendments 1–3, and widens one rule of the Decision
+without weakening it. The envelope, the conjunction-only scope, the `NULL`-means-manual rule, the
+unknown-clause rule, every strictness rule of Amendments 1 and 2, and the settled/unsettled model of
+Amendment 2 govern a `people` clause as they govern the others. It is an amendment rather than a new
+ADR for Amendment 1's reason: the Decision named a `people` clause and left its fields to the stage
+that builds it.
+
+What a person *is* in a rule — an anchor, and how it resolves — is
+[ADR-0022](0022-people-criterion-anchored-to-a-photo.md). This amendment is the clause that carries
+it, and what an album does when it cannot be evaluated.
+
+### The `people` clause — one per person
+
+```json
+{"type": "people", "pipeline": 1,
+ "uri": "content://media/external/images/media/1234",
+ "displayName": "IMG_0001.jpg", "size": 2483111, "dateModified": 1749716100,
+ "box": {"left": 0.4125, "top": 0.2031, "right": 0.5312, "bottom": 0.3672}}
+```
+
+- **One clause per person, each with exactly one anchor** (decision 41). Two people are two `people`
+  clauses in the same `"all"`, so "several people means all of them" (decision 35) is the Decision's
+  conjunction and nothing new — the reading decision 35 itself gives. "Silvia or Davide" stays
+  inexpressible; it would be the `any` extension the Decision leaves room for, and with one clause per
+  person that extension needs no change to this clause.
+- **The type keeps the name the Decision gave it**, `people`, although each clause names one person,
+  so that every document which says "the `people` clause" stays true.
+- **`uri`, `displayName`, `size`, `dateModified`** are the anchor photo's media identity, as
+  `data/MediaIdentity.kt` holds it.
+- **`box`** is the face's position as fractions of the upright photo, `0 ≤ left < right ≤ 1` and
+  `0 ≤ top < bottom ≤ 1` (ADR-0022 §1). **The encoder writes the numbers with `Locale.US`**, as
+  `AGENTS.md` requires of anything parsed back by machine: a decimal comma would make the clause
+  malformed the moment it is written, and an unreadable rule is never rewritten. *(Built with
+  `Float.toString`, which is locale-free by definition — see* Built 2026-11-21 *below.)*
+- **`pipeline`** is the face-pipeline version that produced the box (ADR-0022 §1). Not matched.
+- **A combined rule** is any mix: two `people` clauses, a `region` clause and a `time` clause is
+  "Silvia and Davide in France, 2025" (decision 33). Amendment 2's note that step 2.7 writes at most
+  one clause of each type does not carry over: the People criterion writes one per person picked. The
+  parser and evaluator already accept any number.
+
+### How strict the parser is about a `people` clause
+
+Each of the following yields `Unevaluatable` — never an exception and never a guess — in addition to
+Amendments 1 and 2's lists, which apply unchanged:
+
+- **an unknown field**, at either level — anything but the six top-level fields above, or anything
+  in `box` but its four.
+- **a missing field.**
+- **`uri` or `displayName` not a non-empty string.**
+- **`size`, `dateModified` or `pipeline` not a JSON integer** — `1.0` is not `1`, as Amendment 2 says
+  of `dataset` — or `pipeline` below 1.
+- **a `box` value that is not a finite number in `[0, 1]`, or a box with `left ≥ right` or
+  `top ≥ bottom`.**
+
+These are parse failures, so the album shows the **Newer-app notice**. **Until step 3.5 ships the
+parser, a `people` clause is an unknown clause type**, as Amendment 1 said of `region` before 2.7.
+*(Step 3.5 shipped the parser on 2026-11-21.)*
+
+### Settled and unsettled, for a `people` clause
+
+The clause first resolves its anchor (ADR-0022 §3). Then, for a live item that is neither added nor
+excluded, it gives one of Amendment 2's three answers:
+
+| Anchor | Live item | Answer |
+|---|---|---|
+| resolved to a group | an image face-indexed and grouped, with a face in that group | **match** |
+| resolved to a group | an image face-indexed, with no face in that group, no face at all, or failed inference | **settled no-match** |
+| resolved to a group | a video or GIF — never face-indexed | **settled no-match** |
+| resolved to a group | an image still pending ([ADR-0018](0018-media-index-in-a-second-database.md) Amendment 5) | **unsettled** |
+| waiting — the anchor photo is pending | any | **unsettled**: no item matches through this clause yet |
+
+- **A video is a settled no-match, never unsettled.** Read as waiting, every people album would wait
+  for ever on the library's videos.
+  *(2026-11-24, step 3.8's documentation audit: once the anchor resolves. While the anchor itself
+  waits, every item is unsettled through this clause, per the last row of the table; that wait ends
+  with the anchor, not with the videos.)*
+- Amendment 2's rules then apply unchanged: an item is a member when every clause matches; the album is
+  waiting when some clause is unsettled and none is a settled no-match; and Amendment 3 shows nothing
+  for waiting.
+
+### Unevaluatable on a rule this build understands
+
+The Decision's unevaluatable album is one whose rule this build **could not parse**. A `people`
+clause adds two causes found **at evaluation**, on a rule that parsed:
+
+1. **The anchor is not found** ([albums.md](../../design/albums.md) §8 decision 42; ADR-0022 §3): its
+   photo is not among live media after healing, or no face of at least the cut-off overlaps the
+   anchored box at IoU ≥ 0.5, or the photo's inference is recorded as failed.
+2. **People is unavailable on this device**: the face pipeline fails its capability check (decision
+   45, [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md)), or the user has switched face
+   data off ([ADR-0024](0024-face-data-disclosure-and-delete-switch.md)). No anchor is resolved at
+   all.
+
+**One clause that is unevaluatable makes the album unevaluatable**, as one unknown clause does. What
+the Decision says of an unevaluatable album holds for both causes without exception: the album
+resolves to its manual additions minus its exclusions; it says so; it is never widened; it is never
+deleted; it is listed, counted, opened, renamed and deleted normally everywhere, as decision 37's
+reversal settled for content.
+
+**What differs from an unknown clause:**
+
+| | Unknown or malformed rule | Anchor not found | People unavailable here |
+|---|---|---|---|
+| Found | at parse | at evaluation | at evaluation, before any anchor |
+| Clears by itself | a newer build's rule, on an app update; a malformed one, never | when the photo comes back | when the device passes the check, or face data is switched on |
+| The user's fix | update the app | pick the person again, or delete the album | switch face data on; otherwise none on this device |
+| Notice | the Newer-app notice | its own wording | its own wording, naming which of its two reasons |
+
+- **Neither new cause may use the Newer-app wording.** It would give the wrong reason, as decision
+  37's reversal found for content. The wordings, and how the evaluator reports which cause applies
+  beside `AlbumEvaluationStatus.UNEVALUATABLE`, are step 3.5 and 3.6's. Whether that status gains a
+  sibling or carries a cause is 3.5's choice; **its doc comment, "the stored rule is not understood by
+  this build", becomes too narrow either way.** *(3.5 chose a cause; its doc comment was widened —
+  see* Built 2026-11-21 *below.)*
+- **One notice per album.** When several causes apply, the intended order is the unreadable rule
+  first, then people unavailable — which leaves no anchor to test — then the anchor not found.
+
+### Never rewritten — widened to understood rules
+
+The Decision forbids any save path from persisting a rule it could not fully parse. **For a `people`
+clause the rule is wider: no code path changes a stored `people` clause except the user's own edit.**
+Resolution never writes back a healed URI, a new anchor, a group or a "not found" mark (ADR-0022 §4).
+The one permitted change is the user picking a person again through rule editing, which replaces that
+person's clause with one carrying the new anchor.
+
+### What rule editing must do with this clause
+
+[albums-rule-editing.md](../../design/albums-rule-editing.md) D6 is constrained, not answered, and
+this amendment does not choose the order. Whichever ships second:
+
+- **The editor must edit the People criterion**, including picking a person again for a clause whose
+  anchor is not found — decision 42 makes that the user's only fix short of deleting the album.
+- **It must round-trip every `people` clause it does not change**, unchanged in meaning, `pipeline`
+  included.
+- **Where people is unavailable**, there is nothing to pick from. *Proposed:* the editor does not edit
+  an album with a `people` clause on that device, as decision 37's reversal decided for content. That
+  is rule editing's D3 to confirm.
+- **D3's leaning — refuse to edit an album with an unknown clause — must not reach an album whose
+  anchor is not found**; the rule-editing plan already records this.
+
+### When this becomes binding
+
+When a shipped build first writes a `people` clause — step 3.6, which ships the People criterion. Until
+then the format can change by amending this record; after it, the Decision's unknown-clause rule
+governs every change, and a new field is a new ADR question.
+
+### Consequences of this amendment
+
+**Positive**
+
+- Several people, and people with place and date, need nothing beyond the conjunction.
+- An album whose person cannot be found, or that cannot be evaluated on this device, degrades exactly
+  as an unknown clause does: nothing invented, nothing lost, never widened.
+
+**Negative**
+
+- Two new notices, each in every shipped locale, in the full and short forms the Newer-app notice has.
+- A rule with several people is several clauses, so the Album info dialog and the editor must present
+  them as one People criterion.
+- The JSON carries a file name. It already appears in the album database's memberships, so nothing
+  new leaves the device; but a database dump of a people album now names its anchor photos.
+
+### Built 2026-11-21 — step 3.5
+
+The clause, its parser and writer, and the two evaluation-time causes landed as this amendment says,
+with no schema change and the envelope still at version 1. Where the code is the record:
+`data/AlbumRule.kt`, `data/AlbumRuleJson.kt`, `data/AlbumRuleEvaluation.kt` and
+`data/PeopleClauseEvaluation.kt`; [ARCHITECTURE.md](../ARCHITECTURE.md) §3 describes each, and
+[albums-stage-3.md](../../design/albums-stage-3.md) *3.5 — Built and verified* has the gate.
+
+- **A cause on `UNEVALUATABLE`, not a sibling status.** `AlbumEvaluationStatus` kept its four values;
+  an `UNEVALUATABLE` evaluation carries an `AlbumUnevaluatableCause` — `RULE_NOT_UNDERSTOOD`,
+  `PEOPLE_UNAVAILABLE_FACE_DATA_OFF`, `PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE`, `ANCHOR_NOT_FOUND` —
+  and no other evaluation does. Why: every reader that already branches on `UNEVALUATABLE` keeps its
+  meaning — the album resolves to additions minus exclusions, whatever the cause — so no screen
+  changed, and the cause is added information rather than a new state every exhaustive `when` must
+  learn. The order above holds: an unreadable rule, then people unavailable, then the anchor not
+  found. Until step 3.6 branches on the cause, every cause is drawn with the Newer-app notice; no
+  released build can reach that, because nothing writes a `people` clause.
+- **The parser's reasons** are three new `UnevaluatableReason` values, `INVALID_ANCHOR`,
+  `INVALID_PIPELINE_VERSION` and `INVALID_FACE_BOX`; an unknown field is the existing reason.
+- **The box numbers are written with `Float.toString`,** not a `Locale.US` formatter: it is
+  locale-free by definition and round-trips a `Float` exactly, which a fixed number of decimals
+  would not. A negative zero, which `-0`, `-0.0` or `-1e-50` read as, is normalised to `+0f`, so
+  equal boxes compare and encode alike.
+- **"In `[0, 1]`" is checked on the `Float` the text reads as, after rounding.** A text such as
+  `1.00000001` rounds to `1f` and is accepted; the list above reads as the literal decimal, but a
+  box is stored and compared as `Float`s, so the rounded value is the one the rule means. The plan
+  and this amendment do not disagree; this is the reading.
+- `People` and `Unevaluatable` redact `toString` (`Unevaluatable(raw=redacted, …)`), so neither an
+  anchor's URI or name nor stored rule text reaches a log or a test failure message.
+
+### Built 2026-11-22 — step 3.6
+
+The notices now branch on the cause: one pure mapping, `albumStatusNoticeKind` in
+`ui/components/AlbumStatusNotices.kt`, picks one of four notices for the tile, the Album row and the
+Album Detail View, so the Newer-app notice is left to `RULE_NOT_UNDERSTOOD`. The People picker writes
+the clause, one `AlbumRuleClause.People.anchoredAt` per chosen person, at most `MAX_PEOPLE_PER_ALBUM`
+(8); `createAutomaticAlbum` refuses more and catches the encoder's `require` as a backstop.
+[ARCHITECTURE.md](../ARCHITECTURE.md) §3 describes both; the gate is in
+[albums-stage-3.md](../../design/albums-stage-3.md) *3.6 — Built and verified 2026-11-22*.
+
+### References added by this amendment
+
+- [ADR-0022](0022-people-criterion-anchored-to-a-photo.md) — the anchor and its resolution
+- [ADR-0018](0018-media-index-in-a-second-database.md) Amendment 5 — the per-image Tier C states
+- [ADR-0023](0023-face-pipeline-models-runtime-and-delivery.md),
+  [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) — the two reasons people can be
+  unavailable
+- [docs/design/albums.md](../../design/albums.md) §8 decisions 33, 35, 37 (reversal), 40, 41, 42 and
+  45; [albums-rule-editing.md](../../design/albums-rule-editing.md) D3 and D6
+- `data/AlbumRule.kt`, `data/AlbumRuleJson.kt`, `data/AlbumRuleEvaluation.kt`

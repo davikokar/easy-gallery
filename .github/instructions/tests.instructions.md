@@ -46,7 +46,13 @@ The module does **not** set `isReturnDefaultValues`, so in a plain JUnit test **
 - Resource files are checked here too, as files: `LocaleResourceParityTest` parses
   `src/main/res/values*/strings.xml` relative to the module directory, Gradle's working directory
   for unit tests, with no `Context` or Robolectric. Extend it, rather than adding a second
-  per-locale check, when a localisation rule changes.
+  per-locale check, when a localisation rule changes. The same pattern covers other files the
+  build ships or reads: `BackupRulesParityTest` parses `src/main/res/xml/` with the JDK's XML
+  parser, `ThirdPartyNoticesTest` and `FacePipelineVersionTest` read `src/main/assets/face/`, and
+  the latter reads `../gradle/libs.versions.toml`. Compare text files line by line after splitting
+  on `\r?\n`, so a test does not depend on the file's line endings. None of these files is an input
+  of `testDebugUnitTest`: after a change to them alone, an up-to-date task does not re-run the
+  tests that read them. Run `cleanTestDebugUnitTest` first, and say so in the gate report.
 
 ### Robolectric tests (the Android boundary)
 
@@ -73,6 +79,17 @@ The `InMemory*` half of a store is the counter-example: `MediaIndexInMemoryStore
 because an in-memory implementation touches no Android API. Do not put a Robolectric runner on one
 out of symmetry with its Room sibling.
 
+A test of what reaches the database **file** — `MediaIndexFaceDataScrubTest` — meets Robolectric's
+SQLite, which is not a device's. `auto_vacuum` takes effect only through a following `VACUUM`. A
+non-WAL file reports `journal_mode` `memory`, so a rollback-journal test sets the mode it means —
+`TRUNCATE`, or `PERSIST` for the case that must not report a scrub — with `PRAGMA journal_mode`
+on the store's write connection **outside any transaction**, since SQLite refuses a mode change
+inside one, and then asserts it. What a mode means for the result is the pure
+`deletionIsScrubbed`, tested plain in `MediaIndexScrubModeTest`; the file test proves the files.
+A concurrent reader in a test holds a read snapshot only:
+`beginTransactionNonExclusive` is `BEGIN IMMEDIATE` and blocks the code under test's own write.
+Whatever such a test sets rather than observes is still to be checked on a device.
+
 Do not reach for it to avoid extracting pure logic, and do not add it to a test that would
 otherwise run plain.
 
@@ -80,14 +97,18 @@ otherwise run plain.
 
 - Assert on `Flow` emissions with **Turbine** (`flow.test { ... }`), not by collecting into a
   list manually.
-- Use `runTest` and the injected test dispatcher. Never call `Thread.sleep`.
-- Advance virtual time with the test scheduler instead of real delays.
+- Use `runTest` and the injected test dispatcher, and advance virtual time with its scheduler;
+  never sleep in a test that runs on it.
+- Work on threads the test does not own — Room's invalidation, WorkManager, a device — cannot be
+  advanced: poll a real clock under a bounded timeout, as `PeopleAlbumReevaluationTest` does,
+  rather than sleeping a fixed time and hoping.
 
 ## Doubles
 
 - Prefer the hand-written `FakeMediaRepository` over mocking frameworks for repository behavior,
-  and extend it when a test needs to observe a new operation. `GalleryViewModelTest` and
-  `CreateFolderViewModelTest` both depend on it, so a change to `MediaRepository` breaks both.
+  and extend it when a test needs to observe a new operation. Every test that needs a
+  `MediaRepository` uses it — the ViewModel tests, the Tier A indexer, the face pass and the
+  worker — so a change to the interface breaks all of them.
 - Inject the `InMemory*` implementation of every preference store rather than letting a test
   touch `SharedPreferences`. A relaxed MockK `Application` makes preference reads return mock
   defaults, which is safe but means persisted defaults will not match production.
@@ -104,8 +125,8 @@ otherwise run plain.
   `AlbumDetailContent`), not the `*Screen` wrapper. Pass **every parameter by name**: that is what
   makes a signature change fail loudly instead of silently binding to the wrong argument.
 - Resolve controls by `testTag` or by content description. `testTag("delete_button")` exists on
-  **both** the folder selection top bar and the media selection top bar — assert against the one
-  the test actually renders.
+  three top bars — folder selection, media selection, and Album Detail View's own selection top
+  bar — assert against the one the test actually renders.
 - Media actions live inside the media selection overflow menu, so a test must open
   `cd_more_options` before the action is reachable.
 - A leading icon in a dropdown item carries `contentDescription = null` on purpose. Do not give
@@ -121,10 +142,57 @@ otherwise run plain.
   With one, `./gradlew connectedDebugAndroidTest` runs the suite and instrumented behaviour can be
   verified for real. With none, `compileDebugAndroidTestKotlin` is the fallback, and instrumented
   behaviour must then be reported as compile-verified only, never as observed.
-- A device test that measures or depends on device content must **fail** with a message starting
+- To run one class, pass `-Pandroid.testInstrumentationRunnerArguments.class=<fqcn>` to
+  `connectedDebugAndroidTest`; `<fqcn>#method`, and several comma-separated in one argument, also
+  work. That task still uninstalls the app and wipes its data. When the app's data must survive —
+  a check after a walkthrough, or a test on the app's own index — run `:app:installDebug
+  :app:installDebugAndroidTest`, grant the media permissions, and then
+  `adb shell am instrument -w -r -e class <fqcn> [-e <arg> true]
+  com.davide.seddio.easygallery.test/androidx.test.runner.AndroidJUnitRunner`. `adb` is not
+  necessarily on `PATH` in Git Bash: use `"$ANDROID_HOME/platform-tools/adb"`, and read
+  `command not found` as that, not as "no device". Set `MSYS_NO_PATHCONV=1` when an argument is a
+  device path such as `/sdcard/...`.- A device test that measures or depends on device content must **fail** with a message starting
   `ENVIRONMENT:` when the device lacks what it needs — no live media, no item with a date or
   coordinates, a batch that indexed nothing — rather than passing vacuously.
+- A device **measurement** that is slow or reads the phone's whole library is **opt-in**: it reads
+  an instrumentation argument and skips through `Assume.assumeTrue` unless it is `true`, so
+  `connectedDebugAndroidTest` reports it skipped rather than running it.
+  `FaceIndexPassMeasurementDeviceTest` is the example, enabled with
+  `-Pandroid.testInstrumentationRunnerArguments.faceIndexMeasurement=true`. It logs aggregates
+  only, and works on a throwaway in-memory store, never the app's real one. The `ENVIRONMENT:`
+  rule above still applies once it is opted in. Each opt-in test names its arguments in its KDoc;
+  `grep -l assumeTrue app/src/androidTest` lists them.
+- A device test that changes anything outside its own throwaway stores — the app's real face-data
+  flags, or the user's media (a favourite) — snapshots it first, restores it in a step that runs
+  even when the body fails, and checks the restore as a separate step.
+  `FaceGroupingWorkerMeasurementDeviceTest` (flags) and `FaceFavouriteToggleDeviceTest` (a
+  favourite) are the examples.
+- **Only test sources set the app's real face-data disclosure flag on a device**, and a test that
+  does lives in `androidTest` only. It snapshots the setting and `face_device_state` and restores
+  them exactly, as above — **flags first, then the face-data deletion**, holding the Tier C lock
+  across both so no periodic run can write face data in between.
+- A test of the face pipeline needs an arm64 device; on another ABI it must assert the opposite
+  answer rather than pass vacuously, as `FaceCapabilityDeviceTest` does. Emulators fail the
+  capability check (ADR-0023).
 - `androidTest` is in the same module, so it may use the app's `internal` members — the
   gazetteer's linear-scan oracle is the example. Acceptable for oracles and test seams.
 - A device's real screen size matters: an item below the fold is not in the semantics tree in a
   usable state. Call `performScrollTo()` before asserting on anything low in a scrollable screen.
+- **To press Back on a Compose dialog, send the key; do not use `Espresso.pressBack()`.** On the
+  SM-G990B it intermittently fails with `RootViewWithoutFocusException`, because it waits for the
+  picked root to take window focus and a dialog window does not always take it. `waitForIdle()`,
+  then `InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)` —
+  `pressSystemBack()` in `FaceDataDialogsTest` is the example.
+- A `*Content` test that needs the screen to react to its own taps drives it through a small
+  harness that holds the state and re-implements the ViewModel's action — `PickerHarness` in
+  `NewAutomaticAlbumContentTest`, whose person toggle stops at `MAX_PEOPLE_PER_ALBUM` as the
+  ViewModel does. The harness's copy of the rule proves only what the screen draws for it; the rule
+  itself must also be pinned by a unit test of the real state holder, as
+  `AutomaticAlbumPickerStateTest` pins the cap, so the two cannot drift apart unnoticed.
+
+## Mutation checks
+
+- A mutation check edits production code by hand to prove a test fails. **Restore the file before
+  anything else runs**, and check that it is restored — `git diff` on the file, or its md5 against
+  the copy taken before — rather than trusting the editor. A mutant left behind reproduces real test
+  failures in the next run, which then read as a code defect: check for one before diagnosing.

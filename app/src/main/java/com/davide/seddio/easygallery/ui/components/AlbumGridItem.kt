@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.AlbumEvaluationStatus
+import com.davide.seddio.easygallery.data.AlbumUnevaluatableCause
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -58,6 +59,7 @@ fun LazyGridItemScope.AlbumGridItem(
     itemCount: Int,
     hiddenMemberCount: Int,
     status: AlbumEvaluationStatus,
+    unevaluatableCause: AlbumUnevaluatableCause?,
     coverUri: Uri?,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -69,6 +71,7 @@ fun LazyGridItemScope.AlbumGridItem(
         itemCount = itemCount,
         hiddenMemberCount = hiddenMemberCount,
         status = status,
+        unevaluatableCause = unevaluatableCause,
         coverUri = coverUri,
         isFavourite = false,
         isSelected = isSelected,
@@ -90,6 +93,7 @@ fun LazyGridItemScope.FavouritesAlbumGridItem(
         itemCount = itemCount,
         hiddenMemberCount = 0,
         status = AlbumEvaluationStatus.MANUAL,
+        unevaluatableCause = null,
         coverUri = coverUri,
         isFavourite = true,
         isSelected = isSelected,
@@ -106,6 +110,7 @@ fun LazyItemScope.AlbumListItem(
     itemCount: Int,
     hiddenMemberCount: Int,
     status: AlbumEvaluationStatus,
+    unevaluatableCause: AlbumUnevaluatableCause?,
     coverUri: Uri?,
     isSelected: Boolean,
     onClick: () -> Unit,
@@ -117,6 +122,7 @@ fun LazyItemScope.AlbumListItem(
         itemCount = itemCount,
         hiddenMemberCount = hiddenMemberCount,
         status = status,
+        unevaluatableCause = unevaluatableCause,
         coverUri = coverUri,
         isFavourite = false,
         isSelected = isSelected,
@@ -138,6 +144,7 @@ fun LazyItemScope.FavouritesAlbumListItem(
         itemCount = itemCount,
         hiddenMemberCount = 0,
         status = AlbumEvaluationStatus.MANUAL,
+        unevaluatableCause = null,
         coverUri = coverUri,
         isFavourite = true,
         isSelected = isSelected,
@@ -154,6 +161,7 @@ private fun LazyGridItemScope.AlbumGridItemContent(
     itemCount: Int,
     hiddenMemberCount: Int,
     status: AlbumEvaluationStatus,
+    unevaluatableCause: AlbumUnevaluatableCause?,
     coverUri: Uri?,
     isFavourite: Boolean,
     isSelected: Boolean,
@@ -165,7 +173,7 @@ private fun LazyGridItemScope.AlbumGridItemContent(
     } else {
         Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
     }
-    val notices = albumNotices(status, hiddenMemberCount)
+    val notices = albumNotices(status, unevaluatableCause, hiddenMemberCount)
 
     Card(
         modifier = Modifier
@@ -270,6 +278,7 @@ private fun LazyItemScope.AlbumListItemContent(
     itemCount: Int,
     hiddenMemberCount: Int,
     status: AlbumEvaluationStatus,
+    unevaluatableCause: AlbumUnevaluatableCause?,
     coverUri: Uri?,
     isFavourite: Boolean,
     isSelected: Boolean,
@@ -281,7 +290,7 @@ private fun LazyItemScope.AlbumListItemContent(
     } else {
         Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
     }
-    val notices = albumNotices(status, hiddenMemberCount)
+    val notices = albumNotices(status, unevaluatableCause, hiddenMemberCount)
 
     Surface(
         modifier = Modifier
@@ -440,15 +449,13 @@ private class AlbumNotices(val status: StatusNotice?, val hidden: String?) {
 }
 
 @Composable
-private fun albumNotices(status: AlbumEvaluationStatus, hiddenMemberCount: Int): AlbumNotices {
-    val statusNotice = when (status) {
-        AlbumEvaluationStatus.UNEVALUATABLE -> StatusNotice(
-            testTag = "album_rule_unevaluatable_notice",
-            text = stringResource(R.string.album_rule_unevaluatable_notice_short)
-        )
-        AlbumEvaluationStatus.MANUAL,
-        AlbumEvaluationStatus.COMPLETE,
-        AlbumEvaluationStatus.WAITING_ON_INDEX -> null
+private fun albumNotices(
+    status: AlbumEvaluationStatus,
+    cause: AlbumUnevaluatableCause?,
+    hiddenMemberCount: Int
+): AlbumNotices {
+    val statusNotice = albumStatusNoticeKind(status, cause).spec()?.let { spec ->
+        StatusNotice(testTag = spec.testTag, text = stringResource(spec.shortTextRes))
     }
     val hiddenNotice = if (hiddenMemberCount > 0) {
         stringResource(R.string.album_hidden_items_notice)

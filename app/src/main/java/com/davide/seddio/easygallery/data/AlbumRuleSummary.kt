@@ -20,7 +20,7 @@ sealed interface AlbumRuleSummary {
 
     /**
      * A rule is a conjunction, so a member must satisfy **every** one of [conditions]; there is no
-     * "or". Places come first, in stored order; dates follow, newest period first.
+     * "or". Places come first, in stored order; dates follow, newest period first; people come last.
      */
     data class Automatic(val conditions: List<AlbumRuleCondition>) : AlbumRuleSummary
 }
@@ -39,6 +39,9 @@ sealed interface AlbumRuleCondition {
     ) : AlbumRuleCondition
 
     data class Dates(val period: DatePeriod) : AlbumRuleCondition
+
+    /** How many people the rule names, one per `people` clause. A count only: an anchor is never in a summary (ADR-0024 §6). */
+    data class People(val count: Int) : AlbumRuleCondition
 }
 
 enum class PlaceScope { COUNTRY, REGION, PLACE }
@@ -87,7 +90,9 @@ fun summarizeAlbumRule(rule: AlbumRule?, countryName: (countryCode: String) -> S
                         .thenByDescending { it.from ?: LocalDate.MIN }
                 )
                 .map { AlbumRuleCondition.Dates(it.toPeriod()) }
-            AlbumRuleSummary.Automatic(places + dates)
+            val peopleCount = rule.clauses.count { it is AlbumRuleClause.People }
+            val people = if (peopleCount > 0) listOf(AlbumRuleCondition.People(peopleCount)) else emptyList()
+            AlbumRuleSummary.Automatic(places + dates + people)
         }
     }
 }

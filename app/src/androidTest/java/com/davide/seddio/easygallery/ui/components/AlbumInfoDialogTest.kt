@@ -3,6 +3,7 @@ package com.davide.seddio.easygallery.ui.components
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +15,8 @@ import com.davide.seddio.easygallery.data.AlbumRuleClause
 import com.davide.seddio.easygallery.data.AlbumRuleCondition
 import com.davide.seddio.easygallery.data.AlbumRuleSummary
 import com.davide.seddio.easygallery.data.DatePeriod
+import com.davide.seddio.easygallery.data.FaceBox
+import com.davide.seddio.easygallery.data.mediaIdentityOf
 import com.davide.seddio.easygallery.data.UnevaluatableReason
 import com.davide.seddio.easygallery.data.summarizeAlbumRule
 import java.time.LocalDate
@@ -81,6 +84,62 @@ class AlbumInfoDialogTest {
         composeTestRule.onNodeWithText(appContext.getString(R.string.automatic_album_section_date)).assertIsDisplayed()
         composeTestRule.onNodeWithText(yearText(2026, locale)).assertIsDisplayed()
         composeTestRule.onAllNodesWithText(appContext.getString(R.string.album_type_manual_title))
+            .assertCountEquals(0)
+    }
+
+    private fun peopleClause(index: Int) = AlbumRuleClause.People(
+        anchor = mediaIdentityOf("content://media/external/images/media/$index", "secret-$index.jpg", size = 10L, dateModified = 20L),
+        box = FaceBox(0f, 0f, 0.5f, 0.5f),
+        pipelineVersion = 1
+    )
+
+    @Test
+    fun peopleOnlyRuleShowsTheAutomaticHeadingAndThePeopleEntryWithItsNote() {
+        showDialog(summarize(AlbumRule.Evaluatable(listOf(peopleClause(1), peopleClause(2), peopleClause(3)))))
+
+        composeTestRule.onNodeWithTag("album_info_automatic_heading").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("album_info_people").assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.automatic_album_section_people)).assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(appContext.resources.getQuantityString(R.plurals.album_info_people_count, 3, 3))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(appContext.getString(R.string.album_info_people_note)).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(appContext.getString(R.string.album_type_manual_title))
+            .assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("secret-", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun peopleEntryUsesTheSingularForOnePerson() {
+        showDialog(summarize(AlbumRule.Evaluatable(listOf(peopleClause(1)))))
+
+        composeTestRule
+            .onNodeWithText(appContext.resources.getQuantityString(R.plurals.album_info_people_count, 1, 1))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun peopleEntryComesAfterPlaceAndDate() {
+        showDialog(
+            summarize(
+                AlbumRule.Evaluatable(
+                    listOf(peopleClause(1), wholeYear(2026), AlbumRuleClause.Region(country = "IT"))
+                )
+            )
+        )
+
+        val placeTop = composeTestRule.onNodeWithTag("album_info_place").fetchSemanticsNode().boundsInRoot.top
+        val dateTop = composeTestRule.onNodeWithTag("album_info_date").fetchSemanticsNode().boundsInRoot.top
+        val peopleTop = composeTestRule.onNodeWithTag("album_info_people").fetchSemanticsNode().boundsInRoot.top
+        assertTrue("People must come after Place and Date", placeTop < dateTop && dateTop < peopleTop)
+    }
+
+    @Test
+    fun ruleWithoutPeopleHasNoPeopleEntry() {
+        showDialog(summarize(AlbumRule.Evaluatable(listOf(wholeYear(2026)))))
+
+        composeTestRule.onAllNodesWithTag("album_info_people").assertCountEquals(0)
+        composeTestRule.onAllNodesWithText(appContext.getString(R.string.album_info_people_note))
             .assertCountEquals(0)
     }
 
