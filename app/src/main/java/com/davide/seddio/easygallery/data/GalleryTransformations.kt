@@ -10,6 +10,9 @@ sealed interface DateTakenSortState {
     data object NotIndexed : DateTakenSortState
 }
 
+/** A date taken for display, sort and grouping; [isCaptureDate] is false when it is the date-added fallback. */
+data class ResolvedDateTaken(val epochMillis: Long, val isCaptureDate: Boolean)
+
 object GalleryTransformations {
 
     fun filterAndSortFolders(
@@ -21,7 +24,8 @@ object GalleryTransformations {
         excluded: Set<String>,
         showExcluded: Boolean,
         types: Set<MediaType>,
-        thumbnailOverrides: Map<String, String> = emptyMap()
+        thumbnailOverrides: Map<String, String> = emptyMap(),
+        indexedDateTakenByCanonicalMediaUri: Map<String, Long?>
     ): List<Folder> {
         val foldersMap = mutableMapOf<String, Folder>()
         val resolvedOverrides = mutableMapOf<String, android.net.Uri>()
@@ -32,6 +36,7 @@ object GalleryTransformations {
 
             val isExcluded = excluded.contains(item.folderPath)
             if ((showExcluded || !isExcluded) && types.contains(item.type)) {
+                val dateTakenMillis = resolveDateTaken(item, indexedDateTakenByCanonicalMediaUri).epochMillis
                 val existing = foldersMap[item.folderPath]
                 if (existing == null) {
                     foldersMap[item.folderPath] = Folder(
@@ -42,14 +47,14 @@ object GalleryTransformations {
                         path = item.folderPath,
                         size = item.size,
                         dateModified = item.dateModified,
-                        dateTaken = item.dateAdded
+                        dateTaken = dateTakenMillis
                     )
                 } else {
                     foldersMap[item.folderPath] = existing.copy(
                         imageCount = existing.imageCount + 1,
                         size = existing.size + item.size,
                         dateModified = maxOf(existing.dateModified, item.dateModified),
-                        dateTaken = maxOf(existing.dateTaken, item.dateAdded)
+                        dateTaken = maxOf(existing.dateTaken, dateTakenMillis)
                     )
                 }
             }
@@ -114,17 +119,13 @@ object GalleryTransformations {
         indexedDateTakenByCanonicalMediaUri: Map<String, Long?>
     ): List<MediaItem> {
         val baseSorted = when (sort) {
+            SortType.PATH, SortType.SIZE -> return media.sortedWith(pathOrSizeComparator(sort, order))
             SortType.NAME -> media.sortedBy { it.name }
             SortType.LAST_MODIFIED -> media.sortedBy { it.dateModified }
             SortType.DATE_TAKEN -> media.sortedBy { item ->
-                when (val state = dateTakenSortState(item, indexedDateTakenByCanonicalMediaUri)) {
-                    is DateTakenSortState.IndexedWithDate -> state.epochMillis
-                    DateTakenSortState.IndexedWithoutDate -> item.dateAdded * 1_000L
-                    DateTakenSortState.NotIndexed -> item.dateAdded * 1_000L
-                }
+                dateTakenEpochMillis(item, indexedDateTakenByCanonicalMediaUri)
             }
             SortType.RANDOM -> media.shuffled()
-            else -> media.sortedBy { it.dateAdded }
         }
 
         return if (sort != SortType.RANDOM && order == SortOrder.DESCENDING) {
@@ -132,6 +133,37 @@ object GalleryTransformations {
         } else {
             baseSorted
         }
+    }
+
+    /**
+     * The date taken outside album rules (ADR-0026): the indexed capture date, else MediaStore's, else
+     * `dateAdded` with [ResolvedDateTaken.isCaptureDate] false.
+     */
+    fun resolveDateTaken(
+        item: MediaItem,
+        indexedDateTakenByCanonicalMediaUri: Map<String, Long?>
+    ): ResolvedDateTaken {
+        val state = dateTakenSortState(item, indexedDateTakenByCanonicalMediaUri)
+        if (state is DateTakenSortState.IndexedWithDate) return ResolvedDateTaken(state.epochMillis, true)
+        val mediaStoreDateTaken = item.mediaStoreDateTakenMillis
+        if (mediaStoreDateTaken != null) return ResolvedDateTaken(mediaStoreDateTaken, true)
+        return ResolvedDateTaken(item.dateAdded * 1_000L, false)
+    }
+
+    /** The instant the Date taken sort uses for one item. */
+    fun dateTakenEpochMillis(
+        item: MediaItem,
+        indexedDateTakenByCanonicalMediaUri: Map<String, Long?>
+    ): Long = resolveDateTaken(item, indexedDateTakenByCanonicalMediaUri).epochMillis
+
+    // Path is folderPath/name, case-sensitive like the folders' Path sort. Only the primary key
+    // follows the order; ties always fall back to path then URI so equal keys never swap places.
+    private fun pathOrSizeComparator(sort: SortType, order: SortOrder): Comparator<MediaItem> {
+        val byPath = compareBy<MediaItem> { "${it.folderPath}/${it.name}" }
+        val primary: Comparator<MediaItem> =
+            if (sort == SortType.SIZE) compareBy<MediaItem> { it.size } else byPath
+        val directed = if (order == SortOrder.DESCENDING) primary.reversed() else primary
+        return directed.then(byPath).thenBy { it.uri.toString() }
     }
 
     private fun dateTakenSortState(
@@ -156,16 +188,20 @@ object GalleryTransformations {
         items: List<MediaItem>,
         type: GroupByType,
         order: SortOrder,
+        indexedDateTakenByCanonicalMediaUri: Map<String, Long?>,
         todayLabel: String = "Today",
         yesterdayLabel: String = "Yesterday",
         fileTypeLabels: Map<MediaType, String> = emptyMap()
     ): Map<String, List<MediaItem>> {
         if (type == GroupByType.NONE) return mapOf("" to items)
 
+        fun dateTakenMillis(item: MediaItem) =
+            resolveDateTaken(item, indexedDateTakenByCanonicalMediaUri).epochMillis
+
         val sortedItems = when (type) {
             GroupByType.DATE_TAKEN_DAILY, GroupByType.DATE_TAKEN_MONTHLY -> {
-                if (order == SortOrder.DESCENDING) items.sortedByDescending { it.dateAdded }
-                else items.sortedBy { it.dateAdded }
+                if (order == SortOrder.DESCENDING) items.sortedByDescending { dateTakenMillis(it) }
+                else items.sortedBy { dateTakenMillis(it) }
             }
             GroupByType.LAST_MODIFIED_DAILY, GroupByType.LAST_MODIFIED_MONTHLY -> {
                 if (order == SortOrder.DESCENDING) items.sortedByDescending { it.dateModified }
@@ -186,12 +222,12 @@ object GalleryTransformations {
                 val longDateFormat = java.text.DateFormat.getDateInstance(java.text.DateFormat.LONG, Locale.getDefault())
                 
                 sortedItems.groupBy { item ->
-                    val date = if (type == GroupByType.DATE_TAKEN_DAILY) item.dateAdded else item.dateModified
-                    val dateStr = sdf.format(Date(date * 1000))
+                    val dateMillis = if (type == GroupByType.DATE_TAKEN_DAILY) dateTakenMillis(item) else item.dateModified * 1000
+                    val dateStr = sdf.format(Date(dateMillis))
                     when (dateStr) {
                         today -> todayLabel
                         yesterday -> yesterdayLabel
-                        else -> longDateFormat.format(Date(date * 1000))
+                        else -> longDateFormat.format(Date(dateMillis))
                     }
                 }
             }
@@ -200,8 +236,8 @@ object GalleryTransformations {
                 val pattern = android.text.format.DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMM yyyy")
                 val sdf = SimpleDateFormat(pattern, Locale.getDefault())
                 sortedItems.groupBy { item ->
-                    val date = if (type == GroupByType.DATE_TAKEN_MONTHLY) item.dateAdded else item.dateModified
-                    sdf.format(Date(date * 1000))
+                    val dateMillis = if (type == GroupByType.DATE_TAKEN_MONTHLY) dateTakenMillis(item) else item.dateModified * 1000
+                    sdf.format(Date(dateMillis))
                 }
             }
             GroupByType.FILE_TYPE -> {

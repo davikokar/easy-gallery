@@ -85,8 +85,9 @@
     <string name="group_by_file_type">Loại tệp</string>
     <string name="cd_video">Video</string>
     <string name="video_position_of_duration">%1$s / %2$s</string>
-    <string name="properties_date">Ngày: %1$s</string>
+    <string name="properties_date_added">Ngày thêm: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
+    <string name="properties_date_taken">Ngày chụp: %1$s</string>
     <string name="cd_exit_selection">Thoát chế độ chọn</string>
     <string name="cd_more_options">Tùy chọn khác</string>
     <string name="menu_copy_to">Sao chép đến</string>

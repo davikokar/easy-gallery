@@ -1,6 +1,7 @@
 package com.davide.seddio.easygallery.ui
 
 import com.davide.seddio.easygallery.data.DisplayMode
+import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.GalleryUiState
 import com.davide.seddio.easygallery.data.PreferenceScope
 import com.davide.seddio.easygallery.data.SortType
@@ -94,6 +95,7 @@ fun FolderDetailScreen(
         searchQuery = searchQuery,
         isSearchActive = isSearchActive,
         groupedMedia = groupedMedia,
+        indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
         isMediaSelectionMode = isMediaSelectionMode,
         isThumbnailPickerMode = isThumbnailPickerMode,
         draftThumbnailUri = folderThumbnailDraftUri,
@@ -187,6 +189,7 @@ fun FolderDetailContent(
     searchQuery: String,
     isSearchActive: Boolean,
     groupedMedia: Map<String, List<MediaItem>>,
+    indexedDateTakenByMediaUri: Map<String, Long?>,
     isMediaSelectionMode: Boolean,
     isThumbnailPickerMode: Boolean,
     draftThumbnailUri: android.net.Uri?,
@@ -369,6 +372,7 @@ fun FolderDetailContent(
         if (showPropertiesDialog) {
             MediaPropertiesDialog(
                 media = getSelectedMediaData(),
+                indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                 onDismiss = { showPropertiesDialog = false }
             )
         }
@@ -470,6 +474,7 @@ fun FolderDetailContent(
                 } else {
                     MediaList(
                         media = media,
+                        indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                         state = listState,
                         showInfo = preferences.showInfo,
                         selectedItems = displayedSelectedItems,
@@ -481,6 +486,7 @@ fun FolderDetailContent(
             } else {
                 GroupedMediaContent(
                     groupedMedia = groupedMedia,
+                    indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                     viewType = preferences.viewType,
                     columns = preferences.columns,
                     gridState = gridState,
@@ -501,6 +507,7 @@ fun FolderDetailContent(
 @Composable
 fun GroupedMediaContent(
     groupedMedia: Map<String, List<MediaItem>>,
+    indexedDateTakenByMediaUri: Map<String, Long?>,
     viewType: ViewType,
     columns: Int,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
@@ -582,6 +589,7 @@ fun GroupedMediaContent(
                 items(items, key = { it.uri.toString() }) { item ->
                     MediaListItem(
                         item = item,
+                        dateTakenMillis = GalleryTransformations.resolveDateTaken(item, indexedDateTakenByMediaUri).epochMillis,
                         showInfo = showInfo,
                         isSelected = selectedItems.contains(item.uri),
                         isFavourite = favouriteUris.contains(item.uri),
@@ -685,6 +693,7 @@ fun MediaGrid(
 @Composable
 fun MediaList(
     media: List<MediaItem>,
+    indexedDateTakenByMediaUri: Map<String, Long?>,
     showInfo: Boolean,
     state: androidx.compose.foundation.lazy.LazyListState,
     contentPadding: PaddingValues = PaddingValues(vertical = 8.dp),
@@ -701,6 +710,7 @@ fun MediaList(
         items(media, key = { it.uri.toString() }) { item ->
             MediaListItem(
                 item = item,
+                dateTakenMillis = GalleryTransformations.resolveDateTaken(item, indexedDateTakenByMediaUri).epochMillis,
                 showInfo = showInfo,
                 isSelected = selectedItems.contains(item.uri),
                 isFavourite = favouriteUris.contains(item.uri),

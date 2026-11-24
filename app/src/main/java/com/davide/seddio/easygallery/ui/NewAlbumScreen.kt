@@ -123,6 +123,7 @@ fun NewAlbumScreen(
         sortedFolderMedia,
         selectedFolderPreferences.groupBy,
         selectedFolderPreferences.groupOrder,
+        indexedDateTakenByMediaUri,
         todayLabel,
         yesterdayLabel,
         fileTypeLabels
@@ -131,6 +132,7 @@ fun NewAlbumScreen(
             items = sortedFolderMedia,
             type = selectedFolderPreferences.groupBy,
             order = selectedFolderPreferences.groupOrder,
+            indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri,
             todayLabel = todayLabel,
             yesterdayLabel = yesterdayLabel,
             fileTypeLabels = fileTypeLabels
@@ -146,6 +148,7 @@ fun NewAlbumScreen(
         selectedFolderPreferences = selectedFolderPreferences,
         groupedFolderMedia = groupedFolderMedia,
         selectedFolderMedia = sortedFolderMedia,
+        indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
         selectedUris = selectedUris,
         onNameChange = { name = it },
         onOpenFolder = { folder -> openFolderPath = folder.path },
@@ -177,6 +180,7 @@ fun NewAlbumContent(
     selectedFolderPreferences: ViewPreferences,
     groupedFolderMedia: Map<String, List<MediaItem>>,
     selectedFolderMedia: List<MediaItem>,
+    indexedDateTakenByMediaUri: Map<String, Long?>,
     selectedUris: Set<Uri>,
     onNameChange: (String) -> Unit,
     onOpenFolder: (Folder) -> Unit,
@@ -429,6 +433,7 @@ fun NewAlbumContent(
                                     Box(modifier = Modifier.fillMaxSize().testTag("new_album_media_list")) {
                                         MediaList(
                                             media = selectedFolderMedia,
+                                            indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                                             showInfo = selectedFolderPreferences.showInfo,
                                             state = mediaListState,
                                             contentPadding = floatingListContentPadding,
@@ -442,6 +447,7 @@ fun NewAlbumContent(
                                 Box(modifier = Modifier.fillMaxSize().testTag("new_album_media_grouped")) {
                                     GroupedMediaContent(
                                         groupedMedia = groupedFolderMedia,
+                                        indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                                         viewType = selectedFolderPreferences.viewType,
                                         columns = selectedFolderPreferences.columns,
                                         gridState = mediaGridState,

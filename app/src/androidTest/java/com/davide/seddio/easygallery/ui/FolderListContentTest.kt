@@ -1297,6 +1297,7 @@ class FolderListContentTest {
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
         groupedAllMedia: Map<String, List<MediaItem>> = emptyMap(),
+        indexedDateTakenByMediaUri: Map<String, Long?> = emptyMap(),
         onStartManualAlbum: () -> Unit = {},
         onStartAutomaticAlbum: () -> Unit = {},
         calendarContent: @Composable () -> Unit = {}
@@ -1327,6 +1328,7 @@ class FolderListContentTest {
             favouriteUris = favouriteMedia.map { it.uri }.toSet(),
             isFavouritePending = false,
             groupedAllMedia = groupedAllMedia,
+            indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
             isDestinationPickerActive = false,
             isCreateFolderDialogOpen = false,
             createFolderError = null,

@@ -87,8 +87,9 @@
     <string name="group_by_file_type">Tip de fișier</string>
     <string name="cd_video">Videoclip</string>
     <string name="video_position_of_duration">%1$s / %2$s</string>
-    <string name="properties_date">Data: %1$s</string>
+    <string name="properties_date_added">Data adăugării: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
+    <string name="properties_date_taken">Data capturii: %1$s</string>
     <string name="cd_exit_selection">Ieșiți din selecție</string>
     <string name="cd_more_options">Mai multe opțiuni</string>
     <string name="menu_copy_to">Copiați în</string>

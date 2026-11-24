@@ -7,13 +7,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.RotateRight
@@ -43,8 +41,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
@@ -56,12 +52,15 @@ import androidx.media3.ui.PlayerView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.davide.seddio.easygallery.R
-import com.davide.seddio.easygallery.data.formatCoordinatesForDisplay
+import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.OperationType
 import com.davide.seddio.easygallery.ui.components.DestinationFolderPickerDialog
 import com.davide.seddio.easygallery.ui.components.VideoPlaybackState
+import com.davide.seddio.easygallery.ui.components.ViewerInfoPanel
+import com.davide.seddio.easygallery.ui.components.ViewerMediaArea
+import com.davide.seddio.easygallery.ui.components.displayableDateTaken
 import com.davide.seddio.easygallery.ui.components.formatMediaDuration
 import com.davide.seddio.easygallery.ui.components.openMediaLocationInMaps
 import com.davide.seddio.easygallery.ui.components.playbackProgressFraction
@@ -248,32 +247,51 @@ fun FullImageScreen(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                HorizontalPager(
-                    state = pagerState,
+                // The info panel is drawn over the media rather than above the bottom bar, so toggling it never resizes the pager.
+                ViewerMediaArea(
+                    showInfo = showInfo && !isImmersive,
+                    infoContent = {
+                        val coordinates = rememberMediaLocation(item)
+                        val indexedDateTaken by viewModel.indexedDateTakenByMediaUri.collectAsState()
+                        ViewerInfoPanel(
+                            name = item.name,
+                            path = "${item.folderPath}/${item.name}",
+                            dateTaken = displayableDateTaken(
+                                GalleryTransformations.resolveDateTaken(item, indexedDateTaken)
+                            ),
+                            coordinates = coordinates,
+                            onOpenLocation = { openMediaLocationInMaps(context, it, item.name) }
+                        )
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .background(Color.Black),
-                    pageSpacing = 16.dp,
-                    userScrollEnabled = !isZoomed,
-                    key = { index -> if (index < mediaList.size) mediaList[index].uri.toString() else index }
-                ) { page ->
-                    if (page in mediaList.indices) {
-                        val p = mediaList[page]
-                        if (p.type == MediaType.VIDEO) {
-                            VideoPlayer(
-                                player = exoPlayer,
-                                isActive = page == activePage && !isPagerScrolling,
-                                onTap = { viewModel.toggleImmersiveMode() }
-                            )
-                        } else {
-                            ZoomableImage(
-                                uri = p.uri,
-                                contentDescription = p.name,
-                                rotationZ = if (p == item) rotation else 0f,
-                                onTap = { viewModel.toggleImmersiveMode() },
-                                onScaleChanged = { isZoomed = it > 1f }
-                            )
+                        .background(Color.Black)
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        pageSpacing = 16.dp,
+                        userScrollEnabled = !isZoomed,
+                        key = { index -> if (index < mediaList.size) mediaList[index].uri.toString() else index }
+                    ) { page ->
+                        if (page in mediaList.indices) {
+                            val p = mediaList[page]
+                            if (p.type == MediaType.VIDEO) {
+                                VideoPlayer(
+                                    player = exoPlayer,
+                                    isActive = page == activePage && !isPagerScrolling,
+                                    onTap = { viewModel.toggleImmersiveMode() }
+                                )
+                            } else {
+                                ZoomableImage(
+                                    uri = p.uri,
+                                    contentDescription = p.name,
+                                    rotationZ = if (p == item) rotation else 0f,
+                                    onTap = { viewModel.toggleImmersiveMode() },
+                                    onScaleChanged = { isZoomed = it > 1f }
+                                )
+                            }
                         }
                     }
                 }
@@ -294,61 +312,6 @@ fun FullImageScreen(
                                 .navigationBarsPadding(),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            if (showInfo && !isImmersive) {
-                                val coordinates = rememberMediaLocation(item)
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp)
-                                        .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                                        .padding(12.dp)
-                                ) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text(
-                                            text = stringResource(R.string.properties_name, item.name),
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.properties_path, "${item.folderPath}/${item.name}"),
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        if (coordinates != null) {
-                                            val openInMapsDescription = stringResource(R.string.cd_open_in_maps)
-                                            Text(
-                                                text = stringResource(
-                                                    R.string.properties_gps,
-                                                    formatCoordinatesForDisplay(coordinates)
-                                                ),
-                                                color = BrandBlue,
-                                                style = MaterialTheme.typography.bodySmall.copy(
-                                                    textDecoration = TextDecoration.Underline
-                                                ),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable {
-                                                        openMediaLocationInMaps(
-                                                            context = context,
-                                                            coordinates = coordinates,
-                                                            label = item.name
-                                                        )
-                                                    }
-                                                    .semantics {
-                                                        contentDescription = openInMapsDescription
-                                                    }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-
                             if (item.type == MediaType.VIDEO) {
                                 VideoPlaybackControls(
                                     player = exoPlayer,

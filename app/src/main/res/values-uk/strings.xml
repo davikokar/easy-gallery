@@ -88,8 +88,9 @@
     <string name="group_by_file_type">Тип файлу</string>
     <string name="cd_video">Відео</string>
     <string name="video_position_of_duration">%1$s / %2$s</string>
-    <string name="properties_date">Дата: %1$s</string>
+    <string name="properties_date_added">Дата додавання: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
+    <string name="properties_date_taken">Дата зйомки: %1$s</string>
     <string name="cd_exit_selection">Вийти з режиму вибору</string>
     <string name="cd_more_options">Інші опції</string>
     <string name="menu_copy_to">Копіювати в</string>

@@ -14,7 +14,9 @@ data class MediaItem(
     val duration: Long? = null,
     // Rotation-corrected size; null when MediaStore has no usable width and height.
     val displayWidth: Int? = null,
-    val displayHeight: Int? = null
+    val displayHeight: Int? = null,
+    // MediaStore DATE_TAKEN in ms, API 29+ only; null when absent, null column or not positive.
+    val mediaStoreDateTakenMillis: Long? = null
 )
 
 enum class MediaType {

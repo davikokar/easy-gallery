@@ -210,11 +210,12 @@ fun AlbumDetailScreen(
     )
     val todayLabel = stringResource(R.string.date_today)
     val yesterdayLabel = stringResource(R.string.date_yesterday)
-    val groupedMedia = remember(media, preferences.groupBy, preferences.groupOrder, fileTypeLabels, todayLabel, yesterdayLabel) {
+    val groupedMedia = remember(media, preferences.groupBy, preferences.groupOrder, indexedDateTakenByMediaUri, fileTypeLabels, todayLabel, yesterdayLabel) {
         GalleryTransformations.groupMedia(
             media,
             preferences.groupBy,
             preferences.groupOrder,
+            indexedDateTakenByMediaUri,
             todayLabel,
             yesterdayLabel,
             fileTypeLabels
@@ -239,6 +240,7 @@ fun AlbumDetailScreen(
         searchQuery = searchQuery,
         isSearchActive = isSearchActive,
         groupedMedia = groupedMedia,
+        indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
         isMediaSelectionMode = isMediaSelectionMode,
         selectedMediaItems = selectedMediaItems,
         isDestinationPickerActive = isDestinationPickerActive,
@@ -396,6 +398,7 @@ fun AlbumDetailContent(
     searchQuery: String,
     isSearchActive: Boolean,
     groupedMedia: Map<String, List<MediaItem>>,
+    indexedDateTakenByMediaUri: Map<String, Long?>,
     isMediaSelectionMode: Boolean,
     selectedMediaItems: Set<Uri>,
     isDestinationPickerActive: Boolean,
@@ -601,6 +604,7 @@ fun AlbumDetailContent(
         if (showPropertiesDialog) {
             MediaPropertiesDialog(
                 media = selectedMedia,
+                indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                 onDismiss = { showPropertiesDialog = false }
             )
         }
@@ -747,6 +751,7 @@ fun AlbumDetailContent(
                 } else {
                     MediaList(
                         media = media,
+                        indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                         state = listState,
                         showInfo = preferences.showInfo,
                         selectedItems = displayedSelectedItems,
@@ -757,6 +762,7 @@ fun AlbumDetailContent(
             } else {
                 GroupedMediaContent(
                     groupedMedia = groupedMedia,
+                    indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                     viewType = preferences.viewType,
                     columns = preferences.columns,
                     gridState = gridState,

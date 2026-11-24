@@ -177,7 +177,7 @@ class MediaStoreDataSourceTest {
         assertEquals(2, camera.imageCount)
         assertEquals(30L, camera.size)
         assertEquals(80L, camera.dateModified)
-        assertEquals(200L, camera.dateTaken)
+        assertEquals(200_000L, camera.dateTaken)
         assertEquals("/storage/emulated/0/DCIM/Camera", camera.path)
 
         val downloads = folders.first { it.name == "Downloads" }
@@ -333,6 +333,77 @@ class MediaStoreDataSourceTest {
         assertEquals(1080, video.displayHeight)
     }
 
+    @Test
+    fun `on API 30 DATE_TAKEN is queried for images and videos and kept in milliseconds`() = runTest {
+        val projections = mutableListOf<Array<String>>()
+        val imageCursor = fakeCursor(
+            imageDateTakenColumns,
+            listOf(dateTakenRow(mediaRow(1, "shot.jpg", "Camera", 100, 50, "image/jpeg", "/a/shot.jpg", 10), 1_700_000_000_123L, column = 8))
+        )
+        val videoCursor = fakeCursor(
+            videoDateTakenColumns,
+            listOf(dateTakenRow(mediaRow(2, "clip.mp4", "Camera", 90, 50, "video/mp4", "/a/clip.mp4", 100, duration = 1000), 1_600_000_000_456L, column = 9))
+        )
+        every {
+            contentResolver.query(any(), capture(projections), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val media = dataSource.getAllMedia().associateBy { it.name }
+
+        assertTrue(projections.all { it.contains(MediaStore.MediaColumns.DATE_TAKEN) })
+        assertEquals(1_700_000_000_123L, media.getValue("shot.jpg").mediaStoreDateTakenMillis)
+        assertEquals(1_600_000_000_456L, media.getValue("clip.mp4").mediaStoreDateTakenMillis)
+    }
+
+    @Test
+    fun `a null zero or negative DATE_TAKEN is no MediaStore date`() = runTest {
+        val imageCursor = fakeCursor(
+            imageDateTakenColumns,
+            listOf(
+                dateTakenRow(mediaRow(1, "null.jpg", "Camera", 100, 50, "image/jpeg", "/a/null.jpg", 10), null, column = 8),
+                dateTakenRow(mediaRow(2, "zero.jpg", "Camera", 90, 50, "image/jpeg", "/a/zero.jpg", 10), 0L, column = 8),
+                dateTakenRow(mediaRow(3, "negative.jpg", "Camera", 80, 50, "image/jpeg", "/a/negative.jpg", 10), -5_000L, column = 8),
+                dateTakenRow(mediaRow(4, "one.jpg", "Camera", 70, 50, "image/jpeg", "/a/one.jpg", 10), 1L, column = 8)
+            )
+        )
+        val videoCursor = fakeCursor(videoDateTakenColumns, emptyList())
+        every {
+            contentResolver.query(any(), any(), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val media = dataSource.getAllMedia().associateBy { it.name }
+
+        assertNull(media.getValue("null.jpg").mediaStoreDateTakenMillis)
+        assertNull(media.getValue("zero.jpg").mediaStoreDateTakenMillis)
+        assertNull(media.getValue("negative.jpg").mediaStoreDateTakenMillis)
+        assertEquals(1L, media.getValue("one.jpg").mediaStoreDateTakenMillis)
+    }
+
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.P])
+    fun `on API 28 DATE_TAKEN is not queried and the MediaStore date stays null`() = runTest {
+        val projections = mutableListOf<Array<String>>()
+        // The column is present in the cursor on purpose: a stored value must still be ignored.
+        val imageCursor = fakeCursor(
+            imageDateTakenColumns,
+            listOf(dateTakenRow(mediaRow(1, "shot.jpg", "Camera", 100, 50, "image/jpeg", "/a/shot.jpg", 10), 1_700_000_000_123L, column = 8))
+        )
+        val videoCursor = fakeCursor(
+            videoDateTakenColumns,
+            listOf(dateTakenRow(mediaRow(2, "clip.mp4", "Camera", 90, 50, "video/mp4", "/a/clip.mp4", 100, duration = 1000), 1_600_000_000_456L, column = 9))
+        )
+        every {
+            contentResolver.query(any(), capture(projections), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val media = dataSource.getAllMedia()
+
+        assertEquals(2, projections.size)
+        assertTrue(projections.none { it.contains(MediaStore.MediaColumns.DATE_TAKEN) })
+        assertEquals(2, media.size)
+        media.forEach { assertNull(it.mediaStoreDateTakenMillis) }
+    }
+
     // endregion
 
     // region Fake cursor helpers
@@ -406,6 +477,13 @@ class MediaStoreDataSourceTest {
         firstDimensionColumn + 1 to height,
         firstDimensionColumn + 2 to orientation
     )
+
+    private val imageDateTakenColumns = imageColumns + (MediaStore.MediaColumns.DATE_TAKEN to 8)
+
+    private val videoDateTakenColumns = videoColumns + (MediaStore.MediaColumns.DATE_TAKEN to 9)
+
+    private fun dateTakenRow(row: Map<Int, Any?>, dateTaken: Long?, column: Int) =
+        row + mapOf<Int, Any?>(column to dateTaken)
 
     private fun fakeCursor(columns: Map<String, Int>, rows: List<Map<Int, Any?>>): Cursor {
         val cursor = mockk<Cursor>(relaxed = true)

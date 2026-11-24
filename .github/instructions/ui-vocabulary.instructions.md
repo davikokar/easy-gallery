@@ -349,7 +349,8 @@ Shared parts:
 
 - **Media grid** (`MediaGrid`) and **Media list** (`MediaList`): The two layouts of the view.
 - **Media tile** (`MediaGridItem`) and **Media row** (`MediaListItem`): One image, GIF, or video.
-  Tagged `media_tile_<uri>`.
+  Tagged `media_tile_<uri>`. With info shown, the Media row's date line is the resolved date taken
+  (the Sort dialog's Date taken), unlabelled.
 - **Selection checkmark**: The check drawn on a selected item, tagged `selected_checkmark`. On a
   Media tile it sits in the top-right corner; on a Media row it is centred. These are
   deliberately different — do not align them.
@@ -518,15 +519,28 @@ Shared parts:
 ## Full-screen viewer
 
 - **Pager**: The horizontal swipe between items in the current media list.
-- **Viewer bottom bar**: The bar below the media, holding the Info overlay, the Video controls
-  when the page is a video, and the Viewer action row. It occupies real layout space rather than
-  covering the media, and the whole bar collapses in immersive mode.
+- **Viewer media area** (`ViewerMediaArea`, tagged `viewer_media_area`): The region above the
+  **Viewer bottom bar** that holds the **Pager** and, drawn over its bottom edge, the **Info
+  overlay**. The overlay takes no layout space, so showing or hiding it never moves or resizes the
+  media.
+- **Viewer bottom bar**: The bar below the media, holding the Video controls when the page is a
+  video and the Viewer action row. It occupies real layout space rather than covering the media,
+  and the whole bar collapses in immersive mode.
 - **Viewer action row**: Delete, Share, Rotate (images only), Info, the Favourite heart when
   supported, and the **Viewer overflow menu** (Copy to, Move to, Use as background, Add to album).
 - **Immersive mode**: The state in which the Viewer bottom bar is hidden and the media fills the
   screen. Toggled by a single tap on either a photo or a video.
-- **Info overlay**: The name, path, and GPS panel toggled by the Info button. It is transient
-  viewer state and is never the persisted `showInfo` preference, which drives grid captions.
+- **Info overlay** (`ViewerInfoPanel`, tagged `viewer_info_overlay`): The name, path, date and GPS
+  panel toggled by the Info button. It is drawn over the bottom edge of the **Viewer media
+  area** on a translucent dark scrim, not in the **Viewer bottom bar**, and is hidden in
+  **Immersive mode**. Its rows are tagged `viewer_info_name`, `viewer_info_path`, a date row
+  and `viewer_info_gps` (absent without coordinates). The date row is **Date taken**
+  (`viewer_info_date_taken`) only when a real capture date is known — the media index's, else
+  `MediaStore`'s on API 29+ — and **Date added** (`viewer_info_date_added`) when only the
+  date added is known; a date added is never labelled Date taken. It is absent when the date is
+  not a positive instant. The date is the one the **Sort dialog**'s Date taken uses (ADR-0026). It
+  is transient viewer state and is never the persisted `showInfo` preference, which drives grid
+  captions.
 - **Video controls** (`VideoPlaybackControls`): The progress slider, play/pause, restart, and
   elapsed/total labels shown for a video page. They are hand-rolled Compose controls, not
   media3's `PlayerView` controller.
@@ -603,8 +617,10 @@ dialog, and never "viewer" for the screen.
 - **Destination picker** (`DestinationFolderPickerDialog`, built on `FolderBrowser`): Chooses the
   target folder of a copy or a move. Its parts are the **Breadcrumb** (`Breadcrumb`), the path
   trail across the top, and the **Browser row** (`FolderBrowserItem`), one subdirectory.
-- **Media properties dialog** (`MediaPropertiesDialog`): Name, size, date, and — for a single
-  item only — GPS.
+- **Media properties dialog** (`MediaPropertiesDialog`): Item count and size, and — for a single
+  item only — name, path, a date row and GPS. The date row follows the **Info overlay**'s rule:
+  **Date taken** (`media_properties_date_taken`) for a capture date, otherwise **Date added**
+  (`media_properties_date_added`).
 - **Album info dialog** (`AlbumInfoDialog`): The rule behind the open Album; see Album Detail View.
 - **Slideshow dialog** (`SlideshowDialog`): The options and Play for a slideshow; see Slideshow. Not
   one of the five draft-and-commit display-preference dialogs.

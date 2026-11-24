@@ -6,7 +6,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -15,12 +17,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davide.seddio.easygallery.R
+import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.data.formatCoordinatesForDisplay
-import java.util.*
 
 @Composable
-fun MediaPropertiesDialog(media: List<MediaItem>, onDismiss: () -> Unit) {
+fun MediaPropertiesDialog(
+    media: List<MediaItem>,
+    indexedDateTakenByMediaUri: Map<String, Long?>,
+    onDismiss: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.properties_title)) },
@@ -37,10 +43,26 @@ fun MediaPropertiesDialog(media: List<MediaItem>, onDismiss: () -> Unit) {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     Text(stringResource(R.string.properties_name, item.name), fontWeight = FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
                     Text(stringResource(R.string.properties_path, "${item.folderPath}/${item.name}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    val dateStr = remember(item.dateAdded) {
-                        java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, Locale.getDefault()).format(Date(item.dateAdded * 1000))
+                    val dateTaken = displayableDateTaken(
+                        GalleryTransformations.resolveDateTaken(item, indexedDateTakenByMediaUri)
+                    )
+                    if (dateTaken != null) {
+                        val locale = LocalConfiguration.current.locales[0]
+                        val dateStr = remember(dateTaken.epochMillis, locale) {
+                            formatMediaDateTime(dateTaken.epochMillis, locale)
+                        }
+                        Text(
+                            text = stringResource(
+                                if (dateTaken.isCaptureDate) R.string.properties_date_taken else R.string.properties_date_added,
+                                dateStr
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag(
+                                if (dateTaken.isCaptureDate) "media_properties_date_taken" else "media_properties_date_added"
+                            )
+                        )
                     }
-                    Text(stringResource(R.string.properties_date, dateStr), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     if (coordinates != null) {
                         val openInMapsContentDescription = stringResource(R.string.cd_open_in_maps)

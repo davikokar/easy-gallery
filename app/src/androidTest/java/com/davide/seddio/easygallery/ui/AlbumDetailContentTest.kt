@@ -975,6 +975,7 @@ class AlbumDetailContentTest {
     @Composable
     private fun AlbumDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
+        indexedDateTakenByMediaUri: Map<String, Long?> = emptyMap(),
         hasSlideshowMedia: Boolean = media.isNotEmpty(),
         hiddenMemberCount: Int = 0,
         evaluationStatus: AlbumEvaluationStatus = AlbumEvaluationStatus.MANUAL,
@@ -1010,6 +1011,7 @@ class AlbumDetailContentTest {
             searchQuery = "",
             isSearchActive = false,
             groupedMedia = emptyMap(),
+            indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
             isMediaSelectionMode = isMediaSelectionMode,
             selectedMediaItems = selectedMediaItems,
             isDestinationPickerActive = false,

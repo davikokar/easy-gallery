@@ -179,7 +179,9 @@ since step 3.6 — two Tier C passes follow, the face pass and grouping (§3,
 switch-off and, with the setting off, at app open — under the same `faceIndexLock` the worker
 holds (§3). It is *read* by
 `MediaIndexDateTakenState`, a `GalleryViewModel` delegate that projects captured date-taken by media
-URI so `SortType.DATE_TAKEN` can sort by it; by `MediaIndexingViewModel`, which also schedules the
+URI for the one resolution of a date taken outside album rules — the Date taken sort, Date taken
+grouping, Folders View's Date taken sort, the Media row's date, the Info overlay and the Media
+properties dialog ([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md); §8); by `MediaIndexingViewModel`, which also schedules the
 work and reports progress, last-indexed state and the two coverage figures to the Settings screen
 and, to the New automatic
 album screen's Index band, whether a pass is running and how many live items are not yet indexed;
@@ -198,8 +200,8 @@ silently stop updating after a batch until the next app open. This paragraph use
 
 All three read paths obey the same rule albums do — index keys resolved against live media in the
 ViewModel layer, never rendered straight from the database —
-**[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)**. Date-taken sorting
-joins the projection onto the live media list it is already sorting, `MediaIndexingViewModel`'s
+**[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)**. Date-taken resolution
+joins the projection onto the live media list it is already sorting, grouping or showing, `MediaIndexingViewModel`'s
 counts — the Settings figures, one of which is the Index band's not-yet-indexed count — are
 intersected with live media before they are counted, and rule evaluation joins index rows to live
 media through the shared `LiveMediaLookup` — so a deleted photo stops being counted, and leaves an
@@ -223,10 +225,10 @@ below every property it reads, or the class does not compile. Do not work around
 | File | Role |
 |---|---|
 | `MediaRepository.kt` | The interface abstracting all media access and file operations. |
-| `MediaStoreDataSource.kt` | The `MediaStore`/`ContentResolver` implementation, plus copy/move/delete/create. Its one media query also reads `WIDTH` and `HEIGHT` for every item, and the `"orientation"` column for images on every API level but for videos only on API 29+, behind an explicit `SDK_INT` guard — below it the column does not exist for videos and the query would throw. Lint does not run here (`AGENTS.md` *Running Gradle*), so the guard is checked by reading ([ADR-0025](decisions/0025-slideshow.md) §4; the API 28 cost is in §11). |
-| `GalleryTransformations.kt` | All pure filter, sort, and group logic, including date headers and path conversion. `sortMedia` takes the index's date-taken projection as a parameter rather than reaching for it, which is what keeps it Android-free and plain-JVM testable. It also owns `DateTakenSortState` — indexed with a date, indexed without one, not indexed — which rule evaluation shares rather than naming the same three states twice. Indexed without a date is not rare: on both devices measured so far most of the library had no capture date — [albums.md](../design/albums.md) §8 decision 21 has the figures and why no second date source is used — so a `time` rule can only ever match the dated minority there. |
+| `MediaStoreDataSource.kt` | The `MediaStore`/`ContentResolver` implementation, plus copy/move/delete/create. Its one media query also reads `WIDTH` and `HEIGHT` for every item, and the `"orientation"` column for images on every API level but for videos only on API 29+, behind an explicit `SDK_INT` guard — below it the column does not exist for videos and the query would throw ([ADR-0025](decisions/0025-slideshow.md) §4; the API 28 cost is in §11). It reads `MediaColumns.DATE_TAKEN` on API 29+ only, behind a second guard, `hasDateTakenColumn()`, because below it the constant does not exist and the legacy provider can substitute the modified date; a null, zero or negative value is stored as null ([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md) §3). Lint does not run here (`AGENTS.md` *Running Gradle*), so both guards are checked by reading. `getFolders` aggregates `DATE_ADDED` into `Folder.dateTaken`, in milliseconds; no view draws that list, which only seeds the load state. |
+| `GalleryTransformations.kt` | All pure filter, sort, and group logic, including date headers and path conversion. `sortMedia` takes the index's date-taken projection as a parameter rather than reaching for it, which is what keeps it Android-free and plain-JVM testable. Under Path and Size its order is total: ties fall back to path, then URI, in either direction, and descending reverses only the primary key. `resolveDateTaken` is the one resolution of an item's date taken outside album rules — the indexed capture date, else `MediaItem.mediaStoreDateTakenMillis`, else `dateAdded` in milliseconds — returning a `ResolvedDateTaken` whose `isCaptureDate` is false only for that last fallback ([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md)). `dateTakenEpochMillis` is its `epochMillis`. `sortMedia`, `groupMedia` (Date taken daily and monthly, which order and key their headers by it) and `filterAndSortFolders` (`Folder.dateTaken`, the newest resolved date among a folder's counted items, in milliseconds) each take the index projection as a required parameter, and the Media row, the Info overlay and the Media properties dialog read the same function, so none of them can disagree. It also owns `DateTakenSortState` — indexed with a date, indexed without one, not indexed — which rule evaluation shares rather than naming the same three states twice. Indexed without a date is not rare: on both devices measured so far most of the library had no capture date — [albums.md](../design/albums.md) §8 decision 21 has the figures and why album rules read no second date source — so a `time` rule can only ever match the dated minority there. |
 | `GalleryModels.kt` | `SortType`, `SortOrder`, `GroupByType`, `DisplayMode`, `ViewType`, `OperationType`, `GalleryUiState`, `MediaPermissionHandler`. |
-| `MediaItem.kt`, `Folder.kt` | The two domain models. `MediaItem` carries `displayWidth` and `displayHeight`, trailing and defaulting to null: the dimensions as displayed, computed by the pure `displayedDimensions` in the same file — the stored ones, swapped for a 90° or 270° orientation, and null when either is missing or not positive ([ADR-0025](decisions/0025-slideshow.md) §4). The slideshow's Orientation option is their only reader. |
+| `MediaItem.kt`, `Folder.kt` | The two domain models. `MediaItem` carries `displayWidth` and `displayHeight`, trailing and defaulting to null: the dimensions as displayed, computed by the pure `displayedDimensions` in the same file — the stored ones, swapped for a 90° or 270° orientation, and null when either is missing or not positive ([ADR-0025](decisions/0025-slideshow.md) §4). The slideshow's Orientation option is their only reader. After them, also trailing and defaulting to null, `mediaStoreDateTakenMillis`: `MediaStore`'s `DATE_TAKEN` in milliseconds, set on API 29+ only and only when positive, read by `GalleryTransformations.resolveDateTaken` alone ([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md) §3). |
 | `ViewPreferences.kt` | The per-view preference bundle and `PreferenceScope`. |
 | `FolderViewOverrides.kt` | The sparse per-folder override bundle and its apply/merge logic, plus the pure three-layer Folder Detail resolution shared by Folder Detail View and the New album screen, and the pure two-layer Album Detail resolution with its keys — `albumOverrideKey(id)` and the reserved `FAVOURITES_OVERRIDE_KEY`. The bundle and `PreferenceApplyTarget` serve albums too, under their folder names ([ADR-0021](decisions/0021-per-album-display-preference-overrides.md) point 9). See §5. |
 | `CameraFolder.kt` | The camera-folder path heuristic and the implicit sort default it produces. |
@@ -326,7 +328,11 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   immersive mode, rotation, and the saved video position.
 - **`MediaIndexDateTakenState`** — the index's date-taken projection, keyed by canonical
   `MediaStore` URI, as a `StateFlow` for `GalleryViewModel` to hand to `GalleryTransformations`.
-  Its one job is to keep the Room `Flow` out of the ViewModel body.
+  Its one job is to keep the Room `Flow` out of the ViewModel body. `GalleryViewModel` folds it into
+  its two folder-list flows and its two grouping flows; the folder flows already combine five flows,
+  the typed `combine` limit, so it travels there inside the private `FolderListInputs` with the
+  exclusions and thumbnail overrides. Screens that resolve a date per row, or group in the screen,
+  read it as `GalleryViewModel.indexedDateTakenByMediaUri`.
 - **`AlbumsViewModel`** — albums and their members. It observes `AlbumStore`, resolves stored
   memberships against the live media list it is handed, writes healed URIs and orphan flags back,
   and owns `selectedAlbumId` — the open Album Detail View — and `albumSelectionId`, the Album
@@ -525,8 +531,8 @@ an area collapsed, hidden and shown again comes back collapsed
 ([albums.md](../design/albums.md) §8 decision 27). `GalleryViewModel` gained no album
 state and no indexing state; it still owns selection,
 media operations, and the viewer delegate, which Album Detail View reuses. What it gained for the
-index is one delegate, `MediaIndexDateTakenState`, because date-taken sorting is a property of the
-flows it already owns. The slideshow added nothing to `GalleryViewModel` or `AlbumsViewModel`: the
+index is one delegate, `MediaIndexDateTakenState`, because date-taken sorting and grouping are
+properties of the flows it already owns. The slideshow added nothing to `GalleryViewModel` or `AlbumsViewModel`: the
 detail screens compute the base order from what they already read and hand it to
 `SlideshowViewModel` with the options when Play is pressed.
 
@@ -537,7 +543,11 @@ Screens: `FolderListScreen` (with `FolderList`, `FolderGrid`, `FolderDialogs`),
 Each main view is a pair: the `*Screen` composable reads the ViewModel and binds the scope; the
 `*Content` composable is stateless and takes plain values plus callbacks. **The `*Content`
 composable is what the instrumented tests drive, and they pass every parameter by name** — so a
-signature change breaks them loudly, by design.
+signature change breaks them loudly, by design. `FolderListContent`, `FolderDetailContent`,
+`AlbumDetailContent` and `NewAlbumContent` take the index's date-taken map,
+`indexedDateTakenByMediaUri`, because the Media rows or the Media properties dialog they draw
+resolve a date per item ([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md));
+Timeline View's Media rows are drawn by `CalendarGrid`, which reads the map from the ViewModel.
 
 ### `ui/components/`
 
@@ -551,12 +561,27 @@ state holder those dialogs share for their draft-and-commit "apply only to this 
 album" target — its `PreferenceContainer` chooses the wording only, and both commit the same
 `PreferenceApplyTarget` —
 media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `FavouriteIndicator`,
-`ZoomableImage`), the **Main view
+`ZoomableImage`, and `ViewerMediaArea` and `ViewerInfoPanel` in `ViewerInfoOverlay.kt`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
 helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`,
 `AlbumStatusNotices`, plus `MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
 is the one formatter for years and months, shared by the New automatic album screen and the Album
 info dialog.
+
+`ViewerInfoOverlay.kt` holds the full-screen viewer's **Info overlay**. `ViewerMediaArea` is the
+region above the Viewer bottom bar: it holds the pager and draws the overlay over its bottom edge,
+taking no layout space, so toggling Info never moves or resizes the media; the overlay is composed
+only while shown, and never in immersive mode. `ViewerInfoPanel` draws the name, path, date and
+GPS rows on a dark scrim, `VIEWER_INFO_SCRIM_ALPHA`. `FullImageScreen` passes it
+`GalleryTransformations.resolveDateTaken` over `GalleryViewModel.indexedDateTakenByMediaUri`,
+through `displayableDateTaken`, which hides the row for a value that is not positive; the row is
+**Date taken** for a capture date and **Date added** for the fallback
+([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md) §6), formatted by
+`formatMediaDateTime`, medium date and short time in the UI locale. `MediaPropertiesDialog` takes
+the map and applies the same two functions to its single-item date row; `MediaListItem` takes the
+resolved `dateTakenMillis` and shows it unlabelled. Those two functions and the scrim's contrast
+are unit-tested on a plain JVM, but the file is Compose-bound and so is not on the Android-free list
+under `data/`.
 
 Step 3.6 added face data's components. `FaceDataDialogs.kt` holds the **Face data disclosure**
 (`FaceDataDisclosureDialog`, a disclosure mode that neither Back nor an outside tap dismisses and an
@@ -1115,7 +1140,8 @@ apparent inconsistency with ADR-0010 in either direction; the two differ because
 user's choice and an index row is not.
 
 It is filled by `MediaIndexingWorker` under WorkManager and read by `MediaIndexDateTakenState` for
-`SortType.DATE_TAKEN`, by `MediaIndexingViewModel` for the Settings figures and the New automatic
+the date-taken resolution outside album rules
+([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md); §2, §8), by `MediaIndexingViewModel` for the Settings figures and the New automatic
 album screen's Index band, and by
 `AlbumsViewModel` for automatic-album evaluation and the picker's counts — see §2. Evaluation
 implements three clauses, `time`, `region` and `people`; the `region` clause reads the derived place
@@ -1158,7 +1184,16 @@ Two operations delegate outward rather than doing the work in-process:
 GPS coordinates are read **lazily, per item, only when an info surface is shown** — never during a
 `MediaStore` query, because Timeline View loads every item on the device —
 **[ADR-0001](decisions/0001-on-demand-media-location-metadata.md)**. Images go through
-`androidx.exifinterface`; videos through `MediaMetadataRetriever`.
+`androidx.exifinterface`; videos through `MediaMetadataRetriever`. In the viewer the read lives
+inside the Info overlay, which `ViewerMediaArea` composes only while it is shown (§3,
+`ui/components/`); the overlay's date opens no file, because it comes from the media index, a
+column of the existing `MediaStore` query, or `dateAdded`.
+
+**A date taken outside album rules is resolved once, in order: the index's captured date, else
+`MediaStore`'s `DATE_TAKEN` on API 29+, else the date added, labelled as such** —
+**[ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md)**. Sort, grouping,
+Folders View's Date taken sort and every date shown read `GalleryTransformations.resolveDateTaken`;
+album rules still read the index alone (ADR-0017 Amendment 1). The limits are in §11.
 
 Video playback uses **Media3 ExoPlayer, pinned** (the version is `gradle/libs.versions.toml`'s).
 That pin is load-bearing: `media3-ui-compose` does not exist at the pinned version, so the viewer's
@@ -1285,7 +1320,7 @@ KSP.
   Albums View now returns to Folders View. Still true since the dropdown was replaced by the Main
   view bar on 2026-11-11, whose taps add no history; Back from the Settings screen lands on Folders
   View too, since ADR-0013 Amendment 3.
-- **`SortType.DATE_TAKEN` reads the index for media, and not for folders or grouping.** The
+- ~~**`SortType.DATE_TAKEN` reads the index for media, and not for folders or grouping.** The
   item-level sort was resolved at Stage 2 step 2.4: all four sites that sort media — Timeline View,
   Folder Detail View, Album Detail View and the New album screen — pass the index's projection into
   `GalleryTransformations.sortMedia`, which uses the captured date-taken where one exists and
@@ -1294,7 +1329,43 @@ KSP.
   reads `Folder.dateTaken`, which `MediaStoreDataSource` aggregates from each item's `dateAdded`;
   and `GroupByType.DATE_TAKEN_DAILY` / `_MONTHLY` group by `dateAdded`, so a date header can still
   disagree with the order of the items under it. Narrowed rather than struck, because the second of
-  those is user-visible.
+  those is user-visible. **The viewer's Info overlay inherits the item-level fallback** (2026-11-24):
+  its Date taken row shows `GalleryTransformations.dateTakenEpochMillis`, so for an item not yet
+  indexed, or indexed with no date, it shows the date added under the Date taken label, with nothing
+  to tell the two apart, and the value can change once a pass indexes the item. The row is hidden
+  only when the value is not positive. No second date source is read, for the reason
+  [albums.md](../design/albums.md) §8 decision 21 gives.~~ **Resolved 2026-11-24 by
+  [ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md).** The Date taken sort,
+  Date taken grouping, Folders View's Date taken sort, the Media row's date, the Info overlay and the
+  Media properties dialog all read `GalleryTransformations.resolveDateTaken` — the index, then
+  `MediaStore`'s `DATE_TAKEN` on API 29+, then the date added — so a header agrees with the items
+  under it, and a date added is shown as **Date added**, never under the Date taken label. What is
+  still true is the next entry.
+- **Date taken outside album rules has four accepted limits**
+  ([ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md)).
+  - **Album rules read the index alone.** A `time` clause, the Date picker, the People picker's newest
+    order and Settings' coverage figures ignore `MediaStore`'s date (ADR-0017 Amendment 1;
+    [albums.md](../design/albums.md) §8 decisions 21 and 51), so the viewer can show a Date taken
+    for an item that Settings counts as without a date and that no time album contains until a pass
+    dates it.
+  - **API 28 ignores `MediaStore`'s date**, because the legacy provider can substitute the modified
+    date; there every date-taken surface falls back to the date added until the index reaches an
+    item. The guard's API 29 boundary has no unit test of its own — the projection tests run at
+    API 30 and API 28 — and no API 28 device has run it.
+  - **The index can move an item when it lands.** For a zone-less EXIF date the index and
+    `MediaStore` can differ by a zone offset, so an item can move within the order or to the
+    neighbouring day's header once a pass dates it (ADR-0026 Decision 7). Not yet observed on a
+    device.
+  - **Media with no capture date anywhere stays on the fallback**, sorted, grouped and shown by its
+    date added, labelled Date added; that is overwhelmingly received media (decision 21's figures).
+    A `DATE_TAKEN` that is not positive — including a genuine pre-1970 date — counts as absent.
+- **Folders View's Size, Last modified and Date taken sorts run backwards.** `filterAndSortFolders`
+  sorts all three by their value descending and reverses that for Descending, so **Ascending lists
+  the largest, latest-modified or newest folder first** — the opposite of the same labels on the
+  media sorts. The New album screen's folder level shares the Folders preferences and the function,
+  so it does the same. It predates ADR-0026, which changed the Date taken key and not its direction
+  (Amendment 1 §2), and a unit test pins it as it is. Recorded, not fixed: correcting it flips what
+  users see under three sorts.
 - **The indexing job's two API-level limits.** "Index now" is expedited only on API 31+; below it
   the request is ordinary one-time work, because expedited work there means a foreground service
   and a notification, and indexing shows none — the worker has no `getForegroundInfo`, as decided
@@ -1714,12 +1785,19 @@ KSP.
   displayed dimensions for a video are its stored ones: a video recorded in portrait whose stored
   dimensions are landscape counts as landscape. Images are unaffected. Accepted by the maintainer
   ([ADR-0025](decisions/0025-slideshow.md) §4, question 12).
-- **Size and Path sort media by date added, and the slideshow inherits it.**
+- ~~**Size and Path sort media by date added, and the slideshow inherits it.**
   `GalleryTransformations.sortMedia` has no branch for `SortType.SIZE` or `SortType.PATH` and sorts
   media under either by `dateAdded` (its `else` branch). The slideshow's base order goes through the
   same function, so a folder or album sorted by size or path plays — as it is already shown — by date
   added. Recorded, not fixed, by the maintainer's choice ([ADR-0025](decisions/0025-slideshow.md) §3,
-  question 22).
+  question 22).~~ **Resolved 2026-11-24**, after the slideshow shipped: `sortMedia` now has a branch
+  for both. Path sorts by `"${folderPath}/${name}"`, case-sensitive like the folders' Path sort; Size
+  sorts by file size, smallest first in ascending order — the opposite of the folders' Size sort,
+  whose ascending order is largest first. Descending reverses only the primary key, and ties fall
+  back to path, then the URI's string, in both directions, so equal keys never swap places when the
+  order flips. The slideshow's base order goes through the same function, so it now plays a folder or
+  album sorted by size or path in that order, as the view shows it. Kept struck through because
+  ADR-0025 §3 still cites question 22's debt.
 - **The slideshow's video path has not run on a device.** The device run of 2026-11-24 played a
   photos-only playlist, so three of [ADR-0025](decisions/0025-slideshow.md) §9's checks are
   unobserved: a video crossfading in and out without a black flash or a frozen frame, the last-frame

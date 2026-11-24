@@ -53,3 +53,4 @@ for the required format and status rules.
 | [ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md) | The face pipeline — YuNet and SFace on a bundled OpenCV, inside the indexing worker | Active | 2026-11-18 |
 | [ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md) | Face data — the disclosure, the switch that deletes it, and what never leaves it | Active | 2026-11-18 |
 | [ADR-0025](decisions/0025-slideshow.md) | Slideshow — what plays, in what order, who owns it, and how video fades | Active | 2026-11-24 |
+| [ADR-0026](decisions/0026-date-taken-resolution-outside-album-rules.md) | Date taken outside album rules — the index, then MediaStore, then date added, and saying which | Active | 2026-11-24 |

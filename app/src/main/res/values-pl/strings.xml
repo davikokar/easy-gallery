@@ -88,8 +88,9 @@
     <string name="group_by_file_type">Typ pliku</string>
     <string name="cd_video">Film</string>
     <string name="video_position_of_duration">%1$s / %2$s</string>
-    <string name="properties_date">Data: %1$s</string>
+    <string name="properties_date_added">Data dodania: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
+    <string name="properties_date_taken">Data wykonania: %1$s</string>
     <string name="cd_exit_selection">Zakończ zaznaczanie</string>
     <string name="cd_more_options">Więcej opcji</string>
     <string name="menu_copy_to">Kopiuj do</string>

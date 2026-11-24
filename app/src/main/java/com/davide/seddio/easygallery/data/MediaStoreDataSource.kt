@@ -61,7 +61,8 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
         }
 
         foldersMap.values.map {
-            Folder(it.name, it.count, it.thumbnailUri, false, it.path, it.totalSize, it.lastModified, it.dateTaken)
+            // Folder.dateTaken is milliseconds; MediaStore's DATE_ADDED is seconds.
+            Folder(it.name, it.count, it.thumbnailUri, false, it.path, it.totalSize, it.lastModified, it.dateTaken * 1000L)
         }
     }
 
@@ -186,6 +187,7 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
         ).apply {
             if (isVideo) add(MediaStore.Video.Media.DURATION)
             if (hasOrientationColumn(isVideo)) add(ORIENTATION_COLUMN)
+            if (hasDateTakenColumn()) add(MediaStore.MediaColumns.DATE_TAKEN)
         }.toTypedArray()
 
         context.contentResolver.query(uri, projection, selection, selectionArgs, "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { cursor ->
@@ -201,6 +203,7 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
             val widthCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH)
             val heightCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT)
             val orientationCol = if (hasOrientationColumn(isVideo)) cursor.getColumnIndexOrThrow(ORIENTATION_COLUMN) else -1
+            val dateTakenCol = if (hasDateTakenColumn()) cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN) else -1
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
@@ -230,7 +233,8 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
                     MediaItem(
                         itemUri, name, added, modified, size, type, bucket, folderPath, duration,
                         displayWidth = displayed?.first,
-                        displayHeight = displayed?.second
+                        displayHeight = displayed?.second,
+                        mediaStoreDateTakenMillis = cursor.longOrNull(dateTakenCol)?.takeIf { it > 0L }
                     )
                 )
             }
@@ -242,8 +246,14 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
     private fun hasOrientationColumn(isVideo: Boolean): Boolean =
         !isVideo || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
+    // MediaColumns.DATE_TAKEN is API 29; on API 28 the legacy provider can substitute the modified date (ADR-0026).
+    private fun hasDateTakenColumn(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+
     private fun Cursor.intOrNull(column: Int): Int? =
         if (column < 0 || isNull(column)) null else getInt(column)
+
+    private fun Cursor.longOrNull(column: Int): Long? =
+        if (column < 0 || isNull(column)) null else getLong(column)
 
     private companion object {
         // MediaStore.Images.ImageColumns.ORIENTATION and (API 29+) MediaColumns.ORIENTATION are the same column.

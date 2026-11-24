@@ -120,8 +120,12 @@ building it touches more than one screen:
   done.
 - **Loop with Random** (question 17) reshuffles at the start of each pass, and a new pass never starts
   on the item just shown, unless the playlist has one item.
-- **Known debt, recorded and not fixed** (question 22): `sortMedia` sorts media by Size and Path as by
-  date added (its `else` branch). The slideshow follows the view, so it inherits this.
+- ~~**Known debt, recorded and not fixed** (question 22): `sortMedia` sorts media by Size and Path as by
+  date added (its `else` branch). The slideshow follows the view, so it inherits this.~~ *Fixed later,
+  2026-11-24:* `sortMedia` now sorts media by Path and by Size, with ties broken by path and then URI
+  in either direction, so the slideshow, which follows the view, follows both sorts too. The decision
+  of this section — the base order is the view's flat sort — is unchanged, so this is a note, not an
+  amendment; what landed is in ARCHITECTURE.md §11.
 
 ### 4. Dimensions on `MediaItem`
 

@@ -19,6 +19,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +35,7 @@ import java.util.*
 @Composable
 fun androidx.compose.foundation.lazy.LazyItemScope.MediaListItem(
     item: MediaItem,
+    dateTakenMillis: Long,
     showInfo: Boolean,
     isSelected: Boolean = false,
     isFavourite: Boolean = false,
@@ -111,9 +113,8 @@ fun androidx.compose.foundation.lazy.LazyItemScope.MediaListItem(
             )
 
             if (showInfo) {
-                val dateStr = remember(item.dateAdded) {
-                    java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT, Locale.getDefault()).format(Date(item.dateAdded * 1000))
-                }
+                val locale = LocalConfiguration.current.locales[0]
+                val dateStr = remember(dateTakenMillis, locale) { formatMediaDateTime(dateTakenMillis, locale) }
                 Text(
                     text = dateStr,
                     style = MaterialTheme.typography.bodySmall,

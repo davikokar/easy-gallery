@@ -101,6 +101,7 @@ fun FolderListScreen(
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
     val selectedFolders by viewModel.selectedFolders.collectAsState()
     val groupedAllMedia by viewModel.groupedAllMedia.collectAsState()
+    val indexedDateTakenByMediaUri by viewModel.indexedDateTakenByMediaUri.collectAsState()
     val isDestinationPickerActive by viewModel.isDestinationPickerActive.collectAsState()
     val pendingOperation by viewModel.pendingOperation.collectAsState()
     val browsingPath by viewModel.browsingPath.collectAsState()
@@ -143,6 +144,7 @@ fun FolderListScreen(
         favouriteUris = favouriteUris,
         isFavouritePending = isFavouritePending,
         groupedAllMedia = groupedAllMedia,
+        indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
         isDestinationPickerActive = isDestinationPickerActive,
         isCreateFolderDialogOpen = isCreateFolderDialogOpen,
         createFolderError = createFolderError,
@@ -231,6 +233,7 @@ fun FolderListContent(
     favouriteUris: Set<android.net.Uri>,
     isFavouritePending: Boolean,
     groupedAllMedia: Map<String, List<com.davide.seddio.easygallery.data.MediaItem>>,
+    indexedDateTakenByMediaUri: Map<String, Long?>,
     isDestinationPickerActive: Boolean,
     isCreateFolderDialogOpen: Boolean,
     createFolderError: String?,
@@ -512,6 +515,7 @@ fun FolderListContent(
             if (isMediaSelectionMode) {
                 MediaPropertiesDialog(
                     media = getSelectedMediaData(),
+                    indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
                     onDismiss = { showPropertiesDialog = false }
                 )
             } else {

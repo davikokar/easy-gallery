@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.davide.seddio.easygallery.data.GalleryTransformations
 import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.MediaGridItem
 import com.davide.seddio.easygallery.ui.components.MediaListItem
@@ -37,7 +38,7 @@ fun CalendarGrid(
 ) {
     val timelinePreferences by viewModel.preferences(PreferenceScope.TIMELINE).collectAsState()
     val selectedMediaItems by viewModel.selectedMediaItems.collectAsState()
-
+    val indexedDateTakenByMediaUri by viewModel.indexedDateTakenByMediaUri.collectAsState()
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
 
@@ -106,6 +107,7 @@ fun CalendarGrid(
                 items(items, key = { it.uri.toString() }) { item ->
                     MediaListItem(
                         item = item,
+                        dateTakenMillis = GalleryTransformations.resolveDateTaken(item, indexedDateTakenByMediaUri).epochMillis,
                         showInfo = showInfo,
                         isSelected = selectedMediaItems.contains(item.uri),
                         onClick = { viewModel.selectMedia(item) },

@@ -84,8 +84,9 @@
     <string name="group_by_file_type">파일 형식</string>
     <string name="cd_video">동영상</string>
     <string name="video_position_of_duration">%1$s / %2$s</string>
-    <string name="properties_date">날짜: %1$s</string>
+    <string name="properties_date_added">추가 날짜: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
+    <string name="properties_date_taken">촬영 날짜: %1$s</string>
     <string name="cd_exit_selection">선택 종료</string>
     <string name="cd_more_options">추가 옵션</string>
     <string name="menu_copy_to">다음으로 복사</string>

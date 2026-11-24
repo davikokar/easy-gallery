@@ -1024,6 +1024,13 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     area, which rewords the without-date row that area already had. "Coverage notice" in this
     decision's title now reads as that row.
 
+    **Widened 2026-11-24 for display, sort and grouping only, see decision 51.** For album
+    membership nothing changed: a `time` clause, the Date picker, the People picker's newest order
+    and the coverage figures still read the index alone. Outside album rules, a date taken now falls
+    back to `MediaStore`'s `DATE_TAKEN` on API 29+ before date added. The evidence above is about
+    items that will never have a date; decision 51 is about items the index has not reached yet, and
+    about not calling a date added a date taken.
+
 22. **A new photo reaches a time or region album after the next index pass, not when the app
     opens.** Decided by the maintainer on 2026-11-10, answering §10 question 7 with its option
     "accept the gap and soften §6". Evaluation still runs on app open, but an item matches a `time`
@@ -2078,6 +2085,27 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     - **Small thumbnails are accepted as the picker's behaviour for now** — 22 of 104 under 60 px, the
       smallest 40 px. A different fix — a lower threshold, a quality score from the detector, or
       upscaling at step 3.6 — would be a new decision.
+
+51. **Outside album rules, a date taken is the index's, then `MediaStore`'s, then unknown — and the
+    UI says when it is showing a date added instead.** Decided by the maintainer on 2026-11-24,
+    answering the Planner's date audit with its recommended defaults;
+    [ADR-0026](../architecture/decisions/0026-date-taken-resolution-outside-album-rules.md) holds the
+    decision, the evidence and the alternatives. In short: display, sort, grouping and Timeline View
+    resolve a date taken from the index's captured date, else `MediaStore`'s `DATE_TAKEN` on API 29+
+    (ignored on API 28, where the provider can substitute the modified date), else unknown, which
+    falls back to the date added and is labelled **Date added** rather than Date taken. Date taken
+    grouping and Folders View's Date taken sort read the same resolution, so a header agrees with
+    the items under it.
+    **Why this does not reverse decision 21.** Decision 21 is about album membership and about items
+    that will never have a date, for which `MediaStore` was measured to know nothing either. This is
+    about the window before the index reaches an item — after a fresh install, the whole library —
+    and about a date added being shown under the Date taken label. Album rules stay index-only, for
+    decision 21's reasons and ADR-0017 Amendment 1's: a filter must not invent members, and one
+    source for membership keeps a time album, the Date picker's counts and Settings' coverage figures
+    in agreement. **Decision 22 stands:** no index pass on app open; `MediaStore`'s value covers the
+    window instead. **Accepted costs:** an item can move by a zone offset when the index replaces
+    `MediaStore`'s value, and the viewer can date an item that Settings counts as without a date and
+    that no time album yet contains.
 
 ---
 

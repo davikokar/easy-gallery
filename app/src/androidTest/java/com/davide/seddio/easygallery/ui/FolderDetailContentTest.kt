@@ -560,6 +560,7 @@ class FolderDetailContentTest {
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
+        indexedDateTakenByMediaUri: Map<String, Long?> = emptyMap(),
         hasSlideshowMedia: Boolean = media.isNotEmpty(),
         viewType: ViewType = ViewType.GRID,
         isMediaSelectionMode: Boolean = false,
@@ -585,6 +586,7 @@ class FolderDetailContentTest {
             searchQuery = "",
             isSearchActive = false,
             groupedMedia = emptyMap(),
+            indexedDateTakenByMediaUri = indexedDateTakenByMediaUri,
             isMediaSelectionMode = isMediaSelectionMode,
             isThumbnailPickerMode = isThumbnailPickerMode,
             draftThumbnailUri = draftThumbnailUri,

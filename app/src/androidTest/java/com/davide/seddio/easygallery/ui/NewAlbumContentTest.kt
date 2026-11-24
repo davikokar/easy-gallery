@@ -347,6 +347,7 @@ class NewAlbumContentTest {
             ),
             groupedFolderMedia = mapOf("" to selectedFolderMedia),
             selectedFolderMedia = selectedFolderMedia,
+            indexedDateTakenByMediaUri = emptyMap(),
             selectedUris = selectedUris,
             onNameChange = { name = it },
             onOpenFolder = { openFolderPath = it.path },

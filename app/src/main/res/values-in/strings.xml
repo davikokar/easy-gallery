@@ -85,8 +85,9 @@
     <string name="group_by_file_type">Jenis file</string>
     <string name="cd_video">Video</string>
     <string name="video_position_of_duration">%1$s / %2$s</string>
-    <string name="properties_date">Tanggal: %1$s</string>
+    <string name="properties_date_added">Tanggal ditambahkan: %1$s</string>
     <string name="properties_gps">GPS: %1$s</string>
+    <string name="properties_date_taken">Tanggal pengambilan: %1$s</string>
     <string name="cd_exit_selection">Keluar dari pemilihan</string>
     <string name="cd_more_options">Opsi lainnya</string>
     <string name="menu_copy_to">Salin ke</string>

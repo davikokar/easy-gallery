@@ -187,11 +187,15 @@ class GalleryViewModel @JvmOverloads constructor(
         foldersPrefs,
         prefs.searchQuery(PreferenceScope.FOLDERS),
         _pinnedFolders,
-        combine(_excludedFolders, _showExcludedTemporarily, _folderThumbnailOverrides) { excluded, showExcluded, overrides ->
-            Triple(excluded, showExcluded, overrides)
+        combine(
+            _excludedFolders,
+            _showExcludedTemporarily,
+            _folderThumbnailOverrides,
+            mediaIndexDateTakenState.indexedDateTakenByMediaUri
+        ) { excluded, showExcluded, overrides, indexedDateTaken ->
+            FolderListInputs(excluded, showExcluded, overrides, indexedDateTaken)
         }
-    ) { allMedia, viewPrefs, query, pinned, exclusion ->
-        val (excluded, showExcluded, thumbnailOverrides) = exclusion
+    ) { allMedia, viewPrefs, query, pinned, inputs ->
         if (allMedia.isEmpty() && _uiState.value is GalleryUiState.Loading) {
             GalleryUiState.Loading
         } else {
@@ -201,10 +205,11 @@ class GalleryViewModel @JvmOverloads constructor(
                 pinned,
                 viewPrefs.sortType,
                 viewPrefs.sortOrder,
-                excluded,
-                showExcluded,
+                inputs.excluded,
+                inputs.showExcluded,
                 viewPrefs.mediaTypes,
-                thumbnailOverrides
+                thumbnailOverrides = inputs.thumbnailOverrides,
+                indexedDateTakenByCanonicalMediaUri = inputs.indexedDateTaken
             )
             GalleryUiState.Success(folders)
         }
@@ -214,11 +219,15 @@ class GalleryViewModel @JvmOverloads constructor(
         _allMedia,
         foldersPrefs,
         _pinnedFolders,
-        combine(_excludedFolders, _showExcludedTemporarily, _folderThumbnailOverrides) { excluded, showExcluded, overrides ->
-            Triple(excluded, showExcluded, overrides)
+        combine(
+            _excludedFolders,
+            _showExcludedTemporarily,
+            _folderThumbnailOverrides,
+            mediaIndexDateTakenState.indexedDateTakenByMediaUri
+        ) { excluded, showExcluded, overrides, indexedDateTaken ->
+            FolderListInputs(excluded, showExcluded, overrides, indexedDateTaken)
         }
-    ) { allMedia, viewPrefs, pinned, exclusion ->
-        val (excluded, showExcluded, thumbnailOverrides) = exclusion
+    ) { allMedia, viewPrefs, pinned, inputs ->
         if (allMedia.isEmpty() && _uiState.value is GalleryUiState.Loading) {
             GalleryUiState.Loading
         } else {
@@ -228,10 +237,11 @@ class GalleryViewModel @JvmOverloads constructor(
                 pinned = pinned,
                 sort = viewPrefs.sortType,
                 order = viewPrefs.sortOrder,
-                excluded = excluded,
-                showExcluded = showExcluded,
+                excluded = inputs.excluded,
+                showExcluded = inputs.showExcluded,
                 types = MediaType.entries.toSet(),
-                thumbnailOverrides = thumbnailOverrides
+                thumbnailOverrides = inputs.thumbnailOverrides,
+                indexedDateTakenByCanonicalMediaUri = inputs.indexedDateTaken
             )
             GalleryUiState.Success(folders)
         }
@@ -269,18 +279,18 @@ class GalleryViewModel @JvmOverloads constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     val groupedAllMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredAllMedia, timelinePrefs, _localeTrigger
-    ) { media, viewPrefs, _ ->
+        filteredAllMedia, timelinePrefs, _localeTrigger, mediaIndexDateTakenState.indexedDateTakenByMediaUri
+    ) { media, viewPrefs, _, indexedDateTaken ->
         GalleryTransformations.groupMedia(
-            media, viewPrefs.groupBy, viewPrefs.groupOrder, todayLabel, yesterdayLabel, fileTypeLabels
+            media, viewPrefs.groupBy, viewPrefs.groupOrder, indexedDateTaken, todayLabel, yesterdayLabel, fileTypeLabels
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     val groupedFolderMedia: StateFlow<Map<String, List<MediaItem>>> = combine(
-        filteredMedia, effectiveFolderDetailPrefs, _localeTrigger
-    ) { media, viewPrefs, _ ->
+        filteredMedia, effectiveFolderDetailPrefs, _localeTrigger, mediaIndexDateTakenState.indexedDateTakenByMediaUri
+    ) { media, viewPrefs, _, indexedDateTaken ->
         GalleryTransformations.groupMedia(
-            media, viewPrefs.groupBy, viewPrefs.groupOrder, todayLabel, yesterdayLabel, fileTypeLabels
+            media, viewPrefs.groupBy, viewPrefs.groupOrder, indexedDateTaken, todayLabel, yesterdayLabel, fileTypeLabels
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
@@ -940,4 +950,12 @@ data class MoveOperation(
     val uris: List<android.net.Uri>,
     val targetRelativePath: String,
     val useExplicitTarget: Boolean
+)
+
+// Four inputs of the folder list, since the typed combine overloads stop at five flows.
+private data class FolderListInputs(
+    val excluded: Set<String>,
+    val showExcluded: Boolean,
+    val thumbnailOverrides: Map<String, String>,
+    val indexedDateTaken: Map<String, Long?>
 )
