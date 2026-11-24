@@ -95,7 +95,7 @@ and places the index found, and a **Date picker** of years and months that have 
 counts filtered by the other's choice — then writes one row whose `rule` holds the choice and no
 membership rows. Nothing is written until Create. Since Stage 3 step 3.6 a third tab, the **People
 picker**, offers a grid of **Person tiles** — one per person the index grouped, at most
-`MAX_PEOPLE_PER_ALBUM` (8) chosen — and the Place and Date counts follow the chosen people; the
+`MAX_PEOPLE_PER_ALBUM` chosen — and the Place and Date counts follow the chosen people; the
 People list itself is not cross-filtered. The tab is offered only while face data is on and the
 stored capability record for the current key says capable, so an unknown capability hides it (§3,
 `AutomaticAlbumPickerState`; **[ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md)**
@@ -134,7 +134,7 @@ FavouritesDataSource                                │                         
         │                                    RoomAlbumStore ──▶ AlbumStore  RoomMediaIndexStore
         │                                           │                            │
         │                                           │              MediaIndexingWorker (WorkManager)
-        │                                           │               Tier A, then the place resolve pass
+        │                                           │               Tier A, places, then (gated) faces and grouping
         │                                           │                            │
 GalleryViewModel  ──delegates state to──▶  DisplayPreferencesState    MediaIndexDateTakenState
    (central hub)                            FolderViewPreferencesState
@@ -158,13 +158,15 @@ trigger.
 Albums and media meet only in the ViewModel layer: `AlbumsViewModel` is handed the live
 `allMedia` list and resolves stored memberships against it. The database never holds a media row.
 
-The second database — the media index, `media_index.db` — **is in that flow, written on one path
-and read on three**. It is *filled* by `MediaIndexingWorker` under WorkManager, in two passes per
+The second database — the media index, `media_index.db` — **is in that flow, filled on one path,
+emptied of face data on a second, and read on three**. It is *filled* by `MediaIndexingWorker` under WorkManager, in two passes per
 run: Tier A extraction, then the **place resolve pass**, which fills the derived place columns from
 the coordinates Tier A stored, against the bundled gazetteer, and opens no media file. Behind
 gates — face data on, the device capable, the disclosure shown, which `FaceDataViewModel` records
 since step 3.6 — two Tier C passes follow, the face pass and grouping (§3,
-`MediaIndexingWork.kt`; §6). It is *read* by
+`MediaIndexingWork.kt`; §6). Its Tier C rows are also deleted by `FaceDataViewModel` — on
+switch-off and, with the setting off, at app open — under the same `faceIndexLock` the worker
+holds (§3). It is *read* by
 `MediaIndexDateTakenState`, a `GalleryViewModel` delegate that projects captured date-taken by media
 URI so `SortType.DATE_TAKEN` can sort by it; by `MediaIndexingViewModel`, which also schedules the
 work and reports progress, last-indexed state and the two coverage figures to the Settings screen
@@ -220,30 +222,30 @@ below every property it reads, or the class does not compile. Do not work around
 | `MediaLocation.kt` | GPS parsing, formatting, URI building, and the per-item `MediaLocationReader`. Its `originalMediaUriForExifRead` — ADR-0001's `setRequireOriginal` path — plus `mediaCoordinatesFromExifLatLong` and the `isAtLeastQ` guard are shared with the Tier A indexer rather than reimplemented there. |
 | `DefaultMediaPermissionHandler.kt` | Wraps the Android 11+ `createDeleteRequest`/`createWriteRequest` `IntentSender` APIs so the ViewModel stays free of `Activity` details. |
 | `MediaStoreVersionStore.kt` | The `MediaStore.getVersion()` watermark store (`SharedPreferences*` and `InMemory*`) and the `MediaStoreVersionProvider` that reads the live value. |
-| `EasyGalleryDatabase.kt` | The album Room database: two entities, schema version 1, `exportSchema = true`. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
+| `EasyGalleryDatabase.kt` | The album Room database, `exportSchema = true`; its entities and version are its `@Database` annotation's. Built by `create(context)`; the singleton lives on `EasyGalleryApp`. |
 | `AlbumEntities.kt` | `AlbumEntity`, `AlbumMembershipEntity`, `AlbumMembershipKind`, and its type converter. |
 | `AlbumDao.kt` | The album DAO. UI-facing queries return `Flow`. |
 | `AlbumStore.kt` | `AlbumStore` plus `RoomAlbumStore` and `InMemoryAlbumStore`, and the `StoredAlbum` model. Besides ADR-0015's two automatic cover writes — first member added, cover's item removed — it carries the user's pick ([ADR-0015](decisions/0015-album-cover-persisted-random-member.md) Amendment 1): `setCover` points `coverMembershipId` at an addition row of that album and otherwise writes nothing, which is the write-path guard the schema cannot express; `setCoverToMedia`, for a rule match, finds or inserts the album's addition row for a `MediaIdentity` and points the cover at it in one transaction. |
 | `AlbumMembership.kt` | Pure, Android-free membership resolution and healing — direct URI match, then healing key, then orphan — through `LiveMediaLookup` in `MediaIdentity.kt`. It returns resolved additions and exclusions separately, which is what rule evaluation composes with. |
 | `AlbumRule.kt` | The rule model of **[ADR-0017](decisions/0017-composable-album-rule-representation.md)**: `AlbumRule.Evaluatable`, a non-empty conjunction of clauses; `AlbumRule.Unevaluatable`, which keeps the stored text verbatim with an `UnevaluatableReason`; the `time` clause as inclusive calendar-date bounds (Amendment 1); and the `region` clause of **Amendment 2** — a country, optionally an admin1 code with its name, optionally a place name, stamped with the gazetteer `dataset` it was written against. A `region` value can be built only for the current `PLACE_RESOLVER_VERSION`. The `people` clause of **Amendment 4** (step 3.5) is `People(anchor, box, pipelineVersion)` — the anchor photo's `MediaIdentity`, the face's `FaceBox` and the pipeline version it was found under, ADR-0022 §1's fields — built from the picker's `FaceGroupRepresentative` by `People.anchoredAt`. `People` and `Unevaluatable` redact `toString`, so neither a URI, a name nor the stored text reaches a log. A `NULL` column is a manual album and has no `AlbumRule` at all. |
-| `AlbumRuleJson.kt` | The strict, hand-written reader and writer for `albums.rule`. Anything it does not fully understand becomes `Unevaluatable` and `parse` never throws — a `region` clause stamped with another dataset is `UNKNOWN_DATASET`; `encode` takes `Evaluatable` only, so an unevaluatable rule cannot be re-encoded, and escapes every string it writes so the stored rule is plain ASCII. A `people` clause is read as strictly — a bad anchor, pipeline version or box is `INVALID_ANCHOR`, `INVALID_PIPELINE_VERSION` or `INVALID_FACE_BOX` — and its box edges are written with `Float.toString`, which is locale-free and round-trips exactly; a negative zero reads as `+0f`. The envelope version stays 1. `encode` refuses a document over the 16 KiB cap by throwing, which is why §11 has a people-count entry. Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is approved. |
+| `AlbumRuleJson.kt` | The strict, hand-written reader and writer for `albums.rule`. Anything it does not fully understand becomes `Unevaluatable` and `parse` never throws — a `region` clause stamped with another dataset is `UNKNOWN_DATASET`; `encode` takes `Evaluatable` only, so an unevaluatable rule cannot be re-encoded, and escapes every string it writes so the stored rule is plain ASCII. A `people` clause is read as strictly — a bad anchor, pipeline version or box is `INVALID_ANCHOR`, `INVALID_PIPELINE_VERSION` or `INVALID_FACE_BOX` — and its box edges are written with `Float.toString`, which is locale-free and round-trips exactly; a negative zero reads as `+0f`. The envelope version stays 1. `encode` refuses a document over the `MAX_DOCUMENT_LENGTH` cap by throwing, which is why §11 has a people-count entry. Hand-written because `org.json` is stubbed on the plain JVM and no serialisation dependency is approved. |
 | `AlbumRuleSummary.kt` | `summarizeAlbumRule` — pure, read-only summary of an album's stored rule for the Album info dialog: `Manual` for no rule; `Unreadable` for an unevaluatable one, carrying neither its text nor its reason so the stored text cannot reach the screen; or `Automatic`, a list of place and date conditions, places in stored order and dates newest period first, each `time` clause named as a year, month, day or range, then — since step 3.6 — one `People(count)` for a rule with `people` clauses: a count, never an anchor. It holds no app string, and the caller supplies country names. It also owns `placeNames` and `placeChoiceLabel`, which the New automatic album screen's choice chips share. |
 | `AlbumRuleEvaluation.kt` | `AlbumRuleEvaluator` — pure evaluation of `(rule matches ∪ additions) − exclusions` over a `MediaIndexLiveJoin`, in a zone the caller passes in, writing nothing back — and `AlbumEvaluationStatus`: `MANUAL`, `COMPLETE`, `WAITING_ON_INDEX` and `UNEVALUATABLE`. Each clause answers per item whether it matches and whether that answer is **settled**, ADR-0017 Amendment 2's rule: a pending row matches provisionally on its old place values, and an item makes the album wait only when some clause is unsettled and none is a settled no-match. An overload takes memberships already resolved, so `AlbumsViewModel` resolves each album once. An `UNEVALUATABLE` result carries an `AlbumUnevaluatableCause` — `RULE_NOT_UNDERSTOOD`, `PEOPLE_UNAVAILABLE_FACE_DATA_OFF`, `PEOPLE_UNAVAILABLE_DEVICE_INCAPABLE` or `ANCHOR_NOT_FOUND` — and no other result does: a cause, not a sibling status (ADR-0017 Amendment 4, step 3.5). Both overloads take a required, nullable `people: PeopleEvaluationInput?`; a rule with no `people` clause never reads it, and null with one is *not loaded yet*, which waits. Unavailability is told first, even before live media arrives. |
-| `PeopleClauseEvaluation.kt` | Pure, Android-free `people` clause evaluation of **[ADR-0022](decisions/0022-people-criterion-anchored-to-a-photo.md)** §3 (step 3.5): `PeopleAvailability`, `PeopleEvaluationInput(availability, faces)`, the anchor resolution — the anchor found in live media through the join's lookup, its faces at the current pipeline version, the best IoU at or above 0.5 inclusive, computed in `Double` from the stored `Float`s, an exact tie to the lower face id, and a group only at the current grouping version, else waiting — and the per-item answer: a member is an image with any face in the group. Tier C data is trusted only while the live item, the winning index row and the face snapshot agree on the healing triple. *Not found* is the photo gone, not an image, `FAILED`, or no face at the box; it does not wait for grouping once the image's face state is current. |
+| `PeopleClauseEvaluation.kt` | Pure, Android-free `people` clause evaluation of **[ADR-0022](decisions/0022-people-criterion-anchored-to-a-photo.md)** §3 (step 3.5): `PeopleAvailability`, `PeopleEvaluationInput(availability, faces)`, the anchor resolution — the anchor found in live media through the join's lookup, its faces at the current pipeline version, the best IoU at or above `PEOPLE_ANCHOR_MINIMUM_IOU` inclusive, computed in `Double` from the stored `Float`s, an exact tie to the lower face id, and a group only at the current grouping version, else waiting — and the per-item answer: a member is an image with any face in the group. Tier C data is trusted only while the live item, the winning index row and the face snapshot agree on the healing triple. *Not found* is the photo gone, not an image, `FAILED`, or no face at the box; it does not wait for grouping once the image's face state is current. |
 | `PeopleAvailability.kt` | `peopleAvailabilityOf(faceDataEnabled, capability, currentKey)` — face data off first, then a capability record for the current key that says incapable; no record, another key's, or an unfinished check is unknown, and **unknown counts as available** (§11). `PeopleAvailabilitySource` reads the two persisted facts and never loads the pipeline: `StoredPeopleAvailabilitySource` over `FaceDataSettingStore` and `FaceDeviceStateStore`, and `InMemoryPeopleAvailabilitySource` for tests. The disclosure is not an input. The People picker asks a stricter question, `isPeoplePickerOffered` in `AutomaticAlbumPickerState.kt`, where unknown is *not* offered (step 3.6). |
 | `MediaIdentity.kt` | The shared `MediaIdentity` / `MediaHealingKey` and their factories, and `LiveMediaLookup` — the one lookup of a stored identity against live media, direct URI then healing key, with the URI key injectable: raw for album memberships, canonical for the index join. One implementation of ADR-0010's identity, used by album healing and by the media index alike — **[ADR-0020](decisions/0020-automatic-albums-resolve-against-live-media.md)** forbids a second. Membership resolution, rule evaluation and index reconciliation all use the lookup — reconciliation with the canonical key (§11 has why). |
-| `MediaIndexDatabase.kt` | The media index Room database: five entities, schema version 6, `exportSchema = true`, with `MIGRATION_1_2` to `MIGRATION_5_6` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker; `MIGRATION_4_5` creates the two Tier C tables, empty; `MIGRATION_5_6` creates the attempt table, empty — see §6. Built by `create(context)`, which also registers an open callback that turns `secure_delete` on. The file also holds what the face-data deletion uses (§6): the pragma helpers `enableSecureDelete`, `checkpointTruncate`, `journalMode` and `lockingMode`, and `deletionIsScrubbed`, the pure mapping from the journal and locking modes a deletion committed under to whether it may report a scrub — **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 6's table. The singleton lives on `EasyGalleryApp`. |
+| `MediaIndexDatabase.kt` | The media index Room database, `exportSchema = true` — its entities and version are its `@Database` annotation's — with `MIGRATION_1_2` to `MIGRATION_5_6` registered on the builder and no destructive fallback. `MIGRATION_2_3` changes data only; `MIGRATION_3_4` adds the resolver-version marker; `MIGRATION_4_5` creates the two Tier C tables, empty; `MIGRATION_5_6` creates the attempt table, empty — see §6. Built by `create(context)`, which also registers an open callback that turns `secure_delete` on. The file also holds what the face-data deletion uses (§6): the pragma helpers `enableSecureDelete`, `checkpointTruncate`, `journalMode` and `lockingMode`, and `deletionIsScrubbed`, the pure mapping from the journal and locking modes a deletion committed under to whether it may report a scrub — **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 6's table. The singleton lives on `EasyGalleryApp`. |
 | `MediaIndexEntities.kt` | `MediaIndexEntity` — the identity columns, the volume name, the generation columns, ADR-0018's captured and derived column split, and `derivedPlaceResolverVersion`, the marker that says which resolver wrote the derived columns — plus `MediaIndexWatermarkEntity`, the per-volume delta watermark keyed by volume name, and the two Tier C entities of **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 5: `MediaIndexFaceStateEntity`, one per image the face pass has processed, and `MediaIndexFaceEntity`, one per stored face, with the outcome's type converter — and Amendment 7's `MediaIndexFaceAttemptEntity`, an image's decode attempts under one pipeline version, and `MediaIndexPendingFaceImageEntity`, the pending-images query's result. No Tier C entity has a foreign key, and all redact `toString`. |
 | `MediaIndexDao.kt` | The index DAO. Observation queries return `Flow`, including `observeEvaluationProjection`, the narrow read that rule evaluation, the picker and `MediaIndexingViewModel`'s figures use — identity, captured date, whether coordinates exist, the three derived place columns and the resolver marker, as a query result rather than an entity, so it needed no schema change; deletion is per row, per volume, or whole-index. It carries the resolve pass's two queries — pending located rows paged by a URI cursor, and an update that writes the derived columns and the marker **only where the row still holds the coordinates the answer was computed from** — and the watermark queries: list, get, upsert, delete by volume. Its Tier C queries — read, insert, re-key and delete per image, delete per volume and in full, and whether any face data exists, each covering the attempt table too, plus `listPendingFaceImages`, the images-collection rows with no state at a pipeline version, paged by URI cursor with their attempt count — are building blocks the store composes inside its own transactions; none is a rule on its own. Grouping added four (step 3.4): faces at a pipeline version paged by id, whether any face there is pending grouping, the conditional update of one group's faces, and `listFaceGroups`, the picker query; the last two return query results, `MediaIndexFaceEmbeddingEntity` and `MediaIndexFaceGroupEntity`, declared in the DAO file, so the schema did not change. Step 3.5 added `observeFaceEvaluationRows`, one query joining the face state at a pipeline version to its index row and, left-joined, its faces — box and group, never the embedding — so one emission is one consistent snapshot; its result, `MediaIndexFaceEvaluationRowEntity`, is declared there too. |
-| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexEvaluationProjection` and `ResolvedPlaceWrite` models. `observeEvaluationProjection()` returns every row unfiltered, with stored rather than canonicalised URIs, so the join can heal a moved item through the shared lookup; a pending row keeps its old derived values beside a null or stale marker. It replaced the date-only identity projection of step 2.5, which was deleted with its model and the evaluator's date-only overload. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. **It also owns Tier C** ([ADR-0018](decisions/0018-media-index-in-a-second-database.md) Amendment 5), with no store interface of its own, because every Tier C rule runs in the transaction that changes the image row: `writeFaceIndexResults` replaces an image's state and faces only while its row still has the identity they were computed from, and only while the face-data setting reads on inside its transaction, writing nothing and returning 0 otherwise; `recordFaceIndexAttempt` counts a decode attempt under the same two conditions, restarting at 1 under another pipeline version, and a result write or `clearFaceIndexAttempt` clears it (Amendment 7 §1); `listPendingFaceImages` pages the pass's work; `upsert` drops a written URI's Tier C rows in its transaction only when no row is stored there or the stored row's healing triple differs, so a re-extraction of an unchanged file — a metadata-only update, a volume resync — keeps them (Amendment 6); the three deletes clear the matching Tier C rows in theirs; `healMediaUri` moves a row in one transaction and re-keys its Tier C rows only when the healed row's triple equals the stored source row's, otherwise leaving neither the source's nor the target's. Both decide through one private test, `keepsTierC`, on `MediaIdentity`'s healing key. `deleteAllFaceData` empties both tables and reports whether the files were scrubbed (§6). `getFaceIndexState`, `listFaces` and `hasFaceData` read. `observeFaceEvaluationProjection(pipelineVersion)` (step 3.5) is the one Tier C `Flow`: a `FaceEvaluationSnapshot` that rule evaluation reads, kept apart from `observeEvaluationProjection` so a region or time album does not re-evaluate on a face write; the `InMemory*` store publishes a copy after each write that changes rows or Tier C. **Grouping's four** (step 3.4): `listFacesForGrouping` pages ids and embeddings at one pipeline version; `isFaceGroupingNeeded` is the *when grouping is needed* test of [the Stage 3 plan](../design/albums-stage-3.md); `writeFaceGroups` writes every group in one transaction, in chunks of 500 ids, only to faces still at the version, and reads the setting inside it; `listFaceGroups` is the People picker's read — §6 has its rules. The `InMemory*` store applies the same rules, copies embeddings in and out, and always reports a deletion scrubbed, having no file. |
+| `MediaIndexStore.kt` | `MediaIndexStore` plus `RoomMediaIndexStore` and `InMemoryMediaIndexStore`, and the `MediaIndexEntry`, `MediaIndexEvaluationProjection` and `ResolvedPlaceWrite` models. `observeEvaluationProjection()` returns every row unfiltered, with stored rather than canonicalised URIs, so the join can heal a moved item through the shared lookup; a pending row keeps its old derived values beside a null or stale marker. It replaced the date-only identity projection of step 2.5, which was deleted with its model and the evaluator's date-only overload. `writeResolvedPlaces` applies a chunk of resolver answers in one transaction, conditionally, in both implementations alike. **It also owns Tier C** ([ADR-0018](decisions/0018-media-index-in-a-second-database.md) Amendment 5), with no store interface of its own, because every Tier C rule runs in the transaction that changes the image row: `writeFaceIndexResults` replaces an image's state and faces only while its row still has the identity they were computed from, and only while the face-data setting reads on inside its transaction, writing nothing and returning 0 otherwise; `recordFaceIndexAttempt` counts a decode attempt under the same two conditions, restarting at 1 under another pipeline version, and a result write or `clearFaceIndexAttempt` clears it (Amendment 7 §1); `listPendingFaceImages` pages the pass's work; `upsert` drops a written URI's Tier C rows in its transaction only when no row is stored there or the stored row's healing triple differs, so a re-extraction of an unchanged file — a metadata-only update, a volume resync — keeps them (Amendment 6); the three deletes clear the matching Tier C rows in theirs; `healMediaUri` moves a row in one transaction and re-keys its Tier C rows only when the healed row's triple equals the stored source row's, otherwise leaving neither the source's nor the target's. Both decide through one private test, `keepsTierC`, on `MediaIdentity`'s healing key. `deleteAllFaceData` empties the three Tier C tables and reports whether the files were scrubbed (§6). `getFaceIndexState`, `listFaces` and `hasFaceData` read. `observeFaceEvaluationProjection(pipelineVersion)` (step 3.5) is the one Tier C `Flow`: a `FaceEvaluationSnapshot` that rule evaluation reads, kept apart from `observeEvaluationProjection` so a region or time album does not re-evaluate on a face write; the `InMemory*` store publishes a copy after each write that changes rows or Tier C. **Grouping's four** (step 3.4): `listFacesForGrouping` pages ids and embeddings at one pipeline version; `isFaceGroupingNeeded` is the *when grouping is needed* test of [the Stage 3 plan](../design/albums-stage-3.md); `writeFaceGroups` writes every group in one transaction, in chunks of `FACE_GROUP_UPDATE_CHUNK` ids, only to faces still at the version, and reads the setting inside it; `listFaceGroups` is the People picker's read — §6 has its rules. The `InMemory*` store applies the same rules, copies embeddings in and out, and always reports a deletion scrubbed, having no file. |
 | `MediaIndexTierC.kt` | Pure, Android-free Tier C models — `FaceIndexOutcome`, `FaceBox` in the upright frame **[ADR-0022](decisions/0022-people-criterion-anchored-to-a-photo.md)** §1 defines, `FaceEmbedding`, `FaceDetection`, `FaceIndexWrite`, `FaceIndexState`, `StoredFace`, `PendingFaceImage`, `FaceDataDeletion`, and the picker's `FaceGroupSummary` with its `FaceGroupRepresentative`, which carries exactly an anchor's fields under ADR-0022 §1 — the evaluation snapshot of step 3.5, `FaceEvaluationSnapshot` of `FaceEvaluationImage`s and `FaceEvaluationFace`s, looked up by stored URI, where an image with no face is present with an empty list — and the embedding codec, float32 little-endian. Every `toString` is redacted and no check message carries a value, which is the models' share of **[ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md)** §6's never-logged rule. |
-| `FaceIndexPass.kt` | Pure, Android-free Tier C pass of **[ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md)** §4: the `FacePipeline` interface and its exceptions, `FACE_PIPELINE_VERSION` and the constants it fingerprints, the attempt bound and the 7-minute budget, the box geometry into the upright frame, `FaceIndexLog` with `FaceIndexLogLines` — the fixed set of lines the face path may log, counts and fixed words only — `FaceIndexPass`, and `FaceDataStartupDeletion`. The pass pages pending images, records an attempt before each decode, writes once per image, writes `FAILED` without decoding after three attempts, and checks cancellation, the setting and the budget between images; the next run resumes from the index. The start-up deletion deletes face data whenever the setting reads off, whatever `hasFaceData()` says, and neither throws nor retries (ADR-0024 §3). `FaceIndexLogLines.groupingFinished` is grouping's one line, `face grouping finished stop=<NAME>`. |
-| `FaceGrouping.kt` | Pure, Android-free grouping of [albums.md](../design/albums.md) §8 decisions 45 and 50: `groupFaces` — exact average linkage on cosine distance, cut at `FACE_GROUPING_CUT` (0.50) inclusive on a float32 triangle, run inside each connected component of the pairs at or below the cut (union-find over every pair, no distance kept), one triangle per component, freed before the next; the representative is the plain medoid, ties to the lower face id, and a group's id is the representative's face id. The result depends only on the set of (id, embedding). `FACE_GROUPING_VERSION` names the algorithm. A component larger than an int-indexed triangle can hold fails with a fixed message; the setting is probed between rows and merges, and a probe reading off returns null. Every model redacts `toString`. |
-| `FaceGroupingPass.kt` | `FaceGroupingPass` and `FaceGroupingStop` (`GROUPED`, `NOT_NEEDED`, `SETTING_OFF`, `PAST_DEADLINE`): when grouping is needed it reads the faces in pages of 500, groups them, and writes once through `writeFaceGroups`; it starts only within 8 minutes of the worker's start, takes no lock of its own, writes nothing on any stop but `GROUPED`, and logs one line. Pure; `MediaIndexingWorker` is its only caller. |
-| `FaceCapability.kt` | Pure, Android-free capability check of ADR-0023 §3: `FaceCapabilityKey` — app version code, pipeline version, build fingerprint — and `FaceCapabilityChecker`, which loads the pipeline and self-tests it on a synthetic input, persists the answer per key, records a start before it runs so two unfinished starts read as incapable, and does not persist an `OutOfMemoryError` or a build with no pipeline. Since step 3.6, `supportsFacePipelineAbi` (`FACE_PIPELINE_ABI`, arm64-v8a): a device that lists no such ABI is recorded incapable under the key at once, durably, and nothing is loaded. `FaceDataViewModel` makes the same test first, to skip `faceIndexLock` (§11). |
+| `FaceIndexPass.kt` | Pure, Android-free Tier C pass of **[ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md)** §4: the `FacePipeline` interface and its exceptions, `FACE_PIPELINE_VERSION` and the constants it fingerprints, the attempt bound `FACE_ATTEMPT_BOUND` and the budget `FACE_PASS_BUDGET_MILLIS`, the box geometry into the upright frame, `FaceIndexLog` with `FaceIndexLogLines` — the fixed set of lines the face path may log, counts and fixed words only — `FaceIndexPass`, and `FaceDataStartupDeletion`. The pass pages pending images, records an attempt before each decode, writes once per image, writes `FAILED` without decoding after `FACE_ATTEMPT_BOUND` attempts, and checks cancellation, the setting and the budget between images; the next run resumes from the index. The start-up deletion deletes face data whenever the setting reads off, whatever `hasFaceData()` says, and neither throws nor retries (ADR-0024 §3). `FaceIndexLogLines.groupingFinished` is grouping's one line, `face grouping finished stop=<NAME>`. |
+| `FaceGrouping.kt` | Pure, Android-free grouping of [albums.md](../design/albums.md) §8 decisions 45 and 50: `groupFaces` — exact average linkage on cosine distance, cut at `FACE_GROUPING_CUT` inclusive on a float32 triangle, run inside each connected component of the pairs at or below the cut (union-find over every pair, no distance kept), one triangle per component, freed before the next; the representative is the plain medoid, ties to the lower face id, and a group's id is the representative's face id. The result depends only on the set of (id, embedding). `FACE_GROUPING_VERSION` names the algorithm. A component larger than an int-indexed triangle can hold fails with a fixed message; the setting is probed between rows and merges, and a probe reading off returns null. Every model redacts `toString`. |
+| `FaceGroupingPass.kt` | `FaceGroupingPass` and `FaceGroupingStop` (`GROUPED`, `NOT_NEEDED`, `SETTING_OFF`, `PAST_DEADLINE`): when grouping is needed it reads the faces in pages of `FACE_GROUPING_PAGE_SIZE`, groups them, and writes once through `writeFaceGroups`; it starts only within `FACE_GROUPING_START_DEADLINE_MILLIS` of the worker's start, takes no lock of its own, writes nothing on any stop but `GROUPED`, and logs one line. Pure; `MediaIndexingWorker` is its only caller. |
+| `FaceCapability.kt` | Pure, Android-free capability check of ADR-0023 §3: `FaceCapabilityKey` — app version code, pipeline version, build fingerprint — and `FaceCapabilityChecker`, which loads the pipeline and self-tests it on a synthetic input, persists the answer per key, records a start before it runs so `FACE_CAPABILITY_MAX_UNFINISHED_STARTS` unfinished starts read as incapable, and does not persist an `OutOfMemoryError` or a build with no pipeline. Since step 3.6, `supportsFacePipelineAbi` (`FACE_PIPELINE_ABI`, arm64-v8a): a device that lists no such ABI is recorded incapable under the key at once, durably, and nothing is loaded. `FaceDataViewModel` makes the same test first, to skip `faceIndexLock` (§11). |
 | `FaceDataSettingStore.kt` | The face-data setting of ADR-0024 §1 (`SharedPreferences*` and `InMemory*`): one boolean, on by default, in `app_settings`. `AlbumsViewModel` reads it through `StoredPeopleAvailabilitySource`; `FaceDataViewModel` writes it, from the Face data row and the disclosure's Turn off (step 3.6). |
 | `FaceDeviceStateStore.kt` | `face_device_state` (`SharedPreferences*` and `InMemory*`): whether the face-data disclosure has been shown, and the capability record with its unfinished starts — state of this installation, excluded from every backup (§6). `AlbumsViewModel` reads the capability record through `StoredPeopleAvailabilitySource`; `FaceDataViewModel` runs the check at app open and marks the disclosure shown from its OK or Turn off, and from nothing else (step 3.6). |
-| `OpenCvFacePipeline.kt` | The Android half of the pipeline: `decodeUprightForFaces` — `ImageDecoder`, which applies the EXIF orientation, software-backed, a long side of at most 1,280 px — and `OpenCvFacePipeline`, YuNet and SFace fp32 on OpenCV's DNN on the CPU, both models read from `assets/face/` into memory and never written to a file. It logs nothing, and no exception it throws carries a URI, a box or an embedding. |
+| `OpenCvFacePipeline.kt` | The Android half of the pipeline: `decodeUprightForFaces` — `ImageDecoder`, which applies the EXIF orientation, software-backed, a long side of at most `FACE_DECODE_LONG_SIDE` pixels — and `OpenCvFacePipeline`, YuNet and SFace fp32 on OpenCV's DNN on the CPU, both models read from `assets/face/` into memory and never written to a file. It logs nothing, and no exception it throws carries a URI, a box or an embedding. |
 | `MediaIndexWatermarkStore.kt` | `MediaIndexWatermarkStore` plus `RoomMediaIndexWatermarkStore` and `InMemoryMediaIndexWatermarkStore`, and the `MediaIndexVolumeWatermark` model — version, generation, and the API 28–29 date fallback, one entry per volume. |
 | `MediaIndexDeltaDetection.kt` | Pure, Android-free delta detection: the API-branch resolution, the volume plan (which volumes resync and what the next watermarks are), the per-row selection, the `DATE_MODIFIED` fallback predicate, and the `MediaIndexDeltaDetector` that composes a snapshot provider with the watermark store. |
 | `MediaIndexReconciliation.kt` | `MediaIndexReconciler` — deletes an index row whose media is gone, heals a moved one through the shared `LiveMediaLookup` keyed on `canonicalMediaStoreUriForJoin`, keeping the row's resolver marker, and returns without touching a volume that is not present. A heal is one call to the store's `healMediaUri`, so the row and its Tier C rows move in one transaction; it used to be a delete then an upsert. Unit-tested on a plain JVM with a mocked `Uri`, as `AlbumMembership` is; its one Android reference is an inlined `MediaStore` volume-name constant. |
@@ -354,7 +356,7 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   - `createAutomaticAlbum(name, rule)` encodes an `Evaluatable` rule and writes the album row with
     it and no membership rows — the first shipped path that writes `albums.rule` (§6). Since step
     3.6 it refuses a rule naming more than `MAX_PEOPLE_PER_ALBUM` people and catches the encoder's
-    16 KiB `require`, so an over-long people rule is rejected rather than crashing (§11).
+    `MAX_DOCUMENT_LENGTH` `require`, so an over-long people rule is rejected rather than crashing (§11).
   - `selectedAlbumRule` is the open Album's stored rule as last read at evaluation — null for a
     manual album and while none is open. Its one reader is `AlbumDetailScreen`, which summarises it
     through `summarizeAlbumRule` for the **Album info dialog**. Country names come from
@@ -413,7 +415,7 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   was opened — false in a process restored onto the screen, which then opens one — because the
   UI state's initial value has an empty name either way.
   - **The People list** (step 3.6). The draft also holds the chosen people — `FaceGroupSummary`
-    values, at most `MAX_PEOPLE_PER_ALBUM` (8), each written as `AlbumRuleClause.People.anchoredAt`
+    values, at most `MAX_PEOPLE_PER_ALBUM`, each written as `AlbumRuleClause.People.anchoredAt`
     its listed representative. The tab is offered by `isPeoplePickerOffered`, a fresh read of the
     stores on every availability refresh: face data on and the record for the current key capable,
     so unknown is not offered. When the offer goes, the draft's people are dropped. The list is the
@@ -517,19 +519,19 @@ album" target — its `PreferenceContainer` chooses the wording only, and both c
 media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `FavouriteIndicator`,
 `ZoomableImage`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
-helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`, plus
-`MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
+helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`,
+`AlbumStatusNotices`, plus `MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
 is the one formatter for years and months, shared by the New automatic album screen and the Album
 info dialog.
 
 Step 3.6 added face data's components. `FaceDataDialogs.kt` holds the **Face data disclosure**
 (`FaceDataDisclosureDialog`, a disclosure mode that neither Back nor an outside tap dismisses and an
 info mode with one Close), the **Delete face data dialog** and the **Face licences dialog**, which
-reads the five files under `assets/face/` off the main thread. `AlbumStatusNotices.kt` maps an
+reads the notice files `FACE_LICENCE_FILE_NAMES` lists, from `assets/face/`, off the main thread. `AlbumStatusNotices.kt` maps an
 album's status and cause to its one Status notice (`AlbumStatusNoticeKind`), which the tile, the
 row and Album Detail View all draw. `PersonFaceImage` draws a Person tile's face crop through a Coil
-request built by `personFaceRequest`: a crop `Transformation` over `faceCropRect` — a square 1.8
-times the box's larger side, shifted, never shrunk, to stay inside the image — with
+request built by `personFaceRequest`: a crop `Transformation` over `faceCropRect` — a square
+`FACE_CROP_SIDE_FACTOR` times the box's larger side, shifted, never shrunk, to stay inside the image — with
 `Precision.INEXACT`, no hardware bitmaps, and `diskCachePolicy` disabled, so a crop is never written
 to disk; only the memory cache holds it, and switching face data off clears that
 ([ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md) Amendment 1 §4).
@@ -602,6 +604,8 @@ selectedMedia != null        → FullImageScreen          (outside the state hol
       else                     → PermissionDeniedScreen
     MainViewBar                (only when shouldShowMainViewBar is true)
 ```
+
+Outside both branches, after the chain, `MainActivity` draws the Face data disclosure (§1, §3).
 
 Albums added two branches rather than a navigation library; the chain stays —
 **[ADR-0013](decisions/0013-albums-as-third-display-mode.md)**. They sit after `selectedFolder`
@@ -864,7 +868,8 @@ the process.
 
 ### The album database
 
-`easy_gallery.db`, Room, schema version 1, exported to `app/schemas/`. Two tables:
+`easy_gallery.db`, Room, exported to `app/schemas/`; its version is its `@Database` annotation's.
+Its tables:
 
 | Table | Holds |
 |---|---|
@@ -911,8 +916,8 @@ extension version — **[ADR-0011](decisions/0011-favourites-backed-by-mediastor
 
 ### The media index database
 
-`media_index.db`, Room, schema version 6, exported to `app/schemas/` under its own directory. Five
-tables:
+`media_index.db`, Room, exported to `app/schemas/` under its own directory; its version is its
+`@Database` annotation's. Its tables:
 
 | Table | Holds |
 |---|---|
@@ -958,7 +963,7 @@ transaction that changes the image row (§3).
 The fifth, `Migration(5, 6)`, creates `media_index_face_attempt` empty and changes nothing else —
 **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** **Amendment 7** §1. The face
 pass records an attempt before each decode and clears it with the image's result, so an image that
-ends the process three times is written `FAILED` without a fourth decode; a result or an attempt is
+ends the process `FACE_ATTEMPT_BOUND` times is written `FAILED` without another decode; a result or an attempt is
 written only while the image row keeps the identity it names and **only while the face-data setting
 reads on inside the write's transaction**, so a pass that races the switch writes nothing after it.
 The attempt rows follow every Tier C rule — dropped, re-keyed and deleted with the image's state,
@@ -968,7 +973,7 @@ emptied by `deleteAllFaceData` and counted by `hasFaceData`. The pass is wired i
 
 **Grouping fills the two columns the fourth migration left null, with no sixth.** Step 3.4 writes a
 face's `groupId` — the face id of its group's representative, the medoid — and `groupingVersion`,
-`FACE_GROUPING_VERSION`, which says which algorithm wrote it; the index stays at schema version 6
+`FACE_GROUPING_VERSION`, which says which algorithm wrote it; the index schema does not change
 (ADR-0018 Amendment 8, which would have added a column, was reversed before it was built). Grouping
 is needed when some face at the current pipeline version has no grouping version or another one, or
 a group id naming no face at that version — a representative deleted or dropped by a changed
@@ -980,7 +985,7 @@ groups at both versions whose representative still exists, with at least a minim
 distinct images among the index rows that still exist, ordered by that count, then newest capture
 date with none last, then group id ([albums.md](../design/albums.md) §8 decision 46). Since step
 3.6 its one reader is `AutomaticAlbumPickerState`'s People list, with a minimum of
-`PEOPLE_PICKER_MINIMUM_IMAGES` (2).
+`PEOPLE_PICKER_MINIMUM_IMAGES`.
 
 **Deleting face data zeroes the deleted bytes, and reports when a copy may remain.** `create` turns
 `PRAGMA secure_delete` on when the database opens, so every Tier C delete and update zeroes the old
@@ -1022,7 +1027,8 @@ sidecars, in `backup_rules.xml` and in all three sections of `data_extraction_ru
 `<cloud-backup>`, `<device-transfer>`, and `<cross-platform-transfer platform="ios">`, the fourth
 section, which arrived with step 3.3 because Android documents a transfer mode with no rules as
 fully enabled, and whether this app is ever transferred to iOS is not established — ADR-0018
-Amendment 7 §2, whose residual F1 is still open. The
+Amendment 7 §2. Its residual, how an API 36.1 device reads that section, is unverified and
+accepted (§11). The
 `-journal` exclusion arrived with Tier C: Room uses a rollback journal on a low-RAM device, and one
 left hot by a crash holds pages as they were before the transaction. Tier C is in the same file, so
 face data is out of cloud backup and device transfer by these rules, which is how
@@ -1087,8 +1093,9 @@ GPS coordinates are read **lazily, per item, only when an info surface is shown*
 **[ADR-0001](decisions/0001-on-demand-media-location-metadata.md)**. Images go through
 `androidx.exifinterface`; videos through `MediaMetadataRetriever`.
 
-Video playback uses **Media3 ExoPlayer pinned at 1.5.0**. That pin is load-bearing:
-`media3-ui-compose` does not exist at 1.5.0, so the viewer's play/pause, progress slider, and time
+Video playback uses **Media3 ExoPlayer, pinned** (the version is `gradle/libs.versions.toml`'s).
+That pin is load-bearing: `media3-ui-compose` does not exist at the pinned version, so the viewer's
+play/pause, progress slider, and time
 labels are hand-rolled Compose controls over a `Player.Listener` plus position polling, and the
 `PlayerView` runs with `useController = false`. Upgrading media3 is a decision to raise, not a
 routine bump.
@@ -1130,15 +1137,15 @@ Anything machine-parsed — coordinates, durations — is formatted with `Locale
 |---|---|
 | UI | Jetpack Compose + Material 3 (`material-icons-extended`) |
 | Image loading | Coil 3 (`coil-compose`, `-gif`, `-video`, `-network-okhttp`) |
-| Video playback | AndroidX Media3 ExoPlayer, pinned at 1.5.0 |
+| Video playback | AndroidX Media3 ExoPlayer, pinned (see `gradle/libs.versions.toml`) |
 | EXIF | `androidx.exifinterface` |
 | Async | Kotlin Coroutines + `StateFlow` |
 | Background work | AndroidX WorkManager (`work-runtime-ktx`) — the constrained periodic media-index job and "Index now" |
 | Billing | Google Play Billing (`billing-ktx`) — the tip jar |
 | Media data | Android `MediaStore` — all media, and the favourite flag |
 | App-owned data | Room, with KSP as the annotation processor — two databases: albums, and the media index |
-| Face pipeline | OpenCV's published Android library (`org.opencv:opencv`), pinned at 4.13.0, untrimmed, with YuNet and SFace fp32 ONNX models bundled under `app/src/main/assets/face/` beside their licences, `NOTICE.txt` and `THIRD_PARTY_NOTICES.txt` — **[ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md)**. The worker's face pass loads it, after the gates in §3, `MediaIndexingWork.kt`, and writes Tier C (§6) |
-| Unit tests | JUnit4, MockK, Turbine, coroutines-test; Robolectric for the `data/` Android-boundary tests; `room-testing` and `inMemoryDatabaseBuilder` for the DAO; `work-testing` (`TestListenableWorkerBuilder`) for `MediaIndexingWorker` |
+| Face pipeline | OpenCV's published Android library (`org.opencv:opencv`), pinned in the catalogue and held to `FACE_PIPELINE_OPENCV_VERSION` by `FacePipelineVersionTest`, untrimmed, with YuNet and SFace fp32 ONNX models bundled under `app/src/main/assets/face/` beside their licences, `NOTICE.txt` and `THIRD_PARTY_NOTICES.txt` — **[ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md)**. The worker's face pass loads it, after the gates in §3, `MediaIndexingWork.kt`, and writes Tier C (§6) |
+| Unit tests | JUnit4, MockK, Turbine, coroutines-test; Robolectric for the Android-boundary tests (mostly in `data/`); `room-testing` and `inMemoryDatabaseBuilder` for the DAO; `work-testing` (`TestListenableWorkerBuilder`) for `MediaIndexingWorker` |
 | Instrumented tests | Compose UI test + Espresso |
 
 Versions are centralised in `gradle/libs.versions.toml`; app config in `app/build.gradle.kts`.
@@ -1175,7 +1182,8 @@ KSP.
   established escape hatches are a new state holder (`DisplayPreferencesState`,
   `FolderViewPreferencesState`, `MediaViewerState`) or a feature ViewModel
   (`CreateFolderViewModel`, `BillingViewModel`, `AlbumsViewModel`, `FavouritesViewModel`,
-  `MediaIndexingViewModel`). Albums used the second and added no album state to its body.
+  `MediaIndexingViewModel`, `FaceDataViewModel`). Albums used the second and added no album state
+  to its body; nor did face data.
 - **Screen names lag the canonical ones** — see the caveat in §1. `FolderListScreen` and
   `CalendarGrid` still do; `DisplayMode` no longer does, having been renamed to
   `FOLDERS`/`TIMELINE`/`ALBUMS` when Albums View landed. `FolderListScreen` now hosts three views,
@@ -1245,16 +1253,10 @@ KSP.
   tile, row or Album Detail View of the installed app**, because nothing shipped can create a rule
   album to show one; [the Stage 2 plan](../design/albums-stage-2.md) carries that as a residual
   check.~~ **Resolved at Stage 2 step 2.7**: the Automatic option is enabled and the New automatic
-  album screen writes a rule through `AlbumsViewModel.createAutomaticAlbum`. On 2026-11-11, on the
-  SM-G990B, an installed-app walkthrough created a country album and a country + year album, saw
-  the Incomplete-album notice on the tile until Index now and then the members and the coverage
-  notices in Album Detail View; device tests checked every picker entry's count against the
-  evaluator's members over the real index. **Not seen in the installed app**: the picker's group
-  of places without a region and the location-access-off wording, which unit and Compose tests
-  cover, and an unevaluatable album, which only data can produce. Kept struck through because
-  those residual checks are recorded against it in the Stage 2 plan. What was seen on 2026-11-11 is
-  history: since 2026-11-13 neither the Incomplete-album notice nor the coverage notices exist, and
-  the location-access-off wording is shown by Settings' location row instead
+  album screen writes a rule through `AlbumsViewModel.createAutomaticAlbum`. The installed-app
+  walkthrough of 2026-11-11 and the residual checks it left are recorded in the archived
+  [Stage 2 plan](../design/albums-stage-2.md); the notices it saw no longer exist, and the
+  location-access-off wording is shown by Settings' location row instead
   ([albums.md](../design/albums.md) §8 decision 29).
 - **An automatic album's rule cannot be edited.** It is set at creation, and since 2026-11-14 it
   can be read in Album Detail View's Album info dialog but not changed there; rename, add, remove
@@ -1395,18 +1397,21 @@ KSP.
   check `uiState`. The load reruns only on Activity recreation or after the app's own file
   operations, not on `onResume`. What the null live list still buys over the behaviour it replaced —
   `COMPLETE` with zero members — is that nothing is written back; not fixed.
-- **The Kotlin runtime artifacts are forced to 2.1.0** while the catalog pins Kotlin 2.2.10.
-  `app/build.gradle.kts` holds three `resolutionStrategy.force` lines for `kotlin-stdlib`,
+- **The Kotlin runtime artifacts are forced below the catalogue's Kotlin version** — the three
+  `resolutionStrategy.force` lines in `app/build.gradle.kts`, for `kotlin-stdlib`,
   `kotlin-stdlib-jdk8` and `kotlin-reflect`. They predate albums and were a workaround, not a
-  decision, but KSP `2.2.10-2.0.2` and the Room code it generates now compile against a 2.2.10
-  compiler and run against a 2.1.0 stdlib, so the gap matters more than it did. Nothing has failed;
+  decision, but KSP and the Room code it generates now compile against the catalogue's compiler
+  and run against the forced, older stdlib, so the gap matters more than it did. Nothing has failed;
   the reason the lines exist is no longer recorded anywhere, which is the actual debt. Establish
   whether they are still needed before the next Kotlin bump.
-- **`DisplayPreferencesState`'s KDoc names three preference scopes; there are five.**
+- **Two KDocs still name three preference scopes or main views; there are five scopes.**
   `PreferenceScope` gained `ALBUMS` and `ALBUM_DETAIL` when Albums View landed, and the class
-  documentation still lists only Folders View, Timeline View and Folder Detail View. A one-line fix
-  in `app/src/main/java/com/davide/seddio/easygallery/ui/DisplayPreferencesState.kt`, recorded here
-  so it is not lost.
+  documentation of `DisplayPreferencesState` still lists only Folders View, Timeline View and Folder
+  Detail View; `PreferenceScope`'s own KDoc in `data/ViewPreferences.kt` still says "three main
+  views" too. Two one-line fixes, in
+  `app/src/main/java/com/davide/seddio/easygallery/ui/DisplayPreferencesState.kt` and
+  `app/src/main/java/com/davide/seddio/easygallery/data/ViewPreferences.kt`, routed to the Coder for
+  the next code change (step 3.8's audit, 2026-11-24); recorded here so they are not lost.
 - **`AlbumListItem` names two different things.** It is a composable in
   `ui/components/AlbumGridItem.kt` (one Album drawn as a row) and a data class in
   `ui/AlbumsViewModel.kt` (one Album's resolved state). Both live under `ui`, so a reader has to
@@ -1449,7 +1454,20 @@ KSP.
   [albums-stage-3.md](../design/albums-stage-3.md).~~ *Read at step 3.7:* both phones' indexes use
   `wal` with `normal` locking — the SM-G990B on 2026-11-22 and again after a real deletion on
   2026-11-23, the SM-G781B on 2026-11-23 — so neither phone meets the `PERSIST` case
-  ([albums-stage-3.md](../design/albums-stage-3.md) *3.7*, G4, G9 and G10).
+  ([albums-stage-3.md](../design/albums-stage-3.md) *3.7*, G4, G9 and G10). Room's own choice of a
+  rollback journal, which it makes only on a low-RAM device, was reachable on neither phone; a
+  forced `TRUNCATE` stood in for it, and scrubbed. *2026-11-23:* accepted by the maintainer (*3.7*,
+  L7); revisit if a low-RAM device can be tested.
+- **How an API 36.1 device reads the iOS transfer section is unverified.** The iOS section of
+  `data_extraction_rules.xml`, `<cross-platform-transfer platform="ios">` — the fourth backup-rules
+  section, after `backup_rules.xml` and the file's other two — carries the index's
+  exclusions without the `<platform-specific-params>` Android documents for it (§6). Whether such a
+  device ignores it, honours it, or treats the file as malformed — the one case worse than no
+  section — is unknown: no 36.1 device has been available. *2026-11-23:* accepted by the maintainer
+  (*3.7*, L9); revisit if a 36.1 device shows the section misread. Moving the index to
+  `noBackupFilesDir`, which every backup mode excludes, would remove the doubt by construction and
+  is an ADR-0018 amendment of its own ([albums-stage-3.md](../design/albums-stage-3.md) *Open
+  questions*, F1).
 - **GIFs stay pending in Tier C on every pass.** The face pass skips them by design and writes no
   state, so each pass meets them again. The cost is a skipped candidate per GIF per run; a people
   album does not wait on one, because step 3.5 answers every item that is not an image as a settled
@@ -1457,18 +1475,19 @@ KSP.
 - **Grouping has two ceilings, measured but not enforced** (step 3.4's review, and step 3.7's G5c; the
   figures are in [albums-stage-3.md](../design/albums-stage-3.md) *3.4 — Built and verified* and
   *3.7*, G5c).
-  *One giant component:* the per-component cap of 65,536 faces is an int-array limit, not a heap
+  *One giant component:* the per-component cap, `MAX_GROUPING_FACES`, is an int-array limit, not a heap
   one, so a single component above roughly 10,500 faces fails with `OutOfMemoryError` rather than
   the fixed "too many" message. The data stays safe — nothing is written before the one transaction
   at the end, and the run fails with the worker's fixed message — but it fails every run. The
   synthetic components measured were at most 60 faces; the real 422-face library already had 88 in
   one. ~~A heap-based cap that fails with the fixed message is an open question for the maintainer.~~
   *2026-11-23:* accepted by the maintainer as debt, with no heap-based cap (*3.7*, L4).
-  *The deadline covers the start only:* grouping starts within 8 minutes of the worker's start and
-  is not stopped by the deadline after it, so after a face pass that used its 7-minute budget it has
-  about 3 minutes before WorkManager's ~10-minute stop. Through the real store, on synthetic faces on
-  the SM-G990B, grouping is quadratic — 75.7 s at 20,000 faces, the figure both capacities are scaled
-  from — so it fits about **31,000 faces** after a full face pass and about **56,000** in a whole
+  *The deadline covers the start only:* grouping starts within `FACE_GROUPING_START_DEADLINE_MILLIS`
+  of the worker's start and is not stopped by the deadline after it, so after a face pass that used
+  its whole `FACE_PASS_BUDGET_MILLIS` budget it has only what is left before WorkManager's ~10-minute
+  stop — about 3 minutes at step 3.7. Through the real store, on synthetic faces on the SM-G990B,
+  grouping is quadratic, so it fits about **31,000 faces** after a full face pass and about
+  **56,000** in a whole
   window. It writes once, at the end, so a grouping cut by the stop writes nothing that run: between
   those two figures no group appears or changes until the face pass's backlog is done and the pass
   ends early; above about 56,000 every run is cut and no group ever appears — safe, but the CPU is
@@ -1476,21 +1495,32 @@ KSP.
   grouping core alone and overstated both figures. ~~Accepting the limit is open for the maintainer~~
   *2026-11-23:* accepted by the maintainer as a recorded limit, revisited on a real report (*3.7*, L11).
   *The store's own cost is small:* the paged read and the one-transaction write together took under a
-  tenth of the total at every size measured, up to 37,000 faces, and the Java heap stayed well inside
-  its 256 MB cap, so memory does not bind. A real library of that size, through the
-  worker, is unmeasured — the largest real one is 422 faces.
+  tenth of the total at every size measured, and the Java heap stayed well inside its cap, so memory
+  does not bind. A real library of that size, through the
+  worker, is unmeasured — the largest real one is 422 faces. *2026-11-23:* accepted by the
+  maintainer (*3.7*, L5); revisit on a real report from a large library.
 - **The face pass and grouping have no thermal back-off.** Nothing in `app/src/main` reads the
-  thermal status. On the SM-G781B a face pass reached thermal status 2 75 s in — charging, screen on,
+  thermal status. On the SM-G781B a face pass reached thermal status 2 after 75 s — charging, screen on,
   after a warm start — while a full run on the SM-G990B stayed at 0. The periodic job runs only
   charging and idle; Index now carries neither constraint (the indexing job's limits, above), so a
   user-started run can meet the SM-G781B's conditions. *2026-11-23:* accepted by the maintainer,
   revisited on a real report or a user complaint; the remedy then is a thermal check between pages
   that stops the pass as its budget does, or a smaller per-run budget
   ([albums-stage-3.md](../design/albums-stage-3.md) *3.7*, G10 and L13).
+- **The face pipeline has run on two Samsung phones, and on the second only in part.** Everything
+  measured on hardware — the face pass, grouping and the worker, the release build's capability —
+  was measured on the SM-G990B. On the SM-G781B (API 33) only the debug build's capability check, the
+  upright frame and the index's journal modes are recorded: its release build was not checked, for
+  want of a signing configuration, and its face pass was stopped at thermal status 2 before any figure
+  (the entry above). No non-Samsung arm64 phone has been available. So the time, memory and heat of
+  the pass and grouping on an older or another vendor's phone are unknown. *2026-11-23:* accepted
+  by the maintainer as they stand (*3.7*, L2 and L3); revisit — the capability check and a worker
+  run — when such a phone can be attached ([ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md)'s
+  verify rows 6 and 7 hold the figures).
 - **The capability record catches a crash only by counting.** A start is recorded before the check
-  and two unfinished starts read as incapable, so a device whose OpenCV build crashes natively in
-  the self-test is caught; a crash that only some images provoke, on some vendor's build, is caught
-  only per image, by the three-attempt bound (§6).
+  and `FACE_CAPABILITY_MAX_UNFINISHED_STARTS` unfinished starts read as incapable, so a device whose
+  OpenCV build crashes natively in the self-test is caught; a crash that only some images provoke,
+  on some vendor's build, is caught only per image, by the `FACE_ATTEMPT_BOUND` attempt bound (§6).
 - **OpenCV logs one line of its own on a native error.** `OpenCvFacePipeline.load()` calls
   `Core.setErrorVerbosity(false)`, which silences OpenCV's `cv::error()` line; its Java wrapper still
   logs "caught cv::Exception" under the tag `org.opencv.imgproc`, priority E, with OpenCV's assertion
@@ -1510,17 +1540,22 @@ KSP.
   match. Nothing fails because of it; the project has no `verification-metadata.xml`, and adding one
   for this was judged out of proportion ([ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md)).
 - **The face models use most of their download budget.** What they and OpenCV add to the arm64
-  download is 46,063,982 B against ADR-0023's 50 MB, unchanged since step 3.3; the whole arm64
-  download is recorded beside it in ADR-0023's verify row 5 at every re-check. A model or OpenCV
-  upgrade must re-measure it. The budget is worded as what the face path adds; read against the
-  total, under 0.6 % of 50,000,000 B remained at step 3.7. ~~Which reading holds is open for the maintainer~~ *2026-11-23:* accepted by the
+  download is close to ADR-0023's 50 MB budget and is recorded, with the whole arm64 download beside
+  it, in ADR-0023's verify row 5 at every re-check. A model or OpenCV upgrade must re-measure it.
+  ~~Which reading holds is open for the maintainer~~ *2026-11-23:* accepted by the
   maintainer — "50 MB" read as 50,000,000 B and the budget as what the face path adds, with the total
   recorded beside it at every re-check ([albums-stage-3.md](../design/albums-stage-3.md) *3.7*, L12).
-- **Devices without arm64-v8a download the models and cannot use them.** The 36.1 MB of ONNX files
-  are in the base APK on every ABI, while OpenCV's library ships for arm64-v8a only, so those
-  devices pay the download and cannot run the pipeline. Since step 3.6 they are recorded incapable
-  under the key, durably, by `supportsFacePipelineAbi`, before anything is loaded; the loader's
-  `FacePipelineUnavailableException` is still not persisted, but such a device no longer reaches it.
+- **Devices without arm64-v8a download the models and cannot use them.** The ONNX models are in the
+  base APK on every ABI (their size is ADR-0023's verify row 5's), while OpenCV's library ships for
+  arm64-v8a only, so those devices pay the download and cannot run the pipeline. Since step 3.6 they
+  are recorded incapable under the key, durably, by `supportsFacePipelineAbi`, before anything is
+  loaded; the loader's `FacePipelineUnavailableException` is still not persisted, but such a device
+  no longer reaches it. **None has been available to test on:** that path, a restored people album
+  showing the Device-incapable notice there, and the Face data area and People tab being withheld
+  are proved by unit tests only; on hardware only the "library missing" branch has run, as a 32-bit
+  install on an arm64 phone. *2026-11-23:* accepted by the maintainer
+  ([albums-stage-3.md](../design/albums-stage-3.md) *3.7*, G5e and L1); revisit when such a phone
+  can be attached.
 - **The no-arm64 test lives in two places** (step 3.6's review). `FaceCapabilityChecker` records
   the answer, and `FaceDataViewModel` makes the same `supportsFacePipelineAbi` test first only to
   skip `faceIndexLock`. Both read the one function, so they cannot disagree on the ABI, but a change
@@ -1539,43 +1574,51 @@ KSP.
   linear (step 3.7's G5c, synthetic). How often it runs during an
   indexing run is not measured: the face pass writes once per image, so it is invalidated up to once
   per image while something collects it, Room re-running the query once for the invalidations that
-  arrive while it runs.
+  arrive while it runs. It cannot be counted from outside the process; *2026-11-23:* accepted by the
+  maintainer (*3.7*, L5).
 - **An oversized rule is refused, not thrown.** `AlbumRuleJson.encode` requires the document to fit
-  the 16 KiB cap, which a people rule can reach with about 8 to 50 people depending on their anchors'
-  escaped names. Since step 3.6 the picker stops at `MAX_PEOPLE_PER_ALBUM` (8, which fit even with
-  255-character names), and `createAutomaticAlbum` refuses more than 8 and catches the `require`, so
-  the cap is enforced twice. Raising 8 needs the long-name measurement again.
-- **Face data's UI has edges that only a device can settle** (step 3.6's reviews; checks deferred to
-  step 3.7 of [albums-stage-3.md](../design/albums-stage-3.md)). Several locales' Status notice and
-  tile strings run 74–85 characters against about 60 in English, ~~and the People tab label in German
-  and Italian,~~ unchecked at font scale 2.0 — *2026-11-23:* still not observed on a device, accepted
-  by the maintainer (step 3.7, L6); ~~the Face licences dialog is untested at font scale 2.0
-  and in landscape; that an outside tap does not close the disclosure is pinned only by its
-  `DialogProperties` in a unit test, not on a device;~~ *settled on the SM-G990B (step 3.7, G4, G6,
-  W1, W2):* the People tab label fits at font scale 2.0 in a 360 dp width in Italian, and in German
-  since its translation was shortened to "Leute", which is on the native-speaker review list; the Face
-  licences dialog keeps OK on screen at font scale 2.0 in portrait and in landscape; a tap outside the
-  disclosure and Back both leave it showing; ~~the face crop's decode cost with 100 or more
-  tiles, and its sharpness for small faces — 21 of the 104 groups measured have no member at least
-  60 px wide — are unmeasured~~ *measured 2026-11-23 on the SM-G990B (step 3.7, G8):* a scroll of
-  the People tab's 104 tiles had more than twice Folders View's share of janky frames, the cost on
-  the UI thread (the figures are G8's), and the maintainer saw no stutter — a polish
-  candidate (prefetching, or smaller crops), not fixed; by eye, 2 of the 104 crops were not
-  recognisable, though 21 of the 104 groups have no member at least 60 px wide; and ~~that Coil's
-  disk-cache directory is unchanged after the picker renders is asserted by the request's policy,
-  not observed~~ Coil's disk cache is kept out by the request's policy, asserted by a test — on the
-  device the cache directory never existed, so its unchanged listing could not show more. The
-  translated privacy text — the
-  disclosure, the Delete face data dialog, the Face data row and the three people Status notices —
-  has had no native-speaker review.
+  the `MAX_DOCUMENT_LENGTH` cap, which a people rule can reach with about 8 to 50 people depending
+  on their anchors' escaped names. Since step 3.6 the picker stops at `MAX_PEOPLE_PER_ALBUM` (which
+  fit even with 255-character names at its current value), and `createAutomaticAlbum` refuses more
+  and catches the `require`, so the cap is enforced twice. Raising it needs the long-name
+  measurement again.
+- **Face data's UI has four open edges** (step 3.6's reviews, checked on the SM-G990B at step 3.7;
+  the history and the figures are [albums-stage-3.md](../design/albums-stage-3.md) *3.7*, G4, G6,
+  G8, W1 and W2).
+  1. **Long strings.** Several locales' Status notice and tile strings run 74–85 characters against
+     about 60 in English and have not been observed at font scale 2.0; the tile ellipsizes, the Album
+     row and Album Detail View wrap. *2026-11-23:* accepted by the maintainer (*3.7*, L6); the remedy
+     is a shorter translation, at the native-speaker review.
+  2. **The People tab's scroll cost.** A scroll of its 104 tiles had more than twice Folders View's
+     share of janky frames, the cost on the UI thread, and the maintainer saw no stutter; by eye, 2
+     of the 104 crops were not recognisable, though 21 of the 104 groups have no member at least
+     60 px wide. A polish candidate — prefetching, or smaller crops — not fixed.
+  3. **The memory cache.** That a switch-off empties Coil's memory cache rests on its unit test; it
+     cannot be observed from outside the process. *2026-11-23:* accepted by the maintainer (*3.7*,
+     L8).
+  4. **The native-speaker review.** The translated privacy text — the disclosure, the Delete face
+     data dialog, the Face data row and the three people Status notices — has had no native-speaker
+     review. It is the maintainer's, **before a release**, and German's "Leute" — the People tab
+     label, shortened so it fits at font scale 2.0 — is on its list.
+
+  Settled at step 3.7 (G4, G6, W1, W2): the People tab label fits at font scale 2.0 in a 360 dp
+  width in Italian and, since "Leute", in German; the Face licences dialog keeps OK on screen at font
+  scale 2.0 in portrait and in landscape; a tap outside the disclosure and Back both leave it
+  showing; and Coil's disk cache is kept out by the request's policy, asserted by a test — on the
+  device the cache directory never existed, so its listing could not show more.
 - **Two small UI judgement items were left as they are.** The cleanup sentence under the Face data
   row is cleared by a `DisposableEffect` when Settings leaves composition, which a rotation also
   does, so a rotated Settings screen loses it; the start-up deletion repeats the scrub either way.
-  And the order of the five licence files in the Face licences dialog is pinned only on the
-  constant list, not on what the dialog draws.
+  And the order of the licence files in the Face licences dialog is pinned only on the
+  constant list, `FACE_LICENCE_FILE_NAMES`, not on what the dialog draws.
 - **`FaceGroupingWorkerMeasurementDeviceTest` can fail on a fresh install under a Gradle connected
   run**, with its `ENVIRONMENT` message: the runtime permission grant has not yet reached `MediaStore`
   in the already-running test process. A race in the test, not an app defect, seen on the SM-G781B;
   the test is opt-in, and runs with the media permissions granted beforehand through `am instrument`.
   *2026-11-23:* accepted by the maintainer, the test-side fix deferred — revisited when the test is
   next needed on a fresh install ([albums-stage-3.md](../design/albums-stage-3.md) *3.7*, G10 and L14).
+- **`MediaIndexingWorkEnqueueTest` has timed out once.** In one full connected run on the SM-G990B
+  on 2026-11-23, two of its tests failed waiting for the work to finish; the class passed alone
+  straight after, and the next two full runs passed. Not reproduced and not fixed; a recurrence is
+  the trigger to look at the test's waits ([albums-stage-3.md](../design/albums-stage-3.md) *3.8*,
+  entry condition 4).

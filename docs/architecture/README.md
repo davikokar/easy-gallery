@@ -2,8 +2,8 @@
 
 This directory holds the architectural documentation for Easy Gallery.
 
-[ARCHITECTURE.md](ARCHITECTURE.md) describes the current system: the five main views carried by
-three screens, the MVVM data flow, the layer responsibilities, and the project structure. Read it
+[ARCHITECTURE.md](ARCHITECTURE.md) describes the current system: the main views and the screens
+that carry them, the MVVM data flow, the layer responsibilities, and the project structure. Read it
 before changing how
 state is owned or how the views are composed. It is maintained by the Planner and updated in the
 same change as the work it describes; the trigger list is in

@@ -761,7 +761,8 @@
   left as they were. Also: [albums.md](albums.md) §7's Stage 3 row. Planner, docs only; no code, no
   Gradle run, no phone. **On disk, by `git status` at this entry:** HEAD `94f8e9c`; uncommitted, the
   four test files and the six documents listed under *Next action* below.
-- **Next action: the maintainer's commit, then 3.8.** In order:
+- ~~**Next action: the maintainer's commit, then 3.8.**~~ *Done 2026-11-24 — the commit is
+  `5f6a181`, and 3.8 started; the entry below. The list is kept as it was.* In order:
   1. **The maintainer commits** exactly these ten files, and nothing under `app/src/main` — there is
      no change there. Its code and tests are the tree the final gate ran over; only documents were
      edited after it, so a code or test edit before the commit would send the gate round again.
@@ -784,6 +785,66 @@
     review, "Leute" on its list.
   - **Read first:** *3.8 — Close-out*, its entry condition and its steps; *Review of 3.7*;
     `AGENTS.md` *Documentation*.
+- **2026-11-24 — 3.8 started; steps 1 and 2 done; step 3's audit run, its fixes being applied.**
+  Entry condition 7 held at `5f6a181`, the maintainer's commit of exactly the ten files, nothing
+  under `app/src/main` (`git diff --stat 94f8e9c 5f6a181`), so all eight conditions held and 3.8
+  started (*3.8 — Close-out*, *Entry condition*). Step 1: `ARCHITECTURE.md` §11 brought to what 3.7
+  settled and left. Step 2: every exit criterion checked against the repository (*Exit criteria
+  checked against the repository 2026-11-24*) — 2 and 19 not met until 3.8 itself finishes, 9
+  carried, not met. Step 3: `/docs-audit` run in parts; its findings in `ARCHITECTURE.md`, this
+  plan, [albums.md](albums.md) and [albums-rule-editing.md](albums-rule-editing.md) fixed by the
+  Planner, those in `AGENTS.md`, `.github/agents` and the instructions by their owners; the
+  *Documentation audit* record is not written yet. Planner, docs only; no code, no Gradle run, no
+  phone. **On disk at this entry:** HEAD `5f6a181`; uncommitted, 3.8's document edits.
+- ~~**Next action: step 3's record, then step 4, then step 5.**~~ *Item 1 done 2026-11-24 — the
+  entry below; the list is kept as it was.* In order:
+  1. **Step 3's record** — the *Documentation audit* record under *3.8 — Close-out*, assembled from
+     every part's fix status; a finding not fixed is recorded with its owner and its reason.
+  2. **Step 4, the archive** — the exit criteria and their record move into [albums.md](albums.md)
+     §7, *Stage 3*; this plan gains its `Archived` line; its row in `AGENTS.md`'s documentation map
+     goes, and every row of that map is walked.
+  3. **Step 5** — its second branch: criterion 9 is carried, not met, so Stage 3 moves to Complete
+     only by the maintainer's declaration, with that departure stated in [albums.md](albums.md) §7,
+     as Stage 2's was.
+  - **Still the maintainer's before the first Play release that ships the face pass:** question
+    3's Play Data Safety points 3 and 4 and the submission, and the native-speaker review, "Leute"
+    on its list; and, at step 5, the declaration itself.
+  - **Read first:** *3.8 — Close-out*, its steps and *Exit criteria checked against the repository
+    2026-11-24*; `AGENTS.md` *Documentation*.
+- **2026-11-24, later — step 3 done: the documentation audit recorded.** Its last fixes applied —
+  ADR-0017 Amendment 4 (B4-17-1), ADR-0018 Amendments 5 and 6 (B4-18-5-1, B4-18-6-1), the Coder's
+  restated definition of done (C4) and the Reviewer's restated triggers, all as dated notes or
+  pointers — and the record written: *Documentation audit 2026-11-24* under *3.8 — Close-out*. 17
+  hard findings, every one fixed; routed: two KDocs and an optional `commit()` to the Coder, X1 to
+  step 4, nothing to the Designer. Exit criterion 19 is MET in the working tree and MET once
+  committed; 2 stays NOT MET until 3.8 closes; 9 stays carried, not met. Planner, docs only; no
+  code, no Gradle run, no phone. **On disk, by `git status` at this entry:** HEAD `5f6a181`;
+  uncommitted, these seventeen files, nothing under `app/`:
+  - `AGENTS.md`
+  - `.github/agents/coder.agent.md`, `designer.agent.md`, `orchestrator.agent.md`,
+    `planner.agent.md`, `reviewer.agent.md`, `scout.agent.md`
+  - `.github/instructions/tests.instructions.md`
+  - `docs/architecture/ARCHITECTURE.md`, `docs/architecture/README.md`
+  - `docs/architecture/decisions/0017-composable-album-rule-representation.md`,
+    `0018-media-index-in-a-second-database.md`,
+    `0023-face-pipeline-models-runtime-and-delivery.md`,
+    `0024-face-data-disclosure-and-delete-switch.md`
+  - `docs/design/albums-rule-editing.md`, `albums-stage-3.md`, `albums.md`
+- **Next action: the maintainer — commit, then one decision.** In order:
+  1. **The maintainer commits** the seventeen files above. Exit criterion 19 holds only once they
+     are committed.
+  2. **The maintainer decides one thing:** whether to declare Stage 3 complete with criterion 9
+     (Play Data Safety) **carried, not met**, as Stage 2 declared its Play Console declaration
+     ([albums.md](albums.md) §7). Nothing else is open before the archive.
+  3. **Then the Planner:** step 4, the archive — exit criteria and their record into
+     [albums.md](albums.md) §7, the `Archived` line, the map row removed, every row walked, X1's
+     sentences replaced — and step 5, Stage 3 to Complete with the departure stated in §7, only on
+     that declaration. Steps 4 and 5 wait for both items above.
+  - **Still the maintainer's before the first Play release that ships the face pass:** question
+    3's Play Data Safety points 3 and 4 and the submission, and the native-speaker review, "Leute"
+    on its list.
+  - **Read first:** *3.8 — Close-out*, its steps, *Exit criteria checked against the repository
+    2026-11-24* and *Documentation audit 2026-11-24*; `AGENTS.md` *Documentation*.
 - ~~**Next action: step 3.5 — the `people` clause and evaluation.** Owner: the Planner refines it into
   a step plan, as 3.2 to 3.4 were; then the Coder builds it.~~ Refined 2026-11-21 — the *Next action:
   step 3.5, Task 1* entry above.
@@ -1369,7 +1430,7 @@ step is refined when it starts.
 | **3.5** | The `people` clause and evaluation | ~~⬜ Not started — refined 2026-11-21 into *3.5 — The people clause and its evaluation*, ready to build: Tasks 1 to 3, sequential, then verification and task P; nothing waits on the maintainer~~ ✅ Built and verified 2026-11-21 — refined the same day; Tasks 1, 2, 3, the verification phase and task P done; no schema change in either database, no string; the gate and the review's dispositions are under *3.5 — Built and verified 2026-11-21* |
 | **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ~~⬜ Not started — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, waiting on the maintainer's approval of ADR-0024 Amendment 1 for tasks S2, A and B; tasks S1 and C ready to build.~~ ~~🔶 In progress — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2): **S1 and C built and verified; S2, A and B ready to build**, S2 next.~~ ✅ Built and verified 2026-11-22 — refined and approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2); tasks S1, C, S2, A and B, the verification phase and task P done; no schema change in either database; the gate, the review's dispositions and what is not proven are under *3.6 — Built and verified 2026-11-22*. D1 answered by the Designer (a third tab), D3 by the maintainer (8 people) |
 | **3.7** | Device verification and installed-app walkthrough | ~~⬜ Not started — next~~ ~~🔶 In progress~~ ✅ Done 2026-11-23 — its final gate and the re-review are at the end of this cell; its commit is 3.8's entry condition 7, the maintainer's. Refined 2026-11-22 into *3.7 — Device verification and the installed-app walkthrough*: agent items G1 to G9 (G10 added 2026-11-23), the maintainer's walkthrough W1 to W8, known limits ~~L1 to L9~~ ~~L1 to L12~~ L1 to L14. **G1 ✅ done 2026-11-22** — the capability check on the SM-G781B (ADR-0023 verify item 7); ~~G2 next~~ **G2 to G6 ✅ done 2026-11-22** — G2's planned mutation check deferred until after W7 as M1; **the maintainer's walkthrough W1 to W7 next**, with G7 at W3, G8 at W4 and G9 after W5. **2026-11-23:** *Open at 3.7* answered — L1 to L12 accepted; L3 accepted to run as **G10**, after M1; question 3's position given, the form not submitted. **2026-11-23, later:** W1 to W7 ✅ (W8 skipped by the maintainer), G7 to G9 ✅, M1 ✅, G10 🔶 partial and closed as option A; question 3 carried past 3.8 (option B); new limits L13 and L14 pending his acceptance; the definition of done to run again over the committed tree. **2026-11-23, later still:** questions 6 and 7 answered (A, A) — L13 and L14 accepted, W4's count observed equal by hand on the SM-G990B; the definition of done running over the committed tree, its figures to be recorded under 3.8's entry condition 4. **2026-11-23, latest:** the gate ran over `94f8e9c` — the first connected run failed on two worker-test timeouts, recorded as an intermittent flake, and the second was green; the Reviewer approved with changes (*Review of 3.7*); its test fixes are in the working tree, so ~~**the gate runs once more over the final tree**~~ the gate runs once more over the final tree (3.8's entry condition 4). **2026-11-23, final:** the gate ran once more over the final tree — `94f8e9c` plus the four test fixes and the documents — and passed, the flake not recurring; the Reviewer re-reviewed the fixes and approved, four optional cleanups deferred (*Review of 3.7*). Nothing of 3.7 is left but the maintainer's commit |
-| **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ⬜ Not started — starts only when the ~~seven~~ eight conditions of *3.8 — Close-out*, *Entry condition*, hold. *2026-11-23, final:* 1 to 6 and 8 met; 7 waits on the maintainer's commit |
+| **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ~~⬜ Not started — starts only when the~~ ~~seven~~ ~~eight conditions of *3.8 — Close-out*, *Entry condition*, hold. *2026-11-23, final:* 1 to 6 and 8 met; 7 waits on the maintainer's commit~~ 🔶 In progress — started 2026-11-24, when all eight conditions of *3.8 — Close-out*, *Entry condition*, held, 7 at `5f6a181`: step 1 (`ARCHITECTURE.md`) and step 2 (exit criteria) done; step 3, the audit, run and its fixes being recorded; steps 4 and 5 to come |
 
 ### 3.0 — Feasibility spike
 
@@ -5022,8 +5083,9 @@ and ADRs 0022 to 0024; its one major, the gate's evidence, is 3.8's entry condit
   gate and approved by the re-review:** the `accelerometer_rotation` restore; the native-error race,
   and the silent-mode check's contradiction with L10; the scale test's `ENVIRONMENT` failure;
   `NewAutomaticAlbumContentTest`'s `ENVIRONMENT` prefix. The final gate ran over them (3.8's entry
-  condition 4) and the phone read `accelerometer_rotation` 1 and `user_rotation` 0 after it. In the
-  working tree, **not yet committed** — 3.8's entry condition 7.
+  condition 4) and the phone read `accelerometer_rotation` 1 and `user_rotation` 0 after it. ~~In the
+  working tree, **not yet committed** — 3.8's entry condition 7.~~ *Committed 2026-11-23 as
+  `5f6a181`.*
 - **Not changed, with the reason:**
   - `MediaIndexSqliteDeviceTest`'s hidden-API reflection branch below API 35, which the SM-G990B (API
     36) does not exercise (minor): answered by evidence — the SM-G781B, API 33, ran all five of its
@@ -5052,6 +5114,7 @@ and ADRs 0022 to 0024; its one major, the gate's evidence, is 3.8's entry condit
 **Entry condition — all ~~seven~~ eight hold (M1 added 2026-11-22), checked by the Planner against this document and the
 repository, not against reports, before any of 3.8 starts:**
 *2026-11-23, final:* 1 to 6 and 8 met; 7 not held until the maintainer's commit. 3.8 not started.
+✅ *2026-11-24:* all eight held — 7 at `5f6a181`, recorded under it below. 3.8 started.
 1. Every agent item G1 to G9 is ✅ with its figures recorded under *3.7 — Device verification and
    the installed-app walkthrough*, or moved to the known limits by the maintainer. *2026-11-23:* G10,
    added after M1, is either run and recorded, or recorded as not run because the SM-G781B was not
@@ -5151,12 +5214,87 @@ repository, not against reports, before any of 3.8 starts:**
    `git diff HEAD -- app/src/main` empty — and its code and tests are the tree the final gate ran
    over (condition 4); only documents were edited after it. A code or test edit before the commit
    would send the gate round again.
+   ✅ *Held 2026-11-24:* committed by the maintainer as `5f6a181` (2026-11-23). `git diff --stat
+   94f8e9c 5f6a181` lists exactly the ten files named above — the four test files and the six
+   documents — and nothing under `app/src/main` (`git diff --stat 94f8e9c 5f6a181 -- app/src/main`
+   empty). `git status` afterwards held only 3.8's own document edits.
 8. **M1 — G2's planned mutations**, added 2026-11-22, deferred from G2 until after W7: one planned
    mutation per regular new test — `MediaIndexSqliteDeviceTest`, and the new methods in
    `FaceDataDialogsTest` and `NewAutomaticAlbumContentTest` — each seen to fail it and each reverted,
    `git diff app/src/main` empty afterwards. Run by the Coder after W7, never before: it needs a
    connected run, which uninstalls the app. Recorded under G2 with each mutation named. ✅ *Met
    2026-11-23* — G2's M1 note.
+
+#### Exit criteria checked against the repository 2026-11-24
+
+3.8's step 2, by the Planner, who ran no build and used no phone. Over HEAD `5f6a181` — `94f8e9c`
+plus exactly the ten files entry condition 7 named (`git diff --stat 94f8e9c 5f6a181`) — and this
+step's uncommitted `ARCHITECTURE.md` edits — at that check the only entry in `git status` besides
+this plan. Evidence is from reads
+made on 2026-11-24 (the earlier run's notes and this one's) or from a record in this document or an
+ADR, named as such. Where a line needs Gradle or a device, it rests on **the recorded final gate of
+2026-11-23 over `5f6a181`'s content** (entry condition 4, *final*: unit 1,427 / 0 failures;
+instrumented 346 / 0 failures / 6 skipped; the first gate's two `MediaIndexingWorkEnqueueTest`
+timeouts recorded as a flake). Test references are `file:line` of the test's declaration.
+
+**Two lines are NOT MET, and neither can be met before 3.8 itself finishes:** 2 (3.8 is not ✅) and
+19 (the documentation audit has not run). ~~One is **met by carrying**: 9 (Play Data Safety).~~
+*Corrected 2026-11-24, by step 3's audit:* one is **carried, not met**: 9 (Play Data Safety),
+declared carried by the maintainer on 2026-11-23 (option B). So Stage 3 cannot close by every line
+holding: it can close only by the maintainer's declaration, with that departure stated in
+[albums.md](albums.md) §7, as Stage 2's was — step 5's second branch, below.
+*2026-11-24, later — step 3's record:* 19 is MET in the working tree — the audit ran and is
+recorded (*Documentation audit 2026-11-24*, below) — and MET once the maintainer commits. Only 2
+remains NOT MET, until 3.8 closes; 9 stays carried, not met.
+
+| # | Criterion | Status | Evidence read |
+|---|---|---|---|
+| 1 | Definition of done passes, `adb devices` stated | MET | Relies on the recorded final gate of 2026-11-23 (above): `adb devices -l` listed the SM-G990B only; `compileDebugKotlin`, `compileDebugAndroidTestKotlin` OK. `git diff --stat 94f8e9c 5f6a181` shows only the four test files and documents, so `5f6a181` is the gated tree; since then only documents — `ARCHITECTURE.md` and this plan at this check |
+| 2 | Every step ✅ (this plan's step table), or dropped with the drop recorded in [albums.md](albums.md) §7 | **NOT MET** | Progress table, *3.1*–*3.7* rows: each ✅. *3.8* row: not ✅ — 3.8 is this step. Nothing dropped. Holds only when 3.8 closes |
+| 3 | People + place + date end to end; a test proves people + region + time, several people meaning all | MET | `PeopleClauseEvaluationTest.kt:247` (a person, a region and a time range), `:216` (two people both required), `:232`; `AlbumRuleTest.kt:1388`, `:1742` (mixed clauses round trip and parse); `AlbumsViewModelTest.kt:1452`. On the device: W4, recorded under *3.7* |
+| 4 | Count consistency, JVM and device | MET | JVM: `AutomaticAlbumFacetsTest.kt:488`, `AutomaticAlbumPickerStateTest.kt:1047`, `AlbumsViewModelTest.kt:1452`. Device: the maintainer's by-hand check on the SM-G990B, 2026-11-23, screen count equal to member count (*Open at 3.7*, question 7, option A); figures not reported. The accepted gap — no automated device test — stands as the criterion records it |
+| 5 | Not face-indexed → waiting; inference failed → neither pending nor covered | MET | Waiting: `PeopleClauseEvaluationTest.kt:180`, `:86`, `:96`. Failed: stored as a state with no face, `MediaIndexTierCStoreTest.kt:144`; pending means no state, `:850`; a settled non-member, `PeopleClauseEvaluationTest.kt:168`; written failed at once, `FaceIndexPassTest.kt:89` |
+| 6a | Anchor's face in a different group, or a one-image group, resolves to that group | MET | `PeopleClauseEvaluationTest.kt:41` (best overlap's group, not the first), `:22`, `:65` (URI changed, found by healing triple). The two-image minimum exists only in the picker's query, `MediaIndexDao.kt:273` (`HAVING COUNT(DISTINCT f.mediaUri) >= :minimumImages`); `PeopleClauseEvaluation.kt` has none. One-image group: `:157` and `:168` resolve an anchor whose group is in the anchor's image only, the album complete with it alone (`:164`, `:176`) |
+| 6b | Anchor photo not yet face-indexed → waiting, not unevaluatable | MET | `PeopleClauseEvaluationTest.kt:86`, `:96`, `:126`, `:135`; `AlbumsViewModelTest.kt:1090` |
+| 6c | Anchor deleted, no face at IoU ≥ 0.5, or face under 40 px → unevaluatable, never widened, deleted or rewritten | MET | `PeopleClauseEvaluationTest.kt:76` (not on device), `:32` (overlap under one half), `:110`, `:117`, `:323` (keeps additions minus exclusions); under 40 px never stored, `FACE_MIN_SIDE_PIXELS` `FaceIndexPass.kt:37`, `FaceIndexPassTest.kt:362`; never rewritten, `AlbumsViewModelTest.kt:416`, `:1270` |
+| 7 | People picker, decision 40 | MET | No label: Person tile, UI vocabulary `:145`. Two images, picker only: `FaceGroupingPassTest.kt:60`, `AutomaticAlbumPickerStateTest.kt:446`, `MediaIndexDao.kt:273`. Order, ties, minimum, versions: `MediaIndexDaoTest.kt:660`, `FaceGroupingPassTest.kt:77`, `AlbumsViewModelTest.kt:1342`. Videos and GIFs never get a state, `FaceIndexPassTest.kt:55`. 40 px: row 6c. No merge or split: none in the vocabulary's People picker entry `:137` |
+| 8a | Disclosure once, before face indexing, never on incapable, with the three statements | MET | `FaceDataViewModelTest.kt:72`–`:106` (due only when every condition holds; not on incapable `:99`; not once shown `:106`), `:228`, `:254`; worker runs no pass before it, `MediaIndexingWorkerTest.kt:260`; not dismissable, `FaceDataDisclosurePropertiesTest.kt:10`. Wording on the device: W1 (*3.7*, entry condition 2) |
+| 8b | The switch deletes the face data, by a test and on the device | MET | `SettingsScreenTest.kt:432`; `MediaIndexFaceDataScrubTest.kt:57`, `:81`; `MediaIndexTierCStoreTest.kt:1271`. Device: W5, then G9 (*3.7*): 0 Tier C rows, `media_index.db-wal` 0 bytes, `secure_delete` 1 |
+| 8c | No network in the face path; no backup; no log | MET | Network: no network API in `app/src/main/java` except `URLEncoder` in `MediaLocation.kt` (the map intent). Backup: four sections exclude the index, its three sidecars and `face_device_state.xml`; `BackupRulesParityTest.kt:40`–`:94`. Log: `FaceIndexPassTest.kt:672`–`:687` (`FaceLogRules`, a fixed set independent of `FaceIndexLogLines`, `FaceIndexPass.kt:117`), `FaceGroupingPassTest.kt:301`; the only `Log` calls in the worker `MediaIndexingWork.kt:43`, `:127`, `:131`; `AlbumRuleTest.kt:1896`–`:1911` (redacted rule). Album database: the anchor only (`AlbumRule.kt:86`). L10, OpenCV's own native-error line, accepted 2026-11-23 |
+| 9 | Play Data Safety answered and recorded | ~~MET BY CARRYING~~ **CARRIED, NOT MET** — declared by the maintainer 2026-11-23 (option B) | *The Play Data Safety check* under *3.1*: points 1 and 2 resolved 2026-11-23; **points 3 and 4 and the form's submission are outstanding**, before the first Play release that ships the face pass. Not met as worded |
+| 10 | Index database migrated, every schema committed, index excluded from backup | MET | Version 6, `MediaIndexDatabase.kt:62`; `MIGRATION_5_6` `:152`; `git ls-files app/schemas/…MediaIndexDatabase`: `1.json`–`6.json` tracked; backup as row 8c. Relies on the gate for the migration tests |
+| 11 | Merged manifest checked after OpenCV; any added permission approved or removed | MET | ADR-0023 verify item 4 (`0023-….md:311`): byte-identical, settled 2026-11-20. Source manifest unchanged `d482bb9..HEAD` (`git log`/`git diff` empty). Merged md5s debug `8856dbd4b4257bd665c4593a325ba624`, release `043a521e4d0a25724364c8b8b6ea6f8d`, recorded 2026-11-22 08:32 and unchanged at the final gate |
+| 12 | Licence obligations: files in the APK and a Settings row; bundled components | MET | `git ls-files app/src/main/assets/face`: `LICENSE-OpenCV-Apache-2.0.txt`, `LICENSE-SFace-Apache-2.0.txt`, `LICENSE-YuNet-MIT.txt`, `NOTICE.txt`, `THIRD_PARTY_NOTICES.txt`. Row: Face licences, UI vocabulary `:622`; `FaceLicencesTest.kt:17`, `:31`; `ThirdPartyNoticesTest.kt:50`, `:82`, `:106`. Components: ADR-0023 verify item 8 (`:315`), settled 2026-11-20. Opened on the device at W2 |
+| 13 | Models and OpenCV add at most 50 MB to the download | MET | +46,063,982 B added, 3,936,018 B under 50,000,000 B; whole arm64 download 49,712,393 B (G5d, 2026-11-22), 287,607 B under. Relies on that record and ADR-0023 row 5 (`:312`); L12 accepted 2026-11-23. No change to `gradle/libs.versions.toml` or `app/build.gradle.kts` after `b3fae45` (2026-11-20), nor to the models (`SHA256SUMS` matches both `.onnx`) |
+| 14 | Capability check fails → People not offered; existing album unevaluatable; a test each | MET | Not offered: `AutomaticAlbumPickerStateTest.kt:424`, `:453`. Unevaluatable: `PeopleClauseEvaluationTest.kt:271`, `AlbumsViewModelTest.kt:1166`, `AlbumStatusNoticesTest.kt:34`. The check: `FaceCapabilityTest.kt:112`–`:215`; device, both phones, ADR-0023 verify item 7 (`:314`) |
+| 15 | Still offered on Play to every device before; every `.so` 16 KB aligned | MET | ADR-0023 verify items 1 and 2 (`:308`, `:309`), settled 2026-11-20 with bundletool, `llvm-readelf` and `zipalign -c -P 16`. jniLibs excludes `build.gradle.kts:106`–`111`, no `abiFilters`. Not re-run since; the build files unchanged since `b3fae45` (row 13) |
+| 16a | Switch off leaves no Tier C row and nothing in free pages or WAL; a cut-short deletion repeated at next start | MET | `MediaIndexFaceDataScrubTest.kt:57`, `:81`, `:104`, `:127`; `MediaIndexingWorkerTest.kt:158`, `:183`, `:193`; `FaceDataViewModelTest.kt:547`. Device: G9; W6 (start-up deletion) |
+| 16b | A video or GIF never leaves a people album waiting | MET | `PeopleClauseEvaluationTest.kt:157`, `:117`; `FaceIndexPassTest.kt:55` |
+| 16c | Face boxes and anchors share the upright frame, on an EXIF-rotated photo | MET | `FaceDecodeOrientationDeviceTest.kt:36` and its helpers (instrumented); `PersonFaceOrientationDeviceTest.kt`. Relies on the gate |
+| 16d | A `people` clause round-trips under a decimal-comma locale | MET | `AlbumRuleTest.kt:1460`, `no default locale changes the stored text` — German, French, `ar-EG`, `fa-IR` (`:1463`); `:1359` |
+| 16e | Neither new cause uses the Newer-app wording | MET | `AlbumStatusNoticesTest.kt:26` (face data off), `:34` (incapable), `:42` (person not found), `:69` (every cause its own notice) |
+| 16f | Tier C pass resumable, stops cleanly when the worker is stopped | MET | `FaceIndexPassTest.kt:279` (resumes), `:223`, `:548`; `MediaIndexingWorkerTest.kt:110`; `FaceGroupingPassTest.kt:241`, `:258` |
+| 16g | Grouping's peak memory and time measured on device, within the accepted budget | MET | ADR-0023 row 6 (`:313`): measured in the worker 2026-11-21, grouping 292 ms, and through the real disclosure 2026-11-23 (G7); budget accepted, decision 50 (*3.4* row) |
+| 16h | Switching off asks first; while off no pass, no People, "people unavailable"; back on, no second disclosure | MET | `SettingsScreenTest.kt:404`, `:418`, `:432`; `FaceDataDialogsTest.kt:149`, `:162`, `:173`; `MediaIndexingWorkerTest.kt:158`; `AutomaticAlbumPickerStateTest.kt:424`; `PeopleClauseEvaluationTest.kt:271`; `FaceDataViewModelTest.kt:254`. Device: W5, W6 |
+| 16i | A healed anchor URI is never written back to the rule | MET | A `People` clause is built only by the parser (`AlbumRuleJson.kt:167`) and by `AlbumRuleClause.People.anchoredAt` (`AlbumRule.kt:86`), called only by the picker (`AutomaticAlbumPickerState.kt:98`); resolution through the triple, `PeopleClauseEvaluationTest.kt:65`, returns no rule. No test asserts the stored rule unchanged after a healed resolution — by construction, not by a test |
+| 16j | Weights committed with build-checked checksums; OpenCV arm64-v8a only, no ABI filter | MET | `SHA256SUMS` matches `sha256sum` of both `.onnx`; `verifyFaceModelChecksums` `build.gradle.kts:10`, `:51`, `:58`; jniLibs excludes `:106`–`111`; no `abiFilters`; `app/proguard-face.pro` tracked |
+| 17 | Indexing under the existing constraints, no notification, no foreground service | MET | `MediaIndexingWork.kt:282`–`287` periodic constraints unchanged since `d482bb9`; expedited only for Index now on S+ (`:274`–`276`, before Stage 3); no `setForeground` or `Notification` in `app/src/main/java` |
+| 18 | Spike face data deleted and recorded (A7) | MET | ✅ Met 2026-11-18, *Spike data deleted*; the SM-G781B part on the notebook's record, as the criterion says. Not re-checked |
+| 19 | Strings in every locale; vocabulary moved; `ARCHITECTURE.md` describes what landed; documentation audit passed | ~~**NOT MET**~~ **MET in the working tree** (2026-11-24); MET once the maintainer commits | Strings: 42 keys added since `d482bb9` in `values/`, none missing in each of 17 folders, `LocaleHelper.kt:24`–`27` 17 tags; `LocaleResourceParityTest` in the gate. Vocabulary: rows 7, 8a, 12 entries (`:137`, `:145`, `:157`, `:161`, `:450`, `:474`, `:569`, `:574`, `:610`, `:615`, `:622`); V1 in `94f8e9c`. `ARCHITECTURE.md`: this step's edits, **uncommitted**. ~~**The audit has not run** — 3.8's step 3~~ *2026-11-24:* documentation audit: **RUN 2026-11-24**, see *Documentation audit 2026-11-24* below; findings fixed or routed; uncommitted until the maintainer commits. **MET in the working tree; MET once committed** — the commit is the maintainer's |
+| 20 | `ARCHITECTURE.md` links ADRs 0022–0024, ADR-0017 Am. 4, ADR-0018 Am. 5 from their sections | MET, in the uncommitted edits | 0022 `:232`, `:239`; 0023 `:240`, `:858`, `:1155`; 0024 `:101`, `:829`, `:1000`, `:1030`; ADR-0017 Am. 4 `:882`; ADR-0018 Am. 5 `:954` — §3, §6, §10, §11. ADRs: README `:52`–`54` 0022–0024 Active; ADR-0017 Am. 4 `:576` adopted 2026-11-19; ADR-0018 Am. 5 `:528`, Am. 7 `:941` |
+
+**Drift found between `AGENTS.md` / `ARCHITECTURE.md` and the code: none found.** Compared on
+2026-11-24: `AGENTS.md` *State ownership*'s seven ViewModels against the classes; *The two databases*'
+five index tables (`MediaIndexDatabase.kt:55`–`61`) and two album tables (`EasyGalleryDatabase.kt:10`);
+*Preference stores*' `app_settings` `face_data_enabled` (`FaceDataSettingStore.kt:40`–`41`) and
+`face_device_state` (`FaceDeviceStateStore.kt:112`–`115`), each with its `SharedPreferences*` and
+`InMemory*` class; `refreshPeopleAvailability`, `StoredPeopleAvailabilitySource`, `listFaceGroups`,
+`FACE_PIPELINE_VERSION`, `MediaIndexDateTakenState` present; WorkManager 2.10.5 and
+`ACCESS_NETWORK_STATE` removed at manifest `:13`; *Tech stack*'s pointer to `ARCHITECTURE.md` §10
+for the face build wiring, which §10 carries (`:1159`, `:1162`). **Known to go stale at the archive,
+routed to Part B, not drift today:** `AGENTS.md` *Documentation* (the `albums-stage-3.md` row) and
+*Conventions* ("Stage 3 (people albums) is in progress"), and the `.github/agents/*.agent.md` that
+name Stage 3 as in progress — true until Stage 3 closes.
 
 **Then, in order — Planner:**
 1. `ARCHITECTURE.md`: §11 brought to what 3.7 settled and left — each accepted limit present, each
@@ -5165,14 +5303,111 @@ repository, not against reports, before any of 3.8 starts:**
 2. Every line of *Stage 3 exit criteria* checked against the repository, one by one, with its evidence
    — a file, a test, or a recorded device result — as Stage 2's lines were in [albums.md](albums.md) §7.
 3. `/docs-audit` ([docs-audit.prompt.md](../../.github/prompts/docs-audit.prompt.md)), its findings
-   fixed or recorded.
+   fixed or recorded. ✅ *Done 2026-11-24* — *Documentation audit 2026-11-24*, below: every finding
+   fixed or routed with its owner; in the working tree until the maintainer commits.
 4. **Archive:** the exit criteria and the record that each was met move into [albums.md](albums.md)
    §7, *Stage 3*; this plan gains `Archived — Stage 3 closed YYYY-MM-DD` beneath its title; its row in
    `AGENTS.md`'s documentation map goes, and every row of that map is walked — `AGENTS.md`
    *Conventions* and the `.github/agents/*.agent.md` that name Stage 3 as in progress included.
 5. **Only then** Stage 3 moves to ✅ Complete in [albums.md](albums.md) §7, with a stage-log line —
    or, if the maintainer declares it complete with a criterion carried, the departure is stated
-   there, as Stage 2's was.
+   there, as Stage 2's was. *2026-11-24:* the second branch is the one that applies — criterion 9
+   is carried, not met (step 2's table) — so Stage 3 moves to Complete only on the maintainer's
+   declaration, with the departure stated in §7.
+
+#### Documentation audit 2026-11-24
+
+3.8's step 3: `/docs-audit` ([docs-audit.prompt.md](../../.github/prompts/docs-audit.prompt.md))
+over HEAD `5f6a181` and the working copy. **Who ran it:** read-only auditors — no edit, no Gradle,
+no device — in eight parts:
+
+- **A** — `AGENTS.md` and `docs/architecture/README.md`.
+- **A2** — the six `.github/agents/*.agent.md`, `tests.instructions.md`,
+  `architecture-docs.instructions.md` and the audit prompt.
+- **B** — `ARCHITECTURE.md` §1–§10. **B2** — `ARCHITECTURE.md` §11 and ADR-0022.
+- **B3** — ADR-0023 and ADR-0024. **B4** — ADR-0017 Amendment 4 and ADR-0018 Amendments 5–7.
+- **C** — links: 990 relative links checked, 0 missing files, 0 missing anchors; the three
+  `applyTo` globs clean.
+- **C2** — orphans and ghosts (none), epic progress honesty, contradictions between documents.
+
+The fixes were applied by the Planner, who owns every document they touched, in four passes: P1
+(`AGENTS.md`, the README, the agent files, `tests.instructions.md`), P2 (`ARCHITECTURE.md` and this
+plan — no status file; its fixes were verified in the working copy for this record), P3
+([albums.md](albums.md), [albums-rule-editing.md](albums-rule-editing.md), ADR-0023, ADR-0024) and
+P4 (ADR-0017, ADR-0018, the Coder and Reviewer agent files, and this record). No build was run by
+the audit or by any fix; everything changed is a document.
+
+**Not covered:**
+- The UI vocabulary file, beyond the spot-checks of *Review of 3.7* and the Designer's V1 pass. It
+  was not re-audited.
+- Every ADR other than 0017 (Amendment 4), 0018 (Amendments 5–7), 0022, 0023 and 0024. In passing:
+  ADR-0014 line 16 holds a literal `\u2014` escape — pre-existing, out of scope, not fixed.
+- What the findings files do not evidence, although it was in scope: B4 records Amendments 5 and 6
+  and no section for ADR-0018 Amendment 7, which was read only as the source of B4-18-5-1; A2
+  records no section for `architecture-docs.instructions.md` or the audit prompt; C2 records its
+  contradictions under epic progress (C5-7), with no section of their own. None of these is claimed
+  clean.
+- Code. The KDocs of `PreferenceScope` (`data/ViewPreferences.kt`) and `DisplayPreferencesState`
+  say three where there are five; `ARCHITECTURE.md` §11 records it, and the fix is routed to the
+  Coder.
+- `lintDebug`, which cannot run on this machine (`AGENTS.md` *Running Gradle*).
+
+**Hard findings: 17, every one FIXED, none routed** — `AGENTS.md` HARD-1 and HARD-2;
+`ARCHITECTURE.md` B1 and B2; the Orchestrator's O1 and O2; the Reviewer's R2;
+`tests.instructions.md` T1; ADR-0023 HARD-23.1; ADR-0018 B4-18-5-1 and B4-18-6-1; and this plan's
+live false statements C5-1 to C5-5 and C5-7 (C5-5 in [albums.md](albums.md) §7).
+
+| Id | Where | What | Status |
+|---|---|---|---|
+| A HARD-1 | `AGENTS.md` *State ownership* | "`GalleryViewModel` is the largest file … by a wide margin" — it is fourth | FIXED (P1): "one of the largest", no size fact |
+| A HARD-2 | `AGENTS.md` *Preference stores* | "Every store is an interface" — `LocaleHelper` is an `object` | FIXED (P1): the exception named |
+| A GAP-1 | `AGENTS.md` *Running Gradle* | `adb` not on `PATH` in a fresh Git Bash; "command not found" misread as "no device" | FIXED (P1) |
+| A NIT-1–4 | `AGENTS.md`, README | restated media3 and SDK versions, table counts, Robolectric "`data/`" only; README's view count | FIXED (P1). Java 11 / JDK 17, Coil 3, AGP 9 kept — ACCEPTED: they name the stack; the version files stay the source |
+| A2 X1 | `AGENTS.md` *Conventions*, five agent files, [albums.md](albums.md) banner | "Stage 3 is in progress" — true until the archive | ROUTED to the Planner, step 4 (the archive) |
+| A2 X2 | Orchestrator, Planner, Reviewer | overview triggers restated as a subset | FIXED (P1; the Reviewer's in P4): a pointer to *Triggers* |
+| A2 O1 | Orchestrator | "Only the verification phase runs Gradle" contradicts the sole-implementer rule | FIXED (P1) |
+| A2 O2 | Orchestrator, hotspots | `SearchTopBar`'s callers understated | FIXED (P1): three call sites |
+| A2 O3, O4 | Orchestrator | DoD list restated; Step 5 never walks the documentation map | FIXED (P1) |
+| A2 P2 | Planner, Coder, Designer | "most of it is not implemented" | FIXED (P1) |
+| A2 C2–C4 | Coder | databases incomplete; media3 number; DoD list restated | FIXED (C2, C3 in P1; C4 in P4) |
+| A2 D2, D3 | Designer | index controls omit the Face data area; view count | FIXED (P1) |
+| A2 D4 | Designer | `BrandBlue`'s value restated | ACCEPTED: true; the Designer works from the value |
+| A2 R2 | Reviewer, preference stores | "its own prefs file" contradicts the `app_settings` scalar rule | FIXED (P1) |
+| A2 R3, R4 | Reviewer | databases incomplete; re-run without `cleanTestDebugUnitTest` | FIXED (P1) |
+| A2 S1 | Scout | `adb devices` with no path | FIXED (P1) |
+| A2 T1 | `tests.instructions.md` | "Never call `Thread.sleep`" — the suite polls Room, WorkManager and devices on a real clock, deliberately | FIXED (P1): bounded real-clock polling stated |
+| A2 T2 | `tests.instructions.md`, `AGENTS.md` DoD step 2 | tests reading `res/`, `assets/face/` and the catalogue are not Gradle inputs | FIXED (P1), both places |
+| A2 T3 | `tests.instructions.md` | one class, and a run without the wipe | FIXED (P1); the `am instrument` names are from the build file, not run in this step |
+| A2 T4–T8 | `tests.instructions.md` | opt-in inventory; the restore rule; the disclosure flag's wording; `delete_button`'s three bars; `FakeMediaRepository`'s users | FIXED (P1) |
+| B B1 | `ARCHITECTURE.md` §2 | the index "written on one path" — `FaceDataViewModel` deletes too | FIXED (P2) |
+| B B2 | `ARCHITECTURE.md` §3 | `deleteAllFaceData` "empties both tables" — three | FIXED (P2) |
+| B B3–B7, B9, B10 | `ARCHITECTURE.md` §2–§6, §10 | diagram label; licence-file count; constants and schema versions by value; two lists of Android-free helpers; no pointer to the disclosure after the chain; OpenCV and media3 versions | FIXED (P2), checked in the working copy |
+| B B8 | `ARCHITECTURE.md` §5 | the defaults table restates `ViewPreferences.defaultFor` | ACCEPTED: pre-existing, true, optional |
+| B2 C1–C8 | `ARCHITECTURE.md` §11 | "fourth section"; the KDoc entry; Kotlin and KSP numbers; the download bytes; code-owned constants; "75 s"; Face data's UI edges, with the review before a release; the `rule` column entry | FIXED (P2), checked in the working copy |
+| B2 D1 | ADR-0022 | `MAX_PEOPLE_PER_ALBUM` (8) | ACCEPTED: an ADR records its decision at its date; the constant is named beside it |
+| B3 HARD-23.1 | ADR-0023 row 6 | the pointer still said 1,655 after the review corrected it to 1,600 | FIXED (P3) |
+| B3 NIT-23.2, 23.3 | ADR-0023 | "item 1" ambiguous; the pipeline constant also covers the OpenCV build | FIXED (P3), dated notes |
+| B3 NIT-24.1, 24.2, 24.4 | ADR-0024 | a "not proven" bullet 3.7 settled; "nothing calls it yet"; drop order | FIXED (P3), dated notes |
+| B3 NIT-24.3 | ADR-0024 Amendment 1 | "durably", but `markDisclosureShown` uses `apply()` | FIXED as a dated note (P3); `commit()` ROUTED to the Coder, optional |
+| B4-17-1 | ADR-0017 Amendment 4 | "A video is a settled no-match, never unsettled" — not while the anchor waits | FIXED (P4), dated note |
+| B4-18-5-1 | ADR-0018 Amendment 5, *Backup* | "the same three exclusions" — four since Amendment 7 §2 | FIXED (P4), dated note. The Decision's and Amendment 1's "three places" ACCEPTED: Amendment 7 §2 already reads every "three places" in the record as four |
+| B4-18-6-1 | ADR-0018 Amendment 6 | "not verified on a device" after 3.7 verified it | FIXED (P4): a dated note after the Built note, pointers at both sentences |
+| C | links, `applyTo` | 990 links, 0 dead; globs clean | no finding |
+| C2, orphans | the documentation map | none, no ghost | no finding |
+| C2 C5-1–C5-4 | this plan | the 3.8 row, entry condition 7, the handoff's *Next action*, *Review of 3.7*'s "not yet committed" — false after `5f6a181` | FIXED (P2) |
+| C2 C5-5 | [albums.md](albums.md) §7, Stage 3 row | "pending its entry condition" | FIXED (P3) |
+| C2 C5-6, C5-8 | this plan, exit criteria | "the only entry in `git status`"; row 2's wording | FIXED (P2) |
+| C2 C5-7 | this plan, row 9 | "met by carrying" against §7's "carried, not met" | FIXED (P2) |
+| C2 C5-9 | [albums-rule-editing.md](albums-rule-editing.md) D6 | the order's premise moved at step 3.5 | FIXED (P3), dated note |
+
+**Routed, outstanding:**
+- **(a) The Coder, at the next code change:** the `PreferenceScope` and `DisplayPreferencesState`
+  KDocs (three, not five); optionally, `FaceDeviceStateStore.markDisclosureShown` from `apply()` to
+  `commit()`.
+- **(b) The Designer:** none. The audit did not re-audit the vocabulary and routed nothing to it.
+- **(c) The archive, 3.8 step 4 (Planner):** X1 — the "Stage 3 is in progress" sentences in
+  `AGENTS.md` *Conventions*, the five agent files' parenthetical and [albums.md](albums.md)'s banner;
+  this plan's row in `AGENTS.md`'s documentation map; and the walk of every row of that map.
 
 ### 3.2 to 3.8
 

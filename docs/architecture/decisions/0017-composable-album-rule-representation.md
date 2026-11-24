@@ -660,6 +660,9 @@ excluded, it gives one of Amendment 2's three answers:
 
 - **A video is a settled no-match, never unsettled.** Read as waiting, every people album would wait
   for ever on the library's videos.
+  *(2026-11-24, step 3.8's documentation audit: once the anchor resolves. While the anchor itself
+  waits, every item is unsettled through this clause, per the last row of the table; that wait ends
+  with the anchor, not with the videos.)*
 - Amendment 2's rules then apply unchanged: an item is a member when every clause matches; the album is
   waiting when some clause is unsettled and none is a settled no-match; and Amendment 3 shows nothing
   for waiting.

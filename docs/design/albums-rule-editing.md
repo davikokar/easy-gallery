@@ -201,7 +201,12 @@ Numbered as they were in [albums-stage-4.md](albums-stage-4.md) group D, from wh
    [ADR-0017](../architecture/decisions/0017-composable-album-rule-representation.md) Amendment 4,
    *What rule editing must do with this clause*, adopted 2026-11-19. It also proposes, for D3 to
    confirm, that the editor does not edit an album with a `people` clause on a device where people
-   is unavailable. The order is still open.
+   is unavailable. ~~The order is still open.~~
+
+   **Note added 2026-11-24, step 3.8's audit — the order has moved.** The `people` clause landed
+   first, in code, at Stage 3 step 3.5 (built 2026-11-21). Rule editing, whenever it lands, edits
+   it, as ADR-0017 Amendment 4 already requires. D6's premise that the order is open no longer
+   holds; it blocks nothing.
 
 ---
 

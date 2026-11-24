@@ -20,7 +20,7 @@ files that `AGENTS.md` lists under *Preference stores*. Read these before you wr
 2. Repository memory at `/memories/repo/easy-gallery-exploration.md` — a long log of traps this
    codebase has already cost someone a session. Read the sections relevant to your task
    **before** starting, not after you hit the trap. It covers the viewer/`SaveableStateHolder`
-   regression, media3 1.5.0's missing Compose controls, the `PlayerView` touch-dispatch dead
+   regression, the pinned media3's missing Compose controls, the `PlayerView` touch-dispatch dead
    end, locale decimal separators, preference-layering order, and more. Append a short note when
    you learn something that would have saved you time.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview. Mandatory if you touch the data
@@ -30,8 +30,8 @@ files that `AGENTS.md` lists under *Preference stores*. Read these before you wr
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical names for views, screens,
    areas, and controls. Use them in code, tests, and your report.
 5. `docs/design/albums.md` — the albums epic, if your work touches albums, favourites, the media
-   index, or app-owned data. Check its §7 progress table first: most of it is **not implemented**,
-   so do not read it as a description of the current app. The **Planner owns it** — do not edit it.
+   index, or app-owned data. Check its §7 progress table first: do not assume any part of it is
+   implemented, so do not read it as a description of the current app. The **Planner owns it** — do not edit it.
    If your work contradicts it or reveals it to be wrong, name the section in your report.
 6. The plan for the stage in progress, if your task is one of its steps. The epic is specified in
    two documents: §7 of `albums.md` says which stage is current and links to its plan — Stage 3 is
@@ -105,10 +105,11 @@ These coding principles are mandatory:
 - Keep pure logic in Android-free files so it can be unit tested on a plain JVM. The module does
   not set `isReturnDefaultValues`, so an `android.*` call in testable code throws "not mocked".
 - Persistence has one shape: an interface, a production implementation, and an `InMemory*` one for
-  tests. Albums go through `AlbumStore`, never a DAO reached directly, and the database singleton
-  lives on `EasyGalleryApp` — never construct a second. A schema change needs a version bump, a
-  committed JSON under `app/schemas/`, and a migration; getting one wrong corrupts a user's data
-  instead of failing the build.
+  tests. Albums go through `AlbumStore`, the index through `MediaIndexStore` and
+  `MediaIndexWatermarkStore`, never a DAO reached directly; both database singletons live on
+  `EasyGalleryApp` — never construct a second instance of either. A schema change needs a version
+  bump, a committed JSON under `app/schemas/`, and a migration; getting one wrong corrupts a user's
+  data instead of failing the build.
 - Every new user-facing string lands in every shipped locale (see `AGENTS.md`) in the same change
   as its `R.string` reference.
 
@@ -123,14 +124,8 @@ These coding principles are mandatory:
 
 ## Definition of done
 
-Taken from `AGENTS.md`. A task is not complete until all five hold:
-
-1. Code compiles: `./gradlew compileDebugKotlin`
-2. Unit tests compile and pass: `./gradlew compileDebugUnitTestKotlin testDebugUnitTest`
-3. Instrumented tests compile: `./gradlew compileDebugAndroidTestKotlin`
-4. Instrumented tests run if a device is attached — `adb devices`, then
-   `./gradlew connectedDebugAndroidTest`. If no device is listed, step 3 is the fallback.
-5. New logic has at least one test.
+The five steps are `AGENTS.md` *Definition of done*; read them there. They are not restated here,
+so that a change to the gate has one home. A task is not complete until all five hold.
 
 ### Who runs the gate
 

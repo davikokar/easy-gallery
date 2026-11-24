@@ -68,9 +68,12 @@ Does the code conform to this repo's documented standards?
 - Screen structure: is the `*Screen` composable the only one reading the ViewModel, with the
   `*Content` composable left stateless and driven by plain values and callbacks?
 - Preference stores: does a new store have both a `SharedPreferences*` and an `InMemory*`
-  implementation, and its own prefs file rather than keys squeezed into an existing one?
-- The database: does album data go through the `AlbumStore` interface — production and `InMemory*`,
-  the same shape as the preference stores — rather than a DAO reached directly? Does a schema
+  implementation? If it adds keys to an existing file instead of its own, is that file
+  `app_settings` and the value a scalar (`AGENTS.md` *Preference stores*)? Anything structured needs
+  its own file, or Room.
+- The databases: does album data go through `AlbumStore`, and index data through `MediaIndexStore`
+  or `MediaIndexWatermarkStore` — production and `InMemory*`, the same shape as the preference
+  stores — rather than a DAO reached directly? Does a schema
   change carry a version bump, a committed JSON under `app/schemas/`, and a migration? This is the
   one class of mistake here the user cannot recover from: it loses or corrupts their data rather
   than failing a build.
@@ -86,8 +89,8 @@ Does the code conform to this repo's documented standards?
 - Line endings: tracked files in this repo are mixed and there is no `.gitattributes`. A diff far
   larger than the change described almost certainly means an editor converted a whole file.
   Check `git diff --stat` against `git diff --ignore-all-space`.
-- Documentation: if the change altered the structure the overview describes — a new state holder,
-  a new preference store, a new screen in the navigation chain — was
+- Documentation: if the change hit any trigger in
+  `.github/instructions/architecture-docs.instructions.md` *Triggers*, was
   `docs/architecture/ARCHITECTURE.md` updated to match? That file is required reading for every
   agent, so letting it drift is a real finding.
 - Epic progress: if the change belongs to an epic with a design document under `docs/design/`, does
@@ -144,6 +147,10 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   :app:compileDebugKotlin :app:testDebugUnitTest :app:compileDebugAndroidTestKotlin \
   --console=plain
 ```
+
+If the change touched only files some unit tests read directly — `res/`, `assets/face/`, the
+version catalogue — add `:app:cleanTestDebugUnitTest` before `:app:testDebugUnitTest`, or the
+up-to-date task will not re-run them (`AGENTS.md` *Definition of done*, step 2).
 
 Run this only when no other agent is active — concurrent Gradle invocations contend on the
 daemon and the project lock, and the resulting failure looks like a real build failure. Empty

@@ -26,8 +26,8 @@ media index (ADR-0018) — alongside the `SharedPreferences` files that `AGENTS.
    decisions themselves. Every one marked `Active` is binding.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview.
 4. `docs/design/albums.md` — the albums epic. Mandatory if your work touches albums, favourites,
-   the media index, or anything that owns app-side data. Check its §7 progress table first: most
-   of what it describes is **not implemented**. §7 also names the stage in progress and links to
+   the media index, or anything that owns app-side data. Check its §7 progress table first: do not
+   assume any part of it is implemented. §7 also names the stage in progress and links to
    that stage's plan — Stage 3 is in progress, with its plan at `docs/design/albums-stage-3.md`;
    Stage 4's plan, `docs/design/albums-stage-4.md`, is paused; and rule editing,
    not a stage, has its own plan at `docs/design/albums-rule-editing.md` — which holds the step
@@ -64,9 +64,8 @@ You also own `docs/architecture/ARCHITECTURE.md`, the system overview every othe
 required to read. It drifted badly once already; keeping it true is part of planning, not an
 afterthought.
 
-- Check it against the triggers in
-  `.github/instructions/architecture-docs.instructions.md` — a new state holder, preference
-  store, navigation branch, main view, `data/` file, tech-stack dependency, or ADR.
+- Check it against any trigger in
+  `.github/instructions/architecture-docs.instructions.md` *Triggers*.
 - When a trigger fires, add updating it as an **explicit final step** in the plan, owned by
   Planner, with `docs/architecture/ARCHITECTURE.md` in the step's file list.
 - Schedule it **after** implementation, unlike an ADR. The overview describes what landed, so a

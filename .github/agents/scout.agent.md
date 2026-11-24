@@ -25,7 +25,9 @@ Safe, and the usual answer to most briefs:
 
 - `git --no-pager status --porcelain`, `diff`, `diff --stat`, `diff --ignore-all-space --stat`,
   `show`, `log`, `ls-files`, `blame`
-- `adb devices` — reporting whether a device is attached is a fact and is wanted
+- `"$ANDROID_HOME/platform-tools/adb" devices` — reporting whether a device is attached is a fact
+  and is wanted; `adb` is not necessarily on `PATH` in Git Bash, and `command not found` is not
+  "no device"
 - read-only file inspection: `ls`, `wc`, `od`, `head`, `tail`, `find` without `-exec`
 
 Never, under any circumstances:

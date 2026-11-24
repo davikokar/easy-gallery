@@ -128,6 +128,10 @@ In this order:
   > already empty changes no row and so emits nothing: **the switch step 3.6 builds must call
   > `AlbumsViewModel.refreshPeopleAvailability()`**, in both directions, and nothing calls it yet.
   > The notice's wording is step 3.6's.
+  >
+  > *Note 2026-11-24, step 3.8's audit — built at step 3.6 (2026-11-22):* called through
+  > `FaceDataViewModel.peopleAvailabilityEpoch`, which `MainActivity` forwards — after the app-open
+  > work, on every resume, and after either direction of the switch (Amendment 1 §3).
 
 ### 5. Switching face data back on
 
@@ -282,7 +286,17 @@ E7 to E10 are the numbers these carry in [albums-stage-3.md](../../design/albums
 > - **Not proven on a device** at the close of 3.6, and deferred to step 3.7: that a tap outside
 >   the disclosure does not close it (§1 is pinned by its `DialogProperties` in a unit test), that a
 >   phone without arm64-v8a shows incapable (§3), and a native-speaker review of §5's wording in every
->   shipped locale.
+>   shipped locale. *Note 2026-11-24, step 3.8's audit:* step 3.7 settled the outside tap and Back
+>   ([albums-stage-3.md](../../design/albums-stage-3.md), *3.7*, G6 and W1) — on the SM-G990B the
+>   disclosure stayed showing. Still open: the no-arm64-v8a path on hardware (L1), and the
+>   native-speaker review, before a release.
+> - *Note 2026-11-24, step 3.8's audit — §1's "durably":* `FaceDeviceStateStore.markDisclosureShown`
+>   writes with `apply()`, not `commit()`, so a process death before the write reaches disk shows the
+>   disclosure again — the safe direction. Routed to the Coder as a possible one-line `commit()`
+>   change at the next code change; not changed yet.
+> - *Note 2026-11-24, step 3.8's audit — §4's order:* only the image loader's memory cache is
+>   dropped under the lock. The picker's people and the chosen people drop when the re-read reports
+>   the People criterion no longer offered, after the lock is released; the end state is the same.
 
 **Why an amendment, when adoption left wording and placement to 3.6 and asked no further approval.**
 Placement and layout stay the Designer's and are not here. What is here goes further than wording: §1

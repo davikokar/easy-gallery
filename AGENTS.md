@@ -28,7 +28,8 @@ short commit messages.
   deliberately not migrated.
 - **Dependency injection:** none. Components are instantiated directly so tests can pass fakes.
 - **Image loading:** Coil 3 (`coil-compose`, `-gif`, `-video`, `-network-okhttp`)
-- **Video playback:** AndroidX Media3 ExoPlayer, pinned at **1.5.0**
+- **Video playback:** AndroidX Media3 ExoPlayer, **pinned** at the version in
+  `gradle/libs.versions.toml`; that version governs which video-control APIs exist
 - **Database:** Room, processed by KSP. This needs `android.disallowKotlinSourceSets=false` in
   `gradle.properties`, because the project uses AGP 9's built-in Kotlin and applies no
   `kotlin-android` plugin. Removing that line breaks the build with an error that never mentions
@@ -48,9 +49,9 @@ short commit messages.
 - **Build:** Gradle (Kotlin DSL, `.gradle.kts`). **Every version lives in
   `gradle/libs.versions.toml` and `app/build.gradle.kts` — read them rather than restating one
   here.**
-- **SDK:** minSdk 28, targetSdk 36, compileSdk 36.1
-- **Tests:** JUnit4, MockK, Turbine, coroutines-test, and Robolectric for the `data/`
-  Android-boundary tests, plus `room-testing` with `inMemoryDatabaseBuilder` for the DAO and
+- **SDK:** read `defaultConfig` and `compileSdk` in `app/build.gradle.kts`
+- **Tests:** JUnit4, MockK, Turbine, coroutines-test, and Robolectric for the Android-boundary
+  tests (mostly in `data/`), plus `room-testing` with `inMemoryDatabaseBuilder` for the DAO and
   `work-testing` for `MediaIndexingWorker` (unit); Compose UI test + Espresso (instrumented)
 
 ## Module / package layout
@@ -190,8 +191,8 @@ the audit is for the rest.
   (per-view display preferences), `FolderViewPreferencesState` (per-folder overrides), and
   `MediaViewerState` (transient full-screen viewer state). Put new state in the narrowest of
   those that fits, not in the ViewModel body.
-- **`GalleryViewModel` is the largest file in the app by a wide margin.** Treat that as a reason
-  to extract, not a licence to add. The two established escapes are a new state holder like the
+- **`GalleryViewModel` is the central hub and is already one of the largest files in the app.**
+  Treat that as a reason to extract, not a licence to add. The two established escapes are a new state holder like the
   three above, or a feature-scoped ViewModel — `CreateFolderViewModel`, `BillingViewModel`,
   `AlbumsViewModel`, `FavouritesViewModel`, `MediaIndexingViewModel`, and `FaceDataViewModel` are
   the precedent. Albums
@@ -238,8 +239,9 @@ file-wide, so folder and album overrides sharing a file would reset each other (
 | `media_index_run_state` | last indexing run's outcome, timestamps, counters | `MediaIndexRunStateStore` |
 | `face_device_state` | whether the face-data disclosure was shown; the capability record | `FaceDeviceStateStore` |
 
-Every store is an interface with a `SharedPreferences*` production implementation and an
-`InMemory*` implementation for tests. Add both when you add a store.
+Every store except `LocaleHelper`, which predates the rule and is an `object`, is an interface with
+a `SharedPreferences*` production implementation and an `InMemory*` implementation for tests. Add
+both when you add a store.
 
 The album watermark shares `app_settings` deliberately, to avoid opening a preferences file for one
 scalar. Another scalar may join it; **anything structured must not** — that rule is about
@@ -283,8 +285,8 @@ database is backed up (ADR-0014) while the index must not be.
   `inMemoryDatabaseBuilder`. Tier C face data has no store of its own: it is on `MediaIndexStore`,
   because its rows change in the same transaction as the image row they describe
   ([albums-stage-3.md](docs/design/albums-stage-3.md), step 3.2).
-- **One database does not mean one table.** The album database holds two tables; the index
-  database holds five, having gained the per-volume delta watermark table through a real
+- **One database does not mean one table.** The `entities` list of each `@Database` says which
+  tables it holds. The index database gained the per-volume delta watermark table through a real
   `Migration(1, 2)`, the two Tier C tables through `Migration(4, 5)`, and the Tier C attempt table
   through `Migration(5, 6)` (ADR-0018 Amendment 7). A watermark is index
   metadata — recomputable, worthless without the index,
@@ -364,7 +366,11 @@ database is backed up (ADR-0014) while the index must not be.
 Before claiming a task is complete:
 
 1. Code compiles: `./gradlew compileDebugKotlin`
-2. Unit tests compile and pass: `./gradlew compileDebugUnitTestKotlin testDebugUnitTest`
+2. Unit tests compile and pass: `./gradlew compileDebugUnitTestKotlin testDebugUnitTest`.
+   Tests that read `res/`, `assets/face/` or the version catalogue directly
+   (`LocaleResourceParityTest`, `BackupRulesParityTest`, `ThirdPartyNoticesTest`,
+   `FacePipelineVersionTest`) do not make those files inputs of `testDebugUnitTest`, so after a
+   change to such files alone run `cleanTestDebugUnitTest` first, and say so in the gate report.
 3. Instrumented tests compile: `./gradlew compileDebugAndroidTestKotlin`
 4. Instrumented tests **run, if a device is attached**. Check with `adb devices`. If one is
    listed, `./gradlew connectedDebugAndroidTest` is part of done. If none is, step 3 stands as
@@ -413,14 +419,21 @@ cd /c/git/easy-gallery && ANDROID_HOME="${LOCALAPPDATA//\\//}/Android/Sdk" \
   assumption. When none is listed, `compileDebugAndroidTestKotlin` is the fallback, not the
   ceiling. Claim device-verified behaviour only for what you actually ran and observed, and say
   which of the two you did.
+- `adb` is not necessarily on `PATH` in a fresh Git Bash. Use `"$ANDROID_HOME/platform-tools/adb"`,
+  or export `PATH="$ANDROID_HOME/platform-tools:$PATH"` once with the SDK path above.
+  `command not found` is not "no device".
 - `connectedDebugAndroidTest` uninstalls the app and wipes its data when it finishes, so reinstall
   with `:app:installDebug` and re-grant the media permissions before using the app by hand.
+  A single instrumented class runs with
+  `-Pandroid.testInstrumentationRunnerArguments.class=<fqcn>`; when the app's data must survive,
+  use `:app:installDebugAndroidTest` and `adb shell am instrument` instead — the details are in
+  the [test conventions](.github/instructions/tests.instructions.md).
 - Git Bash rewrites `/sdcard/...` arguments to `adb` unless `MSYS_NO_PATHCONV=1` is set.
 
 ## What to ask before doing
 
-- Adding a new third-party dependency, or upgrading a pinned one (notably media3 1.5.0, which
-  governs what video-control APIs exist).
+- Adding a new third-party dependency, or upgrading a pinned one (notably media3, whose pinned
+  version governs what video-control APIs exist).
 - Adding a new Android permission or `<queries>` entry. **A dependency can do this without the
   source manifest changing**, and the approval of the dependency is not approval of the
   permissions it merges in. WorkManager is the worked example and the reason this sentence exists:
@@ -447,7 +460,7 @@ radius is wider than the diff looks:
 
 Repository memory lives at `/memories/repo/easy-gallery-exploration.md`. It is a long log of
 traps this codebase has already cost someone a session: the viewer/`SaveableStateHolder`
-regression, media3 1.5.0's missing Compose controls, the `PlayerView` touch-dispatch dead end,
+regression, the pinned media3's missing Compose controls, the `PlayerView` touch-dispatch dead end,
 locale decimal separators, per-folder override layering order, and more. Read the sections
 relevant to your task **before** starting, and append a short note when you learn something that
 would have saved you time.

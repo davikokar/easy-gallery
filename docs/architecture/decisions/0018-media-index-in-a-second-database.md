@@ -682,6 +682,12 @@ introduces any other sidecar file, that file needs the same three exclusions.
 > three places, `<exclude>` only. Recorded in [albums-stage-3.md](../../design/albums-stage-3.md),
 > *3.2 — Tier C schema and store*.
 
+> **2026-11-24, step 3.8's documentation audit — the places are four; see Amendment 7 §2.**
+> `data_extraction_rules.xml` now has a third section, `<cross-platform-transfer platform="ios">`,
+> so "three exclusions" and "all three places" above read as four: any new sidecar needs four
+> exclusions. `face_device_state.xml` joined all four, and `BackupRulesParityTest` holds the four
+> sets equal.
+
 ### Deleting face data
 
 [ADR-0024](0024-face-data-disclosure-and-delete-switch.md) decides when face data is deleted. What a
@@ -792,6 +798,14 @@ deletion removes, and how, is decided here:
 > at runtime, which only the pure mapping covers; and a URI written twice in one `upsert` call, whose
 > order can only drop Tier C, never keep it wrongly. The first two are step 3.7's.
 
+> **Verified 2026-11-22, by step 3.7, on the SM-G990B (API 36) only** — recorded 2026-11-24 by
+> step 3.8's documentation audit. A favourite toggle advanced the image's generation and left its
+> Tier C rows intact (`FaceFavouriteToggleDeviceTest`), so §1's premise is observed, not only
+> expected. The production index read `journal_mode` `wal` and `locking_mode` `normal`
+> (`MediaIndexSqliteDeviceTest`), so *Revisit when* below did not fire on that phone; the SM-G781B,
+> read on 2026-11-23, gave `wal` and `normal` too. Other devices are unobserved. Recorded in
+> [albums-stage-3.md](../../design/albums-stage-3.md), *3.7*, G4, G5b, G9 and G10.
+
 This amendment **reverses one rule of Amendment 5**, adopted the day before — the first bullet of
 *Keeping Tier C true* — and **qualifies** what its *Deleting face data* lets a deletion report. Both
 places are annotated above and left intact. Everything else in Amendment 5 continues to govern: the
@@ -806,7 +820,8 @@ and what changes is one invalidation condition and the meaning of one returned f
 does not re-extract only changed files. On API 30+ it selects rows by `MediaStore`'s generation
 (Amendment 1), which `MediaStore` advances on any update to a row, metadata-only ones included — a
 favourite toggle is a write to `IS_FAVORITE` ([ADR-0011](0011-favourites-backed-by-mediastore.md))
-and is expected to advance it, **not verified on a device**. And a volume whose `MediaStore` version
+and is expected to advance it, **not verified on a device** *(verified 2026-11-22 on the SM-G990B
+only — see the note under the Built note above)*. And a volume whose `MediaStore` version
 changes is reselected in full. Step 3.2 built the rule as written — `MediaIndexStore.upsert` drops the
 Tier C rows of every URI it writes — so each favourite toggle would send that image through detection
 and embedding again, and a version resync would delete every face on the volume: of the order of
@@ -913,7 +928,8 @@ detail — switching that connection out of `PERSIST` for the deletion is the ob
 **Positive**
 
 - A metadata-only change that leaves the triple alone — a favourite toggle is expected to, not
-  verified — no longer costs a face pass; a version resync no longer deletes face data.
+  verified *(verified 2026-11-22 on the SM-G990B only — see the note under the Built note above)* —
+  no longer costs a face pass; a version resync no longer deletes face data.
 - A deletion's scrubbed result is true of the files on every journal mode SQLite has, and false
   rather than optimistic for one it does not recognise.
 

@@ -50,7 +50,9 @@ The module does **not** set `isReturnDefaultValues`, so in a plain JUnit test **
   build ships or reads: `BackupRulesParityTest` parses `src/main/res/xml/` with the JDK's XML
   parser, `ThirdPartyNoticesTest` and `FacePipelineVersionTest` read `src/main/assets/face/`, and
   the latter reads `../gradle/libs.versions.toml`. Compare text files line by line after splitting
-  on `\r?\n`, so a test does not depend on the file's line endings.
+  on `\r?\n`, so a test does not depend on the file's line endings. None of these files is an input
+  of `testDebugUnitTest`: after a change to them alone, an up-to-date task does not re-run the
+  tests that read them. Run `cleanTestDebugUnitTest` first, and say so in the gate report.
 
 ### Robolectric tests (the Android boundary)
 
@@ -95,14 +97,18 @@ otherwise run plain.
 
 - Assert on `Flow` emissions with **Turbine** (`flow.test { ... }`), not by collecting into a
   list manually.
-- Use `runTest` and the injected test dispatcher. Never call `Thread.sleep`.
-- Advance virtual time with the test scheduler instead of real delays.
+- Use `runTest` and the injected test dispatcher, and advance virtual time with its scheduler;
+  never sleep in a test that runs on it.
+- Work on threads the test does not own — Room's invalidation, WorkManager, a device — cannot be
+  advanced: poll a real clock under a bounded timeout, as `PeopleAlbumReevaluationTest` does,
+  rather than sleeping a fixed time and hoping.
 
 ## Doubles
 
 - Prefer the hand-written `FakeMediaRepository` over mocking frameworks for repository behavior,
-  and extend it when a test needs to observe a new operation. `GalleryViewModelTest` and
-  `CreateFolderViewModelTest` both depend on it, so a change to `MediaRepository` breaks both.
+  and extend it when a test needs to observe a new operation. Every test that needs a
+  `MediaRepository` uses it — the ViewModel tests, the Tier A indexer, the face pass and the
+  worker — so a change to the interface breaks all of them.
 - Inject the `InMemory*` implementation of every preference store rather than letting a test
   touch `SharedPreferences`. A relaxed MockK `Application` makes preference reads return mock
   defaults, which is safe but means persisted defaults will not match production.
@@ -119,8 +125,8 @@ otherwise run plain.
   `AlbumDetailContent`), not the `*Screen` wrapper. Pass **every parameter by name**: that is what
   makes a signature change fail loudly instead of silently binding to the wrong argument.
 - Resolve controls by `testTag` or by content description. `testTag("delete_button")` exists on
-  **both** the folder selection top bar and the media selection top bar — assert against the one
-  the test actually renders.
+  three top bars — folder selection, media selection, and Album Detail View's own selection top
+  bar — assert against the one the test actually renders.
 - Media actions live inside the media selection overflow menu, so a test must open
   `cd_more_options` before the action is reachable.
 - A leading icon in a dropdown item carries `contentDescription = null` on purpose. Do not give
@@ -136,7 +142,16 @@ otherwise run plain.
   With one, `./gradlew connectedDebugAndroidTest` runs the suite and instrumented behaviour can be
   verified for real. With none, `compileDebugAndroidTestKotlin` is the fallback, and instrumented
   behaviour must then be reported as compile-verified only, never as observed.
-- A device test that measures or depends on device content must **fail** with a message starting
+- To run one class, pass `-Pandroid.testInstrumentationRunnerArguments.class=<fqcn>` to
+  `connectedDebugAndroidTest`; `<fqcn>#method`, and several comma-separated in one argument, also
+  work. That task still uninstalls the app and wipes its data. When the app's data must survive —
+  a check after a walkthrough, or a test on the app's own index — run `:app:installDebug
+  :app:installDebugAndroidTest`, grant the media permissions, and then
+  `adb shell am instrument -w -r -e class <fqcn> [-e <arg> true]
+  com.davide.seddio.easygallery.test/androidx.test.runner.AndroidJUnitRunner`. `adb` is not
+  necessarily on `PATH` in Git Bash: use `"$ANDROID_HOME/platform-tools/adb"`, and read
+  `command not found` as that, not as "no device". Set `MSYS_NO_PATHCONV=1` when an argument is a
+  device path such as `/sdcard/...`.- A device test that measures or depends on device content must **fail** with a message starting
   `ENVIRONMENT:` when the device lacks what it needs — no live media, no item with a date or
   coordinates, a batch that indexed nothing — rather than passing vacuously.
 - A device **measurement** that is slow or reads the phone's whole library is **opt-in**: it reads
@@ -145,18 +160,17 @@ otherwise run plain.
   `FaceIndexPassMeasurementDeviceTest` is the example, enabled with
   `-Pandroid.testInstrumentationRunnerArguments.faceIndexMeasurement=true`. It logs aggregates
   only, and works on a throwaway in-memory store, never the app's real one. The `ENVIRONMENT:`
-  rule above still applies once it is opted in.
-  Step 3.4 added two more: `FaceGroupingMeasurementDeviceTest` (`faceGroupingMeasurement=true`;
-  `faceGroupingMeasurementReal=false` skips the real library, and
-  `faceGroupingMeasurementSizes=2000,5000` — comma-separated — chooses the synthetic sizes), and
-  `FaceGroupingWorkerMeasurementDeviceTest` (`faceGroupingWorkerMeasurement=true`), the one opt-in
-  test that runs the real worker on the app's own index.
-- **Only test sources set the face-data disclosure flag**, and a test that does lives in
-  `androidTest` only. It snapshots the setting and `face_device_state` first and restores them
-  exactly afterwards, in a step that runs even when the measurement fails — **flags first, then the
-  face-data deletion**, holding the Tier C lock across both so no periodic run can write face data
-  in between — and then checks the restore as a separate step.
-  `FaceGroupingWorkerMeasurementDeviceTest` is the example.
+  rule above still applies once it is opted in. Each opt-in test names its arguments in its KDoc;
+  `grep -l assumeTrue app/src/androidTest` lists them.
+- A device test that changes anything outside its own throwaway stores — the app's real face-data
+  flags, or the user's media (a favourite) — snapshots it first, restores it in a step that runs
+  even when the body fails, and checks the restore as a separate step.
+  `FaceGroupingWorkerMeasurementDeviceTest` (flags) and `FaceFavouriteToggleDeviceTest` (a
+  favourite) are the examples.
+- **Only test sources set the app's real face-data disclosure flag on a device**, and a test that
+  does lives in `androidTest` only. It snapshots the setting and `face_device_state` and restores
+  them exactly, as above — **flags first, then the face-data deletion**, holding the Tier C lock
+  across both so no periodic run can write face data in between.
 - A test of the face pipeline needs an arm64 device; on another ABI it must assert the opposite
   answer rather than pass vacuously, as `FaceCapabilityDeviceTest` does. Emulators fail the
   capability check (ADR-0023).
