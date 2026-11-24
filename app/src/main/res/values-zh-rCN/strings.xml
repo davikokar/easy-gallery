@@ -280,4 +280,37 @@
     <string name="settings_index_never">尚未建立索引</string>
     <string name="settings_index_failed">上次扫描失败</string>
     <string name="settings_index_cancelled">上次扫描已中断</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">幻灯片放映</string>
+    <string name="slideshow_dialog_title">幻灯片放映</string>
+    <plurals name="slideshow_count">
+        <item quantity="other">将播放 %1$d 项</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">没有可播放的内容</string>
+    <string name="slideshow_play">播放</string>
+    <string name="slideshow_options">选项</string>
+    <string name="slideshow_interval">间隔</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="other">%1$d 秒</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">缩短间隔</string>
+    <string name="slideshow_interval_increase">延长间隔</string>
+    <string name="slideshow_interval_videos_note">视频将播放至结束。</string>
+    <string name="slideshow_transition">过渡效果</string>
+    <string name="slideshow_transition_fade">淡入淡出</string>
+    <string name="slideshow_transition_none">无</string>
+    <string name="slideshow_include_videos">包括视频</string>
+    <string name="slideshow_include_gifs">包括 GIF</string>
+    <string name="slideshow_order">顺序</string>
+    <string name="slideshow_order_ascending">升序</string>
+    <string name="slideshow_order_descending">降序</string>
+    <string name="slideshow_order_random">随机</string>
+    <string name="slideshow_loop">循环播放</string>
+    <string name="slideshow_orientation">方向</string>
+    <string name="slideshow_orientation_all">全部</string>
+    <string name="slideshow_orientation_landscape">仅横向</string>
+    <string name="slideshow_orientation_portrait">仅纵向</string>
+    <string name="slideshow_pause">暂停</string>
+    <string name="slideshow_resume">继续</string>
+    <string name="slideshow_close">关闭幻灯片放映</string>
 </resources>

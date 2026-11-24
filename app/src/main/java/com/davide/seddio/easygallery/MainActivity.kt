@@ -67,6 +67,8 @@ import com.davide.seddio.easygallery.ui.CreateFolderViewModel
 import com.davide.seddio.easygallery.ui.FaceDataViewModel
 import com.davide.seddio.easygallery.ui.GalleryViewModel
 import com.davide.seddio.easygallery.ui.MediaIndexingViewModel
+import com.davide.seddio.easygallery.ui.SlideshowScreen
+import com.davide.seddio.easygallery.ui.SlideshowViewModel
 import com.davide.seddio.easygallery.ui.components.FaceDataDisclosureDialog
 import com.davide.seddio.easygallery.ui.components.MainViewBar
 import com.davide.seddio.easygallery.ui.components.ShownScreen
@@ -86,6 +88,7 @@ class MainActivity : ComponentActivity() {
     private val billingViewModel: BillingViewModel by viewModels()
     private val mediaIndexingViewModel: MediaIndexingViewModel by viewModels()
     private val faceDataViewModel: FaceDataViewModel by viewModels()
+    private val slideshowViewModel: SlideshowViewModel by viewModels()
     private var hasPermission by mutableStateOf(false)
 
     private val intentSenderLauncher = registerForActivityResult(
@@ -200,6 +203,9 @@ class MainActivity : ComponentActivity() {
                     val isThumbnailPickerMode by viewModel.isThumbnailPickerMode.collectAsState()
                     val isAlbumCoverPickerMode by albumsViewModel.isAlbumCoverPickerMode.collectAsState()
                     val faceDataState by faceDataViewModel.uiState.collectAsState()
+                    // Non-null means the Slideshow screen is shown (ADR-0025 section 7).
+                    val slideshowState by slideshowViewModel.state.collectAsState()
+                    val isSlideshowOpen = slideshowState != null
                     val selectedFolderPath = selectedFolder?.path
                     var isFavouritesSelected by rememberSaveable { mutableStateOf(false) }
                     var mediaPendingAddToAlbum by remember { mutableStateOf(emptyList<com.davide.seddio.easygallery.data.MediaItem>()) }
@@ -246,6 +252,7 @@ class MainActivity : ComponentActivity() {
                         else -> "permission_denied"
                     }
                     val shownScreen = resolveShownScreen(
+                        isSlideshowOpen = isSlideshowOpen,
                         isMediaOpen = selectedMedia != null,
                         isManageExcludedMode = isManageExcludedMode,
                         isSettingsMode = isSettingsMode,
@@ -275,7 +282,10 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (selectedMedia != null) {
+                    if (isSlideshowOpen) {
+                        // Outside the holder like the viewer; the detail view under it keeps its saved state. Back cancels (SlideshowContent).
+                        SlideshowScreen(slideshowViewModel)
+                    } else if (selectedMedia != null) {
                         BackHandler {
                             viewModel.closeMedia()
                         }
@@ -324,6 +334,7 @@ class MainActivity : ComponentActivity() {
                                     } else if (selectedFolder != null) {
                                         FolderDetailScreen(
                                             viewModel = viewModel,
+                                            slideshowViewModel = slideshowViewModel,
                                             favouritesAvailable = favouritesAvailable,
                                             favouriteUris = favouriteUris,
                                             isFavouritePending = pendingFavouriteWriteRequest != null,
@@ -337,6 +348,7 @@ class MainActivity : ComponentActivity() {
                                         AlbumDetailScreen(
                                             galleryViewModel = viewModel,
                                             albumsViewModel = albumsViewModel,
+                                            slideshowViewModel = slideshowViewModel,
                                             favouritesAvailable = favouritesAvailable,
                                             favouriteUris = favouriteUris,
                                             isFavouritePending = pendingFavouriteWriteRequest != null,
@@ -350,6 +362,7 @@ class MainActivity : ComponentActivity() {
                                         AlbumDetailScreen(
                                             galleryViewModel = viewModel,
                                             albumsViewModel = albumsViewModel,
+                                            slideshowViewModel = slideshowViewModel,
                                             favouritesAvailable = favouritesAvailable,
                                             favouriteUris = favouriteUris,
                                             isFavouritePending = pendingFavouriteWriteRequest != null,
@@ -475,9 +488,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Over every screen but the Full-screen viewer, where it waits; derived from the stores, so a
-                    // recreated Activity shows it again until one of its buttons is pressed.
-                    if (faceDataDisclosureDue(faceDataState, hasPermission, viewerOpen = selectedMedia != null)) {
+                    // Over every screen but the Full-screen viewer and the Slideshow screen, where it waits; derived from the
+                    // stores, so a recreated Activity shows it again until one of its buttons is pressed.
+                    if (faceDataDisclosureDue(
+                            faceDataState,
+                            hasPermission,
+                            viewerOpen = selectedMedia != null,
+                            slideshowOpen = isSlideshowOpen
+                        )
+                    ) {
                         FaceDataDisclosureDialog(
                             isInfoMode = false,
                             onOk = faceDataViewModel::acknowledgeDisclosure,

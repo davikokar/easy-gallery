@@ -495,7 +495,7 @@ class AlbumDetailContentTest {
     }
 
     @Test
-    fun albumInfoIsTheLastItemOfTheMenu() {
+    fun albumInfoComesAfterThePreferenceItems() {
         composeTestRule.setContent {
             AlbumDetailContentWrapper(albumRuleSummary = AlbumRuleSummary.Manual)
         }
@@ -511,6 +511,100 @@ class AlbumDetailContentTest {
                 .fetchSemanticsNode().boundsInRoot.top
             assertTrue("Album info must come after $name", albumInfoTop > itemTop)
         }
+    }
+
+    @Test
+    fun slideshowIsTheLastItemAndAlbumInfoIsDirectlyBeforeIt() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                albumRuleSummary = AlbumRuleSummary.Manual
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        val itemTops = (
+            preferenceDialogs.map { (menuLabel, _) ->
+                menuLabel.toString() to composeTestRule.onNodeWithText(appContext.getString(menuLabel))
+                    .fetchSemanticsNode().boundsInRoot.top
+            } + listOf(
+                "thumbnail" to composeTestRule
+                    .onNodeWithText(appContext.getString(R.string.menu_change_album_thumbnail))
+                    .fetchSemanticsNode().boundsInRoot.top,
+                "album_info_button" to composeTestRule.onNodeWithTag("album_info_button")
+                    .fetchSemanticsNode().boundsInRoot.top,
+                "slideshow_button" to composeTestRule.onNodeWithTag("slideshow_button")
+                    .fetchSemanticsNode().boundsInRoot.top
+            )
+            ).sortedBy { it.second }.map { it.first }
+        assertEquals("slideshow_button", itemTops.last())
+        assertEquals("album_info_button", itemTops[itemTops.size - 2])
+    }
+
+    @Test
+    fun slideshowIsShownForFavouritesAsTheLastItem() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = listOf(mediaItem), isFavouritesAlbum = true)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        val slideshowTop = composeTestRule.onNodeWithTag("slideshow_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        preferenceDialogs.forEach { (menuLabel, name) ->
+            val itemTop = composeTestRule.onNodeWithText(appContext.getString(menuLabel))
+                .fetchSemanticsNode().boundsInRoot.top
+            assertTrue("Slideshow must come after $name", slideshowTop > itemTop)
+        }
+    }
+
+    @Test
+    fun slideshowItemInvokesTheCallback() {
+        var clicks = 0
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = listOf(mediaItem), onSlideshowClick = { clicks++ })
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_slideshow))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("slideshow_button").performClick()
+
+        composeTestRule.runOnIdle { assertEquals(1, clicks) }
+    }
+
+    @Test
+    fun slideshowIsHiddenWhenTheAlbumHasNoMedia() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = emptyList(), albumRuleSummary = AlbumRuleSummary.Manual)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onAllNodesWithTag("slideshow_button").assertCountEquals(0)
+    }
+
+    @Test
+    fun slideshowStaysAvailableWhenAFilterHidesEveryShownItem() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(media = emptyList(), hasSlideshowMedia = true)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onNodeWithTag("slideshow_button").assertIsDisplayed()
     }
 
     @Test
@@ -881,6 +975,7 @@ class AlbumDetailContentTest {
     @Composable
     private fun AlbumDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
+        hasSlideshowMedia: Boolean = media.isNotEmpty(),
         hiddenMemberCount: Int = 0,
         evaluationStatus: AlbumEvaluationStatus = AlbumEvaluationStatus.MANUAL,
         unevaluatableCause: AlbumUnevaluatableCause? =
@@ -901,7 +996,8 @@ class AlbumDetailContentTest {
         onEnterAlbumCoverPicker: () -> Unit = {},
         onExitAlbumCoverPicker: () -> Unit = {},
         onCommitAlbumCoverPicker: () -> Unit = {},
-        onCommitPreference: (String, PreferenceApplyTarget) -> Unit = { _, _ -> }
+        onCommitPreference: (String, PreferenceApplyTarget) -> Unit = { _, _ -> },
+        onSlideshowClick: () -> Unit = {}
     ) {
         AlbumDetailContent(
             albumName = "A deliberately long user supplied album name that must remain usable",
@@ -948,6 +1044,8 @@ class AlbumDetailContentTest {
             onEnterAlbumCoverPicker = onEnterAlbumCoverPicker,
             onExitAlbumCoverPicker = onExitAlbumCoverPicker,
             onCommitAlbumCoverPicker = onCommitAlbumCoverPicker,
+            hasSlideshowMedia = hasSlideshowMedia,
+            onSlideshowClick = onSlideshowClick,
             isFavouritesAlbum = isFavouritesAlbum
         )
     }

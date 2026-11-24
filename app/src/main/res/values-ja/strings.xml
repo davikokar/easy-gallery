@@ -280,4 +280,37 @@
     <string name="settings_index_never">まだインデックスされていません</string>
     <string name="settings_index_failed">前回のスキャンに失敗しました</string>
     <string name="settings_index_cancelled">前回のスキャンは中断されました</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">スライドショー</string>
+    <string name="slideshow_dialog_title">スライドショー</string>
+    <plurals name="slideshow_count">
+        <item quantity="other">%1$d 件を再生します</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">再生するものがありません</string>
+    <string name="slideshow_play">再生</string>
+    <string name="slideshow_options">オプション</string>
+    <string name="slideshow_interval">間隔</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="other">%1$d 秒</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">間隔を短くする</string>
+    <string name="slideshow_interval_increase">間隔を長くする</string>
+    <string name="slideshow_interval_videos_note">動画は最後まで再生されます。</string>
+    <string name="slideshow_transition">切り替え効果</string>
+    <string name="slideshow_transition_fade">フェード</string>
+    <string name="slideshow_transition_none">なし</string>
+    <string name="slideshow_include_videos">動画を含める</string>
+    <string name="slideshow_include_gifs">GIF を含める</string>
+    <string name="slideshow_order">順序</string>
+    <string name="slideshow_order_ascending">昇順</string>
+    <string name="slideshow_order_descending">降順</string>
+    <string name="slideshow_order_random">ランダム</string>
+    <string name="slideshow_loop">ループ</string>
+    <string name="slideshow_orientation">向き</string>
+    <string name="slideshow_orientation_all">すべて</string>
+    <string name="slideshow_orientation_landscape">横向きのみ</string>
+    <string name="slideshow_orientation_portrait">縦向きのみ</string>
+    <string name="slideshow_pause">一時停止</string>
+    <string name="slideshow_resume">再開</string>
+    <string name="slideshow_close">スライドショーを閉じる</string>
 </resources>

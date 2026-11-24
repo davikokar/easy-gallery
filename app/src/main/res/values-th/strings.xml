@@ -281,4 +281,37 @@
     <string name="settings_index_never">ยังไม่ได้จัดทำดัชนี</string>
     <string name="settings_index_failed">การสแกนครั้งล่าสุดไม่สำเร็จ</string>
     <string name="settings_index_cancelled">การสแกนครั้งล่าสุดถูกขัดจังหวะ</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">สไลด์โชว์</string>
+    <string name="slideshow_dialog_title">สไลด์โชว์</string>
+    <plurals name="slideshow_count">
+        <item quantity="other">%1$d รายการจะถูกเล่น</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">ไม่มีอะไรให้เล่น</string>
+    <string name="slideshow_play">เล่น</string>
+    <string name="slideshow_options">ตัวเลือก</string>
+    <string name="slideshow_interval">ช่วงเวลา</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="other">%1$d วินาที</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">ช่วงเวลาสั้นลง</string>
+    <string name="slideshow_interval_increase">ช่วงเวลานานขึ้น</string>
+    <string name="slideshow_interval_videos_note">วิดีโอจะเล่นจนจบ</string>
+    <string name="slideshow_transition">การเปลี่ยนภาพ</string>
+    <string name="slideshow_transition_fade">เฟด</string>
+    <string name="slideshow_transition_none">ไม่มี</string>
+    <string name="slideshow_include_videos">รวมวิดีโอ</string>
+    <string name="slideshow_include_gifs">รวม GIF</string>
+    <string name="slideshow_order">ลำดับ</string>
+    <string name="slideshow_order_ascending">น้อยไปมาก</string>
+    <string name="slideshow_order_descending">มากไปน้อย</string>
+    <string name="slideshow_order_random">สุ่ม</string>
+    <string name="slideshow_loop">เล่นซ้ำ</string>
+    <string name="slideshow_orientation">การวางแนว</string>
+    <string name="slideshow_orientation_all">ทั้งหมด</string>
+    <string name="slideshow_orientation_landscape">เฉพาะแนวนอน</string>
+    <string name="slideshow_orientation_portrait">เฉพาะแนวตั้ง</string>
+    <string name="slideshow_pause">หยุดชั่วคราว</string>
+    <string name="slideshow_resume">เล่นต่อ</string>
+    <string name="slideshow_close">ปิดสไลด์โชว์</string>
 </resources>

@@ -294,4 +294,39 @@
     <string name="settings_index_never">Henüz dizine eklenmedi</string>
     <string name="settings_index_failed">Son tarama başarısız oldu</string>
     <string name="settings_index_cancelled">Son tarama yarıda kesildi</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">Slayt gösterisi</string>
+    <string name="slideshow_dialog_title">Slayt gösterisi</string>
+    <plurals name="slideshow_count">
+        <item quantity="one">%1$d öğe oynatılacak</item>
+        <item quantity="other">%1$d öğe oynatılacak</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">Oynatılacak bir şey yok</string>
+    <string name="slideshow_play">Oynat</string>
+    <string name="slideshow_options">Seçenekler</string>
+    <string name="slideshow_interval">Aralık</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="one">%1$d saniye</item>
+        <item quantity="other">%1$d saniye</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">Daha kısa aralık</string>
+    <string name="slideshow_interval_increase">Daha uzun aralık</string>
+    <string name="slideshow_interval_videos_note">Videolar sonuna kadar oynatılır.</string>
+    <string name="slideshow_transition">Geçiş</string>
+    <string name="slideshow_transition_fade">Solma</string>
+    <string name="slideshow_transition_none">Yok</string>
+    <string name="slideshow_include_videos">Videoları dahil et</string>
+    <string name="slideshow_include_gifs">GIF’leri dahil et</string>
+    <string name="slideshow_order">Sıralama</string>
+    <string name="slideshow_order_ascending">Artan</string>
+    <string name="slideshow_order_descending">Azalan</string>
+    <string name="slideshow_order_random">Rastgele</string>
+    <string name="slideshow_loop">Döngü</string>
+    <string name="slideshow_orientation">Yönlendirme</string>
+    <string name="slideshow_orientation_all">Tümü</string>
+    <string name="slideshow_orientation_landscape">Yalnızca yatay</string>
+    <string name="slideshow_orientation_portrait">Yalnızca dikey</string>
+    <string name="slideshow_pause">Duraklat</string>
+    <string name="slideshow_resume">Sürdür</string>
+    <string name="slideshow_close">Slayt gösterisini kapat</string>
 </resources>

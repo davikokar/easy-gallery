@@ -10,6 +10,11 @@
 > maintainer's approval, with §2's option A.** It was drafted the same day under a temporary
 > *proposed* label. The `Active` status above covers the Decision and Amendment 1.
 
+> **Amendment 2 (2026-11-24), at the end of this record, was adopted on 2026-11-24 with
+> [ADR-0025](0025-slideshow.md), on the maintainer's answer to its question 21.** The disclosure also
+> waits while the Slideshow screen is shown. The `Active` status above covers it too. Built
+> 2026-11-24, as written.
+
 > **Adopted 2026-11-19, when the maintainer approved it.** It was drafted on 2026-11-18 under a
 > temporary `Proposed` label, because the instructions' status vocabulary is `Active | Disabled`
 > and neither fits a draft. Wording and placement are still **intent**, not final strings or
@@ -436,7 +441,7 @@ nothing about faces ever reached a backup.
 
 | Surface | Offered when |
 |---|---|
-| The disclosure | media permission granted, setting on, capability record for the current key says capable, not yet shown on this installation, the Full-screen viewer closed |
+| The disclosure | media permission granted, setting on, capability record for the current key says capable, not yet shown on this installation, the Full-screen viewer closed — *and, by Amendment 2, the Slideshow screen closed* |
 | The Face data area in Settings | capability record for the current key says capable — setting on or off |
 | The People criterion | setting on, and the record says capable |
 | The Face licences row | always — the models and OpenCV are in the APK whatever the device |
@@ -478,3 +483,41 @@ needs fixing, and the count line alone is the fallback. The People list itself i
 - **Negative:** the models are loaded once per build at app open even with face data off; a switch-off
   may empty the whole image memory cache; under §2's option A, one dialog follows a deliberate
   switch-on, once per installation, and only where the disclosure was never shown.
+
+## Amendment 2 — 2026-11-24 — The disclosure waits for the slideshow (adopted 2026-11-24)
+
+> **Adopted 2026-11-24 with [ADR-0025](0025-slideshow.md)**, on the maintainer's answer to that
+> record's question 21: "Face data disclosure waits until the slideshow ends." ~~Nothing below is built
+> yet; the slideshow's step plan builds it.~~
+
+> **Built 2026-11-24, as written.** `faceDataDisclosureDue(state, mediaPermissionGranted, viewerOpen,
+> slideshowOpen)` in `ui/FaceDataViewModel.kt` takes the new term as its own parameter, and
+> `MainActivity` passes whether `SlideshowViewModel.state` is non-null — true from Play to the
+> slideshow's end, so the countdown, playing and paused all count as shown. Unit tests in
+> `FaceDataViewModelTest` hold both halves: the disclosure is not due while the slideshow is open, and
+> is due again once it has closed. **Not observed on a device:** the verification phase's run did not
+> provoke the disclosure during a slideshow ([ADR-0025](0025-slideshow.md) §9, check 7).
+
+**What changes.** Amendment 1 §5's condition for the disclosure gains one term: **the Slideshow screen
+is not shown.** While a slideshow runs — its countdown, playing or paused — the disclosure is not
+drawn; when the slideshow ends, by any of its ways out, the condition is evaluated again and the
+disclosure shows if it is still due. Nothing is recorded while it waits, so "shown" still means one of
+its buttons was pressed (Amendment 1 §1).
+
+**Why.** For the reason the Full-screen viewer was excluded: the slideshow is full screen and
+immersive, a dialog over it would interrupt what the user chose to watch, and a modal dialog over a
+screen whose taps pause and cancel would take the next tap meant for the slideshow. Waiting costs at
+most the length of one slideshow; the disclosure gates the first Tier C pass, not anything the user
+is doing, so nothing else waits on it.
+
+**How it is built.** `faceDataDisclosureDue` gains a `slideshowOpen` argument beside `viewerOpen`, and
+`MainActivity` passes whether the Slideshow screen is shown. It is a parameter, not an `||` folded into
+`viewerOpen` at the call site, so that a unit test can hold the rule.
+
+**Unchanged:** everything else in §5's table; once per installation; neither Back nor a tap outside
+closes it.
+
+**Consequence.** The disclosure is modal over the detail views, so a slideshow can start before it only
+when it becomes due while one is already running — the app-open capability check (Amendment 1 §3)
+finishing mid-slideshow. Then it shows when the slideshow ends, and the first face pass waits
+until a button is pressed, as it always does.

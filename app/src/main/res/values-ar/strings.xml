@@ -345,4 +345,47 @@
     <string name="settings_index_never">لم تتم الفهرسة بعد</string>
     <string name="settings_index_failed">فشل آخر مسح</string>
     <string name="settings_index_cancelled">تمت مقاطعة آخر مسح</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">عرض الشرائح</string>
+    <string name="slideshow_dialog_title">عرض الشرائح</string>
+    <plurals name="slideshow_count">
+        <item quantity="zero">لا عناصر للتشغيل</item>
+        <item quantity="one">سيتم تشغيل عنصر واحد</item>
+        <item quantity="two">سيتم تشغيل عنصرين</item>
+        <item quantity="few">سيتم تشغيل %1$d عناصر</item>
+        <item quantity="many">سيتم تشغيل %1$d عنصرًا</item>
+        <item quantity="other">سيتم تشغيل %1$d عنصر</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">لا شيء للتشغيل</string>
+    <string name="slideshow_play">تشغيل</string>
+    <string name="slideshow_options">خيارات</string>
+    <string name="slideshow_interval">الفاصل الزمني</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="zero">%1$d ثانية</item>
+        <item quantity="one">ثانية واحدة</item>
+        <item quantity="two">ثانيتان</item>
+        <item quantity="few">%1$d ثوانٍ</item>
+        <item quantity="many">%1$d ثانية</item>
+        <item quantity="other">%1$d ثانية</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">فاصل زمني أقصر</string>
+    <string name="slideshow_interval_increase">فاصل زمني أطول</string>
+    <string name="slideshow_interval_videos_note">تُشغَّل مقاطع الفيديو حتى النهاية.</string>
+    <string name="slideshow_transition">الانتقال</string>
+    <string name="slideshow_transition_fade">تلاشي</string>
+    <string name="slideshow_transition_none">بدون</string>
+    <string name="slideshow_include_videos">تضمين الفيديوهات</string>
+    <string name="slideshow_include_gifs">تضمين صور GIF</string>
+    <string name="slideshow_order">الترتيب</string>
+    <string name="slideshow_order_ascending">تصاعدي</string>
+    <string name="slideshow_order_descending">تنازلي</string>
+    <string name="slideshow_order_random">عشوائي</string>
+    <string name="slideshow_loop">تكرار</string>
+    <string name="slideshow_orientation">الاتجاه</string>
+    <string name="slideshow_orientation_all">الكل</string>
+    <string name="slideshow_orientation_landscape">الوضع الأفقي فقط</string>
+    <string name="slideshow_orientation_portrait">الوضع العمودي فقط</string>
+    <string name="slideshow_pause">إيقاف مؤقت</string>
+    <string name="slideshow_resume">استئناف</string>
+    <string name="slideshow_close">إغلاق عرض الشرائح</string>
 </resources>

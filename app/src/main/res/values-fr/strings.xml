@@ -293,4 +293,39 @@
     <string name="settings_index_never">Pas encore indexé</string>
     <string name="settings_index_failed">La dernière analyse a échoué</string>
     <string name="settings_index_cancelled">La dernière analyse a été interrompue</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">Diaporama</string>
+    <string name="slideshow_dialog_title">Diaporama</string>
+    <plurals name="slideshow_count">
+        <item quantity="one">%1$d élément sera lu</item>
+        <item quantity="other">%1$d éléments seront lus</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">Rien à lire</string>
+    <string name="slideshow_play">Lire</string>
+    <string name="slideshow_options">Options</string>
+    <string name="slideshow_interval">Intervalle</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="one">%1$d seconde</item>
+        <item quantity="other">%1$d secondes</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">Intervalle plus court</string>
+    <string name="slideshow_interval_increase">Intervalle plus long</string>
+    <string name="slideshow_interval_videos_note">Les vidéos sont lues jusqu’à la fin.</string>
+    <string name="slideshow_transition">Transition</string>
+    <string name="slideshow_transition_fade">Fondu</string>
+    <string name="slideshow_transition_none">Aucune</string>
+    <string name="slideshow_include_videos">Inclure les vidéos</string>
+    <string name="slideshow_include_gifs">Inclure les GIFs</string>
+    <string name="slideshow_order">Ordre</string>
+    <string name="slideshow_order_ascending">Croissant</string>
+    <string name="slideshow_order_descending">Décroissant</string>
+    <string name="slideshow_order_random">Aléatoire</string>
+    <string name="slideshow_loop">Boucle</string>
+    <string name="slideshow_orientation">Orientation</string>
+    <string name="slideshow_orientation_all">Toutes</string>
+    <string name="slideshow_orientation_landscape">Paysage uniquement</string>
+    <string name="slideshow_orientation_portrait">Portrait uniquement</string>
+    <string name="slideshow_pause">Pause</string>
+    <string name="slideshow_resume">Reprendre</string>
+    <string name="slideshow_close">Fermer le diaporama</string>
 </resources>

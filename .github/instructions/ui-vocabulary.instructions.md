@@ -228,6 +228,13 @@ opening a folder; Album Detail View is reached by opening an Album or Favourites
   area**, as an icon-only row, only while some media is not yet indexed. Below the **Media index area**
   comes the **Face data area**, shown only on a device known to be capable; the Legal section ends
   with the **Place data row** and then the **Face licences row**.
+- **Slideshow screen** (`SlideshowScreen`, content `SlideshowContent`, tagged `slideshow_screen`):
+  The full-screen, black, hands-off playback of a folder's or Album's media, started by Play in the
+  **Slideshow dialog**. It is its own branch at the top of `MainActivity`'s chain, ahead of the
+  **Full-screen viewer** and outside the saved-state holder, like the viewer, and hides the
+  **Main view bar**. Ending it returns to the detail view it was started from, whose saved state
+  survives. Its parts are in the **Slideshow** section below. Not the **Full-screen
+  viewer**: it has no swipe, no previous and no next. Aliases: **slideshow player** (not preferred)
 - **Manage excluded screen** (`ManageExcludedScreen`): Lists excluded folders so they can be
   brought back. Reached only from the Settings screen; it hides the **Main view bar**, and its
   back arrow and system Back return to the Settings screen.
@@ -239,11 +246,13 @@ five main views above, **dialog** for modal content, and **area** for a region w
 
 ## Screen structure
 
-Each detail screen and the shared three-view screen are built as a pair:
+Each detail screen, the shared three-view screen and the Slideshow screen are built as a pair:
 
-- **Screen composable** (`FolderListScreen`, `FolderDetailScreen`, `AlbumDetailScreen`): Reads the
-  ViewModel and binds the view's `PreferenceScope`.
-- **Content composable** (`FolderListContent`, `FolderDetailContent`, `AlbumDetailContent`):
+- **Screen composable** (`FolderListScreen`, `FolderDetailScreen`, `AlbumDetailScreen`,
+  `SlideshowScreen`): Reads the ViewModel and binds the view's `PreferenceScope`; the Slideshow
+  screen reads `SlideshowViewModel` and owns the window effects (system bars, screen-on).
+- **Content composable** (`FolderListContent`, `FolderDetailContent`, `AlbumDetailContent`,
+  `SlideshowContent`):
   Stateless, takes plain values plus callbacks. This is what the instrumented tests drive, and
   every parameter is passed by name there, so adding or renaming one breaks those tests by design.
 
@@ -309,7 +318,7 @@ Shared parts:
 - The bar is **shown** on Folders View, Albums View, Timeline View, Folder Detail View, Album
   Detail View (including Favourites), and the Settings screen, and stays visible during selection
   and search; a tab tap cancels both and switches. It is **hidden** on the Full-screen viewer, the
-  Folder thumbnail picker, the Album cover picker, the New album screen, the New automatic album
+  Slideshow screen, the Folder thumbnail picker, the Album cover picker, the New album screen, the New automatic album
   screen, the Manage excluded screen, and the Permission denied screen. On a detail screen the selected tab is the
   main view that owns it: Folders for Folder Detail View, Albums for Album Detail View. On the
   Settings screen the selected item is the Settings destination and no tab is.
@@ -451,8 +460,9 @@ Shared parts:
   photo cannot be found): A **Status notice**, shown with the `PersonOff` icon. It says a person in
   the Album cannot be found, perhaps because the photo they were chosen from is gone, and that the
   Album fills in again if that photo returns, otherwise it should be created again.
-- **Album info item** (tagged `album_info_button`): The last item of the **Browse top bar**'s
-  Overflow menu in Album Detail View, labelled "Album info" and carrying the `Description` icon (not
+- **Album info item** (tagged `album_info_button`): The item of the **Browse top bar**'s
+  Overflow menu in Album Detail View that sits directly before the **Slideshow item**, which is the
+  last, labelled "Album info" and carrying the `Description` icon (not
   `Info`, which is the top bar's caption toggle). It is shown only once the Album is known and never
   for Favourites, which has no rule. For an Automatic album whose rule has a place clause it is also
   hidden until the country names have loaded; if they fail to load it is shown anyway, and the
@@ -523,6 +533,65 @@ Shared parts:
 - **Zoomable image** (`ZoomableImage`): The pinch-to-zoom, pan, and rotate surface for a photo.
   Only images have double-tap-to-zoom.
 
+## Slideshow
+
+Started from Folder Detail View or Album Detail View (Favourites included); no main view has it.
+Say **Slideshow** for the feature, and the full names below for its parts; never "popup" for the
+dialog, and never "viewer" for the screen.
+
+- **Slideshow item** (tagged `slideshow_button`, `R.string.menu_slideshow`; the `Slideshow` icon):
+  The last item of the **Browse top bar**'s Overflow menu in Folder Detail View and Album Detail
+  View, Favourites included. Shown only when the folder or Album holds media at all, ignoring the
+  **Search field** and **Filter media**; it is hidden for an empty container rather than showing the
+  dialog's zero state. It opens the **Slideshow dialog**.
+- **Slideshow dialog** (`SlideshowDialog`, hosted by `SlideshowDialogHost`, tagged
+  `slideshow_dialog`): Sets the options and starts playback. The host keeps the draft across
+  rotation and the draft is **saved only by Play**; Cancel, Back and a tap outside discard it. The
+  **Slideshow options area** is **collapsed on every open**. It is **not** one of the five
+  display-preference dialogs: it is not draft-and-commit in their sense, has no **Apply only to this
+  folder** checkbox, and its options are one global set rather than per folder or Album. Its parts:
+  - **Slideshow count** (tagged `slideshow_count`): The live line "N items will play" under the
+    current draft, announced as it changes. At zero it reads "Nothing to play" and Play is
+    disabled.
+  - **Slideshow options toggle** (tagged `slideshow_options_toggle`, the `Tune` icon, described
+    "Options"): Expands and collapses the options area.
+  - **Slideshow options area** (tagged `slideshow_options_area`): The collapsible region holding the
+    options below, in this order. Say "Slideshow options area" in full; a bare "options" is
+    ambiguous.
+    - **Interval stepper**: **Interval**, 1 to 60 seconds, a − / + pair around its value. Tagged
+      `slideshow_interval_decrease`, `slideshow_interval_increase` and `slideshow_interval_value`;
+      a note says videos play to their end, so it does not apply to them.
+    - **Transition**: Fade or None (`slideshow_transition_fade`, `slideshow_transition_none`).
+    - **Include videos** (`slideshow_include_videos`) and **Include GIFs** (`slideshow_include_gifs`):
+      switches.
+    - **Order**: Ascending, Descending or Random (`slideshow_order_ascending`,
+      `slideshow_order_descending`, `slideshow_order_random`). Ascending and Descending are relative
+      to the folder's or Album's own sort, not a sort of their own. Say **Slideshow Order** where it
+      could be read as the **Sort dialog**'s order.
+    - **Loop** (`slideshow_loop`): a switch.
+    - **Orientation**: All, Landscape only or Portrait only (`slideshow_orientation_all`,
+      `slideshow_orientation_landscape`, `slideshow_orientation_portrait`).
+  - **Slideshow Play button** (tagged `slideshow_play_button`, the `PlayArrow` icon, "Play"): The
+    confirm button. Saves the draft, closes the dialog and opens the **Slideshow screen**. Not the
+    **Slideshow pause button**'s play state, nor the Play in **Video controls**.
+  - **Cancel**: The dismiss button; discards the draft.
+- **Countdown** (tagged `slideshow_countdown`): The large 3, 2, 1 over black before the first item.
+  A tap or Back during it cancels the slideshow; no controls show during it. Not a timer of the
+  **Interval**.
+- **Slideshow controls** (the overlay, no tag of its own): The two round buttons over the playing
+  **Slideshow screen**, safe-area padded, never shown during the **Countdown**. They stay visible
+  while paused and hide about three seconds after a tap, or the pause button, resumes playback. They
+  are the **Slideshow pause button** (tagged `slideshow_pause_button`, bottom centre; `Pause` while
+  playing, `PlayArrow` and "Resume" while paused) and the **Slideshow close
+  button** (tagged `slideshow_close_button`, top end, the `Close` icon, "Close slideshow"). Not the
+  **Video controls** of the **Full-screen viewer**.
+- **Slideshow screen behaviour**: Full-screen black, with the system status and navigation bars
+  hidden (a swipe from the edge shows them transiently) and the screen kept on during the
+  **Countdown** and while playing, but not while paused. A tap on the screen shows the
+  **Slideshow controls** and toggles pause and resume. Back and the close
+  button end it. There is no swipe, no previous and no next. Videos play to their end with no sound.
+  The hidden system bars are not **Immersive mode**, which hides the **Viewer bottom bar** only.
+
 ## Dialogs
 
 - **Sort dialog** (`SortDialog`): Sort type and order.
@@ -537,6 +606,8 @@ Shared parts:
 - **Media properties dialog** (`MediaPropertiesDialog`): Name, size, date, and — for a single
   item only — GPS.
 - **Album info dialog** (`AlbumInfoDialog`): The rule behind the open Album; see Album Detail View.
+- **Slideshow dialog** (`SlideshowDialog`): The options and Play for a slideshow; see Slideshow. Not
+  one of the five draft-and-commit display-preference dialogs.
 - **Folder properties dialog** (`PropertiesDialog`, in `ui/FolderDialogs.kt`): The properties of
   one or more selected **folders**. A different dialog from the Media properties dialog; never
   call either one just "the properties dialog".
@@ -574,8 +645,8 @@ Shared parts:
 - **Face data disclosure** (`FaceDataDisclosureDialog`, content tagged `face_data_disclosure`): The
   statement, titled "People in your photos", that faces are found and grouped on this phone, never
   sent anywhere or backed up, and how to turn it off. It has two modes. The **disclosure mode**, hosted at
-  `MainActivity`'s root over every screen except the **Full-screen viewer**, where it waits, shows
-  once per installation, while face data is on, the device capable and media access granted. Its buttons are OK
+  `MainActivity`'s root over every screen except the **Full-screen viewer** and the **Slideshow
+  screen**, where it waits, shows once per installation, while face data is on, the device capable and media access granted. Its buttons are OK
   (`face_data_disclosure_ok`) and Turn off (`face_data_disclosure_turn_off`); neither Back nor a tap
   outside closes it. Its **info mode**, opened from the **Face data info row**, has one Close
   (`face_data_disclosure_close`) and no side effect. Aliases: **face data notice**, **people

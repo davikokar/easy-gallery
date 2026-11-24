@@ -236,6 +236,103 @@ class MediaStoreDataSourceTest {
         assertEquals(listOf("new.mp4", "old.jpg"), media.map { it.name })
     }
 
+    @Test
+    fun `getAllMedia swaps stored dimensions by the image orientation`() = runTest {
+        val imageCursor = fakeCursor(
+            imageDimensionColumns,
+            listOf(
+                dimensionRow(mediaRow(1, "rotated.jpg", "Camera", 100, 50, "image/jpeg", "/a/rotated.jpg", 10), 4000, 3000, 90),
+                dimensionRow(mediaRow(2, "upright.jpg", "Camera", 90, 50, "image/jpeg", "/a/upright.jpg", 10), 4000, 3000, 0)
+            )
+        )
+        val videoCursor = fakeCursor(videoDimensionColumns, emptyList())
+        every {
+            contentResolver.query(any(), any(), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val media = dataSource.getAllMedia().associateBy { it.name }
+
+        assertEquals(3000, media.getValue("rotated.jpg").displayWidth)
+        assertEquals(4000, media.getValue("rotated.jpg").displayHeight)
+        assertEquals(4000, media.getValue("upright.jpg").displayWidth)
+        assertEquals(3000, media.getValue("upright.jpg").displayHeight)
+    }
+
+    @Test
+    fun `getAllMedia leaves dimensions null when MediaStore has none`() = runTest {
+        val imageCursor = fakeCursor(
+            imageDimensionColumns,
+            listOf(
+                dimensionRow(mediaRow(1, "nosize.jpg", "Camera", 100, 50, "image/jpeg", "/a/nosize.jpg", 10), null, null, null),
+                dimensionRow(mediaRow(2, "zero.jpg", "Camera", 90, 50, "image/jpeg", "/a/zero.jpg", 10), 0, 0, 0)
+            )
+        )
+        val videoCursor = fakeCursor(videoDimensionColumns, emptyList())
+        every {
+            contentResolver.query(any(), any(), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val media = dataSource.getAllMedia()
+
+        assertEquals(2, media.size)
+        media.forEach {
+            assertNull(it.displayWidth)
+            assertNull(it.displayHeight)
+        }
+    }
+
+    @Test
+    fun `on API 30 a video's orientation is queried and applied`() = runTest {
+        val projections = mutableListOf<Array<String>>()
+        val imageCursor = fakeCursor(imageDimensionColumns, emptyList())
+        val videoCursor = fakeCursor(
+            videoDimensionColumns,
+            listOf(
+                dimensionRow(
+                    mediaRow(3, "portrait.mp4", "Camera", 200, 60, "video/mp4", "/a/portrait.mp4", 100, duration = 1000),
+                    1920, 1080, 90, firstDimensionColumn = 9
+                )
+            )
+        )
+        every {
+            contentResolver.query(any(), capture(projections), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val video = dataSource.getAllMedia().single()
+
+        assertTrue(projections[0].contains("orientation"))
+        assertTrue(projections[1].contains("orientation"))
+        assertEquals(1080, video.displayWidth)
+        assertEquals(1920, video.displayHeight)
+    }
+
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.P])
+    fun `on API 28 a video projection omits orientation while an image projection keeps it`() = runTest {
+        val projections = mutableListOf<Array<String>>()
+        val imageCursor = fakeCursor(imageDimensionColumns, emptyList())
+        val videoCursor = fakeCursor(
+            videoColumns + (MediaStore.MediaColumns.WIDTH to 9) + (MediaStore.MediaColumns.HEIGHT to 10),
+            listOf(
+                dimensionRow(
+                    mediaRow(3, "clip.mp4", "Camera", 200, 60, "video/mp4", "/a/clip.mp4", 100, duration = 1000),
+                    1920, 1080, null, firstDimensionColumn = 9
+                )
+            )
+        )
+        every {
+            contentResolver.query(any(), capture(projections), any(), any(), any())
+        } returnsMany listOf(imageCursor, videoCursor)
+
+        val video = dataSource.getAllMedia().single()
+
+        assertTrue(projections[0].contains("orientation"))
+        assertFalse(projections[1].contains("orientation"))
+        assertTrue(projections.all { it.contains(MediaStore.MediaColumns.WIDTH) && it.contains(MediaStore.MediaColumns.HEIGHT) })
+        assertEquals(1920, video.displayWidth)
+        assertEquals(1080, video.displayHeight)
+    }
+
     // endregion
 
     // region Fake cursor helpers
@@ -287,6 +384,29 @@ class MediaStoreDataSourceTest {
         8 to duration
     )
 
+    private val imageDimensionColumns = imageColumns +
+        (MediaStore.MediaColumns.WIDTH to 8) +
+        (MediaStore.MediaColumns.HEIGHT to 9) +
+        ("orientation" to 10)
+
+    private val videoDimensionColumns = videoColumns +
+        (MediaStore.MediaColumns.WIDTH to 9) +
+        (MediaStore.MediaColumns.HEIGHT to 10) +
+        ("orientation" to 11)
+
+    // Images carry width/height at 8/9 and orientation at 10; videos shift by one for the duration.
+    private fun dimensionRow(
+        row: Map<Int, Any?>,
+        width: Int?,
+        height: Int?,
+        orientation: Int?,
+        firstDimensionColumn: Int = 8
+    ) = row + mapOf<Int, Any?>(
+        firstDimensionColumn to width,
+        firstDimensionColumn + 1 to height,
+        firstDimensionColumn + 2 to orientation
+    )
+
     private fun fakeCursor(columns: Map<String, Int>, rows: List<Map<Int, Any?>>): Cursor {
         val cursor = mockk<Cursor>(relaxed = true)
         columns.forEach { (name, index) ->
@@ -302,6 +422,12 @@ class MediaStoreDataSourceTest {
         }
         every { cursor.getString(any()) } answers {
             rows.getOrNull(position)?.get(firstArg<Int>()) as? String
+        }
+        every { cursor.getInt(any()) } answers {
+            (rows.getOrNull(position)?.get(firstArg<Int>()) as? Int) ?: 0
+        }
+        every { cursor.isNull(any()) } answers {
+            rows.getOrNull(position)?.get(firstArg<Int>()) == null
         }
         return cursor
     }

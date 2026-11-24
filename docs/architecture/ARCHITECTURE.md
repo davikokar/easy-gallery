@@ -57,7 +57,7 @@ tabs at the bottom of the screen, in the order Folders, Albums, Timeline — del
 `DisplayMode.entries` order — then a fourth item, **Settings**, which is a destination but neither a
 main view nor a `DisplayMode`. It is shown on all five main views, including during selection and
 search, and on the Settings screen, where the Settings item is selected and no tab is. It is hidden
-in the full-screen viewer, on the Folder thumbnail picker and the Album cover picker — the
+in the full-screen viewer and on the Slideshow screen, on the Folder thumbnail picker and the Album cover picker — the
 draft-and-commit modes of the two detail views — on the New album and New automatic album
 screens, on the Manage excluded screen and on the Permission denied screen. A tap on any of its four
 items cancels every selection and search and leaves any detail screen before switching. It replaced
@@ -74,9 +74,18 @@ taps on the bar add no history.
 > been renamed and is no longer part of this debt. Do not introduce a third set of names in the
 > meantime.
 
-Beyond the five views there are the **full-screen viewer** (`FullImageScreen`), the **New album
+Beyond the five views there are the **full-screen viewer** (`FullImageScreen`), the **Slideshow
+screen** (`SlideshowScreen`), the **New album
 screen** (`NewAlbumScreen`), the **New automatic album screen** (`NewAutomaticAlbumScreen`), the
 **Settings screen**, the **Manage excluded screen**, and the **Permission denied screen**.
+
+The Slideshow screen plays a folder's or Album's whole membership full screen, ignoring the Search
+field and Filter media, in the view's flat sort order; it is started by the **Slideshow item**, the
+last item of Folder Detail View's and Album Detail View's Overflow menu, through the **Slideshow
+dialog**, and the item is drawn only while the container holds any media. It is a branch of its own
+above the viewer (§4), its state is `SlideshowViewModel`'s (§3), and it is the one screen that keeps
+the display on and hides the system bars — **[ADR-0025](decisions/0025-slideshow.md)**, with its
+Amendment 1 for what the build settled.
 
 The New album screen is the manual branch of album creation: the **Album type dialog** offers
 Manual and Automatic, and Manual opens a screen that names the album and picks its members before
@@ -115,11 +124,12 @@ index area ([albums.md](../design/albums.md) §8 decision 29;
 **[ADR-0016](decisions/0016-album-creation-type-choice-and-picker-screen.md)** Amendment 3).
 
 The **Face data disclosure** is a dialog, not a screen: `MainActivity` hosts it over every screen
-except the full-screen viewer, where it waits, once per installation while face data is on, the
+except the full-screen viewer and the Slideshow screen, where it waits, once per installation while face data is on, the
 device capable and the media permission granted. Neither Back nor a tap outside closes it; OK or
 Turn off does. Settings carries the rest of face data's surface — the **Face data area**, drawn only
 while the capability record says capable, and the **Face licences row** in the Legal section, always
-present — **[ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md)** Amendment 1; the
+present — **[ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md)** Amendment 1, and
+Amendment 2 for the Slideshow screen; the
 state behind all three is `FaceDataViewModel`'s (§3).
 
 ---
@@ -141,7 +151,8 @@ GalleryViewModel  ──delegates state to──▶  DisplayPreferencesState    
         │                                   MediaViewerState
         │   (+ AlbumsViewModel, which owns AutomaticAlbumPickerState and a second
         │      FolderViewPreferencesState, and FavouritesViewModel, CreateFolderViewModel,
-        │      BillingViewModel, MediaIndexingViewModel, FaceDataViewModel as feature ViewModels)
+        │      BillingViewModel, MediaIndexingViewModel, FaceDataViewModel, SlideshowViewModel
+        │      as feature ViewModels)
         │
 *Screen composables   ← read the ViewModel, bind a PreferenceScope
         │
@@ -212,10 +223,10 @@ below every property it reads, or the class does not compile. Do not work around
 | File | Role |
 |---|---|
 | `MediaRepository.kt` | The interface abstracting all media access and file operations. |
-| `MediaStoreDataSource.kt` | The `MediaStore`/`ContentResolver` implementation, plus copy/move/delete/create. |
+| `MediaStoreDataSource.kt` | The `MediaStore`/`ContentResolver` implementation, plus copy/move/delete/create. Its one media query also reads `WIDTH` and `HEIGHT` for every item, and the `"orientation"` column for images on every API level but for videos only on API 29+, behind an explicit `SDK_INT` guard — below it the column does not exist for videos and the query would throw. Lint does not run here (`AGENTS.md` *Running Gradle*), so the guard is checked by reading ([ADR-0025](decisions/0025-slideshow.md) §4; the API 28 cost is in §11). |
 | `GalleryTransformations.kt` | All pure filter, sort, and group logic, including date headers and path conversion. `sortMedia` takes the index's date-taken projection as a parameter rather than reaching for it, which is what keeps it Android-free and plain-JVM testable. It also owns `DateTakenSortState` — indexed with a date, indexed without one, not indexed — which rule evaluation shares rather than naming the same three states twice. Indexed without a date is not rare: on both devices measured so far most of the library had no capture date — [albums.md](../design/albums.md) §8 decision 21 has the figures and why no second date source is used — so a `time` rule can only ever match the dated minority there. |
 | `GalleryModels.kt` | `SortType`, `SortOrder`, `GroupByType`, `DisplayMode`, `ViewType`, `OperationType`, `GalleryUiState`, `MediaPermissionHandler`. |
-| `MediaItem.kt`, `Folder.kt` | The two domain models. |
+| `MediaItem.kt`, `Folder.kt` | The two domain models. `MediaItem` carries `displayWidth` and `displayHeight`, trailing and defaulting to null: the dimensions as displayed, computed by the pure `displayedDimensions` in the same file — the stored ones, swapped for a 90° or 270° orientation, and null when either is missing or not positive ([ADR-0025](decisions/0025-slideshow.md) §4). The slideshow's Orientation option is their only reader. |
 | `ViewPreferences.kt` | The per-view preference bundle and `PreferenceScope`. |
 | `FolderViewOverrides.kt` | The sparse per-folder override bundle and its apply/merge logic, plus the pure three-layer Folder Detail resolution shared by Folder Detail View and the New album screen, and the pure two-layer Album Detail resolution with its keys — `albumOverrideKey(id)` and the reserved `FAVOURITES_OVERRIDE_KEY`. The bundle and `PreferenceApplyTarget` serve albums too, under their folder names ([ADR-0021](decisions/0021-per-album-display-preference-overrides.md) point 9). See §5. |
 | `CameraFolder.kt` | The camera-folder path heuristic and the implicit sort default it produces. |
@@ -266,6 +277,9 @@ below every property it reads, or the class does not compile. Do not work around
 | `AlbumNaming.kt` | Pure default naming for a new album — the first `My album N` that no existing album uses. |
 | `Favourites.kt` | Pure favourite-tier selection from SDK level, `MANAGE_MEDIA` grant, and R extension version. |
 | `FavouritesDataSource.kt` | The `MediaStore` favourite read/write implementation behind the `FavouritesDataSource` interface. |
+| `SlideshowOptions.kt` | `SlideshowOptions` — the slideshow's seven options and their defaults — with the `SlideshowTransition`, `SlideshowOrder` and `SlideshowOrientation` enums and the interval's bounds. Pure; the defaults are the maintainer's, recorded in [ADR-0025](decisions/0025-slideshow.md) §5 and pinned by `SlideshowOptionsStoreTest`. |
+| `SlideshowOptionsStore.kt` | `slideshow_options` (`SharedPreferences*` and `InMemory*`): the one global set of slideshow options as seven flat keys, written only when Play starts a slideshow. A value of the wrong type or an unknown enum name reads as its default, and the interval is clamped to its bounds (§6). |
+| `SlideshowPlaylist.kt` | Pure playlist logic of [ADR-0025](decisions/0025-slideshow.md) §2–§3. `isPlayable`: images always, videos and GIFs by their switches, Landscape only and Portrait only judged on `MediaItem`'s displayed dimensions, so a square or unknown-size item plays only under All. `baseOrder`: the view's flat sort over the whole membership through `GalleryTransformations.sortMedia`, or — under the view's Random sort, which cannot be recomputed — the list the view shows, with the members it hides inserted at random positions. `build`: the playable items, as the base order, reversed, or shuffled. `reshuffle`: a looping Random pass's next order, which does not open on the item just shown. |
 | `DisplayPreferencesStore.kt`, `FolderPreferencesStore.kt`, `FolderViewPreferencesStore.kt`, `FolderThumbnailStore.kt` | Persistence; see *Persistence*. |
 
 There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
@@ -273,7 +287,8 @@ There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 `AlbumMembership`, `MediaIdentity`, `AlbumRule`, `AlbumRuleJson`, `AlbumRuleEvaluation`,
 `AlbumRuleSummary`, `MediaIndexLiveJoin`, `PeopleClauseEvaluation`, `PeopleAvailability`, `AutomaticAlbumFacets`, `MediaIndexDeltaDetection`,
 `MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`, `MediaIndexTierC`,
-`FaceIndexPass`, `FaceGrouping`, `FaceGroupingPass`, `FaceCapability`, `AlbumNaming`, `Favourites`), in `ui/AlbumListFiltering.kt`, and in `ui/components/` helper files
+`FaceIndexPass`, `FaceGrouping`, `FaceGroupingPass`, `FaceCapability`, `AlbumNaming`, `Favourites`,
+`SlideshowOptions`, `SlideshowPlaylist`), in `ui/AlbumListFiltering.kt`, and in `ui/components/` helper files
 (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`, `AlbumStatusNotices`) specifically so it can
 be unit tested on a plain JVM without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
@@ -478,8 +493,25 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
   `MainActivity` forwards to `AlbumsViewModel.refreshPeopleAvailability()`. Activity-scoped like
   `MediaIndexingViewModel`: `MainActivity` holds it, hosts the disclosure, calls `onResume()`, and
   passes it to the Settings screen. Nothing in it logs, and no state names a photo or a person.
+- **`SlideshowViewModel`** — the slideshow's state
+  ([ADR-0025](decisions/0025-slideshow.md) §6). Activity-scoped (`by viewModels()` in
+  `MainActivity`), so a rotation keeps the playlist, the position and the interval timer. It reads
+  and writes `SlideshowOptionsStore`: `savedOptions` seeds the Slideshow dialog, and
+  `start(baseOrder, options)` builds the playlist through `SlideshowPlaylist` and saves the options
+  only when that playlist is not empty. It publishes `state`, a `SlideshowUiState` that is **null when
+  no slideshow is shown** — the flag `MainActivity`'s chain branches on (§4). The state carries the
+  phase (`COUNTDOWN`, `PLAYING`, `PAUSED`), the current item and the next one, across a loop's wrap,
+  for prefetching, whether the controls show, the transition, and `itemSerial`, which changes on every
+  item entered, the same item again included, so the screen keys per-item work on it rather than on a
+  URI. The screen reports back through plain calls: `onItemShown` starts the interval, `onItemFailed`
+  skips, `onVideoEnded` advances, `pauseForBackground` is the `ON_STOP` pause outside a configuration
+  change, and `recordVideoPosition(uri, ms)` / `consumeVideoPosition(uri)` carry a video's position
+  across a rotation, keyed by its URI, as plain functions rather than state (ADR-0002). A pass in
+  which no item could be shown ends the slideshow instead of looping. ADR-0025 Amendment 1 records
+  where these read the ADR more precisely than it was written.
 
-`AlbumsViewModel`, `FavouritesViewModel`, `MediaIndexingViewModel` and `FaceDataViewModel` are feature-scoped on that
+`AlbumsViewModel`, `FavouritesViewModel`, `MediaIndexingViewModel`, `FaceDataViewModel` and
+`SlideshowViewModel` are feature-scoped on that
 precedent, and `AutomaticAlbumPickerState` is a state holder inside the first rather than a fourth
 ViewModel, because its counts must read the albums' own join. The Index band is the converse case:
 it is about the indexing job rather than the albums' join, so the screen reads
@@ -494,11 +526,13 @@ an area collapsed, hidden and shown again comes back collapsed
 state and no indexing state; it still owns selection,
 media operations, and the viewer delegate, which Album Detail View reuses. What it gained for the
 index is one delegate, `MediaIndexDateTakenState`, because date-taken sorting is a property of the
-flows it already owns.
+flows it already owns. The slideshow added nothing to `GalleryViewModel` or `AlbumsViewModel`: the
+detail screens compute the base order from what they already read and hand it to
+`SlideshowViewModel` with the options when Play is pressed.
 
 Screens: `FolderListScreen` (with `FolderList`, `FolderGrid`, `FolderDialogs`),
 `FolderDetailScreen`, `AlbumDetailScreen` (with `AlbumDialogs`), `NewAlbumScreen`,
-`NewAutomaticAlbumScreen` (with `PeoplePicker`), `FullImageScreen`, `CalendarGrid`, `ManageExcludedScreen`, `SettingsScreen`.
+`NewAutomaticAlbumScreen` (with `PeoplePicker`), `FullImageScreen`, `SlideshowScreen`, `CalendarGrid`, `ManageExcludedScreen`, `SettingsScreen`.
 
 Each main view is a pair: the `*Screen` composable reads the ViewModel and binds the scope; the
 `*Content` composable is stateless and takes plain values plus callbacks. **The `*Content`
@@ -510,8 +544,8 @@ signature change breaks them loudly, by design.
 Top bars (`SearchTopBar`, `SelectionTopBar`, `MediaSelectionTopBar`, and `ThumbnailPickerTopBar`,
 shared by the Folder thumbnail picker and the Album cover picker, which passes its own title),
 dialogs (`ColumnCountDialog`, `GroupByDialog`, `FilterMediaDialog`,
-`CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`, and the read-only
-`AlbumInfoDialog`), the `SortOption` and `OrderOption` rows that `SortDialog` is built from, the
+`CreateFolderDialog`, `MediaPropertiesDialog`, `FolderBrowser`, the read-only
+`AlbumInfoDialog`, and `SlideshowDialog`), the `SortOption` and `OrderOption` rows that `SortDialog` is built from, the
 `PreferenceScopeSelector`
 state holder those dialogs share for their draft-and-commit "apply only to this folder" or "this
 album" target — its `PreferenceContainer` chooses the wording only, and both commit the same
@@ -536,6 +570,15 @@ request built by `personFaceRequest`: a crop `Transformation` over `faceCropRect
 to disk; only the memory cache holds it, and switching face data off clears that
 ([ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md) Amendment 1 §4).
 
+The slideshow added `SlideshowDialog.kt`: the **Slideshow dialog**, stateless, and
+`SlideshowDialogHost`, which the two detail screens compose only while the dialog is open. The host
+keeps the draft options and whether the options area is expanded in `rememberSaveable`, so a
+rotation keeps both and leaving composition discards them — which is how Cancel and dismissing
+discard the draft and how the area opens collapsed every time. It counts the draft's playlist live,
+through `SlideshowPlaylist.build` over the base order it is given, with Order ignored because it
+changes no count. It is not one of the five display-preference dialogs: nothing in it is per folder
+or album ([ADR-0025](decisions/0025-slideshow.md) §5).
+
 `MainViewBar(selectedTab: MainViewTab?, isSettingsSelected: Boolean, onTabSelected, onSettingsClick)`
 is stateless: the caller derives which item is selected — a tab, or Settings, in which case
 `selectedTab` is null — and decides what each tap does, a re-tap included. `MainViewTab` names the
@@ -553,8 +596,11 @@ View. No detail screen passes `onShowExcludedClick`: the flag is read only by th
 from Folder Detail View it took effect only after going back. Both detail screens pass
 `onChangeThumbnailClick`, with `changeThumbnailLabel` naming the folder or the album item;
 `AlbumDetailContent` passes it only for an Album showing at least one item, never for Favourites.
-Only `AlbumDetailContent` passes the last parameter, `onAlbumInfoClick`, whose item is the menu's
-last.
+Only `AlbumDetailContent` passes `onAlbumInfoClick`. Both detail screens pass the last parameter,
+`onSlideshowClick`, whose item is the menu's last, directly after Album info in Album Detail View —
+and pass it only while their `*Content`'s `hasSlideshowMedia` is true, which the screens compute from
+the whole membership before search and Filter media ([ADR-0025](decisions/0025-slideshow.md)
+Amendment 1 §1).
 
 ### App entry points
 
@@ -576,9 +622,10 @@ last.
   `IntentSender` launchers for scoped-storage delete/write requests and for favourite writes. It
   also composes the Main view bar beneath the navigation chain (§4). Since step 3.6 it holds
   `FaceDataViewModel`, draws the Face data disclosure over the chain whenever
-  `faceDataDisclosureDue` holds — media permission granted, no media open in the viewer, face data
-  on, the device capable, the disclosure not yet shown — and forwards the ViewModel's availability
-  epoch to `AlbumsViewModel`.
+  `faceDataDisclosureDue` holds — media permission granted, no media open in the viewer, no slideshow
+  shown, face data on, the device capable, the disclosure not yet shown — and forwards the ViewModel's
+  availability epoch to `AlbumsViewModel`. It also holds `SlideshowViewModel`, passes it to both
+  detail screens, and branches on its state (§4).
 - **`LocaleHelper`** — persists the BCP-47 language tag and wraps a `Context` with it via
   `createConfigurationContext`. Its `supportedLanguageTags` is the list of shipped locales (§9).
 
@@ -590,7 +637,8 @@ Navigation is a plain `if / else if` chain in `MainActivity` — **no Navigation
 stack.** The order is:
 
 ```
-selectedMedia != null        → FullImageScreen          (outside the state holder; no Main view bar)
+slideshowState != null       → SlideshowScreen          (outside the state holder; no Main view bar)
+else selectedMedia != null   → FullImageScreen          (outside the state holder; no Main view bar)
   else, a Column of:
     Box(weight 1f), inside SaveableStateProvider(screenKey):
       isManageExcludedMode     → ManageExcludedScreen
@@ -605,7 +653,15 @@ selectedMedia != null        → FullImageScreen          (outside the state hol
     MainViewBar                (only when shouldShowMainViewBar is true)
 ```
 
-Outside both branches, after the chain, `MainActivity` draws the Face data disclosure (§1, §3).
+Outside all three branches, after the chain, `MainActivity` draws the Face data disclosure (§1, §3).
+
+The slideshow added the branch at the top — **[ADR-0025](decisions/0025-slideshow.md)** §7.
+`slideshowState` is `SlideshowViewModel.state`, non-null from Play to the slideshow's end, so its
+countdown, playing and paused phases all show the branch. However the slideshow ends, the state
+returns to null and the chain falls through to the detail view it was started from, which kept its
+saved state under its own `screenKey` meanwhile, as it does under the viewer. Each detail screen's
+Slideshow dialog flag is a `rememberSaveable` cleared on Play, so the dialog does not reopen on
+return.
 
 Albums added two branches rather than a navigation library; the chain stays —
 **[ADR-0013](decisions/0013-albums-as-third-display-mode.md)**. They sit after `selectedFolder`
@@ -631,12 +687,14 @@ position is not load-bearing either.
 
 The Main view bar is **not a branch** — it has no `screenKey` and adds none to the chain. It sits
 below and outside the `SaveableStateProvider`, so it stays composed while the screen above it
-changes, and the viewer branch renders neither the provider nor the bar —
+changes, and the viewer and slideshow branches render neither the provider nor the bar —
 **[ADR-0013](decisions/0013-albums-as-third-display-mode.md)** Amendment 2, point 4.
 
 - **The chain's order is written three times.** The chain branches on the flags directly,
-  `screenKey`'s `when` maps them to a key, and `resolveShownScreen` in
-  `ui/components/MainViewBarRules.kt` maps the same flags, in the same order, to a `ShownScreen`.
+  `screenKey`'s `when` maps them to a key — the branches inside the provider only, so neither the
+  Slideshow screen nor the viewer has one — and `resolveShownScreen` in
+  `ui/components/MainViewBarRules.kt` maps the same flags, in the same order, to a `ShownScreen`,
+  `SLIDESHOW` first.
   Reordering one without the others still compiles, so keep all three in step. `shouldShowMainViewBar` and
   `selectedMainViewTab` are derived from the `ShownScreen` — the first also from the two picker
   modes, `GalleryViewModel.isThumbnailPickerMode` and `AlbumsViewModel.isAlbumCoverPickerMode`,
@@ -678,7 +736,9 @@ position whenever it left composition — ADR-0013 Amendment 2, point 8.
 `FullImageScreen` is deliberately rendered **outside** that provider, and `MainActivity` carries
 no `android:configChanges`. Both are required by
 **[ADR-0002](decisions/0002-viewmodel-owned-transient-viewer-state.md)** — read it before touching
-either. Albums left both untouched, and so did the Main view bar.
+either. Albums left both untouched, and so did the Main view bar. `SlideshowScreen` is rendered
+outside the provider too, like the viewer, and nothing of it is restored after process death
+([ADR-0025](decisions/0025-slideshow.md) §6–§7).
 
 The `new_album` and `new_automatic_album` entries are the two keys `MainActivity` **removes** from
 the holder, each in a `LaunchedEffect` once its screen closes. Retention is right for a scroll
@@ -821,6 +881,7 @@ each other — **[ADR-0021](decisions/0021-per-album-display-preference-override
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
 | `media_index_run_state` | the last indexing run's outcome, timestamps and row counters | `MediaIndexRunStateStore` |
 | `face_device_state` | whether the face-data disclosure has been shown; the capability record and its unfinished starts | `FaceDeviceStateStore` |
+| `slideshow_options` | the slideshow's options, one global set | `SlideshowOptionsStore`, owned by `SlideshowViewModel` |
 
 Every store is an interface with a `SharedPreferences*` production implementation and an
 `InMemory*` implementation for tests. Add both when you add a store.
@@ -865,6 +926,12 @@ restore must not carry either to another phone. It is a file of its own rather t
 **[ADR-0018](decisions/0018-media-index-in-a-second-database.md)** Amendment 7 §3. The capability
 record counts a start before the check runs and is written durably, because the check may end
 the process.
+
+`slideshow_options` is **backed up**: the options are the user's choice, like display preferences,
+and the backup rules only exclude, so it needed no rule. It is a file of its own rather than keys in
+`app_settings`, which takes a scalar and not one feature's bundle of seven, or in
+`display_preferences`, which has its own store — **[ADR-0025](decisions/0025-slideshow.md)** §5,
+which answers ADR-0018 Amendment 2's two tests. Nothing writes it but Play.
 
 ### The album database
 
@@ -1100,6 +1167,31 @@ labels are hand-rolled Compose controls over a `Player.Listener` plus position p
 `PlayerView` runs with `useController = false`. Upgrading media3 is a decision to raise, not a
 routine bump.
 
+**The Slideshow screen plays video on an `ExoPlayer` of its own, not through `PlayerView`** —
+**[ADR-0025](decisions/0025-slideshow.md)** §8–§9. `SlideshowScreen` creates one player with the
+screen and releases it with the screen, so a rotation rebuilds it and the video resumes from the
+position `SlideshowViewModel` recorded at `ON_STOP`. The player draws into a plain `TextureView` in
+an `AndroidView`, given to it with `setVideoTextureView` and sized to the video's aspect ratio,
+because a Compose `graphicsLayer` alpha fades a `TextureView` and does not fade the `SurfaceView`
+`PlayerView` uses; the viewer keeps its `SurfaceView`, so the `TextureView`'s power and HDR costs are
+the slideshow's alone. It is **muted twice**: the audio track type is disabled in its track
+selection, so no audio is decoded and no audio focus is requested, and its volume is zero. Items
+crossfade over about half a second, or cut under the None transition. An incoming item fades in only
+once it is ready — a still decoded by Coil, a video's first frame rendered — and the current and
+next stills are prefetched through Coil. **A video leaves the screen as a still**: when it ends, its
+last frame is copied with `TextureView.getBitmap()` and shown as an image under the next item's fade,
+so one player and one decoder are ever alive. Before its first frame a video's view is drawn at a
+near-zero alpha rather than zero, so that the compositor keeps consuming its frames. A video that
+ends having drawn a frame is reported shown and ended together, so a clip that ends before the
+recomposition reporting it still advances; one that ends without a first frame is reported failed
+and skipped. `SlideshowViewModel` also bounds the wait: while playing, a video not reported shown
+within `VIDEO_FIRST_FRAME_TIMEOUT_MILLIS` (10 seconds) is skipped as failed — never for a still,
+stopped by a pause and restarted in full on resume (ADR-0025 Amendment 2). The Slideshow
+screen also keeps the display on, through the hosting view's `keepScreenOn` during the countdown and
+while playing, and hides the system bars through `WindowCompat.getInsetsController`, both scoped to
+the screen's composition and undone when it leaves — the first code in the app to do either
+(ADR-0025 §10). The video path is not yet observed on a device (§11).
+
 ---
 
 ## 9. Localisation
@@ -1182,8 +1274,8 @@ KSP.
   established escape hatches are a new state holder (`DisplayPreferencesState`,
   `FolderViewPreferencesState`, `MediaViewerState`) or a feature ViewModel
   (`CreateFolderViewModel`, `BillingViewModel`, `AlbumsViewModel`, `FavouritesViewModel`,
-  `MediaIndexingViewModel`, `FaceDataViewModel`). Albums used the second and added no album state
-  to its body; nor did face data.
+  `MediaIndexingViewModel`, `FaceDataViewModel`, `SlideshowViewModel`). Albums used the second and
+  added no album state to its body; nor did face data, nor the slideshow.
 - **Screen names lag the canonical ones** — see the caveat in §1. `FolderListScreen` and
   `CalendarGrid` still do; `DisplayMode` no longer does, having been renamed to
   `FOLDERS`/`TIMELINE`/`ALBUMS` when Albums View landed. `FolderListScreen` now hosts three views,
@@ -1617,6 +1709,35 @@ KSP.
   the test is opt-in, and runs with the media permissions granted beforehand through `am instrument`.
   *2026-11-23:* accepted by the maintainer, the test-side fix deferred — revisited when the test is
   next needed on a fresh install ([albums-stage-3.md](../design/albums-stage-3.md) *3.7*, G10 and L14).
+- **On API 28 a video's orientation is unknown, so the slideshow's Orientation option can misplace
+  it.** `MediaStore` has no orientation column for videos below API 29, so there `MediaItem`'s
+  displayed dimensions for a video are its stored ones: a video recorded in portrait whose stored
+  dimensions are landscape counts as landscape. Images are unaffected. Accepted by the maintainer
+  ([ADR-0025](decisions/0025-slideshow.md) §4, question 12).
+- **Size and Path sort media by date added, and the slideshow inherits it.**
+  `GalleryTransformations.sortMedia` has no branch for `SortType.SIZE` or `SortType.PATH` and sorts
+  media under either by `dateAdded` (its `else` branch). The slideshow's base order goes through the
+  same function, so a folder or album sorted by size or path plays — as it is already shown — by date
+  added. Recorded, not fixed, by the maintainer's choice ([ADR-0025](decisions/0025-slideshow.md) §3,
+  question 22).
+- **The slideshow's video path has not run on a device.** The device run of 2026-11-24 played a
+  photos-only playlist, so three of [ADR-0025](decisions/0025-slideshow.md) §9's checks are
+  unobserved: a video crossfading in and out without a black flash or a frozen frame, the last-frame
+  copy showing the video's final frame, and no audio with another app's music neither paused nor
+  ducked — and so is a rotation in mid-video. Nor was the face data disclosure seen waiting behind a
+  slideshow; that rule is held by unit tests of `faceDataDisclosureDue`. Observed on the device: the
+  system bars hidden and restored, the display kept on while playing, a rotation continuing the
+  slideshow, leaving the app pausing it and the pause holding on return, and images advancing at the
+  interval. If the video checks fail, ADR-0025 §9 has already decided the fallback, a dip to black for
+  transitions that involve a video. Run them with a playlist that holds a video. Also unobserved on a
+  device: the first-frame remediation of ADR-0025 Amendment 2 with a real audio-only file or a real
+  very short clip. Its ViewModel half is unit-tested; the screen's branch on a video's end is not
+  driven by any test, and only the player-error path has an instrumented test.
+- **A slideshow video that stalls after its first frame is unbounded.** Once a video is reported
+  shown, `SlideshowViewModel`'s first-frame watchdog has stopped and a video has no interval, so a
+  video that neither ends nor raises an error holds the Slideshow screen, with the display kept on,
+  until the user taps or leaves. Recorded, not fixed ([ADR-0025](decisions/0025-slideshow.md)
+  Amendment 2 §3).
 - **`MediaIndexingWorkEnqueueTest` has timed out once.** In one full connected run on the SM-G990B
   on 2026-11-23, two of its tests failed waiting for the work to finish; the class passed alone
   straight after, and the next two full runs passed. Not reproduced and not fixed; a recurrence is

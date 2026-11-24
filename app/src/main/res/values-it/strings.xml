@@ -293,4 +293,39 @@
     <string name="settings_index_never">Non ancora indicizzato</string>
     <string name="settings_index_failed">Ultima analisi non riuscita</string>
     <string name="settings_index_cancelled">L’ultima analisi è stata interrotta</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">Presentazione</string>
+    <string name="slideshow_dialog_title">Presentazione</string>
+    <plurals name="slideshow_count">
+        <item quantity="one">%1$d elemento verrà riprodotto</item>
+        <item quantity="other">%1$d elementi verranno riprodotti</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">Niente da riprodurre</string>
+    <string name="slideshow_play">Riproduci</string>
+    <string name="slideshow_options">Opzioni</string>
+    <string name="slideshow_interval">Intervallo</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="one">%1$d secondo</item>
+        <item quantity="other">%1$d secondi</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">Intervallo più breve</string>
+    <string name="slideshow_interval_increase">Intervallo più lungo</string>
+    <string name="slideshow_interval_videos_note">I video vengono riprodotti fino alla fine.</string>
+    <string name="slideshow_transition">Transizione</string>
+    <string name="slideshow_transition_fade">Dissolvenza</string>
+    <string name="slideshow_transition_none">Nessuna</string>
+    <string name="slideshow_include_videos">Includi video</string>
+    <string name="slideshow_include_gifs">Includi GIF</string>
+    <string name="slideshow_order">Ordine</string>
+    <string name="slideshow_order_ascending">Crescente</string>
+    <string name="slideshow_order_descending">Decrescente</string>
+    <string name="slideshow_order_random">Casuale</string>
+    <string name="slideshow_loop">Ripeti</string>
+    <string name="slideshow_orientation">Orientamento</string>
+    <string name="slideshow_orientation_all">Tutte</string>
+    <string name="slideshow_orientation_landscape">Solo orizzontale</string>
+    <string name="slideshow_orientation_portrait">Solo verticale</string>
+    <string name="slideshow_pause">Pausa</string>
+    <string name="slideshow_resume">Riprendi</string>
+    <string name="slideshow_close">Chiudi presentazione</string>
 </resources>

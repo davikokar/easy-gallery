@@ -4,6 +4,7 @@ import com.davide.seddio.easygallery.data.DisplayMode
 
 /** What `MainActivity`'s branch chain is showing; the bar's rules are a function of this. */
 enum class ShownScreen {
+    SLIDESHOW,
     FULL_SCREEN_VIEWER,
     MANAGE_EXCLUDED,
     SETTINGS,
@@ -16,8 +17,9 @@ enum class ShownScreen {
     PERMISSION_DENIED
 }
 
-/** Mirrors the order of `MainActivity`'s chain (the viewer first, permission-denied last); keep them in step. */
+/** Mirrors the order of `MainActivity`'s chain (the slideshow, then the viewer first, permission-denied last); keep them in step. */
 fun resolveShownScreen(
+    isSlideshowOpen: Boolean,
     isMediaOpen: Boolean,
     isManageExcludedMode: Boolean,
     isSettingsMode: Boolean,
@@ -28,6 +30,7 @@ fun resolveShownScreen(
     isNewAutomaticAlbumOpen: Boolean,
     hasPermission: Boolean
 ): ShownScreen = when {
+    isSlideshowOpen -> ShownScreen.SLIDESHOW
     isMediaOpen -> ShownScreen.FULL_SCREEN_VIEWER
     isManageExcludedMode -> ShownScreen.MANAGE_EXCLUDED
     isSettingsMode -> ShownScreen.SETTINGS
@@ -55,6 +58,7 @@ fun shouldShowMainViewBar(
     ShownScreen.SETTINGS -> true
     ShownScreen.ALBUM_DETAIL -> !isAlbumCoverPickerMode
     ShownScreen.FOLDER_DETAIL -> !isThumbnailPickerMode
+    ShownScreen.SLIDESHOW,
     ShownScreen.FULL_SCREEN_VIEWER,
     ShownScreen.MANAGE_EXCLUDED,
     ShownScreen.NEW_ALBUM,

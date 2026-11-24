@@ -281,4 +281,37 @@
     <string name="settings_index_never">Belum diindeks</string>
     <string name="settings_index_failed">Pemindaian terakhir gagal</string>
     <string name="settings_index_cancelled">Pemindaian terakhir terhenti</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">Tayangan slide</string>
+    <string name="slideshow_dialog_title">Tayangan slide</string>
+    <plurals name="slideshow_count">
+        <item quantity="other">%1$d item akan diputar</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">Tidak ada yang diputar</string>
+    <string name="slideshow_play">Putar</string>
+    <string name="slideshow_options">Opsi</string>
+    <string name="slideshow_interval">Interval</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="other">%1$d detik</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">Interval lebih pendek</string>
+    <string name="slideshow_interval_increase">Interval lebih panjang</string>
+    <string name="slideshow_interval_videos_note">Video diputar hingga selesai.</string>
+    <string name="slideshow_transition">Transisi</string>
+    <string name="slideshow_transition_fade">Pudar</string>
+    <string name="slideshow_transition_none">Tidak ada</string>
+    <string name="slideshow_include_videos">Sertakan video</string>
+    <string name="slideshow_include_gifs">Sertakan GIF</string>
+    <string name="slideshow_order">Urutan</string>
+    <string name="slideshow_order_ascending">Naik</string>
+    <string name="slideshow_order_descending">Turun</string>
+    <string name="slideshow_order_random">Acak</string>
+    <string name="slideshow_loop">Ulangi</string>
+    <string name="slideshow_orientation">Orientasi</string>
+    <string name="slideshow_orientation_all">Semua</string>
+    <string name="slideshow_orientation_landscape">Hanya lanskap</string>
+    <string name="slideshow_orientation_portrait">Hanya potret</string>
+    <string name="slideshow_pause">Jeda</string>
+    <string name="slideshow_resume">Lanjutkan</string>
+    <string name="slideshow_close">Tutup tayangan slide</string>
 </resources>

@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +82,7 @@ import com.davide.seddio.easygallery.data.OperationType
 import com.davide.seddio.easygallery.data.PreferenceApplyTarget
 import com.davide.seddio.easygallery.data.PreferenceScope
 import com.davide.seddio.easygallery.data.SortOrder
+import com.davide.seddio.easygallery.data.SlideshowPlaylist
 import com.davide.seddio.easygallery.data.SortType
 import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
@@ -96,6 +98,7 @@ import com.davide.seddio.easygallery.ui.components.GroupByDialog
 import com.davide.seddio.easygallery.ui.components.MediaPropertiesDialog
 import com.davide.seddio.easygallery.ui.components.PreferenceContainer
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
+import com.davide.seddio.easygallery.ui.components.SlideshowDialogHost
 import com.davide.seddio.easygallery.ui.components.ThumbnailPickerTopBar
 import com.davide.seddio.easygallery.ui.components.albumStatusNoticeKind
 import com.davide.seddio.easygallery.ui.components.setImageAsWallpaper
@@ -105,6 +108,7 @@ import com.davide.seddio.easygallery.ui.components.supportsWallpaper
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 import java.io.IOException
+import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -112,6 +116,7 @@ import kotlinx.coroutines.withContext
 fun AlbumDetailScreen(
     galleryViewModel: GalleryViewModel,
     albumsViewModel: AlbumsViewModel,
+    slideshowViewModel: SlideshowViewModel,
     favouritesAvailable: Boolean,
     favouriteUris: Set<Uri>,
     isFavouritePending: Boolean,
@@ -139,6 +144,8 @@ fun AlbumDetailScreen(
     val isAlbumCoverPickerMode by albumsViewModel.isAlbumCoverPickerMode.collectAsState()
     val albumCoverDraftUri by albumsViewModel.albumCoverDraftUri.collectAsState()
     val albumCoverPreselectedUri by albumsViewModel.albumCoverPreselectedUri.collectAsState()
+    // Saveable so rotation keeps it open; cleared on Play so returning from the slideshow does not reopen it.
+    var showSlideshowDialog by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
@@ -336,8 +343,41 @@ fun AlbumDetailScreen(
             albumsViewModel.enterAlbumCoverPicker()
         },
         onExitAlbumCoverPicker = { albumsViewModel.exitAlbumCoverPicker() },
-        onCommitAlbumCoverPicker = { albumsViewModel.commitAlbumCoverDraft() }
+        onCommitAlbumCoverPicker = { albumsViewModel.commitAlbumCoverDraft() },
+        hasSlideshowMedia = resolvedMedia.isNotEmpty(),
+        onSlideshowClick = { showSlideshowDialog = true }
     )
+
+    if (showSlideshowDialog) {
+        val savedOptions by slideshowViewModel.savedOptions.collectAsState()
+        // Under the Random sort the shown order cannot be recomputed, so it is keyed on what is shown.
+        val shownWhenRandom = if (preferences.sortType == SortType.RANDOM) media else emptyList()
+        val baseOrder = remember(
+            resolvedMedia,
+            preferences.sortType,
+            preferences.sortOrder,
+            indexedDateTakenByMediaUri,
+            shownWhenRandom
+        ) {
+            SlideshowPlaylist.baseOrder(
+                membership = resolvedMedia,
+                sortType = preferences.sortType,
+                sortOrder = preferences.sortOrder,
+                indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri,
+                shownWhenRandom = shownWhenRandom,
+                random = Random.Default
+            )
+        }
+        SlideshowDialogHost(
+            savedOptions = savedOptions,
+            baseOrder = baseOrder,
+            onPlay = { options ->
+                showSlideshowDialog = false
+                slideshowViewModel.start(baseOrder, options)
+            },
+            onDismiss = { showSlideshowDialog = false }
+        )
+    }
 }
 
 private fun AlbumRule?.hasPlaceClause(): Boolean =
@@ -390,6 +430,8 @@ fun AlbumDetailContent(
     onEnterAlbumCoverPicker: () -> Unit,
     onExitAlbumCoverPicker: () -> Unit,
     onCommitAlbumCoverPicker: () -> Unit,
+    hasSlideshowMedia: Boolean,
+    onSlideshowClick: () -> Unit,
     favouritesAvailable: Boolean = false,
     favouriteUris: Set<Uri> = emptySet(),
     isFavouritePending: Boolean = false,
@@ -520,7 +562,8 @@ fun AlbumDetailContent(
                         { showAlbumInfoDialog = true }
                     } else {
                         null
-                    }
+                    },
+                    onSlideshowClick = if (hasSlideshowMedia) onSlideshowClick else null
                 )
             }
         },

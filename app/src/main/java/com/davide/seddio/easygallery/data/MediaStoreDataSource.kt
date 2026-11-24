@@ -3,8 +3,10 @@ package com.davide.seddio.easygallery.data
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -178,9 +180,12 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
             MediaStore.MediaColumns.DATE_MODIFIED,
             MediaStore.MediaColumns.MIME_TYPE,
             MediaStore.MediaColumns.DATA,
-            MediaStore.MediaColumns.SIZE
+            MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.WIDTH,
+            MediaStore.MediaColumns.HEIGHT
         ).apply {
             if (isVideo) add(MediaStore.Video.Media.DURATION)
+            if (hasOrientationColumn(isVideo)) add(ORIENTATION_COLUMN)
         }.toTypedArray()
 
         context.contentResolver.query(uri, projection, selection, selectionArgs, "${MediaStore.MediaColumns.DATE_ADDED} DESC")?.use { cursor ->
@@ -193,6 +198,9 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
             val dataCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
             val durCol = if (isVideo) cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
+            val widthCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH)
+            val heightCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT)
+            val orientationCol = if (hasOrientationColumn(isVideo)) cursor.getColumnIndexOrThrow(ORIENTATION_COLUMN) else -1
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
@@ -206,6 +214,11 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
                 val size = cursor.getLong(sizeCol)
                 val duration = if (isVideo) cursor.getLong(durCol) else null
                 val itemUri = ContentUris.withAppendedId(uri, id)
+                val displayed = displayedDimensions(
+                    width = cursor.intOrNull(widthCol),
+                    height = cursor.intOrNull(heightCol),
+                    orientationDegrees = cursor.intOrNull(orientationCol)
+                )
 
                 val type = when {
                     isVideo -> MediaType.VIDEO
@@ -213,9 +226,28 @@ class MediaStoreDataSource(private val context: Context) : MediaRepository {
                     else -> MediaType.IMAGE
                 }
 
-                onItem(MediaItem(itemUri, name, added, modified, size, type, bucket, folderPath, duration))
+                onItem(
+                    MediaItem(
+                        itemUri, name, added, modified, size, type, bucket, folderPath, duration,
+                        displayWidth = displayed?.first,
+                        displayHeight = displayed?.second
+                    )
+                )
             }
         }
+    }
+
+    // Images have had "orientation" since API 1; for videos MediaColumns.ORIENTATION is API 29,
+    // and querying it below that throws. A video's rotation is unknown on API 28.
+    private fun hasOrientationColumn(isVideo: Boolean): Boolean =
+        !isVideo || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+
+    private fun Cursor.intOrNull(column: Int): Int? =
+        if (column < 0 || isNull(column)) null else getInt(column)
+
+    private companion object {
+        // MediaStore.Images.ImageColumns.ORIENTATION and (API 29+) MediaColumns.ORIENTATION are the same column.
+        const val ORIENTATION_COLUMN = "orientation"
     }
 
     private data class FolderData(

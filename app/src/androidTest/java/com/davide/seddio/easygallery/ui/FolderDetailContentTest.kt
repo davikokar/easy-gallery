@@ -9,6 +9,7 @@ import com.davide.seddio.easygallery.R
 import com.davide.seddio.easygallery.data.*
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -486,9 +487,80 @@ class FolderDetailContentTest {
         }
     }
 
+    @Test
+    fun slideshowIsTheLastItemOfTheOverflowMenu() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia))
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        val slideshowTop = composeTestRule.onNodeWithTag("slideshow_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        listOf(
+            R.string.sort_by_title,
+            R.string.column_count_title,
+            R.string.group_by_title,
+            R.string.filter_media_title,
+            R.string.change_view_type_title,
+            R.string.menu_change_folder_thumbnail
+        ).forEach { label ->
+            val itemTop = composeTestRule.onNodeWithText(appContext.getString(label))
+                .fetchSemanticsNode().boundsInRoot.top
+            assertTrue("Slideshow must come after ${appContext.getString(label)}", slideshowTop > itemTop)
+        }
+    }
+
+    @Test
+    fun slideshowItemCarriesItsLabelAndInvokesTheCallback() {
+        var clicks = 0
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia), onSlideshowClick = { clicks++ })
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_slideshow))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("slideshow_button").performClick()
+
+        composeTestRule.runOnIdle { assertEquals(1, clicks) }
+    }
+
+    @Test
+    fun slideshowIsHiddenWhenTheFolderHasNoMedia() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = emptyList())
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onAllNodesWithTag("slideshow_button").assertCountEquals(0)
+    }
+
+    @Test
+    fun slideshowStaysAvailableWhenAFilterHidesEveryShownItem() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = emptyList(), hasSlideshowMedia = true)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onNodeWithTag("slideshow_button").assertIsDisplayed()
+    }
+
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
+        hasSlideshowMedia: Boolean = media.isNotEmpty(),
         viewType: ViewType = ViewType.GRID,
         isMediaSelectionMode: Boolean = false,
         selectedMediaItems: Set<Uri> = emptySet(),
@@ -501,7 +573,8 @@ class FolderDetailContentTest {
         onEnterThumbnailPickerMode: () -> Unit = {},
         onExitThumbnailPickerMode: () -> Unit = {},
         onCommitThumbnailPickerSelection: () -> Unit = {},
-        onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit = { _, _, _ -> }
+        onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit = { _, _, _ -> },
+        onSlideshowClick: () -> Unit = {}
     ) {
         FolderDetailContent(
             media = media,
@@ -551,7 +624,9 @@ class FolderDetailContentTest {
             onSelectMedia = {},
             onEnterMediaSelectionMode = {},
             onDecreaseColumns = {},
-            onIncreaseColumns = {}
+            onIncreaseColumns = {},
+            hasSlideshowMedia = hasSlideshowMedia,
+            onSlideshowClick = onSlideshowClick
         )
     }
 }

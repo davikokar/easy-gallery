@@ -296,4 +296,39 @@
     <string name="settings_index_never">Not indexed yet</string>
     <string name="settings_index_failed">Last scan failed</string>
     <string name="settings_index_cancelled">Last scan was interrupted</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">Slideshow</string>
+    <string name="slideshow_dialog_title">Slideshow</string>
+    <plurals name="slideshow_count">
+        <item quantity="one">%1$d item will play</item>
+        <item quantity="other">%1$d items will play</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">Nothing to play</string>
+    <string name="slideshow_play">Play</string>
+    <string name="slideshow_options">Options</string>
+    <string name="slideshow_interval">Interval</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="one">%1$d second</item>
+        <item quantity="other">%1$d seconds</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">Shorter interval</string>
+    <string name="slideshow_interval_increase">Longer interval</string>
+    <string name="slideshow_interval_videos_note">Videos play to the end.</string>
+    <string name="slideshow_transition">Transition</string>
+    <string name="slideshow_transition_fade">Fade</string>
+    <string name="slideshow_transition_none">None</string>
+    <string name="slideshow_include_videos">Include videos</string>
+    <string name="slideshow_include_gifs">Include GIFs</string>
+    <string name="slideshow_order">Order</string>
+    <string name="slideshow_order_ascending">Ascending</string>
+    <string name="slideshow_order_descending">Descending</string>
+    <string name="slideshow_order_random">Random</string>
+    <string name="slideshow_loop">Loop</string>
+    <string name="slideshow_orientation">Orientation</string>
+    <string name="slideshow_orientation_all">All</string>
+    <string name="slideshow_orientation_landscape">Landscape only</string>
+    <string name="slideshow_orientation_portrait">Portrait only</string>
+    <string name="slideshow_pause">Pause</string>
+    <string name="slideshow_resume">Resume</string>
+    <string name="slideshow_close">Close slideshow</string>
 </resources>

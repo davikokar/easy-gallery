@@ -307,4 +307,41 @@
     <string name="settings_index_never">Neindexat încă</string>
     <string name="settings_index_failed">Ultima scanare a eșuat</string>
     <string name="settings_index_cancelled">Ultima scanare a fost întreruptă</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">Prezentare de diapozitive</string>
+    <string name="slideshow_dialog_title">Prezentare de diapozitive</string>
+    <plurals name="slideshow_count">
+        <item quantity="one">%1$d element va fi redat</item>
+        <item quantity="few">%1$d elemente vor fi redate</item>
+        <item quantity="other">%1$d de elemente vor fi redate</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">Nimic de redat</string>
+    <string name="slideshow_play">Redați</string>
+    <string name="slideshow_options">Opțiuni</string>
+    <string name="slideshow_interval">Interval</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="one">%1$d secundă</item>
+        <item quantity="few">%1$d secunde</item>
+        <item quantity="other">%1$d de secunde</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">Interval mai scurt</string>
+    <string name="slideshow_interval_increase">Interval mai lung</string>
+    <string name="slideshow_interval_videos_note">Videoclipurile se redau până la capăt.</string>
+    <string name="slideshow_transition">Tranziție</string>
+    <string name="slideshow_transition_fade">Estompare</string>
+    <string name="slideshow_transition_none">Fără</string>
+    <string name="slideshow_include_videos">Includeți videoclipurile</string>
+    <string name="slideshow_include_gifs">Includeți GIF-urile</string>
+    <string name="slideshow_order">Ordine</string>
+    <string name="slideshow_order_ascending">Crescător</string>
+    <string name="slideshow_order_descending">Descrescător</string>
+    <string name="slideshow_order_random">Aleatoriu</string>
+    <string name="slideshow_loop">Repetare</string>
+    <string name="slideshow_orientation">Orientare</string>
+    <string name="slideshow_orientation_all">Toate</string>
+    <string name="slideshow_orientation_landscape">Doar peisaj</string>
+    <string name="slideshow_orientation_portrait">Doar portret</string>
+    <string name="slideshow_pause">Pauză</string>
+    <string name="slideshow_resume">Reluare</string>
+    <string name="slideshow_close">Închideți prezentarea</string>
 </resources>

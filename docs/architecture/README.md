@@ -52,3 +52,4 @@ for the required format and status rules.
 | [ADR-0022](decisions/0022-people-criterion-anchored-to-a-photo.md) | A people criterion finds its person through an anchor photo | Active | 2026-11-18 |
 | [ADR-0023](decisions/0023-face-pipeline-models-runtime-and-delivery.md) | The face pipeline — YuNet and SFace on a bundled OpenCV, inside the indexing worker | Active | 2026-11-18 |
 | [ADR-0024](decisions/0024-face-data-disclosure-and-delete-switch.md) | Face data — the disclosure, the switch that deletes it, and what never leaves it | Active | 2026-11-18 |
+| [ADR-0025](decisions/0025-slideshow.md) | Slideshow — what plays, in what order, who owns it, and how video fades | Active | 2026-11-24 |

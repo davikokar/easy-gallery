@@ -39,10 +39,16 @@ data class FaceDataUiState(
     val cleanupPending: Boolean = false
 )
 
-/** The disclosure's whole condition (ADR-0024 Am. 1 §5): the viewer is not covered, and nothing else may be missing. */
-fun faceDataDisclosureDue(state: FaceDataUiState, mediaPermissionGranted: Boolean, viewerOpen: Boolean): Boolean =
+/** The disclosure's whole condition (ADR-0024 Am. 1 §5, Am. 2): neither full-screen surface is covered, and nothing else may be missing. */
+fun faceDataDisclosureDue(
+    state: FaceDataUiState,
+    mediaPermissionGranted: Boolean,
+    viewerOpen: Boolean,
+    slideshowOpen: Boolean
+): Boolean =
     mediaPermissionGranted &&
         !viewerOpen &&
+        !slideshowOpen &&
         state.enabled &&
         state.capability == FaceCapabilityStatus.CAPABLE &&
         !state.disclosureShown

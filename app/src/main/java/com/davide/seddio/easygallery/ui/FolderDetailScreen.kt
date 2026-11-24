@@ -10,6 +10,7 @@ import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.OperationType
 import com.davide.seddio.easygallery.data.GroupByType
 import com.davide.seddio.easygallery.data.PreferenceApplyTarget
+import com.davide.seddio.easygallery.data.SlideshowPlaylist
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,11 +52,13 @@ import com.davide.seddio.easygallery.data.MediaItem
 import com.davide.seddio.easygallery.ui.components.*
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
+import kotlin.random.Random
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderDetailScreen(
     viewModel: GalleryViewModel,
+    slideshowViewModel: SlideshowViewModel,
     favouritesAvailable: Boolean,
     favouriteUris: Set<android.net.Uri>,
     isFavouritePending: Boolean,
@@ -77,6 +81,11 @@ fun FolderDetailScreen(
     val pendingOperation by viewModel.pendingOperation.collectAsState()
     val browsingPath by viewModel.browsingPath.collectAsState()
     val browsingFolders by viewModel.browsingFolders.collectAsState()
+    // The whole folder, before search and Filter media: the slideshow plays what the folder holds.
+    val mediaInFolder by viewModel.mediaInFolder.collectAsState()
+    val indexedDateTakenByMediaUri by viewModel.indexedDateTakenByMediaUri.collectAsState()
+    // Saveable so rotation keeps it open; cleared on Play so returning from the slideshow does not reopen it.
+    var showSlideshowDialog by rememberSaveable { mutableStateOf(false) }
 
     FolderDetailContent(
         media = media,
@@ -132,8 +141,41 @@ fun FolderDetailScreen(
         onSelectMedia = { viewModel.selectMedia(it) },
         onEnterMediaSelectionMode = { viewModel.enterMediaSelectionMode(it) },
         onDecreaseColumns = { viewModel.decreaseColumns(scope) },
-        onIncreaseColumns = { viewModel.increaseColumns(scope) }
+        onIncreaseColumns = { viewModel.increaseColumns(scope) },
+        hasSlideshowMedia = mediaInFolder.isNotEmpty(),
+        onSlideshowClick = { showSlideshowDialog = true }
     )
+
+    if (showSlideshowDialog) {
+        val savedOptions by slideshowViewModel.savedOptions.collectAsState()
+        // Under the Random sort the shown order cannot be recomputed, so it is keyed on what is shown.
+        val shownWhenRandom = if (preferences.sortType == SortType.RANDOM) media else emptyList()
+        val baseOrder = remember(
+            mediaInFolder,
+            preferences.sortType,
+            preferences.sortOrder,
+            indexedDateTakenByMediaUri,
+            shownWhenRandom
+        ) {
+            SlideshowPlaylist.baseOrder(
+                membership = mediaInFolder,
+                sortType = preferences.sortType,
+                sortOrder = preferences.sortOrder,
+                indexedDateTakenByCanonicalMediaUri = indexedDateTakenByMediaUri,
+                shownWhenRandom = shownWhenRandom,
+                random = Random.Default
+            )
+        }
+        SlideshowDialogHost(
+            savedOptions = savedOptions,
+            baseOrder = baseOrder,
+            onPlay = { options ->
+                showSlideshowDialog = false
+                slideshowViewModel.start(baseOrder, options)
+            },
+            onDismiss = { showSlideshowDialog = false }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -182,7 +224,9 @@ fun FolderDetailContent(
     onSelectMedia: (MediaItem) -> Unit,
     onEnterMediaSelectionMode: (MediaItem) -> Unit,
     onDecreaseColumns: () -> Unit,
-    onIncreaseColumns: () -> Unit
+    onIncreaseColumns: () -> Unit,
+    hasSlideshowMedia: Boolean,
+    onSlideshowClick: () -> Unit
 ) {
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
@@ -270,6 +314,7 @@ fun FolderDetailContent(
                     onGroupByClick = { showGroupByDialog = true },
                     onViewTypeClick = { showViewTypeDialog = true },
                     onChangeThumbnailClick = { onEnterThumbnailPickerMode() },
+                    onSlideshowClick = if (hasSlideshowMedia) onSlideshowClick else null,
                     navigationIcon = {
                         IconButton(onClick = { onBackToFolders() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = Color.White)

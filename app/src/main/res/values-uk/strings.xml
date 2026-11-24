@@ -320,4 +320,43 @@
     <string name="settings_index_never">Ще не індексовано</string>
     <string name="settings_index_failed">Останнє сканування завершилося помилкою</string>
     <string name="settings_index_cancelled">Останнє сканування було перервано</string>
+    <!-- Slideshow -->
+    <string name="menu_slideshow">Слайдшоу</string>
+    <string name="slideshow_dialog_title">Слайдшоу</string>
+    <plurals name="slideshow_count">
+        <item quantity="one">%1$d елемент буде відтворено</item>
+        <item quantity="few">%1$d елементи буде відтворено</item>
+        <item quantity="many">%1$d елементів буде відтворено</item>
+        <item quantity="other">%1$d елемента буде відтворено</item>
+    </plurals>
+    <string name="slideshow_nothing_to_play">Нічого відтворювати</string>
+    <string name="slideshow_play">Відтворити</string>
+    <string name="slideshow_options">Параметри</string>
+    <string name="slideshow_interval">Інтервал</string>
+    <plurals name="slideshow_interval_seconds">
+        <item quantity="one">%1$d секунда</item>
+        <item quantity="few">%1$d секунди</item>
+        <item quantity="many">%1$d секунд</item>
+        <item quantity="other">%1$d секунди</item>
+    </plurals>
+    <string name="slideshow_interval_decrease">Коротший інтервал</string>
+    <string name="slideshow_interval_increase">Довший інтервал</string>
+    <string name="slideshow_interval_videos_note">Відео відтворюються до кінця.</string>
+    <string name="slideshow_transition">Перехід</string>
+    <string name="slideshow_transition_fade">Згасання</string>
+    <string name="slideshow_transition_none">Немає</string>
+    <string name="slideshow_include_videos">Включати відео</string>
+    <string name="slideshow_include_gifs">Включати GIF</string>
+    <string name="slideshow_order">Порядок</string>
+    <string name="slideshow_order_ascending">За зростанням</string>
+    <string name="slideshow_order_descending">За спаданням</string>
+    <string name="slideshow_order_random">Випадково</string>
+    <string name="slideshow_loop">Повторювати</string>
+    <string name="slideshow_orientation">Орієнтація</string>
+    <string name="slideshow_orientation_all">Усі</string>
+    <string name="slideshow_orientation_landscape">Лише альбомна</string>
+    <string name="slideshow_orientation_portrait">Лише портретна</string>
+    <string name="slideshow_pause">Пауза</string>
+    <string name="slideshow_resume">Продовжити</string>
+    <string name="slideshow_close">Закрити слайдшоу</string>
 </resources>

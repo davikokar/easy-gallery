@@ -70,46 +70,59 @@ class FaceDataViewModelTest {
 
     @Test
     fun `the disclosure is due when every condition holds`() {
-        assertTrue(faceDataDisclosureDue(due(), mediaPermissionGranted = true, viewerOpen = false))
+        assertTrue(faceDataDisclosureDue(due(), mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = false))
     }
 
     @Test
     fun `the disclosure is not due without the media permission`() {
-        assertFalse(faceDataDisclosureDue(due(), mediaPermissionGranted = false, viewerOpen = false))
+        assertFalse(faceDataDisclosureDue(due(), mediaPermissionGranted = false, viewerOpen = false, slideshowOpen = false))
     }
 
     @Test
     fun `the disclosure waits while the full screen viewer is open`() {
-        assertFalse(faceDataDisclosureDue(due(), mediaPermissionGranted = true, viewerOpen = true))
+        assertFalse(faceDataDisclosureDue(due(), mediaPermissionGranted = true, viewerOpen = true, slideshowOpen = false))
+    }
+
+    @Test
+    fun `the disclosure waits while the slideshow is open`() {
+        assertFalse(faceDataDisclosureDue(due(), mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = true))
+    }
+
+    @Test
+    fun `the disclosure is due again once the slideshow has closed`() {
+        val state = due()
+
+        assertFalse(faceDataDisclosureDue(state, mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = true))
+        assertTrue(faceDataDisclosureDue(state, mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = false))
     }
 
     @Test
     fun `the disclosure is not due while face data is off`() {
-        assertFalse(faceDataDisclosureDue(due().copy(enabled = false), mediaPermissionGranted = true, viewerOpen = false))
+        assertFalse(faceDataDisclosureDue(due().copy(enabled = false), mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = false))
     }
 
     @Test
     fun `the disclosure is not due on an unknown capability`() {
         val state = due().copy(capability = FaceCapabilityStatus.UNKNOWN)
 
-        assertFalse(faceDataDisclosureDue(state, mediaPermissionGranted = true, viewerOpen = false))
+        assertFalse(faceDataDisclosureDue(state, mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = false))
     }
 
     @Test
     fun `the disclosure is not due on an incapable device`() {
         val state = due().copy(capability = FaceCapabilityStatus.INCAPABLE)
 
-        assertFalse(faceDataDisclosureDue(state, mediaPermissionGranted = true, viewerOpen = false))
+        assertFalse(faceDataDisclosureDue(state, mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = false))
     }
 
     @Test
     fun `the disclosure is not due once it has been shown`() {
-        assertFalse(faceDataDisclosureDue(due().copy(disclosureShown = true), mediaPermissionGranted = true, viewerOpen = false))
+        assertFalse(faceDataDisclosureDue(due().copy(disclosureShown = true), mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = false))
     }
 
     @Test
     fun `nothing is due before the stores have been read`() {
-        assertFalse(faceDataDisclosureDue(FaceDataUiState(), mediaPermissionGranted = true, viewerOpen = false))
+        assertFalse(faceDataDisclosureDue(FaceDataUiState(), mediaPermissionGranted = true, viewerOpen = false, slideshowOpen = false))
     }
 
     // ---- the state is derived from the stores ----
@@ -150,8 +163,8 @@ class FaceDataViewModelTest {
         val first = createViewModel().uiState.value
         val second = createViewModel().uiState.value
 
-        assertTrue(faceDataDisclosureDue(first, true, false))
-        assertTrue(faceDataDisclosureDue(second, true, false))
+        assertTrue(faceDataDisclosureDue(first, true, false, false))
+        assertTrue(faceDataDisclosureDue(second, true, false, false))
     }
 
     // ---- the disclosure's buttons ----
@@ -169,7 +182,7 @@ class FaceDataViewModelTest {
         assertTrue(viewModel.uiState.value.disclosureShown)
         assertTrue(viewModel.uiState.value.enabled)
         assertEquals(epochBefore, viewModel.peopleAvailabilityEpoch.value)
-        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false))
+        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false, false))
     }
 
     @Test
@@ -187,7 +200,7 @@ class FaceDataViewModelTest {
         assertFalse(viewModel.uiState.value.enabled)
         assertFalse(viewModel.uiState.value.isDeleting)
         assertEquals(epochBefore + 1, viewModel.peopleAvailabilityEpoch.value)
-        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false))
+        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false, false))
     }
 
     @Test
@@ -243,11 +256,11 @@ class FaceDataViewModelTest {
         recordCapability(capable = true)
         setting.setEnabled(false)
         val viewModel = createViewModel()
-        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false))
+        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false, false))
 
         viewModel.switchOn()
 
-        assertTrue(faceDataDisclosureDue(viewModel.uiState.value, true, false))
+        assertTrue(faceDataDisclosureDue(viewModel.uiState.value, true, false, false))
     }
 
     @Test
@@ -259,7 +272,7 @@ class FaceDataViewModelTest {
 
         viewModel.switchOn()
 
-        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false))
+        assertFalse(faceDataDisclosureDue(viewModel.uiState.value, true, false, false))
     }
 
     // ---- switching off ----

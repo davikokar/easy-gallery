@@ -191,8 +191,8 @@ the audit is for the rest.
 - **`GalleryViewModel` is the central hub and is already one of the largest files in the app.**
   Treat that as a reason to extract, not a licence to add. The two established escapes are a new state holder like the
   three above, or a feature-scoped ViewModel — `CreateFolderViewModel`, `BillingViewModel`,
-  `AlbumsViewModel`, `FavouritesViewModel`, `MediaIndexingViewModel`, and `FaceDataViewModel` are
-  the precedent. Albums
+  `AlbumsViewModel`, `FavouritesViewModel`, `MediaIndexingViewModel`, `FaceDataViewModel`, and
+  `SlideshowViewModel` are the precedent. Albums
   added **no album state** to `GalleryViewModel`; it only reuses the viewer delegate and the
   selection machinery. The media index added one delegate, `MediaIndexDateTakenState`, and nothing
   else. A state holder can also belong to a feature ViewModel: `AutomaticAlbumPickerState` is owned
@@ -205,7 +205,9 @@ the audit is for the rest.
   switch, disclosure and app-open work are the opposite case: they belong to no album, so they are a
   feature ViewModel of their own, `FaceDataViewModel`, which `MainActivity` holds and which reaches
   the albums only by an availability epoch `MainActivity` forwards to
-  `AlbumsViewModel.refreshPeopleAvailability()`.
+  `AlbumsViewModel.refreshPeopleAvailability()`. The slideshow added nothing to `GalleryViewModel` or
+  `AlbumsViewModel`: `SlideshowViewModel` owns the playlist, playback state and options, and the
+  detail screens hand it the base order when Play is pressed (ADR-0025).
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -213,7 +215,8 @@ the audit is for the rest.
   screens removes the previous screen from composition, so plain `remember` in a screen does not
   survive navigation. State that must survive belongs in a ViewModel or inside the
   `SaveableStateProvider` in `MainActivity` — except the full-screen viewer, which ADR-0002
-  deliberately keeps outside it. ADR-0013 keeps the chain as it is: Albums View is a third
+  deliberately keeps outside it, and the Slideshow screen, the chain's first branch, which ADR-0025
+  keeps outside it on the same pattern. ADR-0013 keeps the chain as it is: Albums View is a third
   `DisplayMode` on `FolderListScreen`, not a fourth screen.
 - Screens are stateless where practical: the `*Screen` composable reads the ViewModel and passes
   plain values plus callbacks to a `*Content` composable, which is what the instrumented tests
@@ -235,6 +238,7 @@ file-wide, so folder and album overrides sharing a file would reset each other (
 | `folder_thumbnails` | per-folder thumbnail override | `FolderThumbnailStore` |
 | `media_index_run_state` | last indexing run's outcome, timestamps, counters | `MediaIndexRunStateStore` |
 | `face_device_state` | whether the face-data disclosure was shown; the capability record | `FaceDeviceStateStore` |
+| `slideshow_options` | the slideshow's options, one global set; backed up | `SlideshowOptionsStore`, owned by `SlideshowViewModel` |
 
 Every store except `LocaleHelper`, which predates the rule and is an `object`, is an interface with
 a `SharedPreferences*` production implementation and an `InMemory*` implementation for tests. Add

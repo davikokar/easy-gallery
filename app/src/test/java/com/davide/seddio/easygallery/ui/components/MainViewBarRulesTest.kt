@@ -10,6 +10,7 @@ import org.junit.Test
 class MainViewBarRulesTest {
 
     private fun resolve(
+        isSlideshowOpen: Boolean = false,
         isMediaOpen: Boolean = false,
         isManageExcludedMode: Boolean = false,
         isSettingsMode: Boolean = false,
@@ -20,6 +21,7 @@ class MainViewBarRulesTest {
         isNewAutomaticAlbumOpen: Boolean = false,
         hasPermission: Boolean = true
     ) = resolveShownScreen(
+        isSlideshowOpen = isSlideshowOpen,
         isMediaOpen = isMediaOpen,
         isManageExcludedMode = isManageExcludedMode,
         isSettingsMode = isSettingsMode,
@@ -35,6 +37,7 @@ class MainViewBarRulesTest {
 
     @Test
     fun `each flag resolves to its own screen`() {
+        assertEquals(ShownScreen.SLIDESHOW, resolve(isSlideshowOpen = true))
         assertEquals(ShownScreen.FULL_SCREEN_VIEWER, resolve(isMediaOpen = true))
         assertEquals(ShownScreen.MANAGE_EXCLUDED, resolve(isManageExcludedMode = true))
         assertEquals(ShownScreen.SETTINGS, resolve(isSettingsMode = true))
@@ -45,6 +48,30 @@ class MainViewBarRulesTest {
         assertEquals(ShownScreen.NEW_AUTOMATIC_ALBUM, resolve(isNewAutomaticAlbumOpen = true))
         assertEquals(ShownScreen.MAIN_VIEW, resolve())
         assertEquals(ShownScreen.PERMISSION_DENIED, resolve(hasPermission = false))
+    }
+
+    @Test
+    fun `the slideshow wins over every other flag including the viewer`() {
+        val screen = resolve(
+            isSlideshowOpen = true,
+            isMediaOpen = true,
+            isManageExcludedMode = true,
+            isSettingsMode = true,
+            hasSelectedFolder = true,
+            hasSelectedAlbum = true,
+            isFavouritesSelected = true,
+            isNewAlbumOpen = true,
+            isNewAutomaticAlbumOpen = true,
+            hasPermission = false
+        )
+
+        assertEquals(ShownScreen.SLIDESHOW, screen)
+    }
+
+    @Test
+    fun `a slideshow over a folder detail resolves to the slideshow`() {
+        assertEquals(ShownScreen.SLIDESHOW, resolve(isSlideshowOpen = true, hasSelectedFolder = true))
+        assertEquals(ShownScreen.FOLDER_DETAIL, resolve(hasSelectedFolder = true))
     }
 
     @Test
@@ -124,6 +151,7 @@ class MainViewBarRulesTest {
     @Test
     fun `the bar is hidden on every focused screen`() {
         listOf(
+            ShownScreen.SLIDESHOW,
             ShownScreen.FULL_SCREEN_VIEWER,
             ShownScreen.MANAGE_EXCLUDED,
             ShownScreen.NEW_ALBUM,

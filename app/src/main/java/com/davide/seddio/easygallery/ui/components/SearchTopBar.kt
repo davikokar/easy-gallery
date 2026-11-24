@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.filled.ViewColumn
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
@@ -56,7 +57,8 @@ fun SearchTopBar(
     onCreateAlbumClick: (() -> Unit)? = null,
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null,
-    onAlbumInfoClick: (() -> Unit)? = null
+    onAlbumInfoClick: (() -> Unit)? = null,
+    onSlideshowClick: (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -289,6 +291,22 @@ fun SearchTopBar(
                                 onClick = {
                                     showMenu = false
                                     onAlbumInfoClick()
+                                }
+                            )
+                        }
+                        if (onSlideshowClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_slideshow)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Slideshow,
+                                        contentDescription = null
+                                    )
+                                },
+                                modifier = Modifier.testTag("slideshow_button"),
+                                onClick = {
+                                    showMenu = false
+                                    onSlideshowClick()
                                 }
                             )
                         }
