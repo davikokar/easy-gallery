@@ -523,9 +523,22 @@ Shared parts:
   **Viewer bottom bar** that holds the **Pager** and, drawn over its bottom edge, the **Info
   overlay**. The overlay takes no layout space, so showing or hiding it never moves or resizes the
   media.
-- **Viewer bottom bar**: The bar below the media, holding the Video controls when the page is a
-  video and the Viewer action row. It occupies real layout space rather than covering the media,
-  and the whole bar collapses in immersive mode.
+- **Viewer bottom bar**: The bar below the media, holding, from top to bottom, the Video controls
+  when the page is a video, the **Filmstrip** when the list has two or more items, and the Viewer
+  action row. It occupies real layout space rather than covering the media, and the whole bar
+  collapses in immersive mode.
+- **Filmstrip** (`ViewerFilmstrip`, tagged `viewer_filmstrip`): The single row of small thumbnails in
+  the **Viewer bottom bar**, between the **Video controls** and the **Viewer action row**, for the
+  same list the **Pager** pages through. The current item is centred, a little larger, with a thin
+  border; on the first or last item the strip leaves empty space beside it so that item still
+  reaches the centre. Swiping the strip pages the viewer live as thumbnails pass the centre, but a
+  video binds only once the strip has settled; tapping a thumbnail jumps to it, and tapping the
+  centred one does nothing. Each cell is tagged `viewer_filmstrip_item_<index>`, described by the
+  item's name, and selected when centred; video thumbnails carry no badge. It is hidden for a list of
+  one item, and with the rest of the bar in **Immersive mode**. It is in Timeline View's viewer too,
+  and is never on the **Slideshow screen**. Say **Filmstrip**, not "thumbnail" alone: that word
+  names the **Folder thumbnail** and the **Thumbnail picker top bar**.
+  Aliases: **thumbnail strip**, **thumbnails bar**
 - **Viewer action row**: Delete, Share, Rotate (images only), Info, the Favourite heart when
   supported, and the **Viewer overflow menu** (Copy to, Move to, Use as background, Add to album).
 - **Immersive mode**: The state in which the Viewer bottom bar is hidden and the media fills the

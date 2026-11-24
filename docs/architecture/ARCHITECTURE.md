@@ -291,8 +291,8 @@ There is **no `domain/` module**. Pure, Android-free logic lives in `data/`
 `MediaIndexReconciliation`, `Gazetteer`, `MediaIndexPlaceResolution`, `MediaIndexTierC`,
 `FaceIndexPass`, `FaceGrouping`, `FaceGroupingPass`, `FaceCapability`, `AlbumNaming`, `Favourites`,
 `SlideshowOptions`, `SlideshowPlaylist`), in `ui/AlbumListFiltering.kt`, and in `ui/components/` helper files
-(`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`, `AlbumStatusNotices`) specifically so it can
-be unit tested on a plain JVM without Robolectric.
+(`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`, `AlbumStatusNotices`,
+`ViewerFilmstripRules`) specifically so it can be unit tested on a plain JVM without Robolectric.
 Operating on a `MediaItem` does not disqualify a file: its `uri` is mocked in those tests, which is
 the `AlbumMembership` precedent `MediaIndexReconciliation` follows.
 
@@ -561,17 +561,19 @@ state holder those dialogs share for their draft-and-commit "apply only to this 
 album" target — its `PreferenceContainer` chooses the wording only, and both commit the same
 `PreferenceApplyTarget` —
 media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `FavouriteIndicator`,
-`ZoomableImage`, and `ViewerMediaArea` and `ViewerInfoPanel` in `ViewerInfoOverlay.kt`), the **Main view
+`ZoomableImage`, `ViewerFilmstrip`, and `ViewerMediaArea` and `ViewerInfoPanel` in `ViewerInfoOverlay.kt`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
 helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`,
-`AlbumStatusNotices`, plus `MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
+`AlbumStatusNotices`, `ViewerFilmstripRules`, plus `MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
 is the one formatter for years and months, shared by the New automatic album screen and the Album
 info dialog.
 
 `ViewerInfoOverlay.kt` holds the full-screen viewer's **Info overlay**. `ViewerMediaArea` is the
 region above the Viewer bottom bar: it holds the pager and draws the overlay over its bottom edge,
 taking no layout space, so toggling Info never moves or resizes the media; the overlay is composed
-only while shown, and never in immersive mode. `ViewerInfoPanel` draws the name, path, date and
+only while shown, and never in immersive mode. The Viewer bottom bar below it holds, top to bottom,
+the Video controls on a video page, the Filmstrip when the list has two or more items, and the
+Viewer action row, and collapses as a whole in immersive mode. `ViewerInfoPanel` draws the name, path, date and
 GPS rows on a dark scrim, `VIEWER_INFO_SCRIM_ALPHA`. `FullImageScreen` passes it
 `GalleryTransformations.resolveDateTaken` over `GalleryViewModel.indexedDateTakenByMediaUri`,
 through `displayableDateTaken`, which hides the row for a value that is not positive; the row is
@@ -582,6 +584,19 @@ the map and applies the same two functions to its single-item date row; `MediaLi
 resolved `dateTakenMillis` and shows it unlabelled. Those two functions and the scrim's contrast
 are unit-tested on a plain JVM, but the file is Compose-bound and so is not on the Android-free list
 under `data/`.
+
+`ViewerFilmstrip.kt` holds the **Filmstrip**: a second `HorizontalPager`, of fixed-size cells
+snapped to the centre, over the same list the viewer's pager pages through. The main pager is the
+source of truth. `FilmstripPagerSync` makes the strip follow it, except while the user drives the
+strip — from the first drag until its fling and snap have stopped — when the main pager follows the
+strip instead, so at most one pager is ever asked to move; a tap scrolls the main pager to that page.
+That decision is `filmstripSync` in `ViewerFilmstripRules.kt`, beside the cell scale, the border
+fade and the edge inset, all pure. `FullImageScreen` creates the strip's `PagerState` beside the
+main pager's, inside `key(mediaList)`, while the strip itself is composed in the bar, so in
+immersive mode it leaves composition and its first sync on return snaps rather than animates. The
+screen treats the user-driven window as scrolling, so no video is bound until the strip has
+settled, and it clears its zoom flag on every page change, because a strip jump can leave a zoomed
+page, which a swipe cannot.
 
 Step 3.6 added face data's components. `FaceDataDialogs.kt` holds the **Face data disclosure**
 (`FaceDataDisclosureDialog`, a disclosure mode that neither Back nor an outside tap dismisses and an
@@ -1821,3 +1836,6 @@ KSP.
   straight after, and the next two full runs passed. Not reproduced and not fixed; a recurrence is
   the trigger to look at the test's waits ([albums-stage-3.md](../design/albums-stage-3.md) *3.8*,
   entry condition 4).
+- **The Filmstrip's cells are below the touch-target guideline.** Each is `FILMSTRIP_ITEM_SIZE` in
+  `ViewerFilmstrip.kt` (44 dp), under the 48 dp minimum. Accepted because the strip is a secondary
+  navigation path: the viewer's pager still pages by swipe.

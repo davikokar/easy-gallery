@@ -58,10 +58,12 @@ import com.davide.seddio.easygallery.data.MediaType
 import com.davide.seddio.easygallery.data.OperationType
 import com.davide.seddio.easygallery.ui.components.DestinationFolderPickerDialog
 import com.davide.seddio.easygallery.ui.components.VideoPlaybackState
+import com.davide.seddio.easygallery.ui.components.ViewerFilmstrip
 import com.davide.seddio.easygallery.ui.components.ViewerInfoPanel
 import com.davide.seddio.easygallery.ui.components.ViewerMediaArea
 import com.davide.seddio.easygallery.ui.components.displayableDateTaken
 import com.davide.seddio.easygallery.ui.components.formatMediaDuration
+import com.davide.seddio.easygallery.ui.components.isFilmstripShown
 import com.davide.seddio.easygallery.ui.components.openMediaLocationInMaps
 import com.davide.seddio.easygallery.ui.components.playbackProgressFraction
 import com.davide.seddio.easygallery.ui.components.rememberMediaLocation
@@ -124,7 +126,13 @@ fun FullImageScreen(
         val pagerState = rememberPagerState(initialPage = initialIndex) {
             mediaList.size
         }
-        val isPagerScrolling = pagerState.isScrollInProgress
+        // Same lifetime and start page as the main pager; the strip only ever follows it (or leads while being dragged).
+        val filmstripState = rememberPagerState(initialPage = initialIndex) {
+            mediaList.size
+        }
+        var isFilmstripDriven by remember { mutableStateOf(false) }
+        // A drag on the filmstrip passes pages quickly; ExoPlayer is bound only once it has settled.
+        val isPagerScrolling = pagerState.isScrollInProgress || isFilmstripDriven
         val activePage = pagerState.settledPage
         val activeMedia = mediaList.getOrNull(activePage)
         val activeVideo = activeMedia?.takeIf { it.type == MediaType.VIDEO }
@@ -134,6 +142,8 @@ fun FullImageScreen(
         }
 
         LaunchedEffect(pagerState.currentPage) {
+            // The filmstrip can leave a zoomed page, which a swipe could not; nothing else would clear the flag.
+            isZoomed = false
             if (pagerState.currentPage in mediaList.indices) {
                 viewModel.setCurrentMedia(mediaList[pagerState.currentPage])
             }
@@ -316,6 +326,16 @@ fun FullImageScreen(
                                 VideoPlaybackControls(
                                     player = exoPlayer,
                                     isPageActive = !isPagerScrolling && isLifecycleStarted
+                                )
+                            }
+
+                            // Below the video controls: the bar grows upward, so the strip must not move when they appear.
+                            if (isFilmstripShown(mediaList.size)) {
+                                ViewerFilmstrip(
+                                    items = mediaList,
+                                    mainState = pagerState,
+                                    stripState = filmstripState,
+                                    onUserDrivenChange = { isFilmstripDriven = it }
                                 )
                             }
 
