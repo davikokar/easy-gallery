@@ -1,5 +1,11 @@
 # Albums Stage 3 — people albums
 
+> **Archived — Stage 3 closed 2026-11-24.** Status: Complete (archived). No longer maintained. The
+> exit criteria and the record that each was met are in [albums.md](albums.md) §7, *Stage 3*, which
+> is the live record now; the maintainer declared the stage complete with criterion 9, the Play Data
+> Safety question, carried, not met. Statuses below other than this line, the 3.8 row of *Steps*,
+> *3.8 — Close-out* and the handoff's last entry are as they stood when written.
+
 > **Owner: Planner. Mode: routed.** This is a *stage plan*, not a description of the app. It exists
 > for the length of Stage 3 and is archived when the stage closes, or paused if it stops first — what
 > both mean, and the rest of the rules for this kind of document, are in
@@ -830,7 +836,8 @@
     `0023-face-pipeline-models-runtime-and-delivery.md`,
     `0024-face-data-disclosure-and-delete-switch.md`
   - `docs/design/albums-rule-editing.md`, `albums-stage-3.md`, `albums.md`
-- **Next action: the maintainer — commit, then one decision.** In order:
+- ~~**Next action: the maintainer — commit, then one decision.**~~ *Done 2026-11-24 — committed as
+  `579e7ac` and the decision given; the entry below. The list is kept as it was.* In order:
   1. **The maintainer commits** the seventeen files above. Exit criterion 19 holds only once they
      are committed.
   2. **The maintainer decides one thing:** whether to declare Stage 3 complete with criterion 9
@@ -845,6 +852,25 @@
     on its list.
   - **Read first:** *3.8 — Close-out*, its steps, *Exit criteria checked against the repository
     2026-11-24* and *Documentation audit 2026-11-24*; `AGENTS.md` *Documentation*.
+- **2026-11-24, last — Stage 3 closed; this plan archived.** The maintainer committed the audit's
+  seventeen files as `579e7ac` and declared, in his words, "I declare Stage 3 complete with
+  criterion 9 carried." Step 4: the exit criteria and the record that each was met moved into
+  [albums.md](albums.md) §7, *Stage 3*, with the departure for criterion 9 stated there as Stage
+  2's was, and this plan gained its `Archived` line. Step 5: Stage 3 is ✅ Complete in §7's table,
+  with a stage-log line. `AGENTS.md`'s map row and X1's sentences are another agent's concurrent
+  change, not checked here. Planner, docs only; no code, no Gradle run, no phone.
+- **Next action: none. Stage 3 is closed. Nothing is next in this plan.** Still owed outside it:
+  - **Before the first Play release that ships the face pass — the maintainer's:** the Play Data
+    Safety check's points 3 and 4 and the form's submission ([albums.md](albums.md) §7, *Stage 3*,
+    criterion 9; §8 decision 9); and the native-speaker review of the translated privacy text,
+    "Leute" on its list (`ARCHITECTURE.md` §11). Stage 2's carried Play Console declaration
+    describes the same merged manifest as point 3 (§7, *Stage 2*).
+  - **The Coder, optional, at the next code change:** the `PreferenceScope` and
+    `DisplayPreferencesState` KDocs (three scopes, not five); `FaceDeviceStateStore.markDisclosureShown`
+    from `apply()` to `commit()`.
+  - **On a real report or a user complaint:** whether the face pass and grouping need a thermal
+    back-off (L13).
+  - The known limits L1 to L14 are in `ARCHITECTURE.md` §11.
 - ~~**Next action: step 3.5 — the `people` clause and evaluation.** Owner: the Planner refines it into
   a step plan, as 3.2 to 3.4 were; then the Coder builds it.~~ Refined 2026-11-21 — the *Next action:
   step 3.5, Task 1* entry above.
@@ -1430,7 +1456,7 @@ step is refined when it starts.
 | **3.5** | The `people` clause and evaluation | ~~⬜ Not started — refined 2026-11-21 into *3.5 — The people clause and its evaluation*, ready to build: Tasks 1 to 3, sequential, then verification and task P; nothing waits on the maintainer~~ ✅ Built and verified 2026-11-21 — refined the same day; Tasks 1, 2, 3, the verification phase and task P done; no schema change in either database, no string; the gate and the review's dispositions are under *3.5 — Built and verified 2026-11-21* |
 | **3.6** | The UI: the People criterion with its thumbnails, the disclosure and the delete switch | ~~⬜ Not started — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, waiting on the maintainer's approval of ADR-0024 Amendment 1 for tasks S2, A and B; tasks S1 and C ready to build.~~ ~~🔶 In progress — refined 2026-11-21 into *3.6 — The People criterion, the disclosure and the switch*, approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2): **S1 and C built and verified; S2, A and B ready to build**, S2 next.~~ ✅ Built and verified 2026-11-22 — refined and approved 2026-11-21 (ADR-0024 Amendment 1, option A at §2); tasks S1, C, S2, A and B, the verification phase and task P done; no schema change in either database; the gate, the review's dispositions and what is not proven are under *3.6 — Built and verified 2026-11-22*. D1 answered by the Designer (a third tab), D3 by the maintainer (8 people) |
 | **3.7** | Device verification and installed-app walkthrough | ~~⬜ Not started — next~~ ~~🔶 In progress~~ ✅ Done 2026-11-23 — its final gate and the re-review are at the end of this cell; its commit is 3.8's entry condition 7, the maintainer's. Refined 2026-11-22 into *3.7 — Device verification and the installed-app walkthrough*: agent items G1 to G9 (G10 added 2026-11-23), the maintainer's walkthrough W1 to W8, known limits ~~L1 to L9~~ ~~L1 to L12~~ L1 to L14. **G1 ✅ done 2026-11-22** — the capability check on the SM-G781B (ADR-0023 verify item 7); ~~G2 next~~ **G2 to G6 ✅ done 2026-11-22** — G2's planned mutation check deferred until after W7 as M1; **the maintainer's walkthrough W1 to W7 next**, with G7 at W3, G8 at W4 and G9 after W5. **2026-11-23:** *Open at 3.7* answered — L1 to L12 accepted; L3 accepted to run as **G10**, after M1; question 3's position given, the form not submitted. **2026-11-23, later:** W1 to W7 ✅ (W8 skipped by the maintainer), G7 to G9 ✅, M1 ✅, G10 🔶 partial and closed as option A; question 3 carried past 3.8 (option B); new limits L13 and L14 pending his acceptance; the definition of done to run again over the committed tree. **2026-11-23, later still:** questions 6 and 7 answered (A, A) — L13 and L14 accepted, W4's count observed equal by hand on the SM-G990B; the definition of done running over the committed tree, its figures to be recorded under 3.8's entry condition 4. **2026-11-23, latest:** the gate ran over `94f8e9c` — the first connected run failed on two worker-test timeouts, recorded as an intermittent flake, and the second was green; the Reviewer approved with changes (*Review of 3.7*); its test fixes are in the working tree, so ~~**the gate runs once more over the final tree**~~ the gate runs once more over the final tree (3.8's entry condition 4). **2026-11-23, final:** the gate ran once more over the final tree — `94f8e9c` plus the four test fixes and the documents — and passed, the flake not recurring; the Reviewer re-reviewed the fixes and approved, four optional cleanups deferred (*Review of 3.7*). Nothing of 3.7 is left but the maintainer's commit |
-| **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ~~⬜ Not started — starts only when the~~ ~~seven~~ ~~eight conditions of *3.8 — Close-out*, *Entry condition*, hold. *2026-11-23, final:* 1 to 6 and 8 met; 7 waits on the maintainer's commit~~ 🔶 In progress — started 2026-11-24, when all eight conditions of *3.8 — Close-out*, *Entry condition*, held, 7 at `5f6a181`: step 1 (`ARCHITECTURE.md`) and step 2 (exit criteria) done; step 3, the audit, run and its fixes being recorded; steps 4 and 5 to come |
+| **3.8** | Close-out: `ARCHITECTURE.md`, vocabulary, audit, archive | ~~⬜ Not started — starts only when the~~ ~~seven~~ ~~eight conditions of *3.8 — Close-out*, *Entry condition*, hold. *2026-11-23, final:* 1 to 6 and 8 met; 7 waits on the maintainer's commit~~ ~~🔶 In progress — started 2026-11-24, when all eight conditions of *3.8 — Close-out*, *Entry condition*, held, 7 at `5f6a181`: step 1 (`ARCHITECTURE.md`) and step 2 (exit criteria) done; step 3, the audit, run and its fixes being recorded; steps 4 and 5 to come~~ ✅ Done 2026-11-24 — started the same day, all eight entry conditions holding, 7 at `5f6a181`; steps 1 to 3 done and committed in `579e7ac`; steps 4 and 5 done 2026-11-24 on the maintainer's declaration, criterion 9 carried, not met |
 
 ### 3.0 — Feasibility spike
 
@@ -5246,6 +5272,9 @@ holding: it can close only by the maintainer's declaration, with that departure 
 *2026-11-24, later — step 3's record:* 19 is MET in the working tree — the audit ran and is
 recorded (*Documentation audit 2026-11-24*, below) — and MET once the maintainer commits. Only 2
 remains NOT MET, until 3.8 closes; 9 stays carried, not met.
+*2026-11-24, at the archive:* 2 is MET, by 3.8 finishing; 19 and 20 are committed, in `579e7ac`;
+9 is carried, not met, by the maintainer's declaration. The live record is [albums.md](albums.md)
+§7, *Stage 3*; the table below is kept as checked.
 
 | # | Criterion | Status | Evidence read |
 |---|---|---|---|
@@ -5309,11 +5338,17 @@ name Stage 3 as in progress — true until Stage 3 closes.
    §7, *Stage 3*; this plan gains `Archived — Stage 3 closed YYYY-MM-DD` beneath its title; its row in
    `AGENTS.md`'s documentation map goes, and every row of that map is walked — `AGENTS.md`
    *Conventions* and the `.github/agents/*.agent.md` that name Stage 3 as in progress included.
+   ✅ *Done 2026-11-24, for the two design documents:* the criteria and their record are in
+   [albums.md](albums.md) §7, *Stage 3*, and this plan carries its `Archived` line. `AGENTS.md`'s
+   map row, the walk of the map and X1's sentences there and in the agent files are a concurrent
+   change by another agent, not checked by this entry.
 5. **Only then** Stage 3 moves to ✅ Complete in [albums.md](albums.md) §7, with a stage-log line —
    or, if the maintainer declares it complete with a criterion carried, the departure is stated
    there, as Stage 2's was. *2026-11-24:* the second branch is the one that applies — criterion 9
    is carried, not met (step 2's table) — so Stage 3 moves to Complete only on the maintainer's
-   declaration, with the departure stated in §7.
+   declaration, with the departure stated in §7. ✅ *Done 2026-11-24:* he declared, in his words,
+   "I declare Stage 3 complete with criterion 9 carried." Stage 3 is ✅ Complete in §7's table,
+   with a stage-log line, and the departure is stated under *Exit criteria*, *Stage 3*.
 
 #### Documentation audit 2026-11-24
 

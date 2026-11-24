@@ -28,11 +28,10 @@ index (ADR-0018) — alongside the `SharedPreferences` files that `AGENTS.md` li
 3. `docs/architecture/ARCHITECTURE.md` — the system overview.
 4. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names.
 5. `docs/design/albums.md` — the albums epic, where the change belongs to it. Its §7 progress
-   table and exit criteria are what "this stage is done" means. §7 also links to the plan for the
-   stage in progress — Stage 3 is in progress, with its plan at `docs/design/albums-stage-3.md`;
-   Stage 4's plan, `docs/design/albums-stage-4.md`, is paused; and rule editing,
-   not a stage, has its own plan at `docs/design/albums-rule-editing.md` — which owns that stage's step
-   breakdown and exit criteria; review a stage change against both.
+   table and exit criteria are what "this stage is done" means. §7 also names the stage in
+   progress, if any, and links to its plan, to any paused stage plan, and to plans for epic work
+   that is not a stage; read the one the change belongs to. That plan owns the step breakdown and
+   exit criteria; review a stage change against both.
 6. `.github/instructions/tests.instructions.md` — test conventions.
 7. Repository memory at `/memories/repo/easy-gallery-exploration.md` — records traps this
    codebase has already paid for. Check whether the change re-introduces one.

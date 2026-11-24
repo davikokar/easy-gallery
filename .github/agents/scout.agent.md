@@ -60,8 +60,9 @@ the answers usually are:
   invocation, and the list of changes that need the user's approval.
 - `docs/architecture/ARCHITECTURE.md` and `docs/architecture/README.md` — what the system is, and
   the ADR index with each decision's status.
-- `docs/design/albums.md` §7 — which epic stage is current and which are done, and the link to the
-  plan for the stage in progress. It describes intent, not the current app; never report a line of
+- `docs/design/albums.md` §7 — which epic stage is in progress, if any, and which are done, and the
+  links to the plan of the stage in progress, to any paused stage plan, and to plans for epic work
+  that is not a stage. It describes intent, not the current app; never report a line of
   it as a fact about the code without checking the code.
 - `/memories/repo/easy-gallery-exploration.md` — traps this codebase has already paid for.
 

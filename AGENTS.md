@@ -98,7 +98,6 @@ rather than nobody's.
 | [docs/architecture/decisions/](docs/architecture/decisions/) | Planner | routed | never edited; superseded by a new ADR, or amended in place when only a detail changed |
 | [docs/design/albums.md](docs/design/albums.md) | Planner | routed | a stage changes status, a decision is taken, a question is answered |
 | [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) | Planner | routed | paused; updated only when the pause is lifted or a resume trigger changes |
-| [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md) | Planner | routed | a step changes status, a question is answered, or a session learns something that changes the next one; archived when Stage 3 closes |
 | [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md) | Planner | routed | a step changes status or a question is answered; archived when editing ships |
 | [.github/instructions/ui-vocabulary.instructions.md](.github/instructions/ui-vocabulary.instructions.md) | Designer | **in-change** | you add, rename, or remove a named screen, view, area, or control |
 | [.github/instructions/tests.instructions.md](.github/instructions/tests.instructions.md) | Planner | routed | a test convention or tool changes |
@@ -160,23 +159,21 @@ the audit is for the rest.
   same rules as the ADRs and the overview; everyone else reports drift rather than editing it.
   The album vocabulary used to live there and moved into the UI vocabulary instructions when
   Stage 1's screens landed.
-- **The epic is specified in two documents while a stage is being built, not one.** The stage in
+- **While a stage is being built, the epic is specified in two documents, not one.** A stage in
   progress has its own shorter-lived plan beside the epic document, holding that stage's steps,
   their exit criteria, and the handoff block telling the next session where to start. Read it as
   well whenever your work is part of that stage. It is Planner-owned and routed like the epic
   itself, and it is archived when the stage closes — or paused, if the stage stops before it
   closes — under the rule in the
   [architecture documentation instructions](.github/instructions/architecture-docs.instructions.md).
-  Stage 3 (people albums) is in progress: its plan,
-  [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md), is the stage plan to read, and
-  its handoff block names the next step. Its feasibility spike closed on 2026-11-18 and its
-  decisions were adopted on 2026-11-19, which is what moved it to In progress under
-  [albums.md](docs/design/albums.md) §7's rule. Stage 4 (content albums) is paused after its
-  feasibility spike; its plan [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md) is
-  kept to resume from. Rule editing is not a stage and has a plan of its own,
-  [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md). Stage
-  2's plan, [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md), is archived and not
-  maintained.
+  §7 of [albums.md](docs/design/albums.md) names the stage in progress, if any, and links to its
+  plan, to any paused stage plan, and to plans for epic work that is not a stage; read the one your
+  task belongs to. Stage 4's plan, [docs/design/albums-stage-4.md](docs/design/albums-stage-4.md),
+  is paused and kept to resume from. Rule editing is not a stage and has a plan of its own,
+  [docs/design/albums-rule-editing.md](docs/design/albums-rule-editing.md). The plans of Stage 2,
+  [docs/design/albums-stage-2.md](docs/design/albums-stage-2.md), and Stage 3,
+  [docs/design/albums-stage-3.md](docs/design/albums-stage-3.md), are archived: build history,
+  not maintained, and never the place to learn where the epic stands.
 - For tests — unit **and** instrumented — follow
   [the test conventions](.github/instructions/tests.instructions.md).
 - Tracked files have mixed line endings and there is no `.gitattributes`. Match the file you are
@@ -203,12 +200,12 @@ the audit is for the rest.
   the same join as the albums they create. Per-album display overrides are the same case:
   `AlbumsViewModel` holds a second `FolderViewPreferencesState` of its own, so `GalleryViewModel`
   gained nothing for them (ADR-0021). People albums added no state holder either: `AlbumsViewModel`
-  owns their second shared flow, the face snapshot with the availability, beside the join (step
-  3.5), and the People picker's list went into `AutomaticAlbumPickerState` (step 3.6). Face data's
+  owns their second shared flow, the face snapshot with the availability, beside the join, and the
+  People picker's list went into `AutomaticAlbumPickerState`. Face data's
   switch, disclosure and app-open work are the opposite case: they belong to no album, so they are a
   feature ViewModel of their own, `FaceDataViewModel`, which `MainActivity` holds and which reaches
   the albums only by an availability epoch `MainActivity` forwards to
-  `AlbumsViewModel.refreshPeopleAvailability()` (step 3.6).
+  `AlbumsViewModel.refreshPeopleAvailability()`.
 - Kotlin property initialisers run top to bottom. A derived `combine(...)` flow must be declared
   **below** every property it reads, or the class fails to compile. Never work around this with
   `lateinit` or a nullable backing field.
@@ -257,15 +254,15 @@ reasoning. It is also excluded from backup, and it
 deliberately holds **no** liveness flag — "is indexing running" comes from WorkManager, because a
 persisted one survives process death and disables the Index now action forever.
 
-ADR-0024 placed two pieces of Stage 3 state, and step 3.3 built both, with a `SharedPreferences*`
-and an `InMemory*` store each. The face-data setting is a scalar in `app_settings`, on by default
+ADR-0024 placed two pieces of face-data state, each with a `SharedPreferences*` and an `InMemory*`
+store. The face-data setting is a scalar in `app_settings`, on by default
 and backed up. Whether the face-data disclosure has been shown is **not** there, because
 `app_settings` is backed up and the disclosure is per installation: it lives in `face_device_state`
 beside the capability record, and that file is excluded from backup in all four rules sections —
 the second preferences file with an `<exclude>`, after `media_index_run_state` (ADR-0018
-Amendment 7 §3). Since step 3.5, `AlbumsViewModel` **reads** the setting and the capability record,
-through `StoredPeopleAvailabilitySource`, to decide whether a people album can be evaluated. Since
-step 3.6, `FaceDataViewModel` **writes** them through the same two stores and adds no file: it
+Amendment 7 §3). `AlbumsViewModel` **reads** the setting and the capability record, through
+`StoredPeopleAvailabilitySource`, to decide whether a people album can be evaluated.
+`FaceDataViewModel` **writes** them through the same two stores and adds no file: it
 persists the setting from the Face data row and the disclosure's Turn off, marks the disclosure shown
 only from the disclosure's OK or Turn off — never from switching on (ADR-0024 Amendment 1) — and
 runs the capability check at app open.
@@ -283,8 +280,8 @@ database is backed up (ADR-0014) while the index must not be.
   `MediaIndexWatermarkStore` — each with a `Room*` implementation for production and an
   `InMemory*` one for tests, the same shape as the preference stores. DAO-level tests use
   `inMemoryDatabaseBuilder`. Tier C face data has no store of its own: it is on `MediaIndexStore`,
-  because its rows change in the same transaction as the image row they describe
-  ([albums-stage-3.md](docs/design/albums-stage-3.md), step 3.2).
+  because its rows change in the same transaction as the image row they describe (ADR-0018
+  Amendment 5).
 - **One database does not mean one table.** The `entities` list of each `@Database` says which
   tables it holds. The index database gained the per-volume delta watermark table through a real
   `Migration(1, 2)`, the two Tier C tables through `Migration(4, 5)`, and the Tier C attempt table
@@ -313,23 +310,15 @@ database is backed up (ADR-0014) while the index must not be.
   `AlbumMembership.kt`. An index row is the opposite case — a cache, deleted rather than retained
   when its media is gone (ADR-0020). Favourites are in **neither** database — they are a
   `MediaStore` column (ADR-0011), unavailable below API 30.
-- **Face data is decided ahead of most of its code** (Stage 3). ADR-0018 Amendment 5 puts it in the
-  index database as Tier C and says what deleting it removes; ADR-0024 says when it is deleted and
-  that it never enters a backup or a log; Amendment 7 adds the attempt table, the setting read
-  inside the write's transaction, `face_device_state` and the fourth backup section. Step 3.2 built
-  the tables, the store rules and the deletion; step 3.3 built the face pass and its gates in
-  `MediaIndexingWorker`, and the repeat of the deletion at the start of every worker run while the
-  setting is off. Step 3.4 built grouping: it runs after the face pass in the same hold of the Tier
-  C lock, fills the face rows' `groupId` and `groupingVersion` with no schema change, and the store
-  has the People picker's query, `listFaceGroups`. Step
-  3.5 built the `people` clause and its evaluation, and the Tier C evaluation projection it reads
-  — no schema change in either database; [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §3
-  and §6 say where. Step 3.6 opened the gates and built the UI, again with no schema change: the
-  disclosure records itself as shown, the People picker reads `listFaceGroups`, and
-  `FaceDataViewModel` calls the deletion from the switch and at app open, under the Tier C lock.
-  A people rule's anchor (ADR-0022) is the one face-related
-  thing in the album database, and it is not face data. Read them before adding a table to either
-  database.
+- **Face data is Tier C of the index database, and its rules are in ADRs.** ADR-0018 Amendments
+  5–7 put it there, say what deleting it removes, and add the attempt table and the setting read
+  inside the write's transaction; ADR-0024 says when it is deleted and that it never enters a
+  backup or a log; ADR-0023 fixes the models and runtime; ADR-0022 anchors a people rule to a
+  photo. [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) §3, §6, §10 and §11 say where the
+  code is and what is still owed; the archived
+  [Stage 3 plan](docs/design/albums-stage-3.md) is the build history. A people rule's anchor is
+  the one face-related thing in the album database, and it is not face data. Read them before
+  adding a table to either database.
 
 ### Strings and localisation
 

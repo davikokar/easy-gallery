@@ -27,11 +27,10 @@ media index (ADR-0018) — alongside the `SharedPreferences` files that `AGENTS.
 3. `docs/architecture/ARCHITECTURE.md` — the system overview.
 4. `docs/design/albums.md` — the albums epic. Mandatory if your work touches albums, favourites,
    the media index, or anything that owns app-side data. Check its §7 progress table first: do not
-   assume any part of it is implemented. §7 also names the stage in progress and links to
-   that stage's plan — Stage 3 is in progress, with its plan at `docs/design/albums-stage-3.md`;
-   Stage 4's plan, `docs/design/albums-stage-4.md`, is paused; and rule editing,
-   not a stage, has its own plan at `docs/design/albums-rule-editing.md` — which holds the step
-   breakdown, the stage's exit criteria, and the next-session handoff. You own both.
+   assume any part of it is implemented. §7 also names the stage in progress, if any, and links
+   to its plan, to any paused stage plan, and to plans for epic work that is not a stage; read the
+   one your task belongs to. Each such plan holds the step breakdown, the exit criteria, and the
+   next-session handoff. You own both.
 5. `.github/instructions/ui-vocabulary.instructions.md` — canonical UI names. Use them in plans.
 6. Repository memory at `/memories/repo/easy-gallery-exploration.md` — a long log of traps
    already paid for. Search it for your feature area before planning; it frequently records why

@@ -1,15 +1,13 @@
 # Albums — epic design
 
-> **Status: Stages 1 and 2 complete; ~~Stage 4 (content) is planned and runs before Stage 3
-> (people).~~ Stage 4 (content) is paused 2026-11-17 (decision 38) after its feasibility spike;
-> ~~Stage 3 (people) is next.~~ Stage 3 (people) is in progress since 2026-11-19.** Current state
-> of every stage is in [§7](#7-staging-and-progress),
+> **Status: Stages 1, 2 and 3 complete — Stage 3 (people) on 2026-11-24, with its Play Data Safety
+> criterion carried; Stage 4 (content) is paused 2026-11-17 (decision 38) after its feasibility
+> spike.** Current state of every stage is in [§7](#7-staging-and-progress),
 > which is the single source of truth for where this epic stands. Stage 4's plan, paused, is
-> [albums-stage-4.md](albums-stage-4.md); Stage 3's, ~~a draft~~ the stage plan in use, is
-> [albums-stage-3.md](albums-stage-3.md); rule editing, which is not a stage, has its own plan,
-> [albums-rule-editing.md](albums-rule-editing.md);
-> Stage 2's is archived at [albums-stage-2.md](albums-stage-2.md), and its exit criteria and their
-> record are in §7.
+> [albums-stage-4.md](albums-stage-4.md); rule editing, which is not a stage, has its own plan,
+> [albums-rule-editing.md](albums-rule-editing.md); Stage 2's plan is archived at
+> [albums-stage-2.md](albums-stage-2.md) and Stage 3's at [albums-stage-3.md](albums-stage-3.md),
+> and the exit criteria of both, with their record, are in §7.
 > This document is the product narrative for the albums epic. It holds the shape of the feature,
 > the decisions already taken, and the questions still open, so that none of it has to be
 > rediscovered. Binding technical decisions are recorded separately as ADRs in
@@ -386,7 +384,7 @@ when every exit criterion holds — not when work starts feeling nearly done.
 | **0** | This document and the Stage 1 ADRs | ✅ **Complete** — 2026-10-07 | — | — |
 | **1** | Favourites + manual albums, Albums View, Album Detail View | ✅ **Complete** — 2026-10-07 | no | no |
 | **2** | The index (Tier A), background pipeline, region/time albums — plan archived at [albums-stage-2.md](albums-stage-2.md) | ✅ **Complete** — 2026-11-12 | yes | no |
-| **3** | People albums — ~~after Stage 4~~ **next** (§8 decision 13, amended 2026-11-17); ~~no plan yet~~ planned in [albums-stage-3.md](albums-stage-3.md), which holds its exit criteria; ~~draft~~ | 🔶 **In progress** — since 2026-11-19, when step 3.1's ADRs were adopted. Plan drafted 2026-11-17; feasibility spike (step 3.0) done 2026-11-18; step 3.1 complete 2026-11-19 (decisions 43–47; ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5 adopted); ~~step 3.2 next~~ step 3.2 built and verified 2026-11-19; ~~step 3.3 next~~ ~~a 3.2 follow-up next (decision 48, 2026-11-20), then step 3.3~~ its follow-up (decision 48) built and verified 2026-11-20; ~~step 3.3 next, refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49)~~ step 3.3 refined 2026-11-20, its storage adopted as ADR-0018 Amendment 7 and its OpenCV pin set the same day (decision 49), and built and verified 2026-11-20 (decisions 43–49 stand); ~~step 3.4 next~~ ~~step 3.4 in progress — its Task 1 built and verified 2026-11-20, its budget accepted and~~ ~~ADR-0018 Amendment 8 adopted the same day~~ ~~components first adopted the same day (decision 50); its Task 2 built and verified 2026-11-20, and ADR-0018 Amendment 8 reversed on its measurement, before it was built (decision 50, amended)~~ step 3.4 built and verified 2026-11-21 — Tasks 1 to 5 (with 2b) and its verification on the SM-G990B; its budget accepted with components first (decision 50); ADR-0018 Amendment 8 adopted and reversed before it was built (decision 50, amended), so no schema change and the index stays at version 6; ~~step 3.5 next~~ step 3.5 built and verified 2026-11-21 — Tasks 1 to 3 and its verification on the SM-G990B; the `people` clause and its evaluation, with no schema change in either database and no string; ~~step 3.6 next — the People criterion, the disclosure, the switch, the strings and the notices~~ step 3.6 built and verified 2026-11-22 — tasks S1, C, S2, A and B and its verification on the SM-G990B; the People criterion, the disclosure, the Face data switch, the strings in every shipped locale and the notices by cause, with no schema change in either database (ADR-0024 Amendment 1, option A); ~~step 3.7 next — device verification and the installed-app walkthrough, then step 3.8, the close-out~~ step 3.7's device work done 2026-11-23 — the device checks, the maintainer's walkthrough and the review; ~~the definition of done to run once more over the final tree after the review's test fixes~~ the definition of done passed once more over the final tree after the review's test fixes, which the re-review approved (2026-11-23, final); ~~step 3.8, the close-out, pending its entry condition — only the maintainer's commit of 3.7's final tree outstanding~~ step 3.8, the close-out, started 2026-11-24, its entry condition holding at `5f6a181` (3.7's final tree, committed 2026-11-23) — its steps 1 and 2 done (`ARCHITECTURE.md` §11, and the exit criteria checked against the repository); the documentation audit, the archive and the decision on Complete to come. The stage's status is unchanged: a step landing takes no stage-log line (*Stage log*) | Tier C | yes |
+| **3** | People albums — built: face data on the device only, a switch that deletes it, the People picker, the `people` clause (§8 decision 13, amended 2026-11-17) — plan archived at [albums-stage-3.md](albums-stage-3.md) | ✅ **Complete** — 2026-11-24, declared by the maintainer with criterion 9 (Play Data Safety) carried, not met — *Exit criteria*, *Stage 3* | Tier C | yes |
 | **4** | Content albums (Tier B) ~~and rule editing — **runs before Stage 3**~~; planned in [albums-stage-4.md](albums-stage-4.md); rule editing moved out (§8 decision 39) | ⬜ Not started — plan drafted 2026-11-13; paused 2026-11-17, see decision 38 | Tier B | yes |
 
 Stage 4's step 4.0, a feasibility spike that ships no code, started 2026-11-13; the stage moves to
@@ -394,7 +392,9 @@ In progress when a binding deliverable lands (step 4.1's ADRs or later), per *Wh
 **Amended 2026-11-17:** step 4.0 finished and the stage was paused before any binding deliverable
 landed, so it never started (§8 decision 38). Stage 3 is next; Stage 4 resumes on decision 38's
 triggers. **Amended 2026-11-19:** Stage 3 started — step 3.1's adopted ADRs are its first binding
-deliverable — and Stage 4 stays paused.
+deliverable — and Stage 4 stays paused. **Amended 2026-11-24:** Stage 3 closed, declared complete
+by the maintainer with one criterion carried (*Exit criteria*, *Stage 3*); Stage 4 stays paused and
+resumes on decision 38's triggers.
 
 **Rule editing is not a stage.** It has a plan of its own,
 [albums-rule-editing.md](albums-rule-editing.md), an epic-level plan outside the staged sequence
@@ -517,7 +517,8 @@ how each was met stays in that document. Steps 2.0–2.7 are all ✅.
 [albums-stage-4.md](albums-stage-4.md) and become binding when its step 4.1 confirms them; they move
 here when that plan is archived.
 
-**Stage 3** — ~~⬜ not started~~ 🔶 in progress since 2026-11-19. ~~Exit criteria are written when it is planned,~~ ~~after Stage 4; they
+**Stage 3** — ~~⬜ not started~~ ~~🔶 in progress since 2026-11-19.~~ ✅ **declared complete by the
+maintainer 2026-11-24, with criterion 9 carried, not met** — the record and the departure are below. ~~Exit criteria are written when it is planned,~~ ~~after Stage 4; they
 depend on decisions Stage 4 will inform~~ **amended 2026-11-17:** next, before Stage 4 (decision 13,
 amended 2026-11-17). **Amended 2026-11-17, later the same day:** its exit criteria are **drafted**
 in [albums-stage-3.md](albums-stage-3.md) and become binding when its step 3.1 confirms them; they
@@ -525,7 +526,118 @@ move here when that plan is archived. Its first step, 3.0, is a feasibility spik
 Stage 4 a spike's figures are not a binding deliverable. **Amended 2026-11-19:** step 3.1 confirmed
 them, so they are binding; they stay in [albums-stage-3.md](albums-stage-3.md) until it is
 archived. Every stage carries the
-documentation-audit line.
+documentation-audit line. **Amended 2026-11-24:** the plan is archived, and the criteria and the
+record that each was met are below.
+
+The criteria moved here from [albums-stage-3.md](albums-stage-3.md) when that plan was archived,
+numbered as there. The line-by-line record — every test by file and line, and every device result
+— stays in that document, under
+[*Exit criteria checked against the repository 2026-11-24*](albums-stage-3.md#exit-criteria-checked-against-the-repository-2026-11-24),
+checked against the repository by the Planner, who ran no build and used no phone. What rests on
+Gradle or a device rests on the recorded final gate of 2026-11-23. Steps 3.0–3.8 are all ✅.
+- **1 — The checks in `AGENTS.md`'s definition of done pass, with `adb devices` stated.** MET.
+  *The final gate of 2026-11-23, over the tree committed as `5f6a181`, on the SM-G990B, the only
+  device listed: 1,427 unit tests, 0 failures; 346 connected test cases, 0 failures, 6 opt-in tests
+  skipped. An earlier gate's two `MediaIndexingWorkEnqueueTest` timeouts are recorded as an
+  intermittent flake, not fixed. Nothing under `app/` or in the build files changed after it
+  (`git diff --stat 5f6a181 579e7ac -- app gradle build.gradle.kts` empty, read 2026-11-24).*
+- **2 — Every step is ✅, or dropped with the drop recorded here.** MET 2026-11-24, by step 3.8
+  finishing. *The plan's step table; nothing dropped.*
+- **3 — People + place + date end to end; a test proves people + region + time, several people
+  meaning all of them.** MET. *`PeopleClauseEvaluationTest`, `AlbumRuleTest`,
+  `AlbumsViewModelTest`; on the device, the walkthrough's W4.*
+- **4 — Count consistency, on the JVM and on a device.** MET. *`AutomaticAlbumFacetsTest`,
+  `AutomaticAlbumPickerStateTest`, `AlbumsViewModelTest`; on the device, observed equal by hand by
+  the maintainer on the SM-G990B, 2026-11-23, the figures not reported. Accepted gap: no automated
+  device test covers people counts.*
+- **5 — An item not yet face-indexed leaves the album waiting; a failed inference is neither pending
+  nor covered.** MET. *`PeopleClauseEvaluationTest`, `MediaIndexTierCStoreTest`,
+  `FaceIndexPassTest`.*
+- **6 — After a restore or a full re-index, each person is found through its anchor** (decisions 41
+  and 42): (a) a face in a different group, or a one-image group, resolves to it; (b) an anchor photo
+  not yet face-indexed waits; (c) a deleted anchor, no face at IoU ≥ 0.5, or a face under 40 px is
+  unevaluatable — never widened, deleted or rewritten. MET, all three. *`PeopleClauseEvaluationTest`,
+  `AlbumsViewModelTest`, `FaceIndexPassTest`; the two-image minimum is in the picker's query only.*
+- **7 — The People picker, decision 40.** MET. *No label and no name; at least two distinct images,
+  for the picker only; sorted by photo count, with its ties; videos and GIFs never face-indexed;
+  no merge, no split. `FaceGroupingPassTest`, `AutomaticAlbumPickerStateTest`, `MediaIndexDaoTest`,
+  `FaceIndexPassTest`, and the People picker's entry in the UI vocabulary.*
+- **8 — Decision 9's obligations, each checked.** MET. *(a) The disclosure, once, before face
+  indexing, never on an incapable device, with its three statements: `FaceDataViewModelTest`,
+  `MediaIndexingWorkerTest`; its wording seen at W1. (b) The switch deletes the face data:
+  `SettingsScreenTest`, `MediaIndexFaceDataScrubTest`; on the device at W5, then G9 — no Tier C row,
+  an empty write-ahead log. (c) No network in the face path; no backup, the index excluded in all
+  four sections (`BackupRulesParityTest`); no log, the pass's fixed lines (`FaceIndexPassTest`).
+  One limit accepted 2026-11-23: a native OpenCV error prints one line of OpenCV's own — L10 in
+  [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) §11.*
+- **9 — The Play Data Safety question of decision 9 is answered and recorded.** **CARRIED, NOT MET**
+  — by the maintainer's declarations of 2026-11-23 (option B) and 2026-11-24. *Points 1 and 2 of
+  [*The Play Data Safety check*](albums-stage-3.md#the-play-data-safety-check--recorded-2026-11-18-not-answered)
+  are resolved by his position of 2026-11-23. Point 3 — the app-wide answers: the tip jar,
+  `ACCESS_MEDIA_LOCATION`, Stage 2's declaration — point 4 — the privacy policy, hosted outside
+  this repository, describing on-device face grouping and the Face data switch — and the form's
+  submission are open, before the first Play release that ships the face pass.*
+- **10 — The index database migrated, every schema committed, the index excluded from backup.**
+  MET. *Version 6 through `Migration(4, 5)` and `Migration(5, 6)`; `1.json` to `6.json` tracked;
+  the backup exclusion as in 8; the migration tests in the gate.*
+- **11 — The merged manifest checked after OpenCV; any added permission approved or removed.** MET.
+  *ADR-0023 verify item 4: byte-identical, 2026-11-20; the merged manifests' md5s unchanged at the
+  final gate.*
+- **12 — The licence obligations of the shipped weights and of OpenCV's components.** MET. *The
+  licence and notice files under `assets/face/`; the Face licences row in Settings, opened at W2;
+  `FaceLicencesTest`, `ThirdPartyNoticesTest`; ADR-0023 verify item 8.*
+- **13 — The models and OpenCV add at most 50 MB to the download.** MET. *They add 46,063,982 B,
+  3,936,018 B under; the whole arm64-v8a download is 49,712,393 B (G5d, 2026-11-22); ADR-0023's
+  row 5; L12, the reading of the bound, accepted 2026-11-23.*
+- **14 — Where the capability check fails, People is not offered and an existing people album is
+  unevaluatable, a test each.** MET. *`AutomaticAlbumPickerStateTest`, `PeopleClauseEvaluationTest`,
+  `AlbumsViewModelTest`, `FaceCapabilityTest`; on both phones, ADR-0023 verify item 7.*
+- **15 — Still offered on Play to every device as before; every native library 16 KB aligned.**
+  MET. *ADR-0023 verify items 1 and 2, settled 2026-11-20 with bundletool, `llvm-readelf` and
+  `zipalign`; not re-run, the build files unchanged since.*
+- **16 — From step 3.1's records** (ADR-0017 Amendment 4, ADR-0018 Amendment 5, ADR-0022, ADR-0023,
+  ADR-0024). MET, all ten. *(a) Switching off leaves no Tier C row and nothing in free pages or the
+  write-ahead log, and a deletion cut short is repeated at the next start —
+  `MediaIndexFaceDataScrubTest`, `MediaIndexingWorkerTest`, G9, W6. (b) A video or GIF never leaves
+  a people album waiting. (c) Boxes and anchors share the upright frame on an EXIF-rotated photo —
+  `FaceDecodeOrientationDeviceTest`, instrumented. (d) A `people` clause round-trips under a
+  decimal-comma locale. (e) Neither new cause uses the Newer-app wording —
+  `AlbumStatusNoticesTest`. (f) The pass resumes and stops cleanly. (g) Grouping measured on the
+  device, within the budget accepted in decision 50 — ADR-0023 row 6. (h) Switching off asks first;
+  while off, no pass, no People criterion, "people unavailable"; back on, no second disclosure —
+  tests, and W5 and W6. (i) A healed anchor URI is never written back to the rule — **by
+  construction, not by a test**. (j) Weights committed with checksums the build checks; OpenCV for
+  arm64-v8a only, with no ABI filter.*
+- **17 — Indexing under the existing constraints, with no notification and no foreground service.**
+  MET. *The periodic constraints unchanged through Stage 3; no `setForeground` or notification in
+  `app/src/main`.*
+- **18 — Every spike artefact holding face data deleted, and the deletion recorded (A7).** MET
+  2026-11-18. *The SM-G781B part rests on the spike notebook's record, not on a check.*
+- **19 — Every new string in every shipped locale; the vocabulary moved; `ARCHITECTURE.md`
+  describes what landed; a documentation audit has passed.** MET. *The new keys in all seventeen
+  locale folders, `LocaleResourceParityTest` in the gate; the vocabulary's entries, with the
+  Designer's V1 in `94f8e9c`; `ARCHITECTURE.md` brought to 3.7's close at 3.8's step 1. The audit
+  ran 2026-11-24 in eight read-only parts: 17 hard findings, every one fixed. What it did not cover
+  and what it routed are in its record,
+  [*Documentation audit 2026-11-24*](albums-stage-3.md#documentation-audit-2026-11-24). All of it
+  committed by the maintainer in `579e7ac`.*
+- **20 — `ARCHITECTURE.md` links ADRs 0022–0024, ADR-0017 Amendment 4 and ADR-0018 Amendment 5
+  from the sections they govern.** MET. *§3, §6, §10 and §11; committed in `579e7ac`.*
+
+> **What "complete" means for Stage 3, honestly stated.** The maintainer declared the stage
+> complete on 2026-11-24, in his words: "I declare Stage 3 complete with criterion 9 carried."
+> **Criterion 9, the Play Data Safety question, is carried, not met**, by his declarations of
+> 2026-11-23 (option B) and 2026-11-24. Points 1 and 2 are resolved by his position of 2026-11-23;
+> point 3 (the app-wide answers: the tip jar, `ACCESS_MEDIA_LOCATION`, Stage 2's declaration),
+> point 4 (the externally hosted privacy policy must describe on-device face grouping and the Face
+> data switch) and the form's submission remain open **before the first Play release that ships
+> the face pass**. No agent can make or verify them, and it is met when the maintainer records the
+> outcome here and in §8 decision 9. Until then, this stage departs from the rule that a stage is
+> Complete only when every line of its exit criteria holds, as Stage 2 did for its Play Console
+> declaration, and the departure is stated rather than hidden. Every other line holds — criterion 2
+> by step 3.8 finishing. Five are met with a stated limit, each recorded at its line: 4 by a hand
+> observation, 8 with L10 accepted, 15 on a check not re-run, 16 (i) by construction, and 18 on the
+> notebook's record.
 
 ### Documentation audit
 
@@ -606,6 +718,7 @@ One line per status change, newest last. This is the history; the table above is
 | 2026-11-13 | **Stage 2 stays Complete; two of its three carried criteria discharged.** The definition of done passed on the SM-G990B (797 unit tests, 224 of 224 connected tests), and `/docs-audit` ran, with its findings fixed in the same change. The Play Console declaration is still carried. The same day, Stage 4 (content albums and rule editing) was planned to run before Stage 3, in [albums-stage-4.md](albums-stage-4.md) (§8 decisions 13 as amended, and 33–37). |
 | 2026-11-17 | **Stage 4 paused after its feasibility spike (step 4.0); Stage 3 next.** Stage 4 stays Not started: no binding deliverable landed. The spike's outcome is in [albums-stage-4.md](albums-stage-4.md#spike-outcome--2026-11-17); the pause and its resume triggers are §8 decision 38, the order §8 decision 13 as amended 2026-11-17, and rule editing continues without content under §8 decision 39. |
 | 2026-11-19 | **Stage 3 started.** Step 3.1 landed: ADR-0022 (a people criterion finds its person through an anchor photo), ADR-0023 (the face pipeline, its runtime and delivery) and ADR-0024 (face data's disclosure and delete switch) adopted, with ADR-0017 Amendment 4 (the `people` clause) and ADR-0018 Amendment 5 (Tier C), after the maintainer answered their questions as recommended (§8 decision 47); the stage's exit criteria confirmed in [albums-stage-3.md](albums-stage-3.md). No code; nothing user-visible. Step 3.0's spike, closed 2026-11-18, was not a binding deliverable and took no line. `ARCHITECTURE.md`'s links to the new records are deferred to the changes that land their work, under the instructions' *Timing* rule, and carried as an exit criterion. |
+| 2026-11-24 | **Stage 3 complete, with one criterion carried.** Steps 3.0–3.8 are done: face detection and embedding on the device (YuNet and SFace on OpenCV, bundled, arm64-v8a only, behind a capability check), Tier C in the index database (version 6, two migrations), grouping, the `people` clause and its evaluation, the People criterion and its picker, and the face-data disclosure and the Face data switch that deletes face data — verified on the SM-G990B and walked through by the maintainer. The stage's exit criteria moved into §7 and [albums-stage-3.md](albums-stage-3.md) was archived. Declared complete by the maintainer; criterion 9, the Play Data Safety question, is carried, not met — see §7, *Stage 3*. Stage 4 stays paused. |
 
 ### Who updates this
 
@@ -698,6 +811,8 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
    *2026-11-23, later:* the maintainer carried it past step 3.8 (option B), as Stage 2 carried its
    Play Console declaration. Points 3 and 4 there — the app-wide answers and the privacy policy's
    text — and the submission remain before the first Play release that ships the face pass.
+   *2026-11-24:* the maintainer declared Stage 3 complete with this carried, not met (§7, *Stage 3*,
+   criterion 9). Its outcome is recorded here when the form is submitted.
 
 10. **The album database is included in Android auto-backup** (ADR-0014). `allowBackup` is already
     true and the backup rules are still the generated samples, so inclusion was going to happen by
@@ -1919,7 +2034,9 @@ Recorded here so they are not relitigated. Those with lasting technical weight b
     the version and nothing else:** the merged manifest is still checked when the dependency lands
     (ADR-0023 verify item 4), and anything it adds goes to him before it ships, as decision 24's
     WorkManager permissions did. Still open: F1's residual — how an API 36.1 device reads the
-    fourth section — which blocks nothing.
+    fourth section — which blocks nothing. *2026-11-23:* accepted by the maintainer as known limit
+    L9, to be revisited if a 36.1 device shows the section misread; it outlives Stage 3 in
+    [ARCHITECTURE.md](../architecture/ARCHITECTURE.md) §11.
 
 50. **Grouping's budget is accepted as met; grouping splits faces into components first; ~~and a
     group's representative prefers a face at least 60 px across~~ and a group's representative is
@@ -2312,8 +2429,11 @@ Things this epic breaks or strains, which should surprise nobody when they come 
 
 Questions scoped to a single stage live in that stage's plan and only arrive here if they outlive
 it. Stage 2's plan is archived; its one live question is 11 above. Stage 4's are in
-[albums-stage-4.md](albums-stage-4.md), paused with it. Stage 3's are in
-[albums-stage-3.md](albums-stage-3.md), and rule editing's in
+[albums-stage-4.md](albums-stage-4.md), paused with it. ~~Stage 3's are in
+[albums-stage-3.md](albums-stage-3.md), and~~ Stage 3's plan is archived too (2026-11-24), and none
+of its questions arrives here: every one was answered except F1's residual, accepted as known limit
+L9 (decision 49), and the Play Data Safety question, which is decision 9's and §7's carried
+criterion. Rule editing's are in
 [albums-rule-editing.md](albums-rule-editing.md).
 
 ---
