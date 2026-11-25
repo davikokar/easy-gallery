@@ -330,4 +330,11 @@
     <string name="slideshow_pause">Duraklat</string>
     <string name="slideshow_resume">Sürdür</string>
     <string name="slideshow_close">Slayt gösterisini kapat</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Kısayol ekle</string>
+    <string name="shortcut_not_supported">Ana ekranınız kısayolları desteklemiyor</string>
+    <string name="shortcut_add_failed">Kısayol eklenemedi</string>
+    <string name="shortcut_folder_unavailable">Bu klasör artık kullanılamıyor</string>
+    <string name="shortcut_album_unavailable">Bu albüm artık kullanılamıyor</string>
+    <string name="shortcut_album_deleted">Bu albüm silindi</string>
 </resources>

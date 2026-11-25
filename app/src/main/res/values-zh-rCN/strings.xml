@@ -314,4 +314,11 @@
     <string name="slideshow_pause">暂停</string>
     <string name="slideshow_resume">继续</string>
     <string name="slideshow_close">关闭幻灯片放映</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">添加快捷方式</string>
+    <string name="shortcut_not_supported">您的主屏幕不支持快捷方式</string>
+    <string name="shortcut_add_failed">无法添加快捷方式</string>
+    <string name="shortcut_folder_unavailable">此文件夹已不可用</string>
+    <string name="shortcut_album_unavailable">此相册已不可用</string>
+    <string name="shortcut_album_deleted">此相册已被删除</string>
 </resources>

@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import com.davide.seddio.easygallery.LocaleHelper
 import com.davide.seddio.easygallery.R
 import coil3.compose.AsyncImage
 import com.davide.seddio.easygallery.data.MediaItem
@@ -54,6 +55,18 @@ import com.davide.seddio.easygallery.ui.components.*
 import com.davide.seddio.easygallery.ui.theme.AppBackground
 import com.davide.seddio.easygallery.ui.theme.BrandBlue
 import kotlin.random.Random
+import kotlinx.coroutines.launch
+
+/** Pins [target] and tells the user only when it did not work; the launcher confirms a request itself. */
+internal suspend fun pinShortcutWithFeedback(context: android.content.Context, target: ShortcutTarget, label: String) {
+    val message = when (pinHomeShortcut(context, target, label)) {
+        ShortcutPinResult.Requested -> return
+        ShortcutPinResult.NotSupported -> R.string.shortcut_not_supported
+        ShortcutPinResult.Failed -> R.string.shortcut_add_failed
+    }
+    val localized = LocaleHelper.wrap(context)
+    android.widget.Toast.makeText(localized, localized.getString(message), android.widget.Toast.LENGTH_SHORT).show()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +100,8 @@ fun FolderDetailScreen(
     val indexedDateTakenByMediaUri by viewModel.indexedDateTakenByMediaUri.collectAsState()
     // Saveable so rotation keeps it open; cleared on Play so returning from the slideshow does not reopen it.
     var showSlideshowDialog by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     FolderDetailContent(
         media = media,
@@ -145,6 +160,13 @@ fun FolderDetailScreen(
         onDecreaseColumns = { viewModel.decreaseColumns(scope) },
         onIncreaseColumns = { viewModel.increaseColumns(scope) },
         hasSlideshowMedia = mediaInFolder.isNotEmpty(),
+        onAddShortcutClick = {
+            selectedFolder?.takeIf { it.path.isNotBlank() }?.let { folder ->
+                coroutineScope.launch {
+                    pinShortcutWithFeedback(context, ShortcutTarget.FolderTarget(folder.path), folder.name)
+                }
+            }
+        },
         onSlideshowClick = { showSlideshowDialog = true }
     )
 
@@ -229,6 +251,7 @@ fun FolderDetailContent(
     onDecreaseColumns: () -> Unit,
     onIncreaseColumns: () -> Unit,
     hasSlideshowMedia: Boolean,
+    onAddShortcutClick: () -> Unit,
     onSlideshowClick: () -> Unit
 ) {
     val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
@@ -317,6 +340,7 @@ fun FolderDetailContent(
                     onGroupByClick = { showGroupByDialog = true },
                     onViewTypeClick = { showViewTypeDialog = true },
                     onChangeThumbnailClick = { onEnterThumbnailPickerMode() },
+                    onAddShortcutClick = onAddShortcutClick,
                     onSlideshowClick = if (hasSlideshowMedia) onSlideshowClick else null,
                     navigationIcon = {
                         IconButton(onClick = { onBackToFolders() }) {

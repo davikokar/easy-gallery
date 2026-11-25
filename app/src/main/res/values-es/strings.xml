@@ -329,4 +329,11 @@
     <string name="slideshow_pause">Pausar</string>
     <string name="slideshow_resume">Reanudar</string>
     <string name="slideshow_close">Cerrar presentación</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Agregar acceso directo</string>
+    <string name="shortcut_not_supported">Tu pantalla de inicio no admite accesos directos</string>
+    <string name="shortcut_add_failed">No se pudo agregar el acceso directo</string>
+    <string name="shortcut_folder_unavailable">Esta carpeta ya no está disponible</string>
+    <string name="shortcut_album_unavailable">Este álbum ya no está disponible</string>
+    <string name="shortcut_album_deleted">Este álbum se eliminó</string>
 </resources>

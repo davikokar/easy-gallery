@@ -315,4 +315,11 @@
     <string name="slideshow_pause">Tạm dừng</string>
     <string name="slideshow_resume">Tiếp tục</string>
     <string name="slideshow_close">Đóng trình chiếu</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Thêm lối tắt</string>
+    <string name="shortcut_not_supported">Màn hình chính của bạn không hỗ trợ lối tắt</string>
+    <string name="shortcut_add_failed">Không thể thêm lối tắt</string>
+    <string name="shortcut_folder_unavailable">Thư mục này không còn khả dụng</string>
+    <string name="shortcut_album_unavailable">Album này không còn khả dụng</string>
+    <string name="shortcut_album_deleted">Album này đã bị xóa</string>
 </resources>

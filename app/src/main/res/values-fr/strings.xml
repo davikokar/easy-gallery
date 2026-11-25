@@ -329,4 +329,11 @@
     <string name="slideshow_pause">Pause</string>
     <string name="slideshow_resume">Reprendre</string>
     <string name="slideshow_close">Fermer le diaporama</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Ajouter un raccourci</string>
+    <string name="shortcut_not_supported">Votre écran d\'accueil ne prend pas en charge les raccourcis</string>
+    <string name="shortcut_add_failed">Impossible d\'ajouter le raccourci</string>
+    <string name="shortcut_folder_unavailable">Ce dossier n\'est plus disponible</string>
+    <string name="shortcut_album_unavailable">Cet album n\'est plus disponible</string>
+    <string name="shortcut_album_deleted">Cet album a été supprimé</string>
 </resources>

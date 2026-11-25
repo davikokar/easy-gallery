@@ -424,6 +424,13 @@ extractor is tested under Robolectric, and the file as a whole cannot be claimed
     would mark every membership orphaned and every rule album complete. **Live-media forwarding is
     gated on `GalleryViewModel.isMediaLoaded`:** `MainActivity` and `FolderListScreen` call
     `setAllMedia` only once it is true, so the empty placeholder never arrives as a list.
+  - **Home-screen shortcuts** ([ADR-0027](decisions/0027-home-screen-shortcuts.md)). `albumsLoaded`
+    is false until the album store has emitted once and true after, with no albums too, because an
+    empty `albums` cannot say which; `MainActivity` waits on it before resolving a shortcut (§4).
+    `shortcutPublisher`, an `AlbumShortcutPublisher`, is the last constructor parameter, defaulting
+    to `AndroidAlbumShortcutPublisher`: after the store write returns, `renameAlbum` publishes the
+    new label and `deleteAlbum` disables the Album's shortcut with `shortcut_album_deleted`, resolved
+    at that point. Unit tests pass `InMemoryAlbumShortcutPublisher`.
 - **`AutomaticAlbumPickerState`** — the New automatic album screen's draft and lists, a state
   holder **owned by `AlbumsViewModel`** and fed its shared join, so a picker count and the album
   created from it agree by construction. It holds the name, the chosen `region` and time clause,
@@ -564,7 +571,8 @@ media widgets (`MediaGridItem`, `MediaListItem`, `AlbumGridItem`, `FavouriteIndi
 `ZoomableImage`, `ViewerFilmstrip`, and `ViewerMediaArea` and `ViewerInfoPanel` in `ViewerInfoOverlay.kt`), the **Main view
 bar** (`MainViewBar`, with its `MainViewTab` enum), and the Android-free
 helpers (`MediaDuration`, `ShareIntents`, `WallpaperIntents`, `MainViewBarRules`, `FaceCrop`,
-`AlbumStatusNotices`, `ViewerFilmstripRules`, plus `MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound). `DateLabels`
+`AlbumStatusNotices`, `ViewerFilmstripRules`, plus `MediaLocationUi`, `VideoPlaybackState` and `DateLabels`, which are Compose-bound), and
+`HomeShortcuts`, whose pure half sits above an Android boundary in the same file (below). `DateLabels`
 is the one formatter for years and months, shared by the New automatic album screen and the Album
 info dialog.
 
@@ -619,6 +627,23 @@ through `SlideshowPlaylist.build` over the base order it is given, with Order ig
 changes no count. It is not one of the five display-preference dialogs: nothing in it is per folder
 or album ([ADR-0025](decisions/0025-slideshow.md) §5).
 
+The home-screen shortcut added `HomeShortcuts.kt` —
+**[ADR-0027](decisions/0027-home-screen-shortcuts.md)**. Above its *Android boundary* marker it is
+pure: `ShortcutTarget` — a folder by path, an Album by id, or Favourites, each with a stable
+`shortcutId` — and its primitive `ShortcutExtras`; `decodeShortcutTarget`, which validates the
+untrusted extras; `resolveShortcutTarget`, whose `ShortcutResolution` is `Pending` until the
+permission, the media and the album list have all loaded, then an open or `Unavailable`, matching a
+folder by path among all loaded media with no exclusion or media-type filter; and the
+`AlbumShortcutPublisher` seam with `InMemoryAlbumShortcutPublisher`. Below it:
+`buildShortcutIntent` (explicit to `MainActivity`, an app-private action, `NEW_TASK | CLEAR_TASK`),
+`readShortcutTarget`, `pinHomeShortcut` (on `Dispatchers.IO`, returning a `ShortcutPinResult`) and
+`AndroidAlbumShortcutPublisher` over `ShortcutManagerCompat`, which logs a platform failure and never
+throws. Pinning and a label update share `buildShortcutInfo`, so both publish the same id, intent and
+icon. The pure half is unit-tested on a plain JVM, but the file imports Android types, so it is not
+on the Android-free list. `pinShortcutWithFeedback`, internal in `FolderDetailScreen.kt` and called
+by both detail screens, shows a Toast for any result but `Requested`. The icons are three adaptive
+drawables, `ic_shortcut_folder`, `ic_shortcut_album` and `ic_shortcut_favourites` (§11).
+
 `MainViewBar(selectedTab: MainViewTab?, isSettingsSelected: Boolean, onTabSelected, onSettingsClick)`
 is stateless: the caller derives which item is selected — a tab, or Settings, in which case
 `selectedTab` is null — and decides what each tap does, a re-tap included. `MainViewTab` names the
@@ -636,8 +661,12 @@ View. No detail screen passes `onShowExcludedClick`: the flag is read only by th
 from Folder Detail View it took effect only after going back. Both detail screens pass
 `onChangeThumbnailClick`, with `changeThumbnailLabel` naming the folder or the album item;
 `AlbumDetailContent` passes it only for an Album showing at least one item, never for Favourites.
-Only `AlbumDetailContent` passes `onAlbumInfoClick`. Both detail screens pass the last parameter,
-`onSlideshowClick`, whose item is the menu's last, directly after Album info in Album Detail View —
+Only `AlbumDetailContent` passes `onAlbumInfoClick`. Both detail screens pass `onAddShortcutClick`,
+the Add shortcut item, after the change-thumbnail item and before Album info — `FolderDetailContent`
+takes it non-null, `AlbumDetailContent` nullable — null until an Album is known, always set for
+Favourites ([ADR-0027](decisions/0027-home-screen-shortcuts.md) §1). Both pass the last parameter,
+`onSlideshowClick`, whose item is the menu's last, directly after Album info in Album Detail View
+and after Add shortcut in Folder Detail View —
 and pass it only while their `*Content`'s `hasSlideshowMedia` is true, which the screens compute from
 the whole membership before search and Filter media ([ADR-0025](decisions/0025-slideshow.md)
 Amendment 1 §1).
@@ -665,7 +694,13 @@ Amendment 1 §1).
   `faceDataDisclosureDue` holds — media permission granted, no media open in the viewer, no slideshow
   shown, face data on, the device capable, the disclosure not yet shown — and forwards the ViewModel's
   availability epoch to `AlbumsViewModel`. It also holds `SlideshowViewModel`, passes it to both
-  detail screens, and branches on its state (§4).
+  detail screens, and branches on its state (§4). Since
+  [ADR-0027](decisions/0027-home-screen-shortcuts.md) it reads a home-screen shortcut's target from
+  the launch intent once, in `onCreate`, only with no saved state and no
+  `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`; holds it as the pending target in a `rememberSaveable`,
+  saved as primitives; and resolves it in a `LaunchedEffect` once the media permission is granted,
+  `isMediaLoaded` and `AlbumsViewModel.albumsLoaded` are true, clearing it whether or not it opened
+  anything (§4).
 - **`LocaleHelper`** — persists the BCP-47 language tag and wraps a `Context` with it via
   `createConfigurationContext`. Its `supportedLanguageTags` is the list of shipped locales (§9).
 
@@ -722,6 +757,19 @@ dialog's Automatic option after `AlbumsViewModel.openAutomaticAlbumPicker()` has
 draft. Unlike the manual branch it carries no value, because the draft lives in
 `AutomaticAlbumPickerState` rather than in the Activity. Reachable only from Albums View, so its
 position is not load-bearing either.
+
+### Entering from a home-screen shortcut
+
+A home-screen shortcut adds **no branch**; the chain is unchanged —
+**[ADR-0027](decisions/0027-home-screen-shortcuts.md)**. Its intent starts a fresh task, so
+whatever was open is discarded, and `MainActivity` resolves the pending target (§3) through the
+calls a tap makes: a folder by `selectMainView(FOLDERS)` then `selectFolder`; an Album by
+`selectMainView(ALBUMS)`, `cancelAlbumSelectionAndDetail()`, clearing `isFavouritesSelected` and
+`selectAlbum(id)`; Favourites the same way, setting `isFavouritesSelected` instead. Back returns to
+Folders View or Albums View, as after a tap. A target that is gone lands on that main view with a
+Toast. Until it resolves the chain draws what it would with no shortcut. The target is read only on
+a genuine start and cleared once resolved, so a rotation, a language `recreate()`, process death or
+Recents restores the cleared value and does not navigate again.
 
 ### The Main view bar
 
@@ -1020,6 +1068,12 @@ one would silently narrow the whole backup to it, so do not "tidy" those files.
 `FavouritesDataSource` with a tier chosen from the SDK level, the `MANAGE_MEDIA` grant, and the R
 extension version — **[ADR-0011](decisions/0011-favourites-backed-by-mediastore.md)**.
 `MANAGE_MEDIA` is declared in the manifest, requested only in context, and never required.
+
+**Home-screen shortcuts are in neither database nor any preferences file.** The system holds a
+pinned shortcut — its id, label and intent — and backs it up and restores it, without its icon; the
+app keeps no copy and reaches one only by id, through `AlbumsViewModel`'s publisher (§3). An Album's
+shortcut survives a restore because this database's ids do; a folder's may not (§11) —
+**[ADR-0027](decisions/0027-home-screen-shortcuts.md)**.
 
 ### The media index database
 
@@ -1839,3 +1893,32 @@ KSP.
 - **The Filmstrip's cells are below the touch-target guideline.** Each is `FILMSTRIP_ITEM_SIZE` in
   `ViewerFilmstrip.kt` (44 dp), under the 48 dp minimum. Accepted because the strip is a secondary
   navigation path: the viewer's pager still pages by swipe.
+- **Home-screen shortcuts' accepted and open limits**
+  ([ADR-0027](decisions/0027-home-screen-shortcuts.md), *Consequences* and Amendment 1).
+  1. **A shortcut tap discards what was open** — a viewer, a slideshow, a selection, a New album
+     draft — because it clears the task. Accepted.
+  2. **The Favourites label is fixed in the language it was pinned in.** Accepted; a folder's or
+     Album's label is the user's own name.
+  3. **After a restore on a new device, a folder's shortcut may point at nothing**, because the path
+     may differ there; it lands on Folders View with the Toast. Album shortcuts survive with the
+     album database's ids. Accepted.
+  4. **A folder shortcut inherits the bucket-name collision.** Resolution matches the folder by
+     path, but `GalleryViewModel.selectFolder` loads `getMediaInFolder(folder.name)`, by
+     `BUCKET_DISPLAY_NAME`, so a shortcut to one of two folders sharing a name shows both folders'
+     media — the *Folders are aggregated by `BUCKET_DISPLAY_NAME`* entry above, reaching a new entry
+     point. Not fixed.
+  5. **The badge may double up** on a launcher that draws its own app badge on a pinned shortcut.
+     Samsung's pin confirmation on the SM-G990B previewed one badge; no icon on a home screen has
+     been looked at. The badge is a vector approximation of the launcher mark **copied into six
+     drawables** — the three `ic_shortcut_*_foreground` and three `ic_shortcut_*_monochrome` — so a
+     change to the app's mark must be repeated in all six.
+  6. **`Icons.Filled.AddToHomeScreen` is deprecated**, and `SearchTopBar.kt`'s use of it, as
+     `Icons.Default.AddToHomeScreen`, is a compile warning; the replacement is the AutoMirrored
+     icon. A one-line fix, routed and not done.
+  7. **Device checks not yet observed** (ADR-0027 *Verify*, the note under the list): tapping a
+     pinned icon from the launcher — every device start so far was `adb shell am start` with the
+     shortcut's intent — an Album target end to end with a real Album, a rename or delete reaching a
+     pinned shortcut, and, after landing, a language change in Settings, a process kill and a return,
+     and reopening the task from Recents. `MainActivity`'s read rule has no unit test; a
+     `recreate()` on the device and an `am start` carrying `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` are
+     what checked it.

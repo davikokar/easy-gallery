@@ -53,6 +53,8 @@ import com.davide.seddio.easygallery.data.ViewPreferences
 import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.albumOverrideKey
 import com.davide.seddio.easygallery.data.toMediaIdentity
+import com.davide.seddio.easygallery.ui.components.AlbumShortcutPublisher
+import com.davide.seddio.easygallery.ui.components.AndroidAlbumShortcutPublisher
 import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
@@ -66,8 +68,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -139,7 +143,9 @@ class AlbumsViewModel @JvmOverloads constructor(
                 currentKey = app.faceCapabilityKey().asStoredKey()
             )
         } ?: false
-    }
+    },
+    // Keeps a pinned Album shortcut true after a rename or delete has been written (ADR-0027 section 7).
+    private val shortcutPublisher: AlbumShortcutPublisher = AndroidAlbumShortcutPublisher(application)
 ) : AndroidViewModel(application) {
 
     private data class ComputedAlbum(
@@ -198,6 +204,7 @@ class AlbumsViewModel @JvmOverloads constructor(
     private val _selectedAlbumId = MutableStateFlow<Long?>(null)
     private val _albumSelectionId = MutableStateFlow<Long?>(null)
     private val _errorMessage = MutableStateFlow<String?>(null)
+    private val _albumsLoaded = MutableStateFlow(false)
     private val mediaStoreVersionCheckMutex = Mutex()
 
     private val _isAlbumCoverPickerMode = MutableStateFlow(false)
@@ -205,6 +212,9 @@ class AlbumsViewModel @JvmOverloads constructor(
     private val _albumCoverPreselectedUri = MutableStateFlow<Uri?>(null)
 
     val selectedAlbumId: StateFlow<Long?> = _selectedAlbumId.asStateFlow()
+
+    /** False until the album store has emitted once, then true, also for zero albums: an empty [albums] cannot say which. */
+    val albumsLoaded: StateFlow<Boolean> = _albumsLoaded.asStateFlow()
 
     /** Album cover picker mode in Album Detail View (ADR-0015 Amendment 1); never set for Favourites. */
     val isAlbumCoverPickerMode: StateFlow<Boolean> = _isAlbumCoverPickerMode.asStateFlow()
@@ -275,7 +285,10 @@ class AlbumsViewModel @JvmOverloads constructor(
                         computed.toList()
                     }
                 }
-            }.flowOn(evaluationDispatcher)
+            }
+            // An empty list equals the initial one and is conflated by the StateFlow below, so it is seen here.
+            .onEach { computed -> if (computed.isEmpty()) _albumsLoaded.value = true }
+            .flowOn(evaluationDispatcher)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val albums: StateFlow<List<AlbumListItem>> = computedAlbums
@@ -317,6 +330,11 @@ class AlbumsViewModel @JvmOverloads constructor(
     )
 
     init {
+        // A non-empty list is seen from `albums`, so the flag is never true while the list is still the initial one.
+        viewModelScope.launch {
+            albums.first { it.isNotEmpty() }
+            _albumsLoaded.value = true
+        }
         viewModelScope.launch {
             computedAlbums.collect { computed ->
                 if (_selectedAlbumId.value != null && computed.none { it.album.id == _selectedAlbumId.value }) {
@@ -508,6 +526,7 @@ class AlbumsViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             albumStore.renameAlbum(albumId, sanitizedName)
             _errorMessage.value = null
+            shortcutPublisher.albumRenamed(albumId, sanitizedName)
         }
     }
 
@@ -522,6 +541,7 @@ class AlbumsViewModel @JvmOverloads constructor(
             if (_albumSelectionId.value == albumId) {
                 _albumSelectionId.value = null
             }
+            shortcutPublisher.albumDeleted(albumId, localizedString(R.string.shortcut_album_deleted))
         }
     }
 

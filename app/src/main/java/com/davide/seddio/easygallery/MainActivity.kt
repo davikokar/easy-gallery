@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -42,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +52,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.davide.seddio.easygallery.data.DisplayMode
 import com.davide.seddio.easygallery.ui.FullImageScreen
 import com.davide.seddio.easygallery.ui.AddToAlbumDialog
 import com.davide.seddio.easygallery.ui.CreateAlbumDialog
@@ -71,13 +74,40 @@ import com.davide.seddio.easygallery.ui.SlideshowScreen
 import com.davide.seddio.easygallery.ui.SlideshowViewModel
 import com.davide.seddio.easygallery.ui.components.FaceDataDisclosureDialog
 import com.davide.seddio.easygallery.ui.components.MainViewBar
+import com.davide.seddio.easygallery.ui.components.SHORTCUT_ACTION
+import com.davide.seddio.easygallery.ui.components.ShortcutExtras
+import com.davide.seddio.easygallery.ui.components.ShortcutKind
+import com.davide.seddio.easygallery.ui.components.ShortcutResolution
+import com.davide.seddio.easygallery.ui.components.ShortcutTarget
 import com.davide.seddio.easygallery.ui.components.ShownScreen
+import com.davide.seddio.easygallery.ui.components.decodeShortcutTarget
+import com.davide.seddio.easygallery.ui.components.readShortcutTarget
+import com.davide.seddio.easygallery.ui.components.resolveShortcutTarget
 import com.davide.seddio.easygallery.ui.components.resolveShownScreen
 import com.davide.seddio.easygallery.ui.components.selectedMainViewTab
 import com.davide.seddio.easygallery.ui.components.shouldShowMainViewBar
 import com.davide.seddio.easygallery.ui.components.toDisplayMode
+import com.davide.seddio.easygallery.ui.components.toExtras
 import com.davide.seddio.easygallery.ui.faceDataDisclosureDue
 import com.davide.seddio.easygallery.ui.theme.EasyGalleryTheme
+
+// The pending shortcut target as primitives, so it survives recreation and process death (ADR-0027 section 4).
+private val PendingShortcutSaver = listSaver<ShortcutTarget?, Any>(
+    save = { target ->
+        target?.toExtras()?.let { listOf<Any>(it.kind.orEmpty(), it.albumId, it.folderPath.orEmpty()) }
+            ?: emptyList()
+    },
+    restore = { saved ->
+        if (saved.size != 3) {
+            null
+        } else {
+            decodeShortcutTarget(
+                SHORTCUT_ACTION,
+                ShortcutExtras(saved[0] as String, saved[1] as Long, (saved[2] as String).ifBlank { null })
+            )
+        }
+    }
+)
 
 class MainActivity : ComponentActivity() {
 
@@ -139,6 +169,17 @@ class MainActivity : ComponentActivity() {
         )
 
         checkPermissions()
+
+        // Only a genuine start: a saved state means rotation, recreate() or process death, and Recents
+        // re-delivers the shortcut intent with LAUNCHED_FROM_HISTORY (ADR-0027 section 4).
+        val launchShortcut = if (
+            savedInstanceState == null &&
+            (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0
+        ) {
+            readShortcutTarget(intent)
+        } else {
+            null
+        }
 
         setContent {
             val pendingWriteRequest by viewModel.pendingWriteRequest.collectAsState()
@@ -208,6 +249,11 @@ class MainActivity : ComponentActivity() {
                     val isSlideshowOpen = slideshowState != null
                     val selectedFolderPath = selectedFolder?.path
                     var isFavouritesSelected by rememberSaveable { mutableStateOf(false) }
+                    // Cleared once resolved, whether it opened its target or not, so nothing navigates twice.
+                    var pendingShortcut by rememberSaveable(stateSaver = PendingShortcutSaver) {
+                        mutableStateOf(launchShortcut)
+                    }
+                    val albumsLoaded by albumsViewModel.albumsLoaded.collectAsState()
                     var mediaPendingAddToAlbum by remember { mutableStateOf(emptyList<com.davide.seddio.easygallery.data.MediaItem>()) }
                     var showAddToAlbumDialog by remember { mutableStateOf(false) }
                     var showCreateAlbumDialog by remember { mutableStateOf(false) }
@@ -220,6 +266,54 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(allMedia, isMediaLoaded) {
                         if (isMediaLoaded) albumsViewModel.setAllMedia(allMedia)
+                    }
+                    // Waits for all three inputs, then resolves once; the lists are read from the flows, not from
+                    // the collected states, so the flags and the data they vouch for are never one frame apart.
+                    LaunchedEffect(pendingShortcut, hasPermission, isMediaLoaded, albumsLoaded) {
+                        val target = pendingShortcut ?: return@LaunchedEffect
+                        val resolution = resolveShortcutTarget(
+                            target = target,
+                            hasPermission = hasPermission,
+                            isMediaLoaded = isMediaLoaded,
+                            isAlbumListLoaded = albumsLoaded,
+                            allMedia = viewModel.allMedia.value,
+                            albumIds = albumsViewModel.albums.value.map { it.id },
+                            isFavouritesAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                        )
+                        if (resolution is ShortcutResolution.Pending) return@LaunchedEffect
+                        pendingShortcut = null
+                        // Every branch leaves the main view with no Album, Favourites or folder detail open beneath the target.
+                        fun showMainView(mode: DisplayMode) {
+                            viewModel.selectMainView(mode)
+                            albumsViewModel.cancelAlbumSelectionAndDetail()
+                            isFavouritesSelected = false
+                        }
+                        when (resolution) {
+                            ShortcutResolution.Pending -> Unit
+                            is ShortcutResolution.OpenFolder -> {
+                                showMainView(DisplayMode.FOLDERS)
+                                viewModel.selectFolder(resolution.folder)
+                            }
+                            is ShortcutResolution.OpenAlbum -> {
+                                showMainView(DisplayMode.ALBUMS)
+                                albumsViewModel.selectAlbum(resolution.albumId)
+                            }
+                            ShortcutResolution.OpenFavourites -> {
+                                showMainView(DisplayMode.ALBUMS)
+                                isFavouritesSelected = true
+                            }
+                            is ShortcutResolution.Unavailable -> {
+                                val messageRes = if (resolution.kind == ShortcutKind.FOLDER) {
+                                    showMainView(DisplayMode.FOLDERS)
+                                    R.string.shortcut_folder_unavailable
+                                } else {
+                                    showMainView(DisplayMode.ALBUMS)
+                                    R.string.shortcut_album_unavailable
+                                }
+                                val localized = LocaleHelper.wrap(this@MainActivity)
+                                Toast.makeText(localized, localized.getString(messageRes), Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     }
                     LaunchedEffect(allMedia) {
                         mediaIndexingViewModel.setLiveMedia(allMedia)

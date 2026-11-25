@@ -315,4 +315,11 @@
     <string name="slideshow_pause">Jeda</string>
     <string name="slideshow_resume">Lanjutkan</string>
     <string name="slideshow_close">Tutup tayangan slide</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Tambahkan pintasan</string>
+    <string name="shortcut_not_supported">Layar utama Anda tidak mendukung pintasan</string>
+    <string name="shortcut_add_failed">Tidak dapat menambahkan pintasan</string>
+    <string name="shortcut_folder_unavailable">Folder ini tidak lagi tersedia</string>
+    <string name="shortcut_album_unavailable">Album ini tidak lagi tersedia</string>
+    <string name="shortcut_album_deleted">Album ini telah dihapus</string>
 </resources>

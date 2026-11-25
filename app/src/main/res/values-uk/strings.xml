@@ -360,4 +360,11 @@
     <string name="slideshow_pause">Пауза</string>
     <string name="slideshow_resume">Продовжити</string>
     <string name="slideshow_close">Закрити слайдшоу</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Додати ярлик</string>
+    <string name="shortcut_not_supported">Ваш головний екран не підтримує ярлики</string>
+    <string name="shortcut_add_failed">Не вдалося додати ярлик</string>
+    <string name="shortcut_folder_unavailable">Ця папка більше недоступна</string>
+    <string name="shortcut_album_unavailable">Цей альбом більше недоступний</string>
+    <string name="shortcut_album_deleted">Цей альбом видалено</string>
 </resources>

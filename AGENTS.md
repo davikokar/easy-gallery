@@ -217,7 +217,11 @@ the audit is for the rest.
   `SaveableStateProvider` in `MainActivity` — except the full-screen viewer, which ADR-0002
   deliberately keeps outside it, and the Slideshow screen, the chain's first branch, which ADR-0025
   keeps outside it on the same pattern. ADR-0013 keeps the chain as it is: Albums View is a third
-  `DisplayMode` on `FolderListScreen`, not a fourth screen.
+  `DisplayMode` on `FolderListScreen`, not a fourth screen. A home-screen shortcut adds no branch
+  either (ADR-0027): `MainActivity` reads its target from the launch intent once, holds it as a
+  pending target in a `rememberSaveable` until permission, media and `AlbumsViewModel.albumsLoaded`
+  are ready, then clears it, and `AlbumsViewModel` keeps a pinned Album's shortcut true through its
+  last constructor parameter, the `AlbumShortcutPublisher` seam.
 - Screens are stateless where practical: the `*Screen` composable reads the ViewModel and passes
   plain values plus callbacks to a `*Content` composable, which is what the instrumented tests
   drive.

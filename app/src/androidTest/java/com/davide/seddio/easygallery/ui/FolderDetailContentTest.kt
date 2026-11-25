@@ -557,6 +557,87 @@ class FolderDetailContentTest {
         composeTestRule.onNodeWithTag("slideshow_button").assertIsDisplayed()
     }
 
+    @Test
+    fun addShortcutItemCarriesItsLabelAndInvokesTheCallbackOnce() {
+        var clicks = 0
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia), onAddShortcutClick = { clicks++ })
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_add_shortcut))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("add_shortcut_button").performClick()
+
+        composeTestRule.runOnIdle { assertEquals(1, clicks) }
+    }
+
+    @Test
+    fun addShortcutComesAfterChangeFolderThumbnailAndBeforeSlideshow() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia))
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        val thumbnailTop = composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_folder_thumbnail))
+            .fetchSemanticsNode().boundsInRoot.top
+        val addShortcutTop = composeTestRule.onNodeWithTag("add_shortcut_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        val slideshowTop = composeTestRule.onNodeWithTag("slideshow_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Add shortcut must follow Change folder thumbnail", addShortcutTop > thumbnailTop)
+        assertTrue("Add shortcut must precede Slideshow", addShortcutTop < slideshowTop)
+    }
+
+    @Test
+    fun addShortcutIsShownWhenTheFolderHasNoMedia() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = emptyList())
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onNodeWithTag("add_shortcut_button").assertIsDisplayed()
+    }
+
+    @Test
+    fun addShortcutIsAbsentInMediaSelectionMode() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(
+                media = listOf(fakeMedia),
+                isMediaSelectionMode = true,
+                selectedMediaItems = setOf(fakeMedia.uri)
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onAllNodesWithTag("add_shortcut_button").assertCountEquals(0)
+    }
+
+    @Test
+    fun addShortcutIsAbsentInTheFolderThumbnailPicker() {
+        composeTestRule.setContent {
+            FolderDetailContentWrapper(media = listOf(fakeMedia), isThumbnailPickerMode = true)
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .assertDoesNotExist()
+        composeTestRule.onAllNodesWithTag("add_shortcut_button").assertCountEquals(0)
+    }
+
     @Composable
     private fun FolderDetailContentWrapper(
         media: List<MediaItem> = emptyList(),
@@ -575,6 +656,7 @@ class FolderDetailContentTest {
         onExitThumbnailPickerMode: () -> Unit = {},
         onCommitThumbnailPickerSelection: () -> Unit = {},
         onCommitSortPreference: (SortType, SortOrder, PreferenceApplyTarget) -> Unit = { _, _, _ -> },
+        onAddShortcutClick: () -> Unit = {},
         onSlideshowClick: () -> Unit = {}
     ) {
         FolderDetailContent(
@@ -628,6 +710,7 @@ class FolderDetailContentTest {
             onDecreaseColumns = {},
             onIncreaseColumns = {},
             hasSlideshowMedia = hasSlideshowMedia,
+            onAddShortcutClick = onAddShortcutClick,
             onSlideshowClick = onSlideshowClick
         )
     }

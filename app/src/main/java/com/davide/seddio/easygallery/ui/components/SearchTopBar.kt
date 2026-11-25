@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.AddToHomeScreen
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Category
@@ -58,6 +59,7 @@ fun SearchTopBar(
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null,
     onAlbumInfoClick: (() -> Unit)? = null,
+    onAddShortcutClick: (() -> Unit)? = null,
     onSlideshowClick: (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -275,6 +277,22 @@ fun SearchTopBar(
                                 onClick = {
                                     showMenu = false
                                     onCreateAlbumClick()
+                                }
+                            )
+                        }
+                        if (onAddShortcutClick != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_add_shortcut)) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.AddToHomeScreen,
+                                        contentDescription = null
+                                    )
+                                },
+                                modifier = Modifier.testTag("add_shortcut_button"),
+                                onClick = {
+                                    showMenu = false
+                                    onAddShortcutClick()
                                 }
                             )
                         }

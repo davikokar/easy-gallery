@@ -463,7 +463,7 @@ Shared parts:
   Album fills in again if that photo returns, otherwise it should be created again.
 - **Album info item** (tagged `album_info_button`): The item of the **Browse top bar**'s
   Overflow menu in Album Detail View that sits directly before the **Slideshow item**, which is the
-  last, labelled "Album info" and carrying the `Description` icon (not
+  last, and directly after the **Add shortcut item**, labelled "Album info" and carrying the `Description` icon (not
   `Info`, which is the top bar's caption toggle). It is shown only once the Album is known and never
   for Favourites, which has no rule. For an Automatic album whose rule has a place clause it is also
   hidden until the country names have loaded; if they fail to load it is shown anyway, and the
@@ -489,7 +489,7 @@ Shared parts:
   still shows the Automatic album heading.
 - **Change album thumbnail item** (`R.string.menu_change_album_thumbnail`; the `Image` icon): The
   item of the **Browse top bar**'s Overflow menu in Album Detail View, placed after Change view type
-  and before the **Album info item**. It enters the **Album cover picker**. It is shown only for an
+  and before the **Add shortcut item** and the **Album info item**. It enters the **Album cover picker**. It is shown only for an
   Album that is known and currently shows at least one item, and never for Favourites, which has no
   row in the album database to hold a cover and keeps its automatic one. The word "thumbnail"
   appears only in this item's label and in the **Album cover picker**'s title; the thing it sets is
@@ -568,7 +568,7 @@ dialog, and never "viewer" for the screen.
 
 - **Slideshow item** (tagged `slideshow_button`, `R.string.menu_slideshow`; the `Slideshow` icon):
   The last item of the **Browse top bar**'s Overflow menu in Folder Detail View and Album Detail
-  View, Favourites included. Shown only when the folder or Album holds media at all, ignoring the
+  View, Favourites included, after the **Add shortcut item** (ADR-0025 §1, ADR-0027 §1). Shown only when the folder or Album holds media at all, ignoring the
   **Search field** and **Filter media**; it is hidden for an empty container rather than showing the
   dialog's zero state. It opens the **Slideshow dialog**.
 - **Slideshow dialog** (`SlideshowDialog`, hosted by `SlideshowDialogHost`, tagged
@@ -618,6 +618,30 @@ dialog, and never "viewer" for the screen.
   **Slideshow controls** and toggles pause and resume. Back and the close
   button end it. There is no swipe, no previous and no next. Videos play to their end with no sound.
   The hidden system bars are not **Immersive mode**, which hides the **Viewer bottom bar** only.
+
+## Home screen shortcut
+
+Started from Folder Detail View or Album Detail View (Favourites included); no main view has it
+(ADR-0027). Say **Home screen shortcut** for the thing the user pins to the launcher's home screen.
+It is not a **launcher app shortcut** (the long-press menu of the app's own icon, which this app
+does not declare), and never "widget", "bookmark" or "favourite": **Favourites** and **Favourite /
+Unfavourite** name something else.
+
+- **Home screen shortcut**: One tap on the home screen that opens a folder, an Album or Favourites
+  in this app. It is *pinned* by the user, one at a time, through the launcher, and the launcher
+  owns its confirmation; the app draws none. Its icon is a static glyph with the app's badge, never
+  a thumbnail, and its label is the folder's name, the Album's name, or the Favourites title. Its
+  own states (opening, a target that is gone) are not named here.
+- **Add shortcut item** (tagged `add_shortcut_button`, `R.string.menu_add_shortcut`, "Add shortcut";
+  the `AddToHomeScreen` icon): The item of the **Browse top bar**'s Overflow menu in Folder Detail
+  View and Album Detail View, Favourites included, that asks the launcher to pin a **Home screen
+  shortcut** for the open folder, Album or Favourites. It sits after the Change folder thumbnail
+  item (Folder Detail View) and the **Change album thumbnail item** (Album Detail View) and before
+  the **Album info item** and the **Slideshow item**, which stays last. It is drawn only when its callback is non-null, so it is **absent** in
+  every selection top bar, the **Folder thumbnail picker**, the **Album cover picker**, and Album
+  Detail View until the Album is known; it is shown for an empty folder or Album, and always for
+  Favourites. A launcher that cannot pin does not hide it: tapping it shows a message saying so, and
+  a failure shows another. Neither message appears when the launcher accepts the request.
 
 ## Dialogs
 

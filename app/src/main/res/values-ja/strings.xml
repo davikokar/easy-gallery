@@ -314,4 +314,11 @@
     <string name="slideshow_pause">一時停止</string>
     <string name="slideshow_resume">再開</string>
     <string name="slideshow_close">スライドショーを閉じる</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">ショートカットを追加</string>
+    <string name="shortcut_not_supported">お使いのホーム画面はショートカットに対応していません</string>
+    <string name="shortcut_add_failed">ショートカットを追加できませんでした</string>
+    <string name="shortcut_folder_unavailable">このフォルダは利用できなくなりました</string>
+    <string name="shortcut_album_unavailable">このアルバムは利用できなくなりました</string>
+    <string name="shortcut_album_deleted">このアルバムは削除されました</string>
 </resources>

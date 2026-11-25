@@ -360,4 +360,11 @@
     <string name="slideshow_pause">Wstrzymaj</string>
     <string name="slideshow_resume">Wznów</string>
     <string name="slideshow_close">Zamknij pokaz slajdów</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Dodaj skrót</string>
+    <string name="shortcut_not_supported">Ekran główny nie obsługuje skrótów</string>
+    <string name="shortcut_add_failed">Nie udało się dodać skrótu</string>
+    <string name="shortcut_folder_unavailable">Ten folder nie jest już dostępny</string>
+    <string name="shortcut_album_unavailable">Ten album nie jest już dostępny</string>
+    <string name="shortcut_album_deleted">Ten album został usunięty</string>
 </resources>

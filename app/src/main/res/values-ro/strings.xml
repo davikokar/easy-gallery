@@ -345,4 +345,11 @@
     <string name="slideshow_pause">Pauză</string>
     <string name="slideshow_resume">Reluare</string>
     <string name="slideshow_close">Închideți prezentarea</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Adăugați comandă rapidă</string>
+    <string name="shortcut_not_supported">Ecranul de pornire nu acceptă comenzi rapide</string>
+    <string name="shortcut_add_failed">Nu s-a putut adăuga comanda rapidă</string>
+    <string name="shortcut_folder_unavailable">Acest dosar nu mai este disponibil</string>
+    <string name="shortcut_album_unavailable">Acest album nu mai este disponibil</string>
+    <string name="shortcut_album_deleted">Acest album a fost șters</string>
 </resources>

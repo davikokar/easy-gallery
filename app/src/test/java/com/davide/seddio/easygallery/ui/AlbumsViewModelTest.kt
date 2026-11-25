@@ -57,12 +57,17 @@ import com.davide.seddio.easygallery.data.ViewType
 import com.davide.seddio.easygallery.data.albumOverrideKey
 import com.davide.seddio.easygallery.data.mediaIdentityOf
 import com.davide.seddio.easygallery.data.toMediaIdentity
+import com.davide.seddio.easygallery.ui.components.AlbumShortcutPublisher
+import com.davide.seddio.easygallery.ui.components.InMemoryAlbumShortcutPublisher
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -2143,6 +2148,126 @@ class AlbumsViewModelTest {
         assertNull(viewModel.albumCoverPreselectedUri.value)
     }
 
+    @Test
+    fun `albumsLoaded is false until the album store first emits, then true with no albums`() = runTest {
+        val store = GatedAlbumStore()
+        val viewModel = createViewModel(albumStore = store)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.albumsLoaded.value)
+
+        store.firstEmission.complete(Unit)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.albums.value.isEmpty())
+        assertTrue(viewModel.albumsLoaded.value)
+    }
+
+    @Test
+    fun `albumsLoaded is false until the album store first emits, then true with albums`() = runTest {
+        val store = GatedAlbumStore()
+        store.createAlbum("Trips", 1L)
+        val viewModel = createViewModel(albumStore = store)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.albumsLoaded.value)
+
+        store.firstEmission.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf("Trips"), viewModel.albums.value.map { it.name })
+        assertTrue(viewModel.albumsLoaded.value)
+    }
+
+    @Test
+    fun `albumsLoaded stays true after the last album is deleted`() = runTest {
+        val store = InMemoryAlbumStore()
+        val albumId = store.createAlbum("Trips", 1L)
+        val viewModel = createViewModel(albumStore = store)
+        advanceUntilIdle()
+        assertTrue(viewModel.albumsLoaded.value)
+
+        viewModel.deleteAlbum(albumId)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.albums.value.isEmpty())
+        assertTrue(viewModel.albumsLoaded.value)
+    }
+
+    @Test
+    fun `renaming an album publishes the new label for that album only`() = runTest {
+        val store = InMemoryAlbumStore()
+        val other = store.createAlbum("Other", 1L)
+        val albumId = store.createAlbum("Trips", 2L)
+        val publisher = InMemoryAlbumShortcutPublisher()
+        val viewModel = createViewModel(albumStore = store, shortcutPublisher = publisher)
+        advanceUntilIdle()
+
+        viewModel.renameAlbum(albumId, "  Summer Trips ")
+        advanceUntilIdle()
+
+        assertEquals(listOf(albumId to "Summer Trips"), publisher.renamed)
+        assertTrue(publisher.deleted.isEmpty())
+        assertTrue(publisher.renamed.none { it.first == other })
+    }
+
+    @Test
+    fun `a rejected rename publishes nothing`() = runTest {
+        val store = InMemoryAlbumStore()
+        store.createAlbum("Other", 1L)
+        val albumId = store.createAlbum("Trips", 2L)
+        val publisher = InMemoryAlbumShortcutPublisher()
+        val viewModel = createViewModel(albumStore = store, shortcutPublisher = publisher)
+        advanceUntilIdle()
+
+        viewModel.renameAlbum(albumId, "other")
+        viewModel.renameAlbum(albumId, "   ")
+        advanceUntilIdle()
+
+        assertTrue(publisher.renamed.isEmpty())
+    }
+
+    @Test
+    fun `deleting an album disables its shortcut with the localised message`() = runTest {
+        every { application.getString(com.davide.seddio.easygallery.R.string.shortcut_album_deleted) } returns "This album was deleted"
+        val store = InMemoryAlbumStore()
+        val other = store.createAlbum("Other", 1L)
+        val albumId = store.createAlbum("Trips", 2L)
+        val publisher = InMemoryAlbumShortcutPublisher()
+        val viewModel = createViewModel(albumStore = store, shortcutPublisher = publisher)
+        advanceUntilIdle()
+
+        viewModel.deleteAlbum(albumId)
+        advanceUntilIdle()
+
+        assertEquals(listOf(albumId to "This album was deleted"), publisher.deleted)
+        assertTrue(publisher.deleted.none { it.first == other })
+        assertTrue(publisher.renamed.isEmpty())
+    }
+
+    @Test
+    fun `the shortcut is published only once the store write has completed`() = runTest {
+        val store = GatedAlbumStore()
+        store.firstEmission.complete(Unit)
+        val albumId = store.createAlbum("Trips", 1L)
+        val publisher = InMemoryAlbumShortcutPublisher()
+        val viewModel = createViewModel(albumStore = store, shortcutPublisher = publisher)
+        advanceUntilIdle()
+
+        viewModel.renameAlbum(albumId, "Summer")
+        viewModel.deleteAlbum(albumId)
+        advanceUntilIdle()
+
+        assertTrue(publisher.renamed.isEmpty())
+        assertTrue(publisher.deleted.isEmpty())
+
+        store.writes.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(listOf(albumId to "Summer"), publisher.renamed)
+        assertEquals(listOf(albumId), publisher.deleted.map { it.first })
+    }
+
     private fun createViewModel(
         albumStore: AlbumStore = InMemoryAlbumStore(),
         albumNameFormatter: (Locale, String, Int) -> String = { locale, format, ordinal ->
@@ -2155,7 +2280,8 @@ class AlbumsViewModelTest {
         gazetteerNamesLoader: () -> GazetteerNames = { error("this test does not open the picker") },
         albumOverrideStore: FolderViewPreferencesStore = InMemoryFolderViewPreferencesStore(),
         peopleAvailabilitySource: PeopleAvailabilitySource = InMemoryPeopleAvailabilitySource(),
-        peoplePickerOffered: () -> Boolean = { false }
+        peoplePickerOffered: () -> Boolean = { false },
+        shortcutPublisher: AlbumShortcutPublisher = InMemoryAlbumShortcutPublisher()
     ): AlbumsViewModel {
         return AlbumsViewModel(
             application = application,
@@ -2172,7 +2298,8 @@ class AlbumsViewModelTest {
             localeProvider = { Locale.US },
             albumOverrideStore = albumOverrideStore,
             peopleAvailabilitySource = peopleAvailabilitySource,
-            peoplePickerOffered = peoplePickerOffered
+            peoplePickerOffered = peoplePickerOffered,
+            shortcutPublisher = shortcutPublisher
         )
     }
 
@@ -2211,6 +2338,29 @@ class AlbumsViewModelTest {
 
         // Written by a future build; this build must show it as unevaluatable and leave it alone.
         const val UNKNOWN_VERSION_RULE = "{\"version\":2,\"all\":[{\"type\":\"time\",\"from\":\"2025-06-01\"}]}"
+    }
+
+    // Holds the first album list back until [firstEmission], and rename and delete writes until [writes].
+    private class GatedAlbumStore(
+        private val delegate: AlbumStore = InMemoryAlbumStore()
+    ) : AlbumStore by delegate {
+        val firstEmission = CompletableDeferred<Unit>()
+        val writes = CompletableDeferred<Unit>()
+
+        override fun observeAlbums(): Flow<List<StoredAlbum>> = flow {
+            firstEmission.await()
+            emitAll(delegate.observeAlbums())
+        }
+
+        override suspend fun renameAlbum(albumId: Long, newName: String) {
+            writes.await()
+            delegate.renameAlbum(albumId, newName)
+        }
+
+        override suspend fun deleteAlbum(albumId: Long) {
+            writes.await()
+            delegate.deleteAlbum(albumId)
+        }
     }
 
     private class FixedMediaStoreVersionProvider(

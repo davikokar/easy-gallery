@@ -315,4 +315,11 @@
     <string name="slideshow_pause">หยุดชั่วคราว</string>
     <string name="slideshow_resume">เล่นต่อ</string>
     <string name="slideshow_close">ปิดสไลด์โชว์</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">เพิ่มทางลัด</string>
+    <string name="shortcut_not_supported">หน้าจอหลักของคุณไม่รองรับทางลัด</string>
+    <string name="shortcut_add_failed">ไม่สามารถเพิ่มทางลัดได้</string>
+    <string name="shortcut_folder_unavailable">โฟลเดอร์นี้ไม่พร้อมใช้งานอีกต่อไป</string>
+    <string name="shortcut_album_unavailable">อัลบั้มนี้ไม่พร้อมใช้งานอีกต่อไป</string>
+    <string name="shortcut_album_deleted">อัลบั้มนี้ถูกลบแล้ว</string>
 </resources>

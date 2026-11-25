@@ -332,4 +332,11 @@
     <string name="slideshow_pause">Pause</string>
     <string name="slideshow_resume">Resume</string>
     <string name="slideshow_close">Close slideshow</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Add shortcut</string>
+    <string name="shortcut_not_supported">Your home screen doesn\'t support shortcuts</string>
+    <string name="shortcut_add_failed">Couldn\'t add the shortcut</string>
+    <string name="shortcut_folder_unavailable">This folder is no longer available</string>
+    <string name="shortcut_album_unavailable">This album is no longer available</string>
+    <string name="shortcut_album_deleted">This album was deleted</string>
 </resources>

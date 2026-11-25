@@ -872,6 +872,109 @@ class AlbumDetailContentTest {
         }
     }
 
+    @Test
+    fun addShortcutIsShownForAnAlbumAndInvokesTheCallbackOnce() {
+        var clicks = 0
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                albumRuleSummary = AlbumRuleSummary.Manual,
+                onAddShortcutClick = { clicks++ }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_add_shortcut))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("add_shortcut_button").performClick()
+
+        composeTestRule.runOnIdle { assertEquals(1, clicks) }
+    }
+
+    @Test
+    fun addShortcutIsShownForFavourites() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isFavouritesAlbum = true,
+                onAddShortcutClick = {}
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule.onNodeWithTag("add_shortcut_button").assertIsDisplayed()
+    }
+
+    @Test
+    fun addShortcutIsAbsentWhenTheCallbackIsNull() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                albumRuleSummary = AlbumRuleSummary.Manual,
+                onAddShortcutClick = null
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(appContext.getString(R.string.change_view_type_title))
+            .assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("add_shortcut_button").assertCountEquals(0)
+    }
+
+    @Test
+    fun addShortcutIsAbsentInTheAlbumCoverPicker() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                isAlbumCoverPickerMode = true,
+                onAddShortcutClick = {}
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .assertDoesNotExist()
+        composeTestRule.onAllNodesWithTag("add_shortcut_button").assertCountEquals(0)
+    }
+
+    @Test
+    fun addShortcutSitsBetweenChangeAlbumThumbnailAndAlbumInfo() {
+        composeTestRule.setContent {
+            AlbumDetailContentWrapper(
+                media = listOf(mediaItem),
+                albumRuleSummary = AlbumRuleSummary.Manual,
+                onAddShortcutClick = {}
+            )
+        }
+
+        composeTestRule
+            .onNodeWithContentDescription(appContext.getString(R.string.cd_more_options))
+            .performClick()
+
+        val thumbnailTop = composeTestRule
+            .onNodeWithText(appContext.getString(R.string.menu_change_album_thumbnail))
+            .fetchSemanticsNode().boundsInRoot.top
+        val addShortcutTop = composeTestRule.onNodeWithTag("add_shortcut_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        val albumInfoTop = composeTestRule.onNodeWithTag("album_info_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        val slideshowTop = composeTestRule.onNodeWithTag("slideshow_button")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("Add shortcut must follow Change album thumbnail", addShortcutTop > thumbnailTop)
+        assertTrue("Add shortcut must precede Album info", addShortcutTop < albumInfoTop)
+        assertTrue("Slideshow must stay last", slideshowTop > albumInfoTop)
+    }
+
     // Menu label of each dialog, paired with the name the wrapper reports its commit under.
     private val preferenceDialogs = listOf(
         R.string.column_count_title to "columns",
@@ -998,6 +1101,7 @@ class AlbumDetailContentTest {
         onExitAlbumCoverPicker: () -> Unit = {},
         onCommitAlbumCoverPicker: () -> Unit = {},
         onCommitPreference: (String, PreferenceApplyTarget) -> Unit = { _, _ -> },
+        onAddShortcutClick: (() -> Unit)? = null,
         onSlideshowClick: () -> Unit = {}
     ) {
         AlbumDetailContent(
@@ -1048,6 +1152,7 @@ class AlbumDetailContentTest {
             onCommitAlbumCoverPicker = onCommitAlbumCoverPicker,
             hasSlideshowMedia = hasSlideshowMedia,
             onSlideshowClick = onSlideshowClick,
+            onAddShortcutClick = onAddShortcutClick,
             isFavouritesAlbum = isFavouritesAlbum
         )
     }

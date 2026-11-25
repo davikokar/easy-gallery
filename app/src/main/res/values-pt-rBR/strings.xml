@@ -329,4 +329,11 @@
     <string name="slideshow_pause">Pausar</string>
     <string name="slideshow_resume">Retomar</string>
     <string name="slideshow_close">Fechar apresentação</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Adicionar atalho</string>
+    <string name="shortcut_not_supported">Sua tela inicial não oferece suporte a atalhos</string>
+    <string name="shortcut_add_failed">Não foi possível adicionar o atalho</string>
+    <string name="shortcut_folder_unavailable">Esta pasta não está mais disponível</string>
+    <string name="shortcut_album_unavailable">Este álbum não está mais disponível</string>
+    <string name="shortcut_album_deleted">Este álbum foi excluído</string>
 </resources>

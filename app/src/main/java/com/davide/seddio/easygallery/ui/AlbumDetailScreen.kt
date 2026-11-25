@@ -48,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -98,6 +99,7 @@ import com.davide.seddio.easygallery.ui.components.GroupByDialog
 import com.davide.seddio.easygallery.ui.components.MediaPropertiesDialog
 import com.davide.seddio.easygallery.ui.components.PreferenceContainer
 import com.davide.seddio.easygallery.ui.components.SearchTopBar
+import com.davide.seddio.easygallery.ui.components.ShortcutTarget
 import com.davide.seddio.easygallery.ui.components.SlideshowDialogHost
 import com.davide.seddio.easygallery.ui.components.ThumbnailPickerTopBar
 import com.davide.seddio.easygallery.ui.components.albumStatusNoticeKind
@@ -110,6 +112,7 @@ import com.davide.seddio.easygallery.ui.theme.BrandBlue
 import java.io.IOException
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -148,6 +151,7 @@ fun AlbumDetailScreen(
     var showSlideshowDialog by rememberSaveable { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val locale = LocalConfiguration.current.locales[0]
     // Only a rule with a place clause needs country names, so nothing is read for any other album.
     val needsCountryNames = !isFavouritesAlbum && albumRule.hasPlaceClause()
@@ -223,6 +227,12 @@ fun AlbumDetailScreen(
     }
     val selectedAlbumMedia = remember(resolvedMedia, selectedMediaItems) {
         resolvedMedia.filter { it.uri in selectedMediaItems }
+    }
+    // The label of a shortcut is resolved when it is pinned, so Favourites reads the title in the current locale.
+    val favouritesLabel = stringResource(R.string.favourites_title)
+    val addShortcutTarget: Pair<ShortcutTarget, String>? = when {
+        isFavouritesAlbum -> ShortcutTarget.FavouritesTarget to favouritesLabel
+        else -> album?.let { ShortcutTarget.AlbumTarget(it.id) to it.name }
     }
 
     AlbumDetailContent(
@@ -347,6 +357,15 @@ fun AlbumDetailScreen(
         onExitAlbumCoverPicker = { albumsViewModel.exitAlbumCoverPicker() },
         onCommitAlbumCoverPicker = { albumsViewModel.commitAlbumCoverDraft() },
         hasSlideshowMedia = resolvedMedia.isNotEmpty(),
+        onAddShortcutClick = if (addShortcutTarget != null) {
+            {
+                coroutineScope.launch {
+                    pinShortcutWithFeedback(context, addShortcutTarget.first, addShortcutTarget.second)
+                }
+            }
+        } else {
+            null
+        },
         onSlideshowClick = { showSlideshowDialog = true }
     )
 
@@ -435,6 +454,7 @@ fun AlbumDetailContent(
     onCommitAlbumCoverPicker: () -> Unit,
     hasSlideshowMedia: Boolean,
     onSlideshowClick: () -> Unit,
+    onAddShortcutClick: (() -> Unit)?,
     favouritesAvailable: Boolean = false,
     favouriteUris: Set<Uri> = emptySet(),
     isFavouritePending: Boolean = false,
@@ -540,6 +560,7 @@ fun AlbumDetailContent(
                         null
                     },
                     changeThumbnailLabel = R.string.menu_change_album_thumbnail,
+                    onAddShortcutClick = onAddShortcutClick,
                     navigationIcon = {
                         IconButton(
                             onClick = onBackToAlbums,

@@ -389,4 +389,11 @@
     <string name="slideshow_pause">إيقاف مؤقت</string>
     <string name="slideshow_resume">استئناف</string>
     <string name="slideshow_close">إغلاق عرض الشرائح</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">إضافة اختصار</string>
+    <string name="shortcut_not_supported">الشاشة الرئيسية لديك لا تدعم الاختصارات</string>
+    <string name="shortcut_add_failed">تعذّرت إضافة الاختصار</string>
+    <string name="shortcut_folder_unavailable">هذا المجلد لم يعد متاحًا</string>
+    <string name="shortcut_album_unavailable">هذا الألبوم لم يعد متاحًا</string>
+    <string name="shortcut_album_deleted">تم حذف هذا الألبوم</string>
 </resources>

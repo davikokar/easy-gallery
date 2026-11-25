@@ -329,4 +329,11 @@
     <string name="slideshow_pause">Pause</string>
     <string name="slideshow_resume">Fortsetzen</string>
     <string name="slideshow_close">Diashow schließen</string>
+    <!-- Home screen shortcuts -->
+    <string name="menu_add_shortcut">Verknüpfung hinzufügen</string>
+    <string name="shortcut_not_supported">Dein Startbildschirm unterstützt keine Verknüpfungen</string>
+    <string name="shortcut_add_failed">Die Verknüpfung konnte nicht hinzugefügt werden</string>
+    <string name="shortcut_folder_unavailable">Dieser Ordner ist nicht mehr verfügbar</string>
+    <string name="shortcut_album_unavailable">Dieses Album ist nicht mehr verfügbar</string>
+    <string name="shortcut_album_deleted">Dieses Album wurde gelöscht</string>
 </resources>
